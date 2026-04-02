@@ -6055,10 +6055,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 1.2
-// Last Updated: 2026-04-01 22:35
+// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 1.3
+// Last Updated: 2026-04-02 10:50
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Điền Từ (Fill-in-the-Blank).
-// Cập nhật: Tách bạch Setup/PlayScreen. Sửa lỗi UX (thay disabled bằng readOnly để giữ bàn phím ảo). Thêm Bookmark UI.
+// Cập nhật: Nâng cấp Header Endless Mode (Bộ đếm Đúng/Sai). Thêm Menu Dropdown Bookmark Lưu Đa Dạng.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const FillBlankSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -6146,12 +6146,26 @@ const FillBlankPlayScreen = ({
 t, mainColor, config,
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts,
 score, combo, playedCount, time, isFinished, isGenerating, aiCountdown,
+correctCount, wrongCount, // [NEW v1.3] Nhận biến đếm đúng sai
 checkAnswer, handleNext, handleSkip, onBack, onEndGame, onSaveToNotebook, isBookmarked
 }) => {
 const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
 const inputRef = React.useRef(null);
+// [NEW v1.3] State cho Menu Dropdown Bookmark
+const [showBookmarkMenu, setShowBookmarkMenu] = React.useState(false);
+const bookmarkMenuRef = React.useRef(null);
+// Xử lý click outside để đóng menu bookmark
+React.useEffect(() => {
+const handleClickOutside = (event) => {
+if (bookmarkMenuRef.current && !bookmarkMenuRef.current.contains(event.target)) {
+setShowBookmarkMenu(false);
+}
+};
+document.addEventListener("mousedown", handleClickOutside);
+return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
 // Auto-focus ô nhập liệu
 React.useEffect(() => {
 if (checkStatus === 'idle' || checkStatus === 'wrong_retry') {
@@ -6167,6 +6181,41 @@ checkAnswer();
 handleNext();
 }
 }
+};
+// [NEW v1.3] Hàm xử lý Lưu đa dạng chuẩn Schema
+const handleSaveOption = (type) => {
+if (!currentQuestion) return;
+const correctSentence = currentQuestion.displaySentence.replace('[__________]', currentQuestion.targetWord);
+let termToSave = "";
+let cardType = "vocabulary";
+if (type === 'word') {
+termToSave = currentQuestion.targetWord;
+} else if (type === 'phrase') {
+// Trích xuất cụm từ (từ trước + từ khóa + từ sau)
+const words = correctSentence.split(' ');
+const targetIdx = words.findIndex(w => w.toLowerCase().includes(currentQuestion.targetWord.toLowerCase()));
+if (targetIdx !== -1) {
+const start = Math.max(0, targetIdx - 1);
+const end = Math.min(words.length - 1, targetIdx + 1);
+termToSave = words.slice(start, end + 1).join(' ');
+} else {
+termToSave = currentQuestion.targetWord;
+}
+} else if (type === 'sentence') {
+termToSave = correctSentence;
+cardType = "grammar";
+}
+const cardToSave = {
+id: `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+type: cardType,
+term: termToSave,
+definition: currentQuestion.origin?.definition || currentQuestion.hint || "Thử thách Fill in the Blank",
+example: correctSentence,
+tags: ['fillblank', config?.level || 'unknown'],
+timestamp: Date.now()
+};
+onSaveToNotebook && onSaveToNotebook(cardToSave);
+setShowBookmarkMenu(false);
 };
 // Màn hình Loading/AI Generating (Ban đầu)
 if (isGenerating && !currentQuestion) {
@@ -6195,21 +6244,26 @@ return (
 </div>
 <h2 className={`text-3xl font-bold text-gray-800 mb-2`}>Hoàn thành!</h2>
 <p className="text-gray-500 mb-8 text-lg">Bạn đã điền xong các thử thách.</p>
-<div className="grid grid-cols-2 gap-4 w-full max-w-xs mb-8">
+{/* [UPDATED v1.3] Đổi Điểm số thành Thống kê Đúng/Sai */}
+<div className="grid grid-cols-3 gap-3 w-full max-w-sm mb-8">
 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
-<div className="text-xs text-gray-400 font-bold uppercase mb-1">Thời gian</div>
-<div className={`text-2xl font-bold text-${mainColor}-600`}>{time}s</div>
+<div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Thời gian</div>
+<div className={`text-xl font-bold text-${mainColor}-600`}>{time}s</div>
 </div>
-<div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
-<div className="text-xs text-gray-400 font-bold uppercase mb-1">Điểm số</div>
-<div className="text-2xl font-bold text-orange-500">{score}</div>
+<div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm text-center">
+<div className="text-[10px] text-green-500 font-bold uppercase mb-1 flex items-center justify-center gap-1"><Icons.Check size={12}/> Đúng</div>
+<div className="text-xl font-bold text-green-600">{correctCount}</div>
+</div>
+<div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm text-center">
+<div className="text-[10px] text-red-400 font-bold uppercase mb-1 flex items-center justify-center gap-1"><Icons.X size={12}/> Sai</div>
+<div className="text-xl font-bold text-red-500">{wrongCount}</div>
 </div>
 </div>
 <button
-onClick={() => onEndGame({ correct: score, time: time })}
+onClick={() => onEndGame({ correct: correctCount, time: time, wrong: wrongCount })}
 className={`w-full max-w-xs py-4 rounded-xl bg-${mainColor}-600 text-white font-bold text-lg hover:bg-${mainColor}-700 shadow-lg shadow-${mainColor}-200 transition-all active:scale-95 flex items-center justify-center gap-2`}
 >
-{Icon('CheckCircle', { size: 24 })} Kết thúc
+{Icon('CheckCircle', { size: 24 })} Hoàn tất
 </button>
 </div>
 );
@@ -6242,54 +6296,70 @@ return (
 <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-4">
 <Icons.AlertCircle size={32} />
 </div>
-<h3 className="text-xl font-black text-gray-800 mb-2">Kết thúc sớm?</h3>
-<p className="text-gray-600 text-sm mb-6">Tiến trình của câu hỏi hiện tại sẽ không được lưu lại. Bạn có chắc chắn muốn thoát?</p>
+<h3 className="text-xl font-black text-gray-800 mb-2">Kết thúc phiên học?</h3>
+<p className="text-gray-600 text-sm mb-6">Bạn đang ở chế độ vô tận. Bấm Kết thúc để xem tổng hợp kết quả của phiên này.</p>
 <div className="flex w-full gap-3">
 <button onClick={() => setShowConfirmEnd(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
 Chơi tiếp
 </button>
-<button onClick={() => { setShowConfirmEnd(false); onEndGame({ correct: score, time: time }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
-Thoát ngay
+<button onClick={() => { setShowConfirmEnd(false); onEndGame({ correct: correctCount, time: time, wrong: wrongCount }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
+Kết thúc
 </button>
 </div>
 </div>
 </div>
 )}
-{/* Thanh Trạng thái */}
-<div className="flex justify-between items-center p-4 bg-white border-b border-gray-200 shrink-0 shadow-sm z-10">
+{/* Header: Thanh trạng thái */}
+<div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shrink-0 z-10 shadow-sm relative">
 <button onClick={onBack} className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors hover:bg-gray-100" title="Quay lại">
 {Icon('ChevronLeft', { size: 24 })}
 </button>
-<div className="flex items-center gap-4">
+<div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
 <div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">
 LEVEL {config?.level?.split('_')[1]?.toUpperCase()}
 </div>
-<div className="text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner">
-Câu {playedCount + 1} / 10
+{/* [UPDATED v1.3] Xóa giới hạn /10, thêm icon vô cực */}
+<div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1" title="Chế độ Vô tận">
+Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 </div>
-<div className={`flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}>
+{/* [NEW v1.3] Bộ đếm Đúng/Sai trên Header */}
+<div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
+<span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1" title="Số câu Đúng"><Icons.Check size={14}/> {correctCount || 0}</span>
+<span className="text-gray-300">|</span>
+<span className="text-xs sm:text-sm font-bold text-red-500 flex items-center gap-1" title="Số câu Sai"><Icons.X size={14}/> {wrongCount || 0}</span>
+</div>
+<div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}>
 {Icon('Sparkles', { size: 18 })} x{combo}
 </div>
-<div className={`text-xl font-mono font-bold ${time > 60 ? 'text-red-500 animate-pulse' : `text-${mainColor}-600`} w-12 text-right`}>
+<div className={`text-xl font-mono font-bold ${time > 60 ? 'text-red-500 animate-pulse' : `text-${mainColor}-600`} w-12 text-right hidden sm:block`}>
 {time}s
 </div>
 </div>
 <div className="flex items-center gap-1">
-{/* Nút Bookmark trên Header */}
+{/* [NEW v1.3] Nút Bookmark dạng Dropdown (Dành cho Header) */}
+<div className="relative" ref={bookmarkMenuRef}>
 <button
-onClick={() => {
-const cardToSave = {
-term: currentQuestion.targetWord, // Lưu từ khóa chính
-definition: currentQuestion.origin?.definition || currentQuestion.hint,
-example: currentQuestion.displaySentence.replace('[__________]', currentQuestion.targetWord)
-};
-onSaveToNotebook && onSaveToNotebook(cardToSave);
-}}
+onClick={() => setShowBookmarkMenu(!showBookmarkMenu)}
 className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
-title="Lưu từ khóa này"
+title="Lưu vào Sổ tay"
 >
 {Icon('Bookmark', { size: 20, fill: isBookmarked ? "currentColor" : "none" })}
 </button>
+{showBookmarkMenu && (
+<div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
+<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider text-left">Tùy chọn lưu</div>
+<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu từ khóa</span>
+</button>
+<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cụm từ</span>
+</button>
+<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cả câu</span>
+</button>
+</div>
+)}
+</div>
 <button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
 {Icon('X', { size: 20 })}
 </button>
@@ -6319,7 +6389,7 @@ title="Lưu từ khóa này"
 )}
 {/* Khu vực Nhập liệu (Input) */}
 <div className="w-full max-w-lg mt-8 relative animate-in zoom-in">
-{/* [CRITICAL UX FIX] Dùng readOnly thay vì disabled để giữ bàn phím ảo không bị sập */}
+{/* Dùng readOnly thay vì disabled để giữ bàn phím ảo không bị sập */}
 <input
 ref={inputRef}
 type="text"
@@ -6343,26 +6413,34 @@ Chưa chính xác! Bạn còn {3 - attempts} lượt thử.
 </div>
 {/* Hiển thị đáp án đúng nếu đã sai quá 3 lần (Knowledge Mining Panel) */}
 {checkStatus === 'wrong' && (
-<div className="w-full max-w-lg mt-6 bg-white rounded-2xl shadow-lg border border-red-100 overflow-hidden animate-in slide-in-from-bottom-4 z-20">
-<div className="p-3 bg-red-500 text-white flex items-center justify-between px-6 font-bold">
+<div className="w-full max-w-lg mt-6 bg-white rounded-2xl shadow-lg border border-red-100 overflow-visible animate-in slide-in-from-bottom-4 z-20">
+<div className="p-3 bg-red-500 text-white flex items-center justify-between px-6 font-bold rounded-t-2xl relative">
 <div className="flex items-center gap-2">
 <Icons.X /> HẾT LƯỢT!
 </div>
+{/* [NEW v1.3] Nút Dropdown Lưu Thẻ ở Panel Giải thích */}
+<div className="relative group">
 <button
-onClick={() => {
-const cardToSave = {
-term: currentQuestion.targetWord,
-definition: currentQuestion.origin?.definition || currentQuestion.hint,
-example: currentQuestion.displaySentence.replace('[__________]', currentQuestion.targetWord)
-};
-onSaveToNotebook && onSaveToNotebook(cardToSave);
-}}
 className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors"
 >
-<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu từ này'}
+<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'} <Icons.ChevronDown size={14} />
+</button>
+{/* Hover Dropdown Menu */}
+<div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 origin-top-right">
+<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider text-left">Tùy chọn lưu</div>
+<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu từ khóa</span>
+</button>
+<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cụm từ</span>
+</button>
+<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cả câu</span>
 </button>
 </div>
-<div className="p-6 text-center">
+</div>
+</div>
+<div className="p-6 text-center bg-white rounded-b-2xl">
 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Đáp án đúng là</span>
 <span className="text-3xl font-black text-green-600 tracking-wide">
 {currentQuestion.targetWord}
@@ -6411,10 +6489,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.5
-// Last Updated: 2026-04-01 22:40
-// Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý luồng, Preload Queue, AI Pure Mode (9 Cấp độ).
-// Cải tiến: Áp dụng Động cơ Quấn chiếu (Zero-loading), sửa lỗi chặn hàm checkAnswer, nối cáp Sổ tay.
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.6
+// Last Updated: 2026-04-02 10:48
+// Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý luồng, Preload Queue, AI Pure Mode.
+// Cải tiến: Mở khóa Endless Mode. Thêm Bộ đếm Đúng/Sai ngầm. Chuẩn hóa Schema (id, type) cho tính năng Lưu Lỗi Tự Động.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -6429,6 +6507,9 @@ const [combo, setCombo] = React.useState(1);
 const [playedCount, setPlayedCount] = React.useState(0);
 const [time, setTime] = React.useState(0);
 const [isFinished, setIsFinished] = React.useState(false);
+// [NEW v1.6] Bộ đếm thành tích
+const [correctCount, setCorrectCount] = React.useState(0);
+const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
 // Hệ thống Quấn chiếu & Bộ nhớ
@@ -6448,6 +6529,20 @@ const historyQueueRef = React.useRef([]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
+// [NEW v1.6] Cỗ máy đóng gói Lỗi sai chuẩn Schema Hệ thống
+const logMistake = (question) => {
+if (!onLogWrong || !question) return;
+const mistakeCard = {
+id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+type: 'mistake',
+term: question.targetWord,
+definition: question.origin?.definition || question.hint || "Thử thách Fill in the Blank",
+example: question.displaySentence.replace('[__________]', question.targetWord),
+tags: ['fillblank', level, sourceMode],
+timestamp: Date.now()
+};
+onLogWrong(mistakeCard);
+};
 // --- ĐỘNG CƠ OFFLINE (FALLBACK CHO 9 LEVEL) ---
 const generateOfflineClozeTest = (cardOrText) => {
 const term = typeof cardOrText === 'string' ? cardOrText : cardOrText.term;
@@ -6490,7 +6585,12 @@ const isPureMode = sourceMode === 'ai_pure';
 let card = null;
 if (!isPureMode) {
 card = cards[idx];
+// [NEW v1.6] Xáo lại nếu hết bài (Endless Mode)
+if (!card) {
+const newIdx = idx % cards.length;
+card = cards[newIdx];
 if (!card) return null;
+}
 if (questionCache.current.has(card.term)) return questionCache.current.get(card.term);
 if (pendingFetchesRef.current.has(card.term)) return pendingFetchesRef.current.get(card.term);
 }
@@ -6507,11 +6607,14 @@ schema = window.IoeDataEngine.SCHEMAS.pure_fill_blank;
 if (historyQueueRef.current.length > 0) {
 prompt += `\n\nCRITICAL ANTI-DUPLICATION RULE:\nDO NOT generate sentences matching these concepts/topics:\n- ${historyQueueRef.current.join('\n- ')}`;
 }
+// [NEW v1.6] Thiết quân luật cho AI
+prompt += `\n\nCRITICAL RULE: The 'hint' field MUST BE 100% IN VIETNAMESE. NO ENGLISH ALLOWED IN THE HINT FIELD. (Bắt buộc gợi ý hoàn toàn bằng Tiếng Việt).`;
 } else {
 prompt = `Bạn là chuyên gia ngữ pháp tiếng Anh.
 TARGET LEVEL: ${level}. CONTEXT: ${window.IoeDataEngine.GRADE_CONTEXTS[level] || 'Basic'}
 Dựa vào câu gốc: "${card.term}". Nghĩa: "${card.definition || ''}".
 Hãy tạo một bài tập điền từ (Cloze test). Chọn 1 từ khóa quan trọng trong câu gốc (phù hợp với Level) và thay bằng '[__________]'.
+QUY TẮC QUAN TRỌNG: Phần 'hint' (dịch nghĩa gợi ý) BẮT BUỘC phải viết 100% bằng Tiếng Việt. KHÔNG ĐƯỢC DÙNG TIẾNG ANH TRONG PHẦN NÀY.
 Trả về JSON nguyên bản không chứa markdown:`;
 schema = { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" } }, required: ["displaySentence", "targetWord", "hint"] };
 }
@@ -6558,6 +6661,7 @@ try { return await fetchTask; } finally { if(!isPureMode) pendingFetchesRef.curr
 };
 // --- QUẢN LÝ LUỒNG & BĂNG ĐẠN (PRELOAD QUEUE) ---
 const getNextCardIndex = () => {
+// [NEW v1.6] Tự động xáo lại khi hết thẻ
 if (deckRef.current.length === 0 && cards && cards.length > 0) {
 let validIndices = cards.map((c, i) => ({ c, i }))
 .filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '))
@@ -6588,6 +6692,7 @@ const startNewGame = async () => {
 if (sourceMode === 'card' && (!cards || cards.length === 0)) return;
 setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0);
+setCorrectCount(0); setWrongCount(0); // Khởi tạo bộ đếm
 historyQueueRef.current = [];
 preloadedQuestionsRef.current = [];
 isInitializingRef.current = true;
@@ -6627,8 +6732,12 @@ isInitializingRef.current = false;
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 maintainQueue();
 } else if (isGameActiveRef.current) {
-setIsFinished(true);
-safeShowToast("Không thể kết nối AI. Vui lòng kiểm tra API Key hoặc Mạng.", "error");
+// Fallback cứu hộ
+const fbData = generateOfflineClozeTest(sourceMode === 'card' ? cards[0] : {term: "He are my friend.", definition: "Tự sinh dự phòng"});
+setCurrentQuestion(fbData);
+setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
+safeShowToast("AI bị nghẽn mạng. Đã dùng dữ liệu dự phòng.", "warning");
+maintainQueue();
 }
 } else {
 const firstIdx = sourceMode === 'card' ? getNextCardIndex() : 0;
@@ -6645,15 +6754,11 @@ if (timerRef.current) clearInterval(timerRef.current);
 timerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
 };
 const nextRound = async () => {
-if (isGenerating) return; // Chống Spam Click
+if (isGenerating) return;
 if (autoNextRef.current) clearTimeout(autoNextRef.current);
 const currentTotalPlayed = playedCount + 1;
 setPlayedCount(currentTotalPlayed);
-if (currentTotalPlayed >= 10) {
-if (timerRef.current) clearInterval(timerRef.current);
-setIsFinished(true);
-return;
-}
+// [NEW v1.6] Đã gỡ bỏ giới hạn 10 câu ở đây để có Endless Mode
 // Rút đạn từ băng ra xài ngay lập tức
 if (preloadedQuestionsRef.current.length > 0) {
 const nextData = preloadedQuestionsRef.current.shift();
@@ -6670,8 +6775,11 @@ setInputBuffer(""); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false);
 maintainQueue();
 } else if (isGameActiveRef.current) {
-setIsFinished(true);
 safeShowToast("Lỗi tạo câu hỏi tiếp theo.", "error");
+setIsGenerating(false);
+const fbData = generateOfflineClozeTest(sourceMode === 'card' ? cards[0] : {term: "He are my friend.", definition: "Tự sinh dự phòng"});
+setCurrentQuestion(fbData);
+maintainQueue();
 }
 }
 };
@@ -6681,7 +6789,6 @@ autoNextRef.current = setTimeout(() => { if (isGameActiveRef.current) nextRound(
 };
 // --- TƯƠNG TÁC NGƯỜI DÙNG ---
 const checkAnswer = () => {
-// [HOTFIX] Cho phép chấm điểm khi đang ở trạng thái 'idle' HOẶC 'wrong_retry'
 if (!currentQuestion || (checkStatus !== 'idle' && checkStatus !== 'wrong_retry')) return;
 if (inputBuffer.trim() === "") return;
 const normalize = (str) => {
@@ -6697,6 +6804,7 @@ const targetClean = normalize(currentQuestion.targetWord);
 const inputClean = normalize(inputBuffer);
 if (targetClean === inputClean) {
 setCheckStatus('correct');
+setCorrectCount(p => p + 1); // Cập nhật đếm đúng
 setScore(prev => prev + (15 * combo));
 setCombo(prev => prev + 1);
 safeShowToast("Chính xác!", "success");
@@ -6708,13 +6816,13 @@ setCombo(1);
 setScore(prev => Math.max(0, prev - 5));
 if (newAttempts >= 3) {
 setCheckStatus('wrong');
+setWrongCount(p => p + 1); // Cập nhật đếm sai
 safeShowToast("Đã hết lượt! Xem đáp án nhé.", "error");
-if (onLogWrong && currentQuestion.origin) onLogWrong(currentQuestion.origin);
+logMistake(currentQuestion); // Gọi Auto-Log chuẩn
 triggerAutoNext(4000);
 } else {
 setCheckStatus('wrong_retry');
 safeShowToast("Chưa đúng, hãy thử lại!", "warning");
-// Tránh ghi đè nếu người dùng gõ quá nhanh
 setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
 }
 }
@@ -6724,8 +6832,9 @@ if (checkStatus === 'idle' || checkStatus === 'wrong_retry') {
 setCombo(1);
 setAttempts(3);
 setCheckStatus('wrong');
+setWrongCount(p => p + 1); // Cập nhật đếm sai
 safeShowToast("Đã bỏ qua!", "error");
-if (onLogWrong && currentQuestion.origin) onLogWrong(currentQuestion.origin);
+logMistake(currentQuestion); // Gọi Auto-Log chuẩn
 triggerAutoNext(4000);
 }
 };
@@ -6741,7 +6850,7 @@ if (autoNextRef.current) clearTimeout(autoNextRef.current);
 return {
 currentQuestion, inputBuffer, setInputBuffer,
 checkStatus, attempts, time, score, combo, playedCount, isFinished,
-isGenerating, aiCountdown,
+isGenerating, aiCountdown, correctCount, wrongCount, // Trả ra biến đếm
 checkAnswer, handleNext: nextRound, handleSkip
 };
 };
@@ -6772,7 +6881,8 @@ onBookmark={onBookmark} notebook={notebook} onLogWrong={onLogWrong} settings={se
 // Component Nội bộ để bọc Hook an toàn
 const FillBlankLogicWrapper = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, config, onBookmark, notebook, onLogWrong, settings }) => {
 const gameCallbacks = {
-onEndGame: (stats) => onFinish(stats.correct, stats.time),
+// [NEW v1.6] Trả về số đúng/sai chuẩn
+onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: onQuit,
 onSaveToNotebook: (cardToSave) => {
 if (onBookmark) {
@@ -6811,10 +6921,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake UI) - Version 1.8
-// Last Updated: 2026-04-01 22:25
+// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake UI) - Version 1.10
+// Last Updated: 2026-04-02 10:45
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Tìm Lỗi Sai (SpotMistake).
-// Cập nhật: Thêm nút Bookmark trên thanh Header. Nhận và hiển thị trạng thái isBookmarked.
+// Cập nhật: Thêm Bộ đếm Đúng/Sai trên Header. Biến nút Bookmark thành Menu Dropdown (Lưu Từ/Cụm/Câu) chuẩn Schema.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -6903,13 +7013,26 @@ t, mainColor, config,
 currentQuestion, chunks, stage, selectedIndex,
 inputBuffer, setInputBuffer, checkStatus, attempts,
 score, combo, playedCount, time, isFinished,
-isGenerating, aiCountdown,
+isGenerating, aiCountdown, correctCount, wrongCount, // [NEW v1.10] Nhận correctCount, wrongCount
 handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound,
-onBack, onEndGame, onSaveToNotebook, isBookmarked // [NEW v1.8] Nhận Props isBookmarked
+onBack, onEndGame, onSaveToNotebook, isBookmarked
 }) => {
 const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
+// [NEW v1.10] State cho Menu Dropdown Bookmark
+const [showBookmarkMenu, setShowBookmarkMenu] = React.useState(false);
+const bookmarkMenuRef = React.useRef(null);
+// Xử lý click outside để đóng menu bookmark
+React.useEffect(() => {
+const handleClickOutside = (event) => {
+if (bookmarkMenuRef.current && !bookmarkMenuRef.current.contains(event.target)) {
+setShowBookmarkMenu(false);
+}
+};
+document.addEventListener("mousedown", handleClickOutside);
+return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
 // Auto-focus ô nhập liệu ở Giai đoạn 2
 const inputRef = React.useRef(null);
 React.useEffect(() => {
@@ -6917,6 +7040,42 @@ if (stage === 'correct' && (checkStatus === 'correct_spot' || checkStatus === 'w
 setTimeout(() => inputRef.current?.focus(), 100);
 }
 }, [stage, checkStatus]);
+// [NEW v1.10] Hàm xử lý Lưu đa dạng chuẩn Schema
+const handleSaveOption = (type) => {
+if (!currentQuestion) return;
+const correctSentence = currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, currentQuestion.correction);
+let termToSave = "";
+let cardType = "vocabulary";
+if (type === 'word') {
+termToSave = currentQuestion.correction;
+} else if (type === 'phrase') {
+// Trích xuất cụm từ (từ trước + từ khóa + từ sau)
+const words = correctSentence.split(' ');
+const targetIdx = words.findIndex(w => w.toLowerCase().includes(currentQuestion.correction.toLowerCase()));
+if (targetIdx !== -1) {
+const start = Math.max(0, targetIdx - 1);
+const end = Math.min(words.length - 1, targetIdx + 1);
+termToSave = words.slice(start, end + 1).join(' ');
+} else {
+termToSave = currentQuestion.correction;
+}
+} else if (type === 'sentence') {
+termToSave = correctSentence;
+cardType = "grammar";
+}
+const cardToSave = {
+id: `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+type: cardType,
+term: termToSave,
+definition: currentQuestion.origin?.definition || currentQuestion.hint || "Thử thách Spot Mistake",
+analysis: currentQuestion.explanation,
+example: `Wrong: ${currentQuestion.wrongWord} -> Correct: ${currentQuestion.correction}`,
+tags: ['spotmistake', config?.level || 'unknown'],
+timestamp: Date.now()
+};
+onSaveToNotebook && onSaveToNotebook(cardToSave);
+setShowBookmarkMenu(false);
+};
 // Màn hình Loading/AI Generating (Ban đầu)
 if (isGenerating && !currentQuestion) {
 return (
@@ -6944,18 +7103,23 @@ return (
 </div>
 <h2 className="text-3xl font-bold text-gray-800 mb-2">Thử thách kết thúc!</h2>
 <p className="text-gray-500 mb-8 text-center max-w-xs">Bạn đã hoàn thành việc rà soát lỗi sai xuất sắc!</p>
-<div className="grid grid-cols-2 gap-4 w-full max-w-xs mb-8">
+{/* [UPDATED v1.10] Đổi Điểm số thành Thống kê Đúng/Sai */}
+<div className="grid grid-cols-3 gap-3 w-full max-w-sm mb-8">
 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
-<div className="text-xs text-gray-400 font-bold uppercase mb-1">Thời gian</div>
-<div className={`text-2xl font-bold text-${mainColor}-600`}>{time}s</div>
+<div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Thời gian</div>
+<div className={`text-xl font-bold text-${mainColor}-600`}>{time}s</div>
 </div>
-<div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
-<div className="text-xs text-gray-400 font-bold uppercase mb-1">Điểm số</div>
-<div className="text-2xl font-bold text-orange-500">{score}</div>
+<div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm text-center">
+<div className="text-[10px] text-green-500 font-bold uppercase mb-1 flex items-center justify-center gap-1"><Icons.Check size={12}/> Đúng</div>
+<div className="text-xl font-bold text-green-600">{correctCount}</div>
+</div>
+<div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm text-center">
+<div className="text-[10px] text-red-400 font-bold uppercase mb-1 flex items-center justify-center gap-1"><Icons.X size={12}/> Sai</div>
+<div className="text-xl font-bold text-red-500">{wrongCount}</div>
 </div>
 </div>
 <button
-onClick={() => onEndGame({ correct: score, time: time })}
+onClick={() => onEndGame({ correct: correctCount, time: time, wrong: wrongCount })}
 className={`w-full max-w-xs py-4 rounded-xl bg-${mainColor}-600 text-white font-bold text-lg hover:bg-${mainColor}-700 shadow-lg transition-all active:scale-95`}
 >
 Hoàn tất
@@ -6973,55 +7137,72 @@ return (
 <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-4">
 <Icons.AlertCircle size={32} />
 </div>
-<h3 className="text-xl font-black text-gray-800 mb-2">Kết thúc sớm?</h3>
-<p className="text-gray-600 text-sm mb-6">Tiến trình của vòng chơi hiện tại sẽ không được lưu lại. Bạn có chắc chắn muốn thoát?</p>
+<h3 className="text-xl font-black text-gray-800 mb-2">Kết thúc phiên học?</h3>
+<p className="text-gray-600 text-sm mb-6">Bạn đang ở chế độ vô tận. Bấm Kết thúc để xem tổng hợp kết quả của phiên này.</p>
 <div className="flex w-full gap-3">
 <button onClick={() => setShowConfirmEnd(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
 Chơi tiếp
 </button>
-<button onClick={() => { setShowConfirmEnd(false); onEndGame({ correct: score, time: time }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
-Thoát ngay
+<button onClick={() => { setShowConfirmEnd(false); onEndGame({ correct: correctCount, time: time, wrong: wrongCount }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
+Kết thúc
 </button>
 </div>
 </div>
 </div>
 )}
 {/* Header: Thanh trạng thái */}
-<div className="flex justify-between items-center p-4 bg-white border-b border-gray-200 shrink-0 z-10 shadow-sm">
+<div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shrink-0 z-10 shadow-sm relative">
 <button onClick={onBack} className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors hover:bg-gray-100" title="Tạm dừng / Quay lại">
 {Icon('ChevronLeft', { size: 24 })}
 </button>
-<div className="flex items-center gap-4">
+<div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
 <div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">
 LEVEL {config?.level?.split('_')[1]?.toUpperCase()}
 </div>
-<div className="text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner">
-Câu {playedCount + 1} / 10
+<div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1" title="Chế độ Vô tận">
+Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 </div>
-<div className={`flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}>
+{/* [NEW v1.10] Bộ đếm Đúng/Sai trên Header */}
+<div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
+<span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1" title="Số câu Đúng"><Icons.Check size={14}/> {correctCount || 0}</span>
+<span className="text-gray-300">|</span>
+<span className="text-xs sm:text-sm font-bold text-red-500 flex items-center gap-1" title="Số câu Sai"><Icons.X size={14}/> {wrongCount || 0}</span>
+</div>
+<div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}>
 🔥 x{combo}
 </div>
-<div className={`text-xl font-mono font-bold text-${mainColor}-600 w-12 text-right`}>
+<div className={`text-lg sm:text-xl font-mono font-bold text-${mainColor}-600 w-12 text-right hidden sm:block`}>
 {time}s
 </div>
 </div>
 <div className="flex items-center gap-1">
-{/* [NEW v1.8] Nút Bookmark trên Header */}
+{/* [NEW v1.10] Nút Bookmark dạng Dropdown (Dành cho Header) */}
+<div className="relative" ref={bookmarkMenuRef}>
 <button
-onClick={() => {
-const cardToSave = {
-term: currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, currentQuestion.correction),
-definition: currentQuestion.origin?.definition || currentQuestion.hint,
-analysis: currentQuestion.explanation,
-example: `Wrong: ${currentQuestion.wrongWord} -> Correct: ${currentQuestion.correction}`
-};
-onSaveToNotebook && onSaveToNotebook(cardToSave);
-}}
+onClick={() => setShowBookmarkMenu(!showBookmarkMenu)}
 className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
 title="Lưu vào Sổ tay"
 >
 {Icon('Bookmark', { size: 20, fill: isBookmarked ? "currentColor" : "none" })}
 </button>
+{showBookmarkMenu && (
+<div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
+<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider">Lưu vào Sổ tay</div>
+<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu từ vựng</span>
+<span className="text-xs text-gray-400 truncate w-full text-left">"{currentQuestion.correction}"</span>
+</button>
+<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cụm từ</span>
+<span className="text-xs text-gray-400 w-full text-left">Kèm từ trước/sau</span>
+</button>
+<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cả câu</span>
+<span className="text-xs text-gray-400 w-full text-left">Lưu ngữ cảnh gốc</span>
+</button>
+</div>
+)}
+</div>
 <button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
 {Icon('X', { size: 20 })}
 </button>
@@ -7105,29 +7286,35 @@ className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg 
 )}
 {/* 4. Hiển thị Giải thích & Nút Lưu Thẻ */}
 {(checkStatus === 'success' || checkStatus === 'failed') && (
-<div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-6 z-20">
-<div className={`p-4 ${checkStatus === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold`}>
+<div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-gray-100 overflow-visible animate-in slide-in-from-bottom-6 z-20">
+<div className={`p-4 ${checkStatus === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold rounded-t-2xl relative`}>
 <div className="flex items-center gap-2">
 {checkStatus === 'success' ? <Icons.CheckCircle /> : <Icons.X />}
 {checkStatus === 'success' ? 'CHÍNH XÁC!' : 'HẾT LƯỢT!'}
 </div>
-{/* [KNOWLEDGE MINING] Nút Lưu Thẻ ở Panel Giải thích */}
+{/* [NEW v1.10] Nút Dropdown Lưu Thẻ ở Panel Giải thích */}
+<div className="relative group">
 <button
-onClick={() => {
-const cardToSave = {
-term: currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, currentQuestion.correction),
-definition: currentQuestion.origin?.definition || currentQuestion.hint,
-analysis: currentQuestion.explanation,
-example: `Wrong: ${currentQuestion.wrongWord} -> Correct: ${currentQuestion.correction}`
-};
-onSaveToNotebook && onSaveToNotebook(cardToSave);
-}}
 className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors"
 >
-<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'}
+<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'} <Icons.ChevronDown size={14} />
+</button>
+{/* Hover Dropdown Menu */}
+<div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 origin-top-right">
+<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider text-left">Tùy chọn lưu</div>
+<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu từ vựng</span>
+</button>
+<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cụm từ</span>
+</button>
+<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
+<span className="font-bold">Lưu cả câu</span>
 </button>
 </div>
-<div className="p-6 space-y-4">
+</div>
+</div>
+<div className="p-6 space-y-4 bg-white rounded-b-2xl">
 <div className="flex justify-between items-center border-b pb-4">
 <div className="text-center flex-1 border-r">
 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Bị sai</div>
@@ -7188,10 +7375,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.12
-// Last Updated: 2026-04-01 22:20
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.14
+// Last Updated: 2026-04-02 10:35
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode (9 Cấp độ).
-// Cải tiến: Nối cáp Global State (onBookmark, notebook, onLogWrong). Ghi nhận câu sai AI vào Sổ tay cần nhớ.
+// Cải tiến: Thêm Bộ đếm Đúng/Sai ngầm. Chuẩn hóa Schema (id, type) cho tính năng Lưu Lỗi Tự Động.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -7209,6 +7396,9 @@ const [combo, setCombo] = React.useState(1);
 const [playedCount, setPlayedCount] = React.useState(0);
 const [time, setTime] = React.useState(0);
 const [isFinished, setIsFinished] = React.useState(false);
+// [NEW v1.14] Bộ đếm thành tích
+const [correctCount, setCorrectCount] = React.useState(0);
+const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
 // Hệ thống Quấn chiếu & Bộ nhớ
@@ -7228,6 +7418,22 @@ const historyQueueRef = React.useRef([]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
+// [NEW v1.14] Cỗ máy đóng gói Lỗi sai chuẩn Schema Hệ thống
+const logMistake = (question) => {
+if (!onLogWrong || !question) return;
+const correctSentence = question.wrongSentence.replace(question.wrongWord, question.correction);
+const mistakeCard = {
+id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+type: 'mistake',
+term: correctSentence,
+definition: question.origin?.definition || question.hint || "Thử thách Spot Mistake",
+analysis: question.explanation,
+example: `Wrong: ${question.wrongWord} -> Correct: ${question.correction}`,
+tags: ['spotmistake', level, sourceMode],
+timestamp: Date.now()
+};
+onLogWrong(mistakeCard);
+};
 // --- ĐỘNG CƠ OFFLINE (FALLBACK CHO 9 LEVEL) ---
 const generateOfflineMistake = (cardOrText) => {
 const term = typeof cardOrText === 'string' ? cardOrText : cardOrText.term;
@@ -7311,7 +7517,12 @@ const isPureMode = sourceMode === 'ai_pure';
 let card = null;
 if (!isPureMode) {
 card = cards[idx];
+// Xáo lại nếu hết bài (Endless Mode)
+if (!card) {
+const newIdx = idx % cards.length;
+card = cards[newIdx];
 if (!card) return null;
+}
 if (questionCache.current.has(card.term)) return questionCache.current.get(card.term);
 if (pendingFetchesRef.current.has(card.term)) return pendingFetchesRef.current.get(card.term);
 }
@@ -7328,13 +7539,13 @@ schema = window.IoeDataEngine.SCHEMAS.pure_spot_mistake;
 if (historyQueueRef.current.length > 0) {
 prompt += `\n\nCRITICAL ANTI-DUPLICATION RULE:\nDO NOT generate sentences matching these concepts/topics:\n- ${historyQueueRef.current.join('\n- ')}`;
 }
-prompt += `\n\nCRITICAL RULE: The 'explanation' field MUST be in Vietnamese (Bắt buộc giải thích bằng Tiếng Việt).`;
+prompt += `\n\nCRITICAL RULE: The 'explanation' field MUST BE 100% IN VIETNAMESE. NO ENGLISH ALLOWED IN THE EXPLANATION FIELD. (Bắt buộc giải thích hoàn toàn bằng Tiếng Việt).`;
 } else {
 prompt = `Bạn là chuyên gia ngữ pháp tiếng Anh.
 TARGET LEVEL: ${level}. CONTEXT: ${window.IoeDataEngine.GRADE_CONTEXTS[level] || 'Basic'}
 Dựa vào câu đúng sau: "${card.term}".
 Hãy tạo ra một phiên bản SAI ngữ pháp (đúng 1 lỗi duy nhất, phù hợp với LEVEL CONTEXT trên).
-QUY TẮC QUAN TRỌNG: Phần 'explanation' (giải thích lỗi sai) BẮT BUỘC phải viết bằng Tiếng Việt.
+QUY TẮC QUAN TRỌNG: Phần 'explanation' (giải thích lỗi sai) BẮT BUỘC phải viết 100% bằng Tiếng Việt. KHÔNG ĐƯỢC DÙNG TIẾNG ANH TRONG PHẦN GIẢI THÍCH.
 Trả về JSON nguyên bản không chứa markdown:`;
 schema = { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["wrongSentence", "wrongWord", "correction", "explanation"] };
 }
@@ -7352,7 +7563,6 @@ const used = res.tokenMetadata.totalTokenCount || 0;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
-// [UPDATED] Gán origin cho AI Pure Mode đầy đủ hơn để có thể lưu Sổ tay Lỗi sai
 const originData = isPureMode ? {
 term: parsed.wrongSentence.replace(parsed.wrongWord, parsed.correction),
 definition: "Thử thách tự sinh (AI Pure Mode)",
@@ -7442,6 +7652,7 @@ const startNewGame = async () => {
 if (sourceMode === 'card' && (!cards || cards.length === 0)) return;
 setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0);
+setCorrectCount(0); setWrongCount(0); // Khởi tạo bộ đếm
 historyQueueRef.current = [];
 preloadedQuestionsRef.current = [];
 isInitializingRef.current = true;
@@ -7480,8 +7691,11 @@ isInitializingRef.current = false;
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 maintainQueue();
 } else if (isGameActiveRef.current) {
-setIsFinished(true);
-safeShowToast("Không thể kết nối AI. Vui lòng kiểm tra API Key hoặc Mạng.", "error");
+const fbData = generateOfflineMistake(sourceMode === 'card' ? cards[0] : {term: "He are my friend.", definition: "Tự sinh dự phòng"});
+setupQuestion(fbData);
+setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
+safeShowToast("AI bị nghẽn mạng. Đã dùng dữ liệu dự phòng.", "warning");
+maintainQueue();
 }
 } else {
 const firstIdx = sourceMode === 'card' ? getNextCardIndex() : 0;
@@ -7501,11 +7715,7 @@ if (isGenerating) return;
 if (autoNextRef.current) clearTimeout(autoNextRef.current);
 const currentTotalPlayed = playedCount + 1;
 setPlayedCount(currentTotalPlayed);
-if (currentTotalPlayed >= 10) {
-if (timerRef.current) clearInterval(timerRef.current);
-setIsFinished(true);
-return;
-}
+// Endless Mode: Bỏ chặn 10 câu
 if (preloadedQuestionsRef.current.length > 0) {
 const nextData = preloadedQuestionsRef.current.shift();
 setupQuestion(nextData);
@@ -7519,8 +7729,11 @@ setupQuestion(data);
 setIsGenerating(false);
 maintainQueue();
 } else if (isGameActiveRef.current) {
-setIsFinished(true);
-safeShowToast("Lỗi tạo câu hỏi tiếp theo.", "error");
+safeShowToast("Lỗi tạo câu hỏi. Hệ thống sẽ tự khôi phục...", "error");
+setIsGenerating(false);
+const fbData = generateOfflineMistake(sourceMode === 'card' ? cards[0] : {term: "He are my friend.", definition: "Tự sinh dự phòng"});
+setupQuestion(fbData);
+maintainQueue();
 }
 }
 };
@@ -7540,9 +7753,10 @@ safeShowToast("Phát hiện chuẩn xác! Hãy sửa lại cho đúng.", "succes
 const newAttempts = attempts + 1;
 setAttempts(newAttempts); setCombo(1); setScore(p => Math.max(0, p - 5));
 if (newAttempts >= 3) {
-setCheckStatus('failed'); safeShowToast("Đã hết lượt tìm lỗi!", "error");
-// [UPDATED v1.12] Bỏ điều kiện `sourceMode === 'card'` để lưu cả câu AI tự sinh
-if (onLogWrong && currentQuestion?.origin) onLogWrong(currentQuestion.origin);
+setCheckStatus('failed');
+setWrongCount(p => p + 1); // Cập nhật đếm sai
+safeShowToast("Đã hết lượt tìm lỗi!", "error");
+logMistake(currentQuestion); // Gọi Auto-Log chuẩn
 triggerAutoNext(10000);
 } else {
 setCheckStatus('wrong_spot'); safeShowToast(`Chưa đúng! Còn ${3 - newAttempts} lượt.`, "warning");
@@ -7559,16 +7773,19 @@ return str.toLowerCase().replace(/[.,?!;:"'()[\]{}]/g, "").replace(/\s+/g, " ").
 const normalizedInput = normalize(inputBuffer);
 const normalizedCorrection = normalize(currentQuestion.correction);
 if (normalizedInput === normalizedCorrection) {
-setCheckStatus('success'); setScore(p => p + (20 * combo)); setCombo(p => p + 1);
+setCheckStatus('success');
+setCorrectCount(p => p + 1); // Cập nhật đếm đúng
+setScore(p => p + (20 * combo)); setCombo(p => p + 1);
 safeShowToast("Tuyệt vời! Bạn đã sửa đúng.", "success");
 triggerAutoNext(6000);
 } else {
 const newAttempts = attempts + 1;
 setAttempts(newAttempts); setCombo(1); setScore(p => Math.max(0, p - 5));
 if (newAttempts >= 3) {
-setCheckStatus('failed'); safeShowToast("Sai quá 3 lần. Xem đáp án nhé!", "error");
-// [UPDATED v1.12] Lưu sổ tay khi sai
-if (onLogWrong && currentQuestion?.origin) onLogWrong(currentQuestion.origin);
+setCheckStatus('failed');
+setWrongCount(p => p + 1); // Cập nhật đếm sai
+safeShowToast("Sai quá 3 lần. Xem đáp án nhé!", "error");
+logMistake(currentQuestion); // Gọi Auto-Log chuẩn
 triggerAutoNext(10000);
 } else {
 setCheckStatus('wrong_correct'); safeShowToast(`Sai rồi! Còn ${3 - newAttempts} lượt.`, "warning");
@@ -7579,9 +7796,9 @@ setTimeout(() => setCheckStatus(p => p === 'wrong_correct' ? 'correct_spot' : p)
 const handleSkip = () => {
 if (checkStatus === 'success' || checkStatus === 'failed') return;
 setCombo(1); setCheckStatus('failed');
+setWrongCount(p => p + 1); // Bỏ qua tính là sai
 safeShowToast("Đã bỏ qua!", "error");
-// [UPDATED v1.12] Lưu sổ tay khi bỏ qua
-if (onLogWrong && currentQuestion?.origin) onLogWrong(currentQuestion.origin);
+logMistake(currentQuestion); // Gọi Auto-Log chuẩn
 triggerAutoNext(10000);
 };
 React.useEffect(() => {
@@ -7596,12 +7813,11 @@ if (autoNextRef.current) clearTimeout(autoNextRef.current);
 return {
 currentQuestion, chunks, stage, selectedIndex, inputBuffer, setInputBuffer,
 checkStatus, attempts, score, combo, playedCount, time, isFinished,
-isGenerating, aiCountdown,
+isGenerating, aiCountdown, correctCount, wrongCount, // [UPDATED] Trả ra biến đếm
 handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound
 };
 };
 // --- 2. GAME WRAPPER (COMPONENT KẾT NỐI UI VÀ LOGIC) ---
-// [UPDATED v1.12] Thêm onBookmark, notebook, onLogWrong, settings vào Props
 const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings }) => {
 const [gameStage, setGameStage] = React.useState('setup');
 const [config, setConfig] = React.useState(null);
@@ -7628,26 +7844,25 @@ onBookmark={onBookmark} notebook={notebook} onLogWrong={onLogWrong} settings={se
 // Component Nội bộ để bọc Hook an toàn
 const SpotMistakeLogicWrapper = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, config, onBookmark, notebook, onLogWrong, settings }) => {
 const gameCallbacks = {
-onEndGame: (stats) => onFinish(stats.correct, stats.time),
+// [UPDATED] Kết thúc trả về số đúng/sai chuẩn
+onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: onQuit,
-// [UPDATED v1.12] Tích hợp onBookmark chuẩn
 onSaveToNotebook: (cardToSave) => {
 if (onBookmark) {
-onBookmark(cardToSave); // Gọi hàm Global
+onBookmark(cardToSave);
 } else if (window.handleSaveToNotebook) {
 window.handleSaveToNotebook(cardToSave);
 } else {
-if (window.globalShowToast) window.globalShowToast("Đã lưu câu văn này vào Sổ tay!", "success");
+if (window.globalShowToast) window.globalShowToast("Đã lưu thẻ vào Sổ tay!", "success");
 }
 }
 };
 const hookCallbacks = {
 onFinish,
 showToast: window.globalShowToast,
-onLogWrong: onLogWrong // Truyền trực tiếp hàm Global vào Hook
+onLogWrong: onLogWrong
 };
 const logic = useSpotMistakeLogic(cards, { ...config, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
-// [NEW v1.12] Tính toán isBookmarked
 const isBookmarked = logic.currentQuestion?.origin && notebook?.some(n => n.term === logic.currentQuestion.origin.term);
 const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_SpotMistakePlayScreen;
 if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
@@ -7658,7 +7873,7 @@ t={t} mainColor={mainColor} config={config}
 onBack={gameCallbacks.onBack}
 onEndGame={gameCallbacks.onEndGame}
 onSaveToNotebook={gameCallbacks.onSaveToNotebook}
-isBookmarked={isBookmarked} // Truyền xuống UI
+isBookmarked={isBookmarked}
 settings={settings}
 />
 );
