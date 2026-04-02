@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.1
-// Last Updated: 2026-03-31 11:05
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.2
+// Last Updated: 2026-04-02 17:15
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô (Pure functions).
-// Quy tắc: Tầng này độc lập hoàn toàn. Tuyệt đối không chứa logic của React (như Hooks hay JSX) để tránh lỗi biên dịch.
+// Cập nhật: Sửa lỗi AI thiên vị từ khóa (Bóc tách ký tự gạch chân \u0332 trước khi nạp vào Prompt).
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -112,14 +112,13 @@ sample: [{ term: "Hạnh phúc", pronunciation: "hạnh phúc", definition: "Sun
 };
 // UI TEXT
 window.UI_TEXT = {
-vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Hoặc nhập link trực tiếp:", inputPlace: "Dán link Google Sheet...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "Định nghĩa", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "Dừng", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
+vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Hoặc nhập link trực tiếp:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "Định nghĩa", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "Dừng", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重复次数", resetData: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
 // CÁC HÀM TIỆN ÍCH (UTILS)
 window.Utils = {
 safeJsonParse: (key, f) => { try { const i = localStorage.getItem(key); return i ? JSON.parse(i) : f; } catch { return f; } },
-// [NEW v1.1] Di chuyển hàm lấy Font từ Block UI về Utils để dùng chung
 getFontFamily: (settings) => {
 const font = settings?.fontFamily || 'sans';
 switch (font) {
@@ -130,7 +129,6 @@ case 'cn_kaiti': return '"KaiTi", "STKaiti", "楷体", serif';
 default: return 'ui-sans-serif, system-ui, sans-serif';
 }
 },
-// [NEW v1.1] Di chuyển hàm chuẩn hóa (từ Block 5) về Utils để dùng chung
 advancedNormalize: (str, langCode) => {
 if (!str) return "";
 let s = str.toLowerCase();
@@ -166,7 +164,7 @@ if (num < 100) return units[Math.floor(num / 10)] + '十' + (num % 10 !== 0 ? un
 }
 return match;
 });
-// 3. Xóa toàn bộ khoảng trắng và ký tự đặc biệt
+// 3. Xóa toàn bộ khoảng trắng và ký tự đặc biệt (Sẽ tự động xóa cả \u0332 vì nó là Mark)
 return s.replace(/[^\p{L}\p{N}]/gu, "").trim();
 },
 safeLocalStorageSet: (k, v) => { try { localStorage.setItem(k, typeof v === 'object' ? JSON.stringify(v) : v); } catch { } },
@@ -210,7 +208,6 @@ window.Utils.wakeLock = null;
 console.log("Wake Lock released.");
 }
 },
-// Gọi API Gemini tích hợp sẵn cơ chế Retry & Key Rotation
 callGeminiApi: async (prompt, schema = null, apiKeyOverride = null) => {
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKeyOverride || localStorage.getItem('fc_apikey');
@@ -222,7 +219,6 @@ const k = keyPool[i]; if (!k || k.length < 10) continue;
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 if (schema) { body.generationConfig = { responseMimeType: "application/json", responseSchema: schema }; }
-// [FIXED] Chuyển đổi về model gemini-2.5-flash
 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const d = await res.json();
 if (d.error) throw new Error(d.error.message);
@@ -243,7 +239,6 @@ const strategies = [{ name: "Direct", url: finalUrl }, { name: "AllOrigins", url
 let err; for (const s of strategies) { try { const res = await fetch(s.url); if (res.ok) return res; } catch (e) { err = e; } }
 throw new Error("Lỗi tải dữ liệu");
 },
-// [FIXED] Phục hồi cấu trúc cú pháp chuẩn của hàm convertRawRowsToCards
 convertRawRowsToCards: (rows) => {
 if (!rows || rows.length === 0) return [];
 return rows.slice(1).map(row => {
@@ -282,6 +277,9 @@ const headers = ['term', 'pronunciation', 'definition', 'analysis', 'sinoViet', 
 const rows = data.map(item => headers.map(key => { let val = item[key] || ''; val = String(val).replace(/(\r\n|\n|\r)/gm, " "); return val; }).join('\t'));
 return rows.join('\n');
 },
+// ============================================================================
+// HÀM LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ENRICH CARD)
+// ============================================================================
 fillCardWithAi: async (term, lang, apiKey, targetFields = null) => {
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKey;
@@ -291,7 +289,10 @@ keyPool.unshift(currentKey);
 keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)];
 }
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Thiếu Key Pool)");
-const isSentence = window.Utils.detectSentence(term);
+// [FIXED v1.2] Bóc tách ký tự gạch chân Unicode (\u0332) khỏi term trước khi đưa vào Prompt
+// Để AI không bị đánh lừa là bài tập tìm từ, mà sẽ dịch toàn bộ câu văn.
+const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
+const isSentence = window.Utils.detectSentence(cleanTermForAi);
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 const fullProperties = {
 term: { type: "STRING" },
@@ -321,7 +322,8 @@ promptRequest = "Phân tích đầy đủ tất cả các trường thông tin."
 }
 const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 const basePrompt = window.DEFAULT_PROMPTS[promptKey];
-const userQuery = `Hãy phân tích ${typeLabel} này theo chuẩn JSON: "${term}" (Ngôn ngữ: ${lang}). ${promptRequest}`;
+// Sử dụng cleanTermForAi thay cho term gốc
+const userQuery = `Hãy phân tích ${typeLabel} này theo chuẩn JSON: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). ${promptRequest}`;
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
 systemInstruction: { parts: [{ text: basePrompt }] },
@@ -340,7 +342,6 @@ let lastError = null;
 for (const k of keyPool) {
 if (!k || k.length < 10) continue;
 try {
-// [FIXED] Chuyển đổi về model gemini-2.5-flash
 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
@@ -377,17 +378,21 @@ imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keywor
 const meta = finalResult.usageMetadata ? { _tokenUsage: finalResult.usageMetadata } : {};
 return {
 ...parsed,
-term: term,
+term: term, // [QUAN TRỌNG] Vẫn trả về term GỐC (có gạch chân) để lưu vào sổ tay không bị mất nét đứt
 image: imgUrl,
 ...meta
 };
 },
-// Quiz Prompt Selection (Agnostic Target-Driven)
+// ============================================================================
+// HÀM TẠO NHIỄU CHO GAME (QUIZ / MATCH)
+// ============================================================================
 fetchAiDistractors: async (baseText, targetText, lang) => {
+// [FIXED v1.2] Bóc tách gạch chân để AI dễ tạo nhiễu
+const cleanTarget = targetText ? targetText.replace(/\u0332/g, '') : '';
 const schema = { type: "object", properties: { distractors: { type: "array", items: { type: "string" } } }, required: ["distractors"] };
-const isSentence = window.Utils.detectSentence(targetText);
+const isSentence = window.Utils.detectSentence(cleanTarget);
 const promptKey = isSentence ? 'quiz_sentence' : 'quiz_word';
-const prompt = window.Utils.getPrompt(promptKey, { baseText, targetText });
+const prompt = window.Utils.getPrompt(promptKey, { baseText, targetText: cleanTarget });
 try {
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, schema);
 const res = window.Utils.parseAiJson(text);
@@ -401,8 +406,12 @@ return [];
 fetchAiDistractorsBatch: async (items, lang) => {
 const schema = { type: "object", properties: { distractors: { type: "array", items: { type: "string" } } }, required: ["distractors"] };
 const fullLang = { 'zh': 'Chinese', 'en': 'English', 'vi': 'Vietnamese' }[lang] || lang;
-const itemsText = items.map((item, index) => `${index + 1}. Term: "${item.term}" (Correct: "${item.definition}")`).join('\n');
-const isSentenceMode = items.length > 0 && window.Utils.detectSentence(items[0].term);
+const itemsText = items.map((item, index) => {
+// Bóc tách gạch chân
+const cleanTerm = item.term ? item.term.replace(/\u0332/g, '') : '';
+return `${index + 1}. Term: "${cleanTerm}" (Correct: "${item.definition}")`;
+}).join('\n');
+const isSentenceMode = items.length > 0 && window.Utils.detectSentence(items[0].term ? items[0].term.replace(/\u0332/g, '') : '');
 const promptKey = isSentenceMode ? 'match_sentence' : 'match_word';
 const prompt = window.Utils.getPrompt(promptKey, { itemsText, fullLang, count: items.length });
 try {
@@ -415,11 +424,17 @@ console.warn("Batch fetch failed", e);
 return [];
 }
 },
+// ============================================================================
+// HÀM GIẢI THÍCH NGỮ PHÁP (GRAMMAR EXPLAIN)
+// ============================================================================
 explainSentenceGrammar: async (sentence, lang, apiKey) => {
-const prompt = window.Utils.getPrompt('grammar', { sentence, lang });
+// [FIXED v1.2] Bóc tách gạch chân
+const cleanSentence = sentence ? sentence.replace(/\u0332/g, '') : '';
+const prompt = window.Utils.getPrompt('grammar', { sentence: cleanSentence, lang });
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, null, apiKey);
 return { text: window.Utils.cleanText(text), _tokenUsage: tokenMetadata };
 },
+// Các hàm xử lý SRS và Distractor cục bộ giữ nguyên...
 generateQuizQuestion: (cards, correctIndex, lang) => {
 const correctCard = cards[correctIndex];
 const options = [correctCard];
@@ -524,26 +539,21 @@ words[lastIdx] = randomWord;
 return words.join(isChinese ? '' : ' ');
 }
 };
-// [NEW v1.1] BỘ MÁY GÂY NHIỄU (Chuyển từ Block 6 sang đây)
+// BỘ MÁY GÂY NHIỄU
 window.OfflineDistractorEngine = {
 generate: (correctAnswer, deck, lang, askMode) => {
 const distractors = new Set();
-// Nhận diện Logographic (Trung/Nhật) chặt chẽ hơn:
-// Phải chứa ký tự tượng hình VÀ KHÔNG chứa bất kỳ loại khoảng trắng nào (bao gồm non-breaking space).
 const hasLogographic = /[\u4e00-\u9fa5]/.test(correctAnswer);
 const hasSpace = /\s/.test(correctAnswer.trim());
 const isLogographic = hasLogographic && !hasSpace;
-const getTokens = (str) => isLogographic ? Array.from(str) : str.split(/\s+/); // Split bằng mọi loại space
+const getTokens = (str) => isLogographic ? Array.from(str) : str.split(/\s+/);
 const joinTokens = (arr) => isLogographic ? arr.join('') : arr.join(' ');
-// Hàm trích xuất chữ/số thuần túy
 const extractWord = (str) => str.replace(/[^\p{L}\p{N}]/gu, '');
 const correctTokens = getTokens(correctAnswer);
-// Bể chứa từ vựng (Pool)
 const pool = [];
 deck.forEach(c => {
 const text = askMode === 'def' ? c.term : c.definition;
 if (text && text !== correctAnswer) {
-// Chỉ lấy những phần thực sự là chữ vào Pool
 getTokens(text).forEach(t => {
 const cleaned = extractWord(t);
 if (cleaned.length > 0) pool.push(cleaned);
@@ -552,48 +562,40 @@ if (cleaned.length > 0) pool.push(cleaned);
 });
 const validPool = pool;
 const getRandToken = () => validPool.length > 0 ? validPool[Math.floor(Math.random() * validPool.length)] : (isLogographic ? "的" : "the");
-// Xác định danh sách các Index thực sự chứa chữ
 const validTargetIndices = [];
 correctTokens.forEach((t, i) => {
 if (extractWord(t).length > 0) validTargetIndices.push(i);
 });
 let attempts = 0;
-// Cố gắng sinh ra 4 đáp án nhiễu
 while(distractors.size < 4 && attempts < 100) {
 attempts++;
 let newD = "";
-let method = Math.floor(Math.random() * 3) + 1; // Chọn ngẫu nhiên 1, 2 hoặc 3
+let method = Math.floor(Math.random() * 3) + 1;
 let tokens = [...correctTokens];
 if (validTargetIndices.length <= 1) {
-// Câu quá ngắn -> Bốc từ ngẫu nhiên
 newD = getRandToken();
 } else {
-// Thuật toán Anchor (Mỏ neo)
 let anchorCount = validTargetIndices.length > 4 ? 2 : 1;
 let mutableIndices = validTargetIndices.slice(anchorCount);
 if (mutableIndices.length === 0) mutableIndices = validTargetIndices;
 if (method === 1) {
-// CÁCH #1: Cắt đuôi & Thay thế cụm từ (SMART LENGTH PADDING)
 let startIdx = mutableIndices[0];
-let removedLength = tokens.length - startIdx; // Tính độ dài phần bị cắt
-tokens = tokens.slice(0, startIdx); // Cắt bỏ
-// Bù đắp số lượng từ tương đương (+/- 1) để câu không bị cụt
+let removedLength = tokens.length - startIdx;
+tokens = tokens.slice(0, startIdx);
 let tokensToAdd = Math.max(1, removedLength + Math.floor(Math.random() * 3) - 1);
 for(let k=0; k < tokensToAdd; k++) {
 tokens.push(getRandToken());
 }
 newD = joinTokens(tokens);
 } else if (method === 2) {
-// CÁCH #2: Khuyết từ / Thế từ
 let tIdx = mutableIndices[Math.floor(Math.random() * mutableIndices.length)];
 if (Math.random() > 0.5) {
-tokens.splice(tIdx, 1); // Xóa
+tokens.splice(tIdx, 1);
 } else {
-tokens[tIdx] = getRandToken(); // Thế
+tokens[tIdx] = getRandToken();
 }
 newD = joinTokens(tokens);
 } else {
-// CÁCH #3: Sai chính tả (Typo)
 let tIdx = mutableIndices[Math.floor(Math.random() * mutableIndices.length)];
 let word = tokens[tIdx];
 let cleanW = extractWord(word);
@@ -613,12 +615,10 @@ newD = joinTokens(tokens);
 }
 }
 newD = newD.trim();
-// Đảm bảo không trùng và không rỗng
 if (newD && newD !== correctAnswer && newD !== joinTokens(correctTokens)) {
 distractors.add(newD);
 }
 }
-// Dự phòng (Fallback)
 const fallbackDeck = window.Utils.shuffleArray([...deck]).filter(c => {
 const text = askMode === 'def' ? c.term : c.definition;
 return text !== correctAnswer;
@@ -4862,22 +4862,22 @@ handleAddPunctuation={handleAddPunctuation}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.1
-// Last Updated: 2026-03-31 11:38
+// Block5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.2
+// Last Updated: 2026-04-02 15:25
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Quy tắc: Chỉ đảm nhiệm việc render UI. Logic sinh câu hỏi, bẫy AI và tính điểm nằm ở Component `QuizGame` (Block 5.6).
+// Quy tắc: Đã tích hợp luồng Bookmark chuẩn (gọi Word Selector) bằng cách chỉ truyền Text (term).
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack }) => {
-const [timerMode, setTimerMode] = useState(false);
-const [listenMode, setListenMode] = useState(false);
-const [hardMode, setHardMode] = useState(false);
-const [aiMode, setAiMode] = useState(false);
-const [timeLimit, setTimeLimit] = useState(30);
-const [askMode, setAskMode] = useState('term');
-const [showPronun, setShowPronun] = useState(false);
-const [autoReadAnswer, setAutoReadAnswer] = useState(false);
-useEffect(() => {
+const [timerMode, setTimerMode] = React.useState(false);
+const [listenMode, setListenMode] = React.useState(false);
+const [hardMode, setHardMode] = React.useState(false);
+const [aiMode, setAiMode] = React.useState(false);
+const [timeLimit, setTimeLimit] = React.useState(30);
+const [askMode, setAskMode] = React.useState('term');
+const [showPronun, setShowPronun] = React.useState(false);
+const [autoReadAnswer, setAutoReadAnswer] = React.useState(false);
+React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_quiz_config');
 if (savedConfig) {
@@ -4941,7 +4941,7 @@ return (
 };
 // 2. MÀN HÌNH KẾT QUẢ (GAME RESULT)
 const GameResult = ({ t, mainColor, score, onBack, correctCount, wrongCount }) => {
-useEffect(() => { window.speechSynthesis.cancel(); }, []);
+React.useEffect(() => { window.speechSynthesis.cancel(); }, []);
 const totalPlayed = correctCount + wrongCount;
 const accuracy = totalPlayed > 0 ? Math.round((correctCount / totalPlayed) * 100) : 0;
 const Icons = window.Icons;
@@ -4978,7 +4978,7 @@ timerMode, timeLeft, totalTime, isRoundStarted, onStartRound, onEndGame, onPause
 aiCountdown, isPaused, correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode, hardMode, listenPlayCount
 }) => {
 const Icons = window.Icons;
-const [showConfirmEnd, setShowConfirmEnd] = useState(false);
+const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
 const getTimerColor = (time, total) => {
 const ratio = time / total;
 if (ratio > 0.6) return 'text-green-600';
@@ -5124,7 +5124,6 @@ Thoát ngay
 </button>
 </div>
 )}
-{/* [UPDATED v1.13] Gỡ bỏ max-w-2xl mx-auto để nhãn trải dài full width, canh phải thẳng hàng với ô question */}
 <div className={`w-full flex justify-end items-center mb-1 gap-2`}>
 {hardMode && isAiMode && (
 <span
@@ -5142,7 +5141,7 @@ title={currentQuestionData?.isAiGenerated ? "Bẫy do AI tạo" : "Bẫy do Hệ
 {gameMode === 'read' && (
 <button
 className={`absolute top-3 right-3 p-2 rounded-full transition-all ${isInNotebook ? 'text-yellow-500 bg-yellow-50 shadow-sm' : 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50'}`}
-onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark(currentQuestionData.question); }} // [FIXED] Truyền nguyên Object question thay vì chỉ truyền term
+onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark(currentQuestionData.question.term); }} // [UPDATED] Truyền văn bản để mở Word Selector
 title={t('addToNotebook')}
 ><Icons.Bookmark size={22} fill={isInNotebook ? "currentColor" : "none"} /></button>
 )}
@@ -5175,7 +5174,6 @@ Không nghe được? (Chấp nhận sai để xem chữ)
 )}
 </div>
 <div className={`flex flex-col gap-3 w-full mt-2 transition-all duration-300 ${contentBlurClass}`}>
-{/* [UPDATED v1.13] Gỡ bỏ max-w-2xl mx-auto ở lưới chứa options */}
 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 w-full`}>
 {currentQuestionData?.options?.map((opt, i) => {
 const btnClass = getOptionClass(opt, i);
@@ -5212,10 +5210,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.1
-// Last Updated: 2026-03-31 11:38
+// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.2
+// Last Updated: 2026-04-02 15:30
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Quy tắc: Đóng vai trò là Controller, quản lý luồng dữ liệu (Data Flow) và truyền xuống cho UI hiển thị.
+// Cập nhật: Chuẩn hóa Schema (id, type, tags) cho tính năng Auto-Log Lỗi Sai.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục khỏi lỗi "đen xì"
@@ -5292,6 +5290,18 @@ useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// [NEW v1.2] Cỗ máy đóng gói Lỗi sai chuẩn Schema Hệ thống
+const logMistake = (question) => {
+if (!onLogWrong || !question) return;
+const mistakeCard = {
+...question, // Kế thừa toàn bộ dữ liệu thẻ gốc (term, definition, etc.)
+id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+type: 'mistake',
+tags: ['quiz', hardMode ? 'hard' : 'easy', gameMode],
+timestamp: Date.now()
+};
+onLogWrong(mistakeCard);
+};
 const getNextCardIndex = () => {
 if (deckRef.current.length === 0) deckRef.current = window.Utils.shuffleArray(cards.map((_, i) => i));
 return deckRef.current.shift();
@@ -5518,7 +5528,7 @@ const textToPlay = currentQuestionData.question.term;
 const proceedToNext = (delay) => { if (isGameActiveRef.current) autoNextTimeoutRef.current = setTimeout(handleNext, delay); };
 if (isTimeout) {
 setIsChecking(true); setFeedbackType('timeout'); setStreak(0); setWrongCount(w => w + 1);
-if (onLogWrong) onLogWrong(currentQuestionData.question);
+logMistake(currentQuestionData.question); // [UPDATED] Gọi Auto-Log
 proceedToNext(2000); setTimeout(() => triggerAutoSave(), 150);
 return;
 }
@@ -5543,7 +5553,7 @@ setClickedWrongIndices(newWrong);
 if (newWrong.size === 1) { setShowChanceToast(true); setTimeout(() => setShowChanceToast(false), 2000); return; }
 }
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
-if (onLogWrong) onLogWrong(currentQuestionData.question);
+logMistake(currentQuestionData.question); // [UPDATED] Gọi Auto-Log
 if (autoReadAnswer && onPlay) {
 let finished = false;
 const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proceedToNext(0); } }, 8000);
@@ -5556,7 +5566,7 @@ const handleSkip = () => {
 if (isChecking) return;
 setWrongCount(w => w + 1); setStreak(0);
 if (showToast) safeShowToast("Bỏ qua (+1 sai)", "warning");
-if (onLogWrong) onLogWrong(currentQuestionData.question);
+logMistake(currentQuestionData.question); // [UPDATED] Gọi Auto-Log
 handleNext(); setTimeout(() => triggerAutoSave(), 150);
 };
 // Render Component UI đã tách ra (GamePlayScreen)
@@ -5581,10 +5591,10 @@ onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={set
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.5
-// Last Updated: 2026-04-01 22:30
-// Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game (Menu, Match, Scramble, Quiz, FillBlank, SpotMistake).
-// Cập nhật: Bơm Props (onBookmark, notebook, onLogWrong, settings) vào SpotMistakeGame.
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.6
+// Last Updated: 2026-04-02 16:45
+// Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
+// Cập nhật: Cắm cáp (Bơm Props) đầy đủ cho FillBlankGame để kích hoạt Smart Bookmark. Cập nhật hàm onFinish nhận wrongCount.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onResume, gameSessions }) => {
@@ -6021,16 +6031,25 @@ savedState={gameSessions?.['quiz']}
 settings={settings}
 />
 }
+{/* [UPDATED v1.6] Cắm cáp đầy đủ cho FillBlankGame */}
 {gameType === 'fillblank' && SafeFillBlankGame &&
 <SafeFillBlankGame
 key={gameSessionId}
 cards={cards}
+t={t}
 mainColor={mainColor}
-onFinish={(score, time) => handleEndGame({ correct: score, wrong: 0 })}
+lang={lang}
+isAiMode={gameConfig.isAiMode}
+apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
+onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
 onQuit={() => handleBack(null)}
+onBookmark={onBookmark}
+notebook={notebook}
+onLogWrong={onLogWrong}
+settings={settings}
 />
 }
-{/* [UPDATED v1.5] Truyền đủ Props cho SpotMistakeGame */}
+{/* [UPDATED v1.6] Cập nhật hàm onFinish nhận wrongCount */}
 {gameType === 'spotmistake' && SafeSpotMistakeGame &&
 <SafeSpotMistakeGame
 key={gameSessionId}
@@ -6040,7 +6059,7 @@ mainColor={mainColor}
 lang={lang}
 isAiMode={gameConfig.isAiMode}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
-onFinish={(score, time) => handleEndGame({ correct: score, wrong: 0 })}
+onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
 onQuit={() => handleBack(null)}
 onBookmark={onBookmark}
 notebook={notebook}
@@ -6058,10 +6077,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 1.3
-// Last Updated: 2026-04-02 10:50
+// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 1.5
+// Last Updated: 2026-04-02 16:55
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Điền Từ (Fill-in-the-Blank).
-// Cập nhật: Nâng cấp Header Endless Mode (Bộ đếm Đúng/Sai). Thêm Menu Dropdown Bookmark Lưu Đa Dạng.
+// Cập nhật: Nâng cấp nút Bookmark thủ công để lưu CẢ CÂU và dùng Unicode \u0332 để GẠCH CHÂN từ khóa (giữ ngữ cảnh).
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const FillBlankSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -6149,26 +6168,13 @@ const FillBlankPlayScreen = ({
 t, mainColor, config,
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts,
 score, combo, playedCount, time, isFinished, isGenerating, aiCountdown,
-correctCount, wrongCount, // [NEW v1.3] Nhận biến đếm đúng sai
+correctCount, wrongCount,
 checkAnswer, handleNext, handleSkip, onBack, onEndGame, onSaveToNotebook, isBookmarked
 }) => {
 const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
 const inputRef = React.useRef(null);
-// [NEW v1.3] State cho Menu Dropdown Bookmark
-const [showBookmarkMenu, setShowBookmarkMenu] = React.useState(false);
-const bookmarkMenuRef = React.useRef(null);
-// Xử lý click outside để đóng menu bookmark
-React.useEffect(() => {
-const handleClickOutside = (event) => {
-if (bookmarkMenuRef.current && !bookmarkMenuRef.current.contains(event.target)) {
-setShowBookmarkMenu(false);
-}
-};
-document.addEventListener("mousedown", handleClickOutside);
-return () => document.removeEventListener("mousedown", handleClickOutside);
-}, []);
 // Auto-focus ô nhập liệu
 React.useEffect(() => {
 if (checkStatus === 'idle' || checkStatus === 'wrong_retry') {
@@ -6184,41 +6190,6 @@ checkAnswer();
 handleNext();
 }
 }
-};
-// [NEW v1.3] Hàm xử lý Lưu đa dạng chuẩn Schema
-const handleSaveOption = (type) => {
-if (!currentQuestion) return;
-const correctSentence = currentQuestion.displaySentence.replace('[__________]', currentQuestion.targetWord);
-let termToSave = "";
-let cardType = "vocabulary";
-if (type === 'word') {
-termToSave = currentQuestion.targetWord;
-} else if (type === 'phrase') {
-// Trích xuất cụm từ (từ trước + từ khóa + từ sau)
-const words = correctSentence.split(' ');
-const targetIdx = words.findIndex(w => w.toLowerCase().includes(currentQuestion.targetWord.toLowerCase()));
-if (targetIdx !== -1) {
-const start = Math.max(0, targetIdx - 1);
-const end = Math.min(words.length - 1, targetIdx + 1);
-termToSave = words.slice(start, end + 1).join(' ');
-} else {
-termToSave = currentQuestion.targetWord;
-}
-} else if (type === 'sentence') {
-termToSave = correctSentence;
-cardType = "grammar";
-}
-const cardToSave = {
-id: `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-type: cardType,
-term: termToSave,
-definition: currentQuestion.origin?.definition || currentQuestion.hint || "Thử thách Fill in the Blank",
-example: correctSentence,
-tags: ['fillblank', config?.level || 'unknown'],
-timestamp: Date.now()
-};
-onSaveToNotebook && onSaveToNotebook(cardToSave);
-setShowBookmarkMenu(false);
 };
 // Màn hình Loading/AI Generating (Ban đầu)
 if (isGenerating && !currentQuestion) {
@@ -6247,7 +6218,7 @@ return (
 </div>
 <h2 className={`text-3xl font-bold text-gray-800 mb-2`}>Hoàn thành!</h2>
 <p className="text-gray-500 mb-8 text-lg">Bạn đã điền xong các thử thách.</p>
-{/* [UPDATED v1.3] Đổi Điểm số thành Thống kê Đúng/Sai */}
+{/* Thống kê Đúng/Sai */}
 <div className="grid grid-cols-3 gap-3 w-full max-w-sm mb-8">
 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
 <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Thời gian</div>
@@ -6321,11 +6292,9 @@ Kết thúc
 <div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">
 LEVEL {config?.level?.split('_')[1]?.toUpperCase()}
 </div>
-{/* [UPDATED v1.3] Xóa giới hạn /10, thêm icon vô cực */}
 <div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1" title="Chế độ Vô tận">
 Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 </div>
-{/* [NEW v1.3] Bộ đếm Đúng/Sai trên Header */}
 <div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
 <span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1" title="Số câu Đúng"><Icons.Check size={14}/> {correctCount || 0}</span>
 <span className="text-gray-300">|</span>
@@ -6339,30 +6308,21 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 </div>
 <div className="flex items-center gap-1">
-{/* [NEW v1.3] Nút Bookmark dạng Dropdown (Dành cho Header) */}
-<div className="relative" ref={bookmarkMenuRef}>
+{/* [UPDATED v1.5] Nút Bookmark đơn giản truyền chuỗi văn bản gạch chân lên Proxy */}
 <button
-onClick={() => setShowBookmarkMenu(!showBookmarkMenu)}
+onClick={(e) => {
+e.stopPropagation();
+if (currentQuestion && onSaveToNotebook) {
+const underlinedTarget = currentQuestion.targetWord.split('').map(char => char + '\u0332').join('');
+const sentenceWithUnderline = currentQuestion.displaySentence.replace('[__________]', underlinedTarget);
+onSaveToNotebook(sentenceWithUnderline);
+}
+}}
 className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
 title="Lưu vào Sổ tay"
 >
 {Icon('Bookmark', { size: 20, fill: isBookmarked ? "currentColor" : "none" })}
 </button>
-{showBookmarkMenu && (
-<div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
-<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider text-left">Tùy chọn lưu</div>
-<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu từ khóa</span>
-</button>
-<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cụm từ</span>
-</button>
-<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cả câu</span>
-</button>
-</div>
-)}
-</div>
 <button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
 {Icon('X', { size: 20 })}
 </button>
@@ -6421,27 +6381,20 @@ Chưa chính xác! Bạn còn {3 - attempts} lượt thử.
 <div className="flex items-center gap-2">
 <Icons.X /> HẾT LƯỢT!
 </div>
-{/* [NEW v1.3] Nút Dropdown Lưu Thẻ ở Panel Giải thích */}
-<div className="relative group">
+{/* [UPDATED v1.5] Nút Bookmark đơn giản truyền chuỗi văn bản gạch chân lên Proxy */}
 <button
-className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors"
+onClick={(e) => {
+e.stopPropagation();
+if (currentQuestion && onSaveToNotebook) {
+const underlinedTarget = currentQuestion.targetWord.split('').map(char => char + '\u0332').join('');
+const sentenceWithUnderline = currentQuestion.displaySentence.replace('[__________]', underlinedTarget);
+onSaveToNotebook(sentenceWithUnderline);
+}
+}}
+className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors shadow-sm"
 >
-<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'} <Icons.ChevronDown size={14} />
+<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'}
 </button>
-{/* Hover Dropdown Menu */}
-<div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 origin-top-right">
-<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider text-left">Tùy chọn lưu</div>
-<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu từ khóa</span>
-</button>
-<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cụm từ</span>
-</button>
-<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cả câu</span>
-</button>
-</div>
-</div>
 </div>
 <div className="p-6 text-center bg-white rounded-b-2xl">
 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Đáp án đúng là</span>
@@ -6487,15 +6440,15 @@ Kiểm tra
 </div>
 );
 };
-// EXPORT TO WINDOW
+// EXPORT RA GLOBAL WINDOW
 window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.6
-// Last Updated: 2026-04-02 10:48
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.8
+// Last Updated: 2026-04-02 16:50
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý luồng, Preload Queue, AI Pure Mode.
-// Cải tiến: Mở khóa Endless Mode. Thêm Bộ đếm Đúng/Sai ngầm. Chuẩn hóa Schema (id, type) cho tính năng Lưu Lỗi Tự Động.
+// Cập nhật: Auto-Log lỗi sai lưu CẢ CÂU và dùng Unicode \u0332 để GẠCH CHÂN từ khóa (giữ ngữ cảnh).
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -6510,7 +6463,7 @@ const [combo, setCombo] = React.useState(1);
 const [playedCount, setPlayedCount] = React.useState(0);
 const [time, setTime] = React.useState(0);
 const [isFinished, setIsFinished] = React.useState(false);
-// [NEW v1.6] Bộ đếm thành tích
+// Bộ đếm thành tích
 const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
@@ -6532,15 +6485,21 @@ const historyQueueRef = React.useRef([]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
-// [NEW v1.6] Cỗ máy đóng gói Lỗi sai chuẩn Schema Hệ thống
+// [UPDATED v1.8] Cỗ máy đóng gói Lỗi sai (Lưu cả câu & Gạch chân từ khóa)
 const logMistake = (question) => {
 if (!onLogWrong || !question) return;
+const baseData = question.origin || {};
+// 1. Tạo từ gạch chân bằng Unicode (Combining Low Line \u0332)
+const underlinedTarget = question.targetWord.split('').map(char => char + '\u0332').join('');
+// 2. Thế từ gạch chân vào câu đục lỗ
+const sentenceWithUnderline = question.displaySentence.replace('[__________]', underlinedTarget);
 const mistakeCard = {
+...baseData, // Kế thừa toàn bộ dữ liệu thẻ gốc (âm thanh, ảnh, hán việt...)
 id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 type: 'mistake',
-term: question.targetWord,
-definition: question.origin?.definition || question.hint || "Thử thách Fill in the Blank",
-example: question.displaySentence.replace('[__________]', question.targetWord),
+term: sentenceWithUnderline, // [FIXED] Lưu CẢ CÂU đã gạch chân
+definition: baseData.definition || question.hint || "Thử thách Fill in the Blank",
+example: question.displaySentence.replace('[__________]', question.targetWord), // Lưu câu gốc nguyên bản ở ví dụ
 tags: ['fillblank', level, sourceMode],
 timestamp: Date.now()
 };
@@ -6588,7 +6547,7 @@ const isPureMode = sourceMode === 'ai_pure';
 let card = null;
 if (!isPureMode) {
 card = cards[idx];
-// [NEW v1.6] Xáo lại nếu hết bài (Endless Mode)
+// Xáo lại nếu hết bài (Endless Mode)
 if (!card) {
 const newIdx = idx % cards.length;
 card = cards[newIdx];
@@ -6610,7 +6569,6 @@ schema = window.IoeDataEngine.SCHEMAS.pure_fill_blank;
 if (historyQueueRef.current.length > 0) {
 prompt += `\n\nCRITICAL ANTI-DUPLICATION RULE:\nDO NOT generate sentences matching these concepts/topics:\n- ${historyQueueRef.current.join('\n- ')}`;
 }
-// [NEW v1.6] Thiết quân luật cho AI
 prompt += `\n\nCRITICAL RULE: The 'hint' field MUST BE 100% IN VIETNAMESE. NO ENGLISH ALLOWED IN THE HINT FIELD. (Bắt buộc gợi ý hoàn toàn bằng Tiếng Việt).`;
 } else {
 prompt = `Bạn là chuyên gia ngữ pháp tiếng Anh.
@@ -6664,7 +6622,6 @@ try { return await fetchTask; } finally { if(!isPureMode) pendingFetchesRef.curr
 };
 // --- QUẢN LÝ LUỒNG & BĂNG ĐẠN (PRELOAD QUEUE) ---
 const getNextCardIndex = () => {
-// [NEW v1.6] Tự động xáo lại khi hết thẻ
 if (deckRef.current.length === 0 && cards && cards.length > 0) {
 let validIndices = cards.map((c, i) => ({ c, i }))
 .filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '))
@@ -6761,7 +6718,7 @@ if (isGenerating) return;
 if (autoNextRef.current) clearTimeout(autoNextRef.current);
 const currentTotalPlayed = playedCount + 1;
 setPlayedCount(currentTotalPlayed);
-// [NEW v1.6] Đã gỡ bỏ giới hạn 10 câu ở đây để có Endless Mode
+// Endless Mode
 // Rút đạn từ băng ra xài ngay lập tức
 if (preloadedQuestionsRef.current.length > 0) {
 const nextData = preloadedQuestionsRef.current.shift();
@@ -6853,7 +6810,7 @@ if (autoNextRef.current) clearTimeout(autoNextRef.current);
 return {
 currentQuestion, inputBuffer, setInputBuffer,
 checkStatus, attempts, time, score, combo, playedCount, isFinished,
-isGenerating, aiCountdown, correctCount, wrongCount, // Trả ra biến đếm
+isGenerating, aiCountdown, correctCount, wrongCount,
 checkAnswer, handleNext: nextRound, handleSkip
 };
 };
@@ -6884,16 +6841,16 @@ onBookmark={onBookmark} notebook={notebook} onLogWrong={onLogWrong} settings={se
 // Component Nội bộ để bọc Hook an toàn
 const FillBlankLogicWrapper = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, config, onBookmark, notebook, onLogWrong, settings }) => {
 const gameCallbacks = {
-// [NEW v1.6] Trả về số đúng/sai chuẩn
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: onQuit,
-onSaveToNotebook: (cardToSave) => {
+// Payload là String (câu đã gạch chân)
+onSaveToNotebook: (payload) => {
 if (onBookmark) {
-onBookmark(cardToSave);
+onBookmark(payload);
 } else if (window.handleSaveToNotebook) {
-window.handleSaveToNotebook(cardToSave);
+window.handleSaveToNotebook(payload);
 } else {
-if (window.globalShowToast) window.globalShowToast("Đã lưu từ này vào Sổ tay!", "success");
+if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning");
 }
 }
 };
@@ -6904,7 +6861,7 @@ onLogWrong: onLogWrong
 };
 const logic = useFillBlankLogic(cards, { ...config, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
 // Tính toán isBookmarked để truyền xuống UI
-const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term === logic.currentQuestion.targetWord);
+const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
 const FillBlankPlayScreen = window.FillBlankPlayScreen || window.Block5_8_FillBlankPlayScreen;
 if (!FillBlankPlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankPlayScreen</div>;
 return (
@@ -6924,10 +6881,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake UI) - Version 1.10
-// Last Updated: 2026-04-02 10:45
+// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake UI) - Version 1.11
+// Last Updated: 2026-04-02 17:25
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Tìm Lỗi Sai (SpotMistake).
-// Cập nhật: Thêm Bộ đếm Đúng/Sai trên Header. Biến nút Bookmark thành Menu Dropdown (Lưu Từ/Cụm/Câu) chuẩn Schema.
+// Cập nhật: Nâng cấp nút Bookmark thủ công để lưu CẢ CÂU và dùng Unicode \u0332 để GẠCH CHÂN từ khóa đã sửa đúng (giữ ngữ cảnh).
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -7016,26 +6973,13 @@ t, mainColor, config,
 currentQuestion, chunks, stage, selectedIndex,
 inputBuffer, setInputBuffer, checkStatus, attempts,
 score, combo, playedCount, time, isFinished,
-isGenerating, aiCountdown, correctCount, wrongCount, // [NEW v1.10] Nhận correctCount, wrongCount
+isGenerating, aiCountdown, correctCount, wrongCount,
 handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound,
 onBack, onEndGame, onSaveToNotebook, isBookmarked
 }) => {
 const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
-const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
-// [NEW v1.10] State cho Menu Dropdown Bookmark
-const [showBookmarkMenu, setShowBookmarkMenu] = React.useState(false);
-const bookmarkMenuRef = React.useRef(null);
-// Xử lý click outside để đóng menu bookmark
-React.useEffect(() => {
-const handleClickOutside = (event) => {
-if (bookmarkMenuRef.current && !bookmarkMenuRef.current.contains(event.target)) {
-setShowBookmarkMenu(false);
-}
-};
-document.addEventListener("mousedown", handleClickOutside);
-return () => document.removeEventListener("mousedown", handleClickOutside);
-}, []);
+const [showConfirmEnd, React_useState_setShowConfirmEnd] = React.useState(false);
 // Auto-focus ô nhập liệu ở Giai đoạn 2
 const inputRef = React.useRef(null);
 React.useEffect(() => {
@@ -7043,42 +6987,6 @@ if (stage === 'correct' && (checkStatus === 'correct_spot' || checkStatus === 'w
 setTimeout(() => inputRef.current?.focus(), 100);
 }
 }, [stage, checkStatus]);
-// [NEW v1.10] Hàm xử lý Lưu đa dạng chuẩn Schema
-const handleSaveOption = (type) => {
-if (!currentQuestion) return;
-const correctSentence = currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, currentQuestion.correction);
-let termToSave = "";
-let cardType = "vocabulary";
-if (type === 'word') {
-termToSave = currentQuestion.correction;
-} else if (type === 'phrase') {
-// Trích xuất cụm từ (từ trước + từ khóa + từ sau)
-const words = correctSentence.split(' ');
-const targetIdx = words.findIndex(w => w.toLowerCase().includes(currentQuestion.correction.toLowerCase()));
-if (targetIdx !== -1) {
-const start = Math.max(0, targetIdx - 1);
-const end = Math.min(words.length - 1, targetIdx + 1);
-termToSave = words.slice(start, end + 1).join(' ');
-} else {
-termToSave = currentQuestion.correction;
-}
-} else if (type === 'sentence') {
-termToSave = correctSentence;
-cardType = "grammar";
-}
-const cardToSave = {
-id: `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-type: cardType,
-term: termToSave,
-definition: currentQuestion.origin?.definition || currentQuestion.hint || "Thử thách Spot Mistake",
-analysis: currentQuestion.explanation,
-example: `Wrong: ${currentQuestion.wrongWord} -> Correct: ${currentQuestion.correction}`,
-tags: ['spotmistake', config?.level || 'unknown'],
-timestamp: Date.now()
-};
-onSaveToNotebook && onSaveToNotebook(cardToSave);
-setShowBookmarkMenu(false);
-};
 // Màn hình Loading/AI Generating (Ban đầu)
 if (isGenerating && !currentQuestion) {
 return (
@@ -7106,7 +7014,7 @@ return (
 </div>
 <h2 className="text-3xl font-bold text-gray-800 mb-2">Thử thách kết thúc!</h2>
 <p className="text-gray-500 mb-8 text-center max-w-xs">Bạn đã hoàn thành việc rà soát lỗi sai xuất sắc!</p>
-{/* [UPDATED v1.10] Đổi Điểm số thành Thống kê Đúng/Sai */}
+{/* Thống kê Đúng/Sai */}
 <div className="grid grid-cols-3 gap-3 w-full max-w-sm mb-8">
 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
 <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Thời gian</div>
@@ -7143,10 +7051,10 @@ return (
 <h3 className="text-xl font-black text-gray-800 mb-2">Kết thúc phiên học?</h3>
 <p className="text-gray-600 text-sm mb-6">Bạn đang ở chế độ vô tận. Bấm Kết thúc để xem tổng hợp kết quả của phiên này.</p>
 <div className="flex w-full gap-3">
-<button onClick={() => setShowConfirmEnd(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+<button onClick={() => React_useState_setShowConfirmEnd(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
 Chơi tiếp
 </button>
-<button onClick={() => { setShowConfirmEnd(false); onEndGame({ correct: correctCount, time: time, wrong: wrongCount }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
+<button onClick={() => { React_useState_setShowConfirmEnd(false); onEndGame({ correct: correctCount, time: time, wrong: wrongCount }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
 Kết thúc
 </button>
 </div>
@@ -7165,7 +7073,6 @@ LEVEL {config?.level?.split('_')[1]?.toUpperCase()}
 <div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1" title="Chế độ Vô tận">
 Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 </div>
-{/* [NEW v1.10] Bộ đếm Đúng/Sai trên Header */}
 <div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
 <span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1" title="Số câu Đúng"><Icons.Check size={14}/> {correctCount || 0}</span>
 <span className="text-gray-300">|</span>
@@ -7179,34 +7086,22 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 </div>
 <div className="flex items-center gap-1">
-{/* [NEW v1.10] Nút Bookmark dạng Dropdown (Dành cho Header) */}
-<div className="relative" ref={bookmarkMenuRef}>
+{/* [UPDATED v1.11] Nút Bookmark đơn giản truyền chuỗi văn bản gạch chân lên Proxy */}
 <button
-onClick={() => setShowBookmarkMenu(!showBookmarkMenu)}
+onClick={(e) => {
+e.stopPropagation();
+if (currentQuestion && onSaveToNotebook) {
+const underlinedCorrection = currentQuestion.correction.split('').map(char => char + '\u0332').join('');
+const sentenceWithUnderline = currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, underlinedCorrection);
+onSaveToNotebook(sentenceWithUnderline);
+}
+}}
 className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
 title="Lưu vào Sổ tay"
 >
 {Icon('Bookmark', { size: 20, fill: isBookmarked ? "currentColor" : "none" })}
 </button>
-{showBookmarkMenu && (
-<div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
-<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider">Lưu vào Sổ tay</div>
-<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu từ vựng</span>
-<span className="text-xs text-gray-400 truncate w-full text-left">"{currentQuestion.correction}"</span>
-</button>
-<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cụm từ</span>
-<span className="text-xs text-gray-400 w-full text-left">Kèm từ trước/sau</span>
-</button>
-<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cả câu</span>
-<span className="text-xs text-gray-400 w-full text-left">Lưu ngữ cảnh gốc</span>
-</button>
-</div>
-)}
-</div>
-<button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
+<button onClick={() => React_useState_setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
 {Icon('X', { size: 20 })}
 </button>
 </div>
@@ -7295,27 +7190,20 @@ className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg 
 {checkStatus === 'success' ? <Icons.CheckCircle /> : <Icons.X />}
 {checkStatus === 'success' ? 'CHÍNH XÁC!' : 'HẾT LƯỢT!'}
 </div>
-{/* [NEW v1.10] Nút Dropdown Lưu Thẻ ở Panel Giải thích */}
-<div className="relative group">
+{/* [UPDATED v1.11] Nút Bookmark đơn giản truyền chuỗi văn bản gạch chân lên Proxy */}
 <button
-className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors"
+onClick={(e) => {
+e.stopPropagation();
+if (currentQuestion && onSaveToNotebook) {
+const underlinedCorrection = currentQuestion.correction.split('').map(char => char + '\u0332').join('');
+const sentenceWithUnderline = currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, underlinedCorrection);
+onSaveToNotebook(sentenceWithUnderline);
+}
+}}
+className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors shadow-sm"
 >
-<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'} <Icons.ChevronDown size={14} />
+<Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'}
 </button>
-{/* Hover Dropdown Menu */}
-<div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 origin-top-right">
-<div className="text-[10px] font-bold text-gray-400 uppercase px-4 py-2 bg-gray-50 border-b tracking-wider text-left">Tùy chọn lưu</div>
-<button onClick={() => handleSaveOption('word')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu từ vựng</span>
-</button>
-<button onClick={() => handleSaveOption('phrase')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cụm từ</span>
-</button>
-<button onClick={() => handleSaveOption('sentence')} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50 flex flex-col transition-colors">
-<span className="font-bold">Lưu cả câu</span>
-</button>
-</div>
-</div>
 </div>
 <div className="p-6 space-y-4 bg-white rounded-b-2xl">
 <div className="flex justify-between items-center border-b pb-4">
@@ -7378,10 +7266,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.14
-// Last Updated: 2026-04-02 10:35
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.15
+// Last Updated: 2026-04-02 17:20
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode (9 Cấp độ).
-// Cải tiến: Thêm Bộ đếm Đúng/Sai ngầm. Chuẩn hóa Schema (id, type) cho tính năng Lưu Lỗi Tự Động.
+// Cải tiến: Nâng cấp Auto-Log lưu CẢ CÂU và dùng Unicode \u0332 để GẠCH CHÂN từ đã sửa đúng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -7399,7 +7287,6 @@ const [combo, setCombo] = React.useState(1);
 const [playedCount, setPlayedCount] = React.useState(0);
 const [time, setTime] = React.useState(0);
 const [isFinished, setIsFinished] = React.useState(false);
-// [NEW v1.14] Bộ đếm thành tích
 const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
@@ -7421,17 +7308,22 @@ const historyQueueRef = React.useRef([]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
-// [NEW v1.14] Cỗ máy đóng gói Lỗi sai chuẩn Schema Hệ thống
+// [UPDATED v1.15] Cỗ máy đóng gói Lỗi sai (Lưu cả câu đã sửa & Gạch chân từ đúng)
 const logMistake = (question) => {
 if (!onLogWrong || !question) return;
-const correctSentence = question.wrongSentence.replace(question.wrongWord, question.correction);
+const baseData = question.origin || {};
+// 1. Tạo từ đúng có gạch chân bằng Unicode (Combining Low Line \u0332)
+const underlinedCorrection = question.correction.split('').map(char => char + '\u0332').join('');
+// 2. Thế từ đúng đã gạch chân vào câu sai để tạo thành câu chuẩn có gạch chân
+const sentenceWithUnderline = question.wrongSentence.replace(question.wrongWord, underlinedCorrection);
 const mistakeCard = {
+...baseData, // Kế thừa toàn bộ dữ liệu thẻ gốc (âm thanh, ảnh, hán việt...)
 id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 type: 'mistake',
-term: correctSentence,
-definition: question.origin?.definition || question.hint || "Thử thách Spot Mistake",
+term: sentenceWithUnderline, // [FIXED] Lưu CẢ CÂU đã sửa ĐÚNG và gạch chân
+definition: baseData.definition || question.hint || "Thử thách Spot Mistake",
 analysis: question.explanation,
-example: `Wrong: ${question.wrongWord} -> Correct: ${question.correction}`,
+example: `Lỗi: ${question.wrongWord} -> Sửa: ${question.correction}`,
 tags: ['spotmistake', level, sourceMode],
 timestamp: Date.now()
 };
@@ -7816,7 +7708,7 @@ if (autoNextRef.current) clearTimeout(autoNextRef.current);
 return {
 currentQuestion, chunks, stage, selectedIndex, inputBuffer, setInputBuffer,
 checkStatus, attempts, score, combo, playedCount, time, isFinished,
-isGenerating, aiCountdown, correctCount, wrongCount, // [UPDATED] Trả ra biến đếm
+isGenerating, aiCountdown, correctCount, wrongCount,
 handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound
 };
 };
@@ -7847,16 +7739,16 @@ onBookmark={onBookmark} notebook={notebook} onLogWrong={onLogWrong} settings={se
 // Component Nội bộ để bọc Hook an toàn
 const SpotMistakeLogicWrapper = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, config, onBookmark, notebook, onLogWrong, settings }) => {
 const gameCallbacks = {
-// [UPDATED] Kết thúc trả về số đúng/sai chuẩn
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: onQuit,
-onSaveToNotebook: (cardToSave) => {
+// Payload là String (câu đã gạch chân)
+onSaveToNotebook: (payload) => {
 if (onBookmark) {
-onBookmark(cardToSave);
+onBookmark(payload);
 } else if (window.handleSaveToNotebook) {
-window.handleSaveToNotebook(cardToSave);
+window.handleSaveToNotebook(payload);
 } else {
-if (window.globalShowToast) window.globalShowToast("Đã lưu thẻ vào Sổ tay!", "success");
+if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning");
 }
 }
 };
@@ -7866,7 +7758,8 @@ showToast: window.globalShowToast,
 onLogWrong: onLogWrong
 };
 const logic = useSpotMistakeLogic(cards, { ...config, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
-const isBookmarked = logic.currentQuestion?.origin && notebook?.some(n => n.term === logic.currentQuestion.origin.term);
+// Tính toán isBookmarked để truyền xuống UI
+const isBookmarked = logic.currentQuestion?.correction && notebook?.some(n => n.term.includes(logic.currentQuestion.correction));
 const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_SpotMistakePlayScreen;
 if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
 return (
@@ -9410,10 +9303,11 @@ refs: { audioTimeoutRef: core.audioTimeoutRef }
 window.Block6_4_useAppLogic = useAppLogic;
 window.Block13_useAppLogic = useAppLogic; // Fallback
 window.useAppLogic = useAppLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.1
-// Last Updated: 2026-03-31 12:00
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.2
+// Last Updated: 2026-04-02 15:45
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
 // Quy tắc: Khởi tạo và kết nối các tầng giao diện (Tầng 3,4,5) với tầng logic (Tầng 6).
+// Cập nhật: Thêm Smart Bookmark Proxy, giữ nguyên hoàn toàn cú pháp React.createElement.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -9461,6 +9355,24 @@ window.globalShowToast = coreState.setToast;
 }, []);
 // Tính toán màu chủ đạo ngay tại đây để đảm bảo không bị undefined
 const appMainColor = coreState.lang === 'zh' ? 'red' : (coreState.lang === 'vi' ? 'green' : 'sky');
+// ============================================================================
+// [NEW v1.2] SMART BOOKMARK PROXY
+// Giải quyết xung đột giữa Game cũ (Truyền String) và Game mới (Truyền Object)
+// ============================================================================
+const handleSmartBookmark = React.useCallback((data) => {
+if (!data) return;
+if (typeof data === 'string') {
+// [Game Cũ]: Mở cửa sổ Word Selector để chọn Từ/Cụm/Câu và gọi AI
+if (logic.actions?.handleOpenWordSelector) {
+logic.actions.handleOpenWordSelector(data);
+}
+} else if (typeof data === 'object') {
+// [Game Mới]: Lưu thẳng Object đã được đóng gói chuẩn vào Sổ tay
+if (logic.actions?.handleNotebookSave) {
+logic.actions.handleNotebookSave(data);
+}
+}
+}, [logic.actions]);
 // --- 2. Render Helper ---
 const renderComponent = (compName, props) => {
 const Comp = window[compName];
@@ -9481,7 +9393,7 @@ isLoading: coreState.isAiLoading,
 cards: coreState.cards,
 lang: coreState.lang,
 onPlay: logic.actions?.speak,
-onBookmark: logic.actions?.handleNotebookSave, // [FIXED] Đổi từ toggleBookmark sang handleNotebookSave
+onBookmark: handleSmartBookmark, // [FIXED v1.2] Gắn Trạm trung chuyển thay vì hàm Save cứng
 notebook: coreState.notebook,
 showToast: coreState.setToast,
 onLogWrong: dataLogic?.handleLogWrong,
