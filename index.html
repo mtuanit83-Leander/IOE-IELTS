@@ -4863,9 +4863,9 @@ handleAddPunctuation={handleAddPunctuation}
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
 // Block5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.1
-// Last Updated: 2026-03-30 21:31
+// Last Updated: 2026-03-31 11:38
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Quy tắc: Chỉ đảm nhiệm việc render UI. Logic sinh câu hỏi, bẫy AI và tính điểm nằm ở Hook `window.useQuizLogic` (Block 15).
+// Quy tắc: Chỉ đảm nhiệm việc render UI. Logic sinh câu hỏi, bẫy AI và tính điểm nằm ở Component `QuizGame` (Block 5.6).
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -5125,7 +5125,7 @@ Thoát ngay
 </div>
 )}
 {/* [UPDATED v1.13] Gỡ bỏ max-w-2xl mx-auto để nhãn trải dài full width, canh phải thẳng hàng với ô question */}
-<div className="w-full flex justify-end items-center mb-1 gap-2">
+<div className={`w-full flex justify-end items-center mb-1 gap-2`}>
 {hardMode && isAiMode && (
 <span
 className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 transition-all ${currentQuestionData?.isAiGenerated ? 'bg-purple-100 text-purple-700 border border-purple-200 shadow-sm' : 'bg-gray-100 text-gray-400 border border-gray-200 opacity-60'}`}
@@ -5142,7 +5142,7 @@ title={currentQuestionData?.isAiGenerated ? "Bẫy do AI tạo" : "Bẫy do Hệ
 {gameMode === 'read' && (
 <button
 className={`absolute top-3 right-3 p-2 rounded-full transition-all ${isInNotebook ? 'text-yellow-500 bg-yellow-50 shadow-sm' : 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50'}`}
-onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark(currentQuestionData.question.term); }}
+onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark(currentQuestionData.question); }} // [FIXED] Truyền nguyên Object question thay vì chỉ truyền term
 title={t('addToNotebook')}
 ><Icons.Bookmark size={22} fill={isInNotebook ? "currentColor" : "none"} /></button>
 )}
@@ -5206,8 +5206,11 @@ return (
 );
 };
 // EXPORT RA GLOBAL WINDOW
+window.Block5_5_QuizSetup = QuizSetup;
 window.QuizSetup = QuizSetup;
+window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
+window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
 // Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.1
 // Last Updated: 2026-03-31 11:38
@@ -9478,7 +9481,7 @@ isLoading: coreState.isAiLoading,
 cards: coreState.cards,
 lang: coreState.lang,
 onPlay: logic.actions?.speak,
-onBookmark: logic.actions?.toggleBookmark,
+onBookmark: logic.actions?.handleNotebookSave, // [FIXED] Đổi từ toggleBookmark sang handleNotebookSave
 notebook: coreState.notebook,
 showToast: coreState.setToast,
 onLogWrong: dataLogic?.handleLogWrong,
