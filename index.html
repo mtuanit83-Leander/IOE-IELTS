@@ -3453,10 +3453,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.7
-// Last Updated: 2026-04-04 00:15
+// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.8
+// Last Updated: 2026-04-04 12:25
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: Tách bạch quyền hạn Auto-Enrich. Chốt bảo hiểm dịch nghĩa giờ đây hoạt động ĐỘC LẬP với công tắc "Thử thách AI" (isAiMode). Hạ ngưỡng quét khẩn cấp xuống 4 thẻ.
+// Cập nhật: Nâng cấp Chốt bảo hiểm sang cơ chế BATCH PROCESSING (AI dịch 1 lần 6 câu) để tăng tốc độ khởi tạo từ 20s xuống còn 3s.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards }) => {
 // Ref lưu trữ bộ bài cục bộ để cập nhật đồng bộ mà không cần chờ React re-render
@@ -3565,13 +3565,15 @@ queue = window.Utils.shuffleArray(Array.from({ length: cardsRef.current.length }
 index = 0;
 }
 let isAiGenerated = false;
-// HÀM LỌC & AUTO-ENRICH THẺ KHUYẾT THIẾU (TÍCH HỢP GLOBAL SYNC)
+// [UPDATED v1.8] HÀM LỌC & AUTO-ENRICH TÍCH HỢP BATCH PROCESSING (DỊCH 1 LẦN NHIỀU CÂU)
 const getValidCards = async (startIndex, targetCount, exclusionList = []) => {
 let result = [];
 let currIdx = startIndex;
 let attempts = 0;
 let hasGlobalUpdates = false;
 let updatedCards = [...cardsRef.current];
+// Danh sách các thẻ cần AI dịch khẩn cấp
+const missingBatch = [];
 while (result.length < targetCount && attempts < cardsRef.current.length) {
 if (currIdx >= queue.length) {
 queue = window.Utils.shuffleArray([...queue]);
@@ -3582,31 +3584,53 @@ let c = { ...updatedCards[cardIdx] };
 currIdx++;
 attempts++;
 if (exclusionList.some(ex => ex.term === c.term)) continue;
-// [UPDATED v1.7] Xử lý thẻ khuyết nghĩa - HOẠT ĐỘNG ĐỘC LẬP VỚI isAiMode
 if (!c.definition || c.definition.trim() === "") {
+// Thu thập vào Batch
+missingBatch.push({ idx: cardIdx, term: c.term });
+result.push(c); // Đưa tạm vào result, sẽ cập nhật nghĩa sau khi API trả về
+} else {
+result.push(c); // Thẻ hợp lệ đã có nghĩa
+}
+}
+// XỬ LÝ BATCH DỊCH NGHĨA (Nếu có thẻ khuyết)
+if (missingBatch.length > 0) {
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// CHỈ CẦN CÓ API KEY LÀ DỊCH NGHĨA. KHÔNG CẦN QUAN TÂM BẬT/TẮT BẪY AI (isAiMode).
-if (currentApiKey && window.Utils.fillCardWithAi) {
+if (currentApiKey && window.Utils.callGeminiApi) {
 try {
-const enrichPromise = window.Utils.fillCardWithAi(c.term, lang, currentApiKey, ['definition']);
-const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 3500));
-const res = await Promise.race([enrichPromise, timeoutPromise]);
-if (res && res.definition && res.definition.trim() !== "") {
-c.definition = res.definition;
-result.push(c); // Đủ chuẩn đưa vào game
-// Ghi đè vào mảng cục bộ
-updatedCards[cardIdx] = { ...c };
+const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
+const prompt = `Translate these ${missingBatch.length} ${targetLang} items into Vietnamese. Keep definitions very short (1-6 words).
+Items:
+${missingBatch.map((b, i) => `${i+1}. "${b.term}"`).join('\n')}
+Return EXACTLY a JSON object with a "translations" array.
+Format: {"translations": ["nghĩa 1", "nghĩa 2", ...]}`;
+const schema = { type: "OBJECT", properties: { translations: { type: "ARRAY", items: { type: "STRING" } } }, required: ["translations"] };
+const aiPromise = window.Utils.callGeminiApi(prompt, schema, currentApiKey);
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 10000));
+const res = await Promise.race([aiPromise, timeoutPromise]);
+const parsed = window.Utils.parseAiJson(res.text);
+if (parsed && parsed.translations && parsed.translations.length === missingBatch.length) {
+missingBatch.forEach((b, i) => {
+// Cập nhật mảng gốc
+updatedCards[b.idx] = { ...updatedCards[b.idx], definition: parsed.translations[i] };
+// Cập nhật thẻ tạm trong result
+const resItem = result.find(r => r.term === b.term);
+if (resItem) resItem.definition = parsed.translations[i];
+});
 hasGlobalUpdates = true;
+if (res.tokenMetadata) {
+const used = res.tokenMetadata.totalTokenCount || 0;
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + used);
+}
 }
 } catch (e) {
-console.warn("Background enrich failed, skipping:", c.term);
+console.warn("Background batch enrich failed:", e);
 }
 }
-} else {
-result.push(c); // Thẻ hợp lệ
+// Lọc bỏ những thẻ vẫn không có nghĩa (Trường hợp AI xịt hoặc ko có key)
+result = result.filter(c => c.definition && c.definition.trim() !== "");
 }
-}
-// [GLOBAL SYNC] Nếu có thẻ được dịch ngầm thành công, đồng bộ lên Tầng 6
+// [GLOBAL SYNC] Đồng bộ lên Tầng 6
 if (hasGlobalUpdates) {
 cardsRef.current = updatedCards;
 if (onUpdateCards) onUpdateCards(updatedCards);
@@ -3659,7 +3683,6 @@ for (let i = 0; i < trapCards.length; i++) {
 const trapCard = trapCards[i];
 let distortedTerm = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// TRONG KHI ĐÓ: Tạo bẫy AI thì VẪN bắt buộc phải có công tắc isAiMode
 if (isAiMode && window.Utils.callGeminiApi && currentApiKey) {
 try {
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(trapCard.term) : trapCard.term.includes(' ');
@@ -3793,7 +3816,7 @@ console.error("Fatal Fallback Error:", fatalErr);
 }
 }
 };
-// Khởi tạo Game và Chốt bảo hiểm Pre-flight
+// [UPDATED v1.8] Khởi tạo Game và Chốt bảo hiểm Pre-flight BATCH PROCESSING
 const startMatch = async () => {
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
@@ -3802,31 +3825,49 @@ const shuffledQueue = window.Utils.shuffleArray(indices);
 // --- CHỐT BẢO HIỂM "ANTI-NO-DEFINITION" ---
 const missingCount = cardsRef.current.filter(c => !c.definition || c.definition.trim() === '').length;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// [UPDATED v1.7] Không cần isAiMode. Hạ ngưỡng từ 6 xuống 4 thẻ vì Hard mode lấy 4 thẻ.
 if (missingCount >= 4) {
-if (currentApiKey) {
-setIsGenerating(true); // Hiển thị màn hình chờ
-safeShowToast(`Phát hiện thẻ thiếu nghĩa. AI đang tự động biên dịch vòng 1...`, "info");
+if (currentApiKey && window.Utils.callGeminiApi) {
+setIsGenerating(true);
+safeShowToast(`Phát hiện thẻ thiếu nghĩa. AI đang dịch khẩn cấp 1 lần 6 câu...`, "info");
 let updatedCards = [...cardsRef.current];
 let hasUpdates = false;
-let enrichedCount = 0;
-// Trích xuất tối đa 6 thẻ thiếu nghĩa đầu tiên trong hàng đợi để dịch cuốn chiếu
+// Thu thập tối đa 6 thẻ thiếu nghĩa để đưa vào Batch
+const batchTargets = [];
 for (let i = 0; i < shuffledQueue.length; i++) {
-if (enrichedCount >= 6) break;
+if (batchTargets.length >= 6) break;
 const cardIdx = shuffledQueue[i];
 const c = updatedCards[cardIdx];
 if (!c.definition || c.definition.trim() === '') {
+batchTargets.push({ idx: cardIdx, term: c.term });
+}
+}
+if (batchTargets.length > 0) {
 try {
-const res = await window.Utils.fillCardWithAi(c.term, lang, currentApiKey, ['definition']);
-if (res && res.definition && res.definition.trim() !== '') {
-updatedCards[cardIdx] = { ...c, definition: res.definition };
+const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
+const prompt = `Translate these ${batchTargets.length} ${targetLang} items into Vietnamese. Keep definitions very short (1-6 words).
+Items:
+${batchTargets.map((b, i) => `${i+1}. "${b.term}"`).join('\n')}
+Return EXACTLY a JSON object with a "translations" array.
+Format: {"translations": ["nghĩa 1", "nghĩa 2", ...]}`;
+const schema = { type: "OBJECT", properties: { translations: { type: "ARRAY", items: { type: "STRING" } } }, required: ["translations"] };
+// GỌI API 1 LẦN DUY NHẤT CHO CẢ 6 CÂU
+const aiPromise = window.Utils.callGeminiApi(prompt, schema, currentApiKey);
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 15000));
+const res = await Promise.race([aiPromise, timeoutPromise]);
+const parsed = window.Utils.parseAiJson(res.text);
+if (parsed && parsed.translations && parsed.translations.length === batchTargets.length) {
+batchTargets.forEach((b, i) => {
+updatedCards[b.idx] = { ...updatedCards[b.idx], definition: parsed.translations[i] };
+});
 hasUpdates = true;
-enrichedCount++;
+if (res.tokenMetadata) {
+const used = res.tokenMetadata.totalTokenCount || 0;
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
-await new Promise(r => setTimeout(r, 1000)); // Chống 429
+}
 } catch(e) {
-console.warn("Pre-flight enrich error:", e);
-}
+console.warn("Pre-flight Batch enrich error:", e);
 }
 }
 // [GLOBAL SYNC] Đẩy dữ liệu dịch được lên Tầng 6
