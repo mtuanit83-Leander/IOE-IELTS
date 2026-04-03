@@ -3166,11 +3166,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.4
-// Last Updated: 2026-04-03 14:50
+// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.5
+// Last Updated: 2026-04-03 17:50
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind và nhận dữ liệu/hàm từ Logic Hook.
 // Quy tắc: Tuyệt đối không chứa thuật toán xáo trộn, tính điểm hay đếm ngược ở đây.
-// Cập nhật: UX Mobile (Bookmark Absolute), Equal Height Columns (Flex-1 Stretch), Warning Banner, Chuyển nút Kiểm tra lên Header, Xóa Footer.
+// Cập nhật: Sửa lỗi Header trôi tự do bằng cách áp dụng sticky top-0 và xóa overflow-hidden.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -3284,7 +3284,7 @@ Hủy bỏ
 );
 }
 return (
-<div className="w-full h-full flex flex-col items-center bg-gray-50 rounded-2xl shadow-xl border-2 border-gray-200 overflow-hidden relative animate-in">
+<div className="w-full h-full flex flex-col items-center bg-gray-50 rounded-2xl shadow-xl border-2 border-gray-200 relative animate-in">
 {showConfirmEnd && (
 <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
 <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center border-2 border-red-100 flex flex-col items-center">
@@ -3326,8 +3326,8 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* [UPDATED v1.4] Header Controls (Tích hợp nút Kiểm tra) */}
-<div className="w-full bg-white border-b p-3 flex justify-between items-center z-10 shrink-0 shadow-sm">
+{/* [UPDATED v1.5] Header Controls (Sticky) */}
+<div className="sticky top-0 w-full bg-white/95 backdrop-blur-sm border-b p-3 flex justify-between items-center z-[60] shrink-0 shadow-sm rounded-t-2xl">
 <div className="flex items-center gap-2">
 <button onClick={handleSaveAndBack} className="text-gray-500 hover:text-gray-700 flex items-center gap-1 font-bold text-sm bg-gray-50 px-2 py-1.5 rounded-lg border hover:bg-gray-100 transition-colors" title={t('backMenu')}>
 <Icons.ChevronLeft size={18} /> <span className="hidden sm:inline">{t('backMenu')}</span>
@@ -5715,10 +5715,10 @@ onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={set
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.7
-// Last Updated: 2026-04-03 15:40
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.8
+// Last Updated: 2026-04-03 16:05
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: Phân quyền Game (Chỉ hiện IOE/IELTS khi học Tiếng Anh). Bơm prop `lang` vào GameMenu.
+// Cập nhật: Kiến trúc chuẩn hóa: Rút màn hình Setup của Điền Từ & Tìm Lỗi Sai ra ngoài GameView để fix lỗi lệch trục UI.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onResume, gameSessions }) => {
@@ -5871,6 +5871,9 @@ const SafeScrambleSetup = window.Block5_3_ScrambleSetup || window.ScrambleSetup 
 const SafeMatchSetup = window.Block5_1_MatchSetup || window.MatchSetup || (() => <div className="text-red-500">Lỗi: MatchSetup chưa tải</div>);
 const SafeFillBlankGame = window.Block5_8_FillBlankGame || window.FillBlankGame || (() => <div className="text-red-500 p-4">Lỗi: FillBlankGame chưa tải</div>);
 const SafeSpotMistakeGame = window.Block5_10_SpotMistakeGame || window.SpotMistakeGame || (() => <div className="text-red-500 p-4">Lỗi: SpotMistakeGame chưa tải</div>);
+// [SAFE LOAD] - Load các Setup Component mới đưa ra ngoài Router
+const SafeFillBlankSetup = window.Block5_8_FillBlankSetup || window.FillBlankSetup || (() => <div className="text-red-500 p-4">Lỗi: FillBlankSetup chưa tải</div>);
+const SafeSpotMistakeSetup = window.Block5_10_SpotMistakeSetup || window.SpotMistakeSetup || (() => <div className="text-red-500 p-4">Lỗi: SpotMistakeSetup chưa tải</div>);
 React.useEffect(() => {
 const originalToast = window.globalShowToast;
 window.globalShowToast = (msg, type = 'success') => {
@@ -5903,18 +5906,13 @@ activeSessionIdRef.current = null;
 const handleSelectQuiz = () => setGameState('quiz_setup');
 const handleStartMatch = (aiMode = false) => setGameState('match_setup');
 const handleStartScramble = () => setGameState('scramble_setup');
-// Hàm bắt đầu Game Điền Từ (Vào thẳng không qua setup)
-const handleStartFillBlank = () => {
-handleStartGame('fillblank', {});
-};
-// Hàm bắt đầu Game Tìm Lỗi Sai (Vào thẳng, tự bật AI nếu có Key)
-const handleStartSpotMistake = () => {
-const hasKey = !!localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-handleStartGame('spotmistake', { isAiMode: hasKey });
-};
+// [UPDATED v1.8] Mở màn hình Setup thay vì chơi luôn
+const handleStartFillBlank = () => setGameState('fillblank_setup');
+const handleStartSpotMistake = () => setGameState('spotmistake_setup');
 // Hàm khởi động chung cho mọi Game
 const handleStartGame = async (type, config = {}) => {
-if (!cards || cards.length < 2) {
+if (!cards || cards.length < 2 && type !== 'fillblank' && type !== 'spotmistake') {
+// Fillblank/SpotMistake có chế độ AI Pure ko cần cards
 const msg = t('needMoreCards', { n: 2 }) || 'Cần ít nhất 2 thẻ để chơi';
 showToast ? showToast({ text: msg, type: 'error', id: Date.now() }) : alert(msg);
 return;
@@ -6022,7 +6020,7 @@ return (
 <GameMenu
 t={t}
 mainColor={mainColor}
-lang={lang} /* [NEW v1.7] Bơm Prop lang vào Menu */
+lang={lang}
 onSelectQuiz={handleSelectQuiz}
 onStartMatch={handleStartMatch}
 onStartScramble={handleStartScramble}
@@ -6064,6 +6062,28 @@ onBack={() => setGameState('menu')}
 t={t}
 mainColor={mainColor}
 onStart={(type, config) => handleStartGame('match', config)}
+onBack={() => setGameState('menu')}
+/>}
+</div>
+)}
+{/* [NEW v1.8] CẤU HÌNH ĐIỀN TỪ (FILL BLANK) */}
+{gameState === 'fillblank_setup' && (
+<div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">
+{SafeFillBlankSetup && <SafeFillBlankSetup
+t={t}
+mainColor={mainColor}
+onStart={(config) => handleStartGame('fillblank', config)}
+onBack={() => setGameState('menu')}
+/>}
+</div>
+)}
+{/* [NEW v1.8] CẤU HÌNH TÌM LỖI SAI (SPOT MISTAKE) */}
+{gameState === 'spotmistake_setup' && (
+<div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">
+{SafeSpotMistakeSetup && <SafeSpotMistakeSetup
+t={t}
+mainColor={mainColor}
+onStart={(config) => handleStartGame('spotmistake', config)}
 onBack={() => setGameState('menu')}
 />}
 </div>
@@ -6160,6 +6180,7 @@ savedState={gameSessions?.['quiz']}
 settings={settings}
 />
 }
+{/* [UPDATED v1.8] Bơm Config Setup vào Game Mới */}
 {gameType === 'fillblank' && SafeFillBlankGame &&
 <SafeFillBlankGame
 key={gameSessionId}
@@ -6167,7 +6188,7 @@ cards={cards}
 t={t}
 mainColor={mainColor}
 lang={lang}
-isAiMode={gameConfig.isAiMode}
+isAiMode={true}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
 onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
 onQuit={() => handleBack(null)}
@@ -6175,6 +6196,7 @@ onBookmark={onBookmark}
 notebook={notebook}
 onLogWrong={onLogWrong}
 settings={settings}
+config={gameConfig} // Pass config from Setup
 />
 }
 {gameType === 'spotmistake' && SafeSpotMistakeGame &&
@@ -6184,7 +6206,7 @@ cards={cards}
 t={t}
 mainColor={mainColor}
 lang={lang}
-isAiMode={gameConfig.isAiMode}
+isAiMode={true}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
 onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
 onQuit={() => handleBack(null)}
@@ -6192,6 +6214,7 @@ onBookmark={onBookmark}
 notebook={notebook}
 onLogWrong={onLogWrong}
 settings={settings}
+config={gameConfig} // Pass config from Setup
 />
 }
 </div>
@@ -6204,10 +6227,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 1.6
-// Last Updated: 2026-04-02 23:10
+// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 1.9
+// Last Updated: 2026-04-03 17:10
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Điền Từ (Fill-in-the-Blank).
-// Cập nhật: Áp dụng Dual-Payload (isSmartTarget) cho nút Bookmark để giấu đáp án khi chọn từ vựng.
+// Cập nhật: Sửa lỗi khuyết viền (Clipping Bug) bằng cách thêm padding px-2 cho khung cuộn.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const FillBlankSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -6226,7 +6249,7 @@ const levels = [
 ];
 const Icons = window.Icons;
 return (
-<div className="flex flex-col items-center w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
+<div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
 <div className="w-full flex items-center justify-between mb-6 shrink-0">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
 <Icons.ChevronLeft size={24}/>
@@ -6234,16 +6257,17 @@ return (
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Điền Từ</h2>
 <div className="w-10"></div>
 </div>
-<div className="w-full flex-1 overflow-y-auto custom-scrollbar pr-2">
+{/* [UPDATED v1.9] Thay pr-2 bằng px-2 pb-2 để tạo không gian "thở" cho các nút khi scale-105 */}
+<div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
 {/* Chọn Nguồn Dữ Liệu */}
-<div className="mb-8">
-<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Nguồn câu hỏi</label>
-<div className="grid grid-cols-2 gap-4">
+<div className="mb-6">
+<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
+<div className="grid grid-cols-2 gap-3">
 <button
 onClick={() => setSourceMode('card')}
-className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-md` : 'border-gray-100 bg-white opacity-60'}`}
+className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
 >
-<Icons.Layers size={32} className={sourceMode === 'card' ? `text-${mainColor}-600` : 'text-gray-400'} />
+<Icons.Layers size={24} className={sourceMode === 'card' ? `text-${mainColor}-600` : 'text-gray-400'} />
 <div className="text-center">
 <div className="font-bold text-gray-800 text-sm">Thẻ của tôi</div>
 <div className="text-[10px] text-gray-500">Đục lỗ từ trong Flashcard</div>
@@ -6251,9 +6275,9 @@ className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition
 </button>
 <button
 onClick={() => setSourceMode('ai_pure')}
-className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${sourceMode === 'ai_pure' ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-100 bg-white opacity-60'}`}
+className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'ai_pure' ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
 >
-<Icons.Sparkles size={32} className={sourceMode === 'ai_pure' ? 'text-blue-600' : 'text-gray-400'} />
+<Icons.Sparkles size={24} className={sourceMode === 'ai_pure' ? 'text-blue-600' : 'text-gray-400'} />
 <div className="text-center">
 <div className="font-bold text-gray-800 text-sm">AI Tự Sinh</div>
 <div className="text-[10px] text-gray-500">Tạo câu đố mới vô tận</div>
@@ -6261,17 +6285,17 @@ className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition
 </button>
 </div>
 </div>
-{/* Chọn Cấp độ (9 Level) */}
-<div className="mb-6">
-<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Chọn trình độ học tập</label>
-<div className="grid grid-cols-3 gap-3">
+{/* Chọn Cấp độ - 9 Level */}
+<div className="mb-4">
+<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Chọn trình độ học tập</label>
+<div className="grid grid-cols-3 gap-2">
 {levels.map((lv) => (
 <button
 key={lv.id}
 onClick={() => setLevel(lv.id)}
-className={`p-3 rounded-xl border-2 flex flex-col items-center transition-all ${level === lv.id ? `border-${mainColor}-500 bg-${mainColor}-50 scale-105 shadow-sm` : 'border-gray-50 bg-white hover:border-gray-200'}`}
+className={`p-2 rounded-xl border-2 flex flex-col items-center transition-all ${level === lv.id ? `border-${mainColor}-500 bg-${mainColor}-50 scale-105 shadow-sm` : 'border-gray-50 bg-white hover:border-gray-200 hover:scale-105'}`}
 >
-<span className="text-2xl mb-1">{lv.icon}</span>
+<span className="text-xl mb-0">{lv.icon}</span>
 <span className="font-bold text-[11px] text-gray-700 whitespace-nowrap">{lv.label}</span>
 <span className="text-[9px] text-gray-400">{lv.sub}</span>
 </button>
@@ -6282,7 +6306,7 @@ className={`p-3 rounded-xl border-2 flex flex-col items-center transition-all ${
 <div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0">
 <button
 onClick={() => onStart({ level, sourceMode })}
-className={`w-full py-5 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-xl hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}
+className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-2 active:scale-95 transition-transform text-lg`}
 >
 <Icons.Play size={24} fill="currentColor" /> BẮT ĐẦU LUYỆN TẬP
 </button>
@@ -6435,7 +6459,7 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 </div>
 <div className="flex items-center gap-1">
-{/* [UPDATED v1.6] Nút Bookmark sử dụng Dual-Payload để giấu đáp án */}
+{/* Nút Bookmark sử dụng Dual-Payload để giấu đáp án */}
 <button
 onClick={(e) => {
 e.stopPropagation();
@@ -6513,7 +6537,7 @@ Chưa chính xác! Bạn còn {3 - attempts} lượt thử.
 <div className="flex items-center gap-2">
 <Icons.X /> HẾT LƯỢT!
 </div>
-{/* [UPDATED v1.6] Nút Bookmark sử dụng Dual-Payload để giấu đáp án */}
+{/* Nút Bookmark sử dụng Dual-Payload để giấu đáp án */}
 <button
 onClick={(e) => {
 e.stopPropagation();
@@ -6581,10 +6605,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.8
-// Last Updated: 2026-04-02 16:50
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.9
+// Last Updated: 2026-04-03 16:20
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý luồng, Preload Queue, AI Pure Mode.
-// Cập nhật: Auto-Log lỗi sai lưu CẢ CÂU và dùng Unicode \u0332 để GẠCH CHÂN từ khóa (giữ ngữ cảnh).
+// Cập nhật: Kiến trúc chuẩn hóa - Loại bỏ hoàn toàn vỏ bọc Setup, biến thành Component Play thuần túy nhận config từ Router.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -6621,7 +6645,7 @@ const historyQueueRef = React.useRef([]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
-// [UPDATED v1.8] Cỗ máy đóng gói Lỗi sai (Lưu cả câu & Gạch chân từ khóa)
+// [UPDATED] Cỗ máy đóng gói Lỗi sai (Lưu cả câu & Gạch chân từ khóa)
 const logMistake = (question) => {
 if (!onLogWrong || !question) return;
 const baseData = question.origin || {};
@@ -6633,7 +6657,7 @@ const mistakeCard = {
 ...baseData, // Kế thừa toàn bộ dữ liệu thẻ gốc (âm thanh, ảnh, hán việt...)
 id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 type: 'mistake',
-term: sentenceWithUnderline, // [FIXED] Lưu CẢ CÂU đã gạch chân
+term: sentenceWithUnderline, // Lưu CẢ CÂU đã gạch chân
 definition: baseData.definition || question.hint || "Thử thách Fill in the Blank",
 example: question.displaySentence.replace('[__________]', question.targetWord), // Lưu câu gốc nguyên bản ở ví dụ
 tags: ['fillblank', level, sourceMode],
@@ -6854,7 +6878,6 @@ if (isGenerating) return;
 if (autoNextRef.current) clearTimeout(autoNextRef.current);
 const currentTotalPlayed = playedCount + 1;
 setPlayedCount(currentTotalPlayed);
-// Endless Mode
 // Rút đạn từ băng ra xài ngay lập tức
 if (preloadedQuestionsRef.current.length > 0) {
 const nextData = preloadedQuestionsRef.current.shift();
@@ -6951,31 +6974,8 @@ checkAnswer, handleNext: nextRound, handleSkip
 };
 };
 // --- 2. GAME WRAPPER (COMPONENT KẾT NỐI UI VÀ LOGIC) ---
-const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings }) => {
-const [gameStage, setGameStage] = React.useState('setup');
-const [config, setConfig] = React.useState(null);
-const handleStart = (setupConfig) => {
-setConfig(setupConfig);
-setGameStage('playing');
-};
-const FillBlankSetup = window.FillBlankSetup || window.Block5_8_FillBlankSetup;
-if (gameStage === 'setup') {
-return FillBlankSetup ? (
-<FillBlankSetup t={t} mainColor={mainColor} onStart={handleStart} onBack={onQuit} />
-) : (
-<div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankSetup (Block 5.8)</div>
-);
-}
-return (
-<FillBlankLogicWrapper
-cards={cards} t={t} onFinish={onFinish} onQuit={onQuit} mainColor={mainColor}
-lang={lang} isAiMode={isAiMode} apiKey={apiKey} config={config}
-onBookmark={onBookmark} notebook={notebook} onLogWrong={onLogWrong} settings={settings}
-/>
-);
-};
-// Component Nội bộ để bọc Hook an toàn
-const FillBlankLogicWrapper = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, config, onBookmark, notebook, onLogWrong, settings }) => {
+// [UPDATED v1.9] Gọt bỏ hoàn toàn gameStage='setup', trở thành Component thuần túy nhận config từ Router.
+const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config }) => {
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: onQuit,
@@ -6995,14 +6995,17 @@ onFinish,
 showToast: window.globalShowToast,
 onLogWrong: onLogWrong
 };
-const logic = useFillBlankLogic(cards, { ...config, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
+// Khởi tạo config an toàn nếu chưa có
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
+// Gắn logic trực tiếp
+const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
 // Tính toán isBookmarked để truyền xuống UI
 const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
 const FillBlankPlayScreen = window.FillBlankPlayScreen || window.Block5_8_FillBlankPlayScreen;
-if (!FillBlankPlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankPlayScreen</div>;
+if (!FillBlankPlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankPlayScreen (Vui lòng tải Block 5.8)</div>;
 return (
 <FillBlankPlayScreen
-t={t} mainColor={mainColor} config={config}
+t={t} mainColor={mainColor} config={safeConfig}
 {...logic}
 onBack={gameCallbacks.onBack}
 onEndGame={gameCallbacks.onEndGame}
@@ -7017,10 +7020,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake UI) - Version 1.13
-// Last Updated: 2026-04-02 22:55
+// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake UI) - Version 1.16
+// Last Updated: 2026-04-03 17:15
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Tìm Lỗi Sai (SpotMistake).
-// Cập nhật: Mở khóa nút Bookmark trên Header. Áp dụng Dual-Payload (isSmartTarget) để giấu đáp án khi chọn từ.
+// Cập nhật: Sửa lỗi khuyết viền (Clipping Bug) bằng cách thêm padding px-2 pb-2 cho khung cuộn Cấu hình.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -7039,7 +7042,7 @@ const levels = [
 ];
 const Icons = window.Icons;
 return (
-<div className="flex flex-col items-center w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
+<div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
 <div className="w-full flex items-center justify-between mb-6 shrink-0">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
 <Icons.ChevronLeft size={24}/>
@@ -7047,16 +7050,17 @@ return (
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Tìm Lỗi Sai</h2>
 <div className="w-10"></div>
 </div>
-<div className="w-full flex-1 overflow-y-auto custom-scrollbar pr-2">
-{/* Chọn Nguồn Dữ Liệu */}
-<div className="mb-8">
-<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Nguồn câu hỏi</label>
-<div className="grid grid-cols-2 gap-4">
+{/* [UPDATED v1.16] Thay pr-2 bằng px-2 pb-2 để tạo không gian "thở" cho các nút khi scale-105 */}
+<div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
+{/* Chọn Nguồn Dữ Liệu (Đã được thu gọn) */}
+<div className="mb-6">
+<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
+<div className="grid grid-cols-2 gap-3">
 <button
 onClick={() => setSourceMode('card')}
-className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-md` : 'border-gray-100 bg-white opacity-60'}`}
+className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
 >
-<Icons.Layers size={32} className={sourceMode === 'card' ? `text-${mainColor}-600` : 'text-gray-400'} />
+<Icons.Layers size={24} className={sourceMode === 'card' ? `text-${mainColor}-600` : 'text-gray-400'} />
 <div className="text-center">
 <div className="font-bold text-gray-800 text-sm">Thẻ của tôi</div>
 <div className="text-[10px] text-gray-500">Dựa trên Flashcard có sẵn</div>
@@ -7064,9 +7068,9 @@ className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition
 </button>
 <button
 onClick={() => setSourceMode('ai_pure')}
-className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${sourceMode === 'ai_pure' ? 'border-purple-500 bg-purple-50 shadow-md' : 'border-gray-100 bg-white opacity-60'}`}
+className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'ai_pure' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
 >
-<Icons.Sparkles size={32} className={sourceMode === 'ai_pure' ? 'text-purple-600' : 'text-gray-400'} />
+<Icons.Sparkles size={24} className={sourceMode === 'ai_pure' ? `text-${mainColor}-600` : 'text-gray-400'} />
 <div className="text-center">
 <div className="font-bold text-gray-800 text-sm">AI Tự Sinh</div>
 <div className="text-[10px] text-gray-500">Tạo câu đố mới vô tận</div>
@@ -7074,17 +7078,17 @@ className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition
 </button>
 </div>
 </div>
-{/* Chọn Cấp độ (9 Level) */}
-<div className="mb-6">
-<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Chọn trình độ học tập</label>
-<div className="grid grid-cols-3 gap-3">
+{/* Chọn Cấp độ (9 Level) - Đã được thu gọn */}
+<div className="mb-4">
+<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Chọn trình độ học tập</label>
+<div className="grid grid-cols-3 gap-2">
 {levels.map((lv) => (
 <button
 key={lv.id}
 onClick={() => setLevel(lv.id)}
-className={`p-3 rounded-xl border-2 flex flex-col items-center transition-all ${level === lv.id ? `border-${mainColor}-500 bg-${mainColor}-50 scale-105 shadow-sm` : 'border-gray-50 bg-white hover:border-gray-200'}`}
+className={`p-2 rounded-xl border-2 flex flex-col items-center transition-all ${level === lv.id ? `border-${mainColor}-500 bg-${mainColor}-50 scale-105 shadow-sm` : 'border-gray-50 bg-white hover:border-gray-200 hover:scale-105'}`}
 >
-<span className="text-2xl mb-1">{lv.icon}</span>
+<span className="text-xl mb-0">{lv.icon}</span>
 <span className="font-bold text-[11px] text-gray-700 whitespace-nowrap">{lv.label}</span>
 <span className="text-[9px] text-gray-400">{lv.sub}</span>
 </button>
@@ -7095,7 +7099,7 @@ className={`p-3 rounded-xl border-2 flex flex-col items-center transition-all ${
 <div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0">
 <button
 onClick={() => onStart({ level, sourceMode })}
-className={`w-full py-5 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-xl hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}
+className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}
 >
 <Icons.Play size={24} fill="currentColor" /> BẮT ĐẦU LUYỆN TẬP
 </button>
@@ -7222,14 +7226,12 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 </div>
 <div className="flex items-center gap-1">
-{/* [UPDATED v1.13] Nút Bookmark ĐƯỢC MỞ KHÓA, Gửi Dual-Payload */}
 <button
 onClick={(e) => {
 e.stopPropagation();
 if (currentQuestion && onSaveToNotebook) {
 const underlinedCorrection = currentQuestion.correction.split('').map(char => char + '\u0332').join('');
 const sentenceWithUnderline = currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, underlinedCorrection);
-// Gửi Payload 2 mặt: Display (câu sai giấu đáp án) và Save (câu đúng gạch chân)
 onSaveToNotebook({
 isSmartTarget: true,
 display: currentQuestion.wrongSentence,
@@ -7260,18 +7262,19 @@ title="Lưu vào Sổ tay"
 </div>
 </div>
 {/* 2. Khu vực Word Bricks */}
-<div className="w-full max-w-4xl flex flex-wrap justify-center gap-3">
+<div className="w-full max-w-4xl flex flex-wrap justify-center gap-3 relative z-10">
 {chunks.map((chunk, idx) => {
 const isSelected = selectedIndex === idx;
 const isCorrectSpot = stage === 'correct' && isSelected;
 const isFailed = checkStatus === 'failed';
 const isSuccess = checkStatus === 'success';
 let brickClass = `bg-white border-gray-200 text-gray-800 hover:border-${mainColor}-400 hover:shadow-md`;
+// UX Dimming Focus: Làm mờ các viên gạch xung quanh khi đang sửa từ
 if (stage === 'correct') {
 if (isCorrectSpot) {
-brickClass = `bg-yellow-50 border-yellow-400 text-yellow-700 scale-105 shadow-md font-bold ring-2 ring-yellow-200`;
+brickClass = `bg-yellow-50 border-yellow-400 text-yellow-700 scale-105 shadow-md font-bold ring-2 ring-yellow-200 z-20 relative`;
 } else {
-brickClass = `bg-gray-100 border-gray-200 text-gray-400 opacity-60 cursor-not-allowed`;
+brickClass = `bg-gray-100 border-gray-200 text-gray-400 opacity-30 blur-[1px] cursor-not-allowed transition-all duration-500`;
 }
 }
 if (isSelected && checkStatus === 'wrong_spot') {
@@ -7281,7 +7284,7 @@ brickClass = "bg-red-50 border-red-500 text-red-700 animate-[shake_0.4s_ease-in-
 if ((isFailed || isSuccess) && chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())) {
 brickClass = isSuccess ? "bg-green-500 border-green-600 text-white shadow-md font-bold" : "bg-red-500 border-red-600 text-white line-through font-bold shadow-md";
 } else if (isFailed || isSuccess) {
-brickClass = "bg-gray-100 border-gray-200 text-gray-400 opacity-50";
+brickClass = "bg-gray-100 border-gray-200 text-gray-400 opacity-50 blur-[1px]"; // Làm mờ luôn lúc show kết quả
 }
 return (
 <button
@@ -7297,7 +7300,7 @@ className={`px-4 py-3 rounded-xl border-2 text-xl md:text-2xl transition-all dur
 </div>
 {/* 3. Khu vực Nhập liệu (Giai đoạn 2) */}
 {stage === 'correct' && checkStatus !== 'success' && checkStatus !== 'failed' && (
-<div className="w-full max-w-lg mt-4 animate-in zoom-in">
+<div className="w-full max-w-lg mt-4 animate-in zoom-in relative z-20">
 <div className="flex flex-col items-center gap-4">
 <label className={`text-sm font-bold text-${mainColor}-600 uppercase tracking-widest`}>Sửa lại từ bị sai:</label>
 <div className="flex w-full gap-2">
@@ -7307,7 +7310,7 @@ type="text"
 value={inputBuffer}
 onChange={(e) => setInputBuffer(e.target.value)}
 onKeyDown={(e) => e.key === 'Enter' && handleCorrectionSubmit()}
-className={`flex-1 p-4 text-center text-2xl font-bold border-4 rounded-2xl outline-none transition-all ${checkStatus === 'wrong_correct' ? 'border-orange-400 bg-orange-50 text-orange-700 animate-[shake_0.4s_ease-in-out]' : `border-${mainColor}-200 focus:border-${mainColor}-500 focus:ring-4 focus:ring-${mainColor}-100 bg-white text-gray-800`}`}
+className={`flex-1 p-4 text-center text-2xl font-bold border-4 rounded-2xl outline-none transition-all ${checkStatus === 'wrong_correct' ? 'border-orange-400 bg-orange-50 text-orange-700 animate-[shake_0.4s_ease-in-out]' : `border-${mainColor}-200 focus:border-${mainColor}-500 focus:ring-4 focus:ring-${mainColor}-100 bg-white text-gray-800 shadow-xl`}`}
 placeholder="Nhập từ đúng..."
 autoComplete="off"
 spellCheck="false"
@@ -7325,13 +7328,12 @@ className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg 
 )}
 {/* 4. Hiển thị Giải thích & Nút Lưu Thẻ */}
 {(checkStatus === 'success' || checkStatus === 'failed') && (
-<div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-gray-100 overflow-visible animate-in slide-in-from-bottom-6 z-20">
+<div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-gray-100 overflow-visible animate-in slide-in-from-bottom-6 z-30">
 <div className={`p-4 ${checkStatus === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold rounded-t-2xl relative`}>
 <div className="flex items-center gap-2">
 {checkStatus === 'success' ? <Icons.CheckCircle /> : <Icons.X />}
 {checkStatus === 'success' ? 'CHÍNH XÁC!' : 'HẾT LƯỢT!'}
 </div>
-{/* Nút Bookmark chốt cuối vòng chơi (Cũng dùng Dual-Payload cho đồng bộ) */}
 <button
 onClick={(e) => {
 e.stopPropagation();
@@ -7374,7 +7376,7 @@ className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-cente
 )}
 </div>
 {/* Footer: Bảng điều khiển */}
-<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 {checkStatus === 'success' || checkStatus === 'failed' ? (
 <button
 onClick={nextRound}
@@ -7411,10 +7413,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.15
-// Last Updated: 2026-04-02 17:20
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.17
+// Last Updated: 2026-04-03 17:35
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode (9 Cấp độ).
-// Cải tiến: Nâng cấp Auto-Log lưu CẢ CÂU và dùng Unicode \u0332 để GẠCH CHÂN từ đã sửa đúng.
+// Cải tiến: Vá lỗ hổng thuật toán "Cắt 3 khúc thông minh" (Smart Chunking). Khắc phục triệt để lỗi vô nghiệm (vỡ cụm từ) và lỗi bắt nhầm chuỗi con.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -7453,7 +7455,7 @@ const historyQueueRef = React.useRef([]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
-// [UPDATED v1.15] Cỗ máy đóng gói Lỗi sai (Lưu cả câu đã sửa & Gạch chân từ đúng)
+// Cỗ máy đóng gói Lỗi sai (Lưu cả câu đã sửa & Gạch chân từ đúng)
 const logMistake = (question) => {
 if (!onLogWrong || !question) return;
 const baseData = question.origin || {};
@@ -7465,7 +7467,7 @@ const mistakeCard = {
 ...baseData, // Kế thừa toàn bộ dữ liệu thẻ gốc (âm thanh, ảnh, hán việt...)
 id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 type: 'mistake',
-term: sentenceWithUnderline, // [FIXED] Lưu CẢ CÂU đã sửa ĐÚNG và gạch chân
+term: sentenceWithUnderline, // Lưu CẢ CÂU đã sửa ĐÚNG và gạch chân
 definition: baseData.definition || question.hint || "Thử thách Spot Mistake",
 analysis: question.explanation,
 example: `Lỗi: ${question.wrongWord} -> Sửa: ${question.correction}`,
@@ -7619,7 +7621,7 @@ return result;
 } catch (e) {
 console.warn("AI SpotMistake Fallback:", e.message);
 if (isPureMode) {
-const fallbackList = window.IoeDataEngine.FALLBACK_DATA?.pure_spot_mistake || [{ wrongSentence: "He go to school.", wrongWord: "go", correction: "goes", explanation: "Lỗi chủ ngữ số ít" }];
+const fallbackList = window.IoeDataEngine.FALLBACK_DATA?.pure_spot_mistake || [{ wrongSentence: "The childrens is playing in the park.", wrongWord: "is", correction: "are", explanation: "Lỗi chủ ngữ số ít/nhiều" }];
 const fb = fallbackList[Math.floor(Math.random() * fallbackList.length)];
 return { ...fb, origin: { term: fb.wrongSentence.replace(fb.wrongWord, fb.correction), definition: "Offline Fallback", analysis: fb.explanation }, isAiGenerated: false };
 }
@@ -7645,25 +7647,57 @@ deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validInd
 return deckRef.current.shift() || 0;
 };
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// [UPDATED v1.17] Thuật toán Smart Chunking (Cắt 3 khúc & Chống bắt nhầm)
 const setupQuestion = (data) => {
 setCurrentQuestion(data);
 let wordChunks = [];
 const sentence = data.wrongSentence || "";
 const wrong = data.wrongWord || "";
 if (wrong && sentence) {
-const regex = new RegExp(escapeRegExp(wrong), 'i');
-const match = sentence.match(regex);
+let regex;
+try {
+// Ưu tiên 1: Sử dụng Word Boundary (\b) để chống bắt nhầm chuỗi con (VD: chữ 'go' dính vào 'good')
+regex = new RegExp(`\\b${escapeRegExp(wrong)}\\b`, 'i');
+} catch(e) {
+regex = new RegExp(escapeRegExp(wrong), 'i');
+}
+let match = sentence.match(regex);
+// Nếu không tìm thấy (do có chứa ký tự đặc biệt làm mất word boundary), dùng Fallback thô
+if (!match) {
+regex = new RegExp(escapeRegExp(wrong), 'i');
+match = sentence.match(regex);
+}
 if (match) {
+// 1. Phác đồ 3 khúc: Before - Target - After
 const index = match.index;
 const before = sentence.substring(0, index);
 const matchedText = sentence.substring(index, index + wrong.length);
 const after = sentence.substring(index + wrong.length);
-const beforeChunks = before.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `cb-${idx}-${Date.now()}`, text, isTarget: false }));
+// 2. Băm khúc Before
+const beforeChunks = before.split(' ')
+.filter(w => w.trim().length > 0)
+.map((text, idx) => ({ id: `cb-${idx}-${Date.now()}`, text, isTarget: false }));
+// 3. Giữ nguyên khúc Target BẤT CHẤP độ dài (Giải quyết triệt để lỗi tách cụm "Despite of")
 const matchChunk = { id: `cm-${Date.now()}`, text: matchedText, isTarget: true };
-const afterChunks = after.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `ca-${idx}-${Date.now()}`, text, isTarget: false }));
+// 4. Băm khúc After
+const afterChunks = after.split(' ')
+.filter(w => w.trim().length > 0)
+.map((text, idx) => ({ id: `ca-${idx}-${Date.now()}`, text, isTarget: false }));
 wordChunks = [...beforeChunks, matchChunk, ...afterChunks];
 } else {
-wordChunks = sentence.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `c-${idx}-${Date.now()}`, text, isTarget: text.toLowerCase().includes(wrong.toLowerCase()) }));
+// Fallback cứu hộ cuối cùng (Ít khi xảy ra)
+wordChunks = sentence.split(' ')
+.filter(w => w.trim().length > 0)
+.map((text, idx) => {
+// So sánh độ chính xác cao bằng cách gọt dấu câu
+const cleanText = text.replace(/[.,?!;:'"]/g, '').toLowerCase();
+const cleanWrong = wrong.replace(/[.,?!;:'"]/g, '').toLowerCase();
+return {
+id: `c-${idx}-${Date.now()}`,
+text,
+isTarget: cleanText === cleanWrong
+};
+});
 }
 } else {
 wordChunks = sentence.split(' ').map((text, idx) => ({ id: `c-${idx}-${Date.now()}`, text, isTarget: false }));
@@ -7755,7 +7789,6 @@ if (isGenerating) return;
 if (autoNextRef.current) clearTimeout(autoNextRef.current);
 const currentTotalPlayed = playedCount + 1;
 setPlayedCount(currentTotalPlayed);
-// Endless Mode: Bỏ chặn 10 câu
 if (preloadedQuestionsRef.current.length > 0) {
 const nextData = preloadedQuestionsRef.current.shift();
 setupQuestion(nextData);
@@ -7858,31 +7891,7 @@ handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound
 };
 };
 // --- 2. GAME WRAPPER (COMPONENT KẾT NỐI UI VÀ LOGIC) ---
-const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings }) => {
-const [gameStage, setGameStage] = React.useState('setup');
-const [config, setConfig] = React.useState(null);
-const handleStart = (setupConfig) => {
-setConfig(setupConfig);
-setGameStage('playing');
-};
-const SpotMistakeSetup = window.SpotMistakeSetup || window.Block5_10_SpotMistakeSetup;
-if (gameStage === 'setup') {
-return SpotMistakeSetup ? (
-<SpotMistakeSetup t={t} mainColor={mainColor} onStart={handleStart} onBack={onQuit} />
-) : (
-<div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakeSetup (Block 5.10)</div>
-);
-}
-return (
-<SpotMistakeLogicWrapper
-cards={cards} t={t} onFinish={onFinish} onQuit={onQuit} mainColor={mainColor}
-lang={lang} isAiMode={isAiMode} apiKey={apiKey} config={config}
-onBookmark={onBookmark} notebook={notebook} onLogWrong={onLogWrong} settings={settings}
-/>
-);
-};
-// Component Nội bộ để bọc Hook an toàn
-const SpotMistakeLogicWrapper = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, config, onBookmark, notebook, onLogWrong, settings }) => {
+const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config }) => {
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: onQuit,
@@ -7902,14 +7911,16 @@ onFinish,
 showToast: window.globalShowToast,
 onLogWrong: onLogWrong
 };
-const logic = useSpotMistakeLogic(cards, { ...config, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
+// Khởi tạo config an toàn nếu chưa có
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
+const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
 // Tính toán isBookmarked để truyền xuống UI
 const isBookmarked = logic.currentQuestion?.correction && notebook?.some(n => n.term.includes(logic.currentQuestion.correction));
 const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_SpotMistakePlayScreen;
 if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
 return (
 <SpotMistakePlayScreen
-t={t} mainColor={mainColor} config={config}
+t={t} mainColor={mainColor} config={safeConfig}
 {...logic}
 onBack={gameCallbacks.onBack}
 onEndGame={gameCallbacks.onEndGame}
