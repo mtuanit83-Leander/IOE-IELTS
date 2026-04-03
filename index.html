@@ -3166,11 +3166,10 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.5
-// Last Updated: 2026-04-03 17:50
+// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.12
+// Last Updated: 2026-04-03 22:45
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind và nhận dữ liệu/hàm từ Logic Hook.
-// Quy tắc: Tuyệt đối không chứa thuật toán xáo trộn, tính điểm hay đếm ngược ở đây.
-// Cập nhật: Sửa lỗi Header trôi tự do bằng cách áp dụng sticky top-0 và xóa overflow-hidden.
+// Cập nhật: Áp dụng kiến trúc "Bulletproof Fragment" - Tách rời hoàn toàn Header (Fixed) khỏi Thân Game (Animate-in) để chống lỗi trôi trang do Containing Block.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -3202,13 +3201,14 @@ if (!val) setAiMode(false);
 const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
 return (
-<div className="relative z-10 flex flex-col items-center w-full max-w-sm h-full animate-in slide-in-from-right-8 p-4">
-<div className="w-full flex items-center justify-between mb-6 shrink-0">
+/* Tháo lồng: Xóa h-full và overflow-y-auto để diệt tận gốc lỗi khuyết viền (Clipping) */
+<div className="relative z-10 flex flex-col items-center mx-auto w-full max-w-sm animate-in slide-in-from-right-8 py-4">
+<div className="w-full flex items-center justify-between mb-6">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500"><Icons.ChevronLeft size={24}/></button>
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Nối Ô</h2>
 <div className="w-10"></div>
 </div>
-<div className="w-full space-y-3 flex-1 overflow-y-auto custom-scrollbar p-1">
+<div className="w-full space-y-3 p-2">
 <MenuToggle active={hardMode} setActive={handleHardModeChange} icon={Icons.Layers} color="red" title="Chế độ Khó (Hard Mode)" subtitle={hardMode ? "Có từ nhiễu (Distractors)" : "Chỉ gồm các cặp đúng"} />
 <MenuToggle active={aiMode} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={!hardMode ? "(Yêu cầu bật Chế độ Khó)" : (aiMode ? "AI tạo nhiễu thông minh" : "Thuật toán nội bộ")} disabled={!hardMode} />
 <MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / vòng` : 'Thoải mái thời gian'} extra={
@@ -3224,7 +3224,7 @@ return (
 </div>
 } />
 </div>
-<div className="w-full mt-4 pt-4 border-t border-gray-100 space-y-3 bg-white pb-safe shrink-0">
+<div className="w-full mt-4 pt-4 border-t border-gray-100 space-y-3 pb-safe">
 <button onClick={handleStart} className={`w-full py-4 bg-${mainColor}-600 text-white rounded-xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-2 active:scale-95 transition-transform`}>
 <Icons.Play size={24} /> BẮT ĐẦU NGAY
 </button>
@@ -3283,10 +3283,12 @@ Hủy bỏ
 </div>
 );
 }
+// [UPDATED v1.12] Sử dụng React.Fragment để CÁCH LY hoàn toàn Header khỏi thẻ Animate-in bên dưới
 return (
-<div className="w-full h-full flex flex-col items-center bg-gray-50 rounded-2xl shadow-xl border-2 border-gray-200 relative animate-in">
+<React.Fragment>
+{/* --- POPUPS & OVERLAYS --- */}
 {showConfirmEnd && (
-<div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
+<div className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
 <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center border-2 border-red-100 flex flex-col items-center">
 <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-4">
 <Icons.AlertCircle size={32} />
@@ -3305,19 +3307,19 @@ Thoát ngay
 </div>
 )}
 {isGenerating && matchState.pairs && matchState.pairs.length > 0 && (
-<div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-in fade-in">
+<div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[150] flex flex-col items-center justify-center animate-in fade-in">
 <div className={`w-10 h-10 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-2`}></div>
 <p className={`text-${mainColor}-600 font-bold text-sm animate-pulse`}>{t('aiGenerating') || "AI đang thiết lập..."}</p>
 </div>
 )}
 {isLoading && !isGenerating && (
-<div className="absolute inset-0 bg-white/80 z-50 flex flex-col items-center justify-center backdrop-blur-sm animate-in fade-in">
+<div className="fixed inset-0 bg-white/80 z-[150] flex flex-col items-center justify-center backdrop-blur-sm animate-in fade-in">
 <div className={`w-10 h-10 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-2`}></div>
 <p className={`text-${mainColor}-600 font-bold text-sm animate-pulse`}>Đang thiết lập...</p>
 </div>
 )}
 {isPaused && (
-<div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in">
+<div className="fixed inset-0 z-[150] bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in">
 <div className="bg-white p-6 rounded-2xl shadow-2xl border-2 border-gray-100 flex flex-col items-center gap-4">
 <h3 className="text-2xl font-black text-gray-700 tracking-widest uppercase">TẠM DỪNG</h3>
 <button onClick={onPause} className={`w-16 h-16 rounded-full bg-${mainColor}-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform`}>
@@ -3326,8 +3328,10 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* [UPDATED v1.5] Header Controls (Sticky) */}
-<div className="sticky top-0 w-full bg-white/95 backdrop-blur-sm border-b p-3 flex justify-between items-center z-[60] shrink-0 shadow-sm rounded-t-2xl">
+{/* --- ĐẢO NỔI FIXED HEADER (Bulletproof Fixed Island) --- */}
+{/* Nằm ngoài thẻ animate-in nên miễn nhiễm 100% với lỗi Containing Block của CSS */}
+<div className="fixed top-0 left-0 right-0 z-[70] flex justify-center pt-0.5 sm:pt-1 px-2 sm:px-4 pointer-events-none">
+<div className={`w-full max-w-5xl bg-white/95 backdrop-blur-md border-2 border-gray-200 p-3 sm:px-4 flex justify-between items-center shadow-lg shadow-gray-200/50 rounded-2xl pointer-events-auto transition-all ${isPaused ? 'opacity-50 blur-sm' : ''}`}>
 <div className="flex items-center gap-2">
 <button onClick={handleSaveAndBack} className="text-gray-500 hover:text-gray-700 flex items-center gap-1 font-bold text-sm bg-gray-50 px-2 py-1.5 rounded-lg border hover:bg-gray-100 transition-colors" title={t('backMenu')}>
 <Icons.ChevronLeft size={18} /> <span className="hidden sm:inline">{t('backMenu')}</span>
@@ -3368,8 +3372,12 @@ className={`px-3 py-1.5 sm:px-4 bg-${mainColor}-600 text-white rounded-lg font-b
 </button>
 </div>
 </div>
-{/* Main Game Area */}
-<div className="flex-1 w-full overflow-y-auto custom-scrollbar p-4 flex flex-col items-center">
+</div>
+{/* --- THÂN GAME (Có hiệu ứng Animate-in và cuộn tự do) --- */}
+<div className="w-full flex flex-col items-center animate-in pb-10 relative px-2 sm:px-4">
+{/* Spacer tạo không gian để thân Game không bị Đảo nổi Header che mất */}
+<div className="w-full h-[80px] sm:h-[90px] shrink-0"></div>
+{/* KHU VỰC THỐNG KÊ */}
 <div className="w-full max-w-5xl flex justify-between items-center mb-4 transition-all duration-300">
 <div className="flex gap-2 text-xs font-bold items-center">
 <span className="text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100 flex items-center gap-1"><Icons.CheckCircle size={14} /> {gameStats.correct}</span>
@@ -3392,6 +3400,7 @@ className={`px-3 py-1.5 sm:px-4 bg-${mainColor}-600 text-white rounded-lg font-b
 <Icons.AlertCircle size={18} className="shrink-0" /> ⚠️ Chú ý: Chỉ có 4 cặp đúng. Có 2 ô là bẫy vô nghiệm!
 </div>
 )}
+{/* KHU VỰC THẺ NỐI */}
 <div id="match-container" className="relative w-full max-w-5xl bg-white p-4 md:p-8 rounded-2xl shadow-md grid grid-cols-2 gap-4 md:gap-16 border border-gray-100 select-none transition-all duration-300 flex-1 min-h-[400px]">
 <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
 {Object.entries(matchState.connections).map(([leftId, rightId]) => {
@@ -3436,7 +3445,7 @@ className={`relative flex-1 flex flex-col justify-center items-center w-full p-3
 </div>
 </div>
 </div>
-</div>
+</React.Fragment>
 );
 };
 // [QUAN TRỌNG] EXPORT GLOBAL
@@ -3444,12 +3453,15 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.4
-// Last Updated: 2026-04-03 14:15
-// Nhiệm vụ: Động cơ (Engine) xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: Thêm cơ chế Lọc/Auto-Enrich thẻ khuyết (Missing Data) và Phân tách Prompt AI cho Từ & Câu.
+// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.7
+// Last Updated: 2026-04-04 00:15
+// Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
+// Cập nhật: Tách bạch quyền hạn Auto-Enrich. Chốt bảo hiểm dịch nghĩa giờ đây hoạt động ĐỘC LẬP với công tắc "Thử thách AI" (isAiMode). Hạ ngưỡng quét khẩn cấp xuống 4 thẻ.
 // ==================================================================================
-const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave }) => {
+const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards }) => {
+// Ref lưu trữ bộ bài cục bộ để cập nhật đồng bộ mà không cần chờ React re-render
+const cardsRef = React.useRef(cards);
+React.useEffect(() => { cardsRef.current = cards; }, [cards]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (window.globalShowToast) {
 window.globalShowToast({ text: msg, type: type, id: Date.now() });
@@ -3523,7 +3535,6 @@ return arr.join('');
 }
 return text;
 }
-// Bẫy Câu (Micro-Grammar / Word Swap)
 if (isSentence) {
 const words = text.split(' ');
 if (words.length >= 3) {
@@ -3534,10 +3545,9 @@ return words.join(' ');
 return words[1] + ' ' + words[0];
 }
 } else {
-// Bẫy Từ (Spelling Trap)
 if (text.length >= 4) {
 const arr = text.split('');
-const idx = Math.floor(Math.random() * (arr.length - 3)) + 1; // Swap chữ ở giữa
+const idx = Math.floor(Math.random() * (arr.length - 3)) + 1;
 [arr[idx], arr[idx+1]] = [arr[idx+1], arr[idx]];
 return arr.join('');
 } else if (text.length >= 2) {
@@ -3550,67 +3560,81 @@ return text + "x";
 };
 const prepareRoundData = async (currentQueueState, currentDiff) => {
 let { queue, index } = currentQueueState;
-if (queue.length !== cards.length) {
-queue = window.Utils.shuffleArray(Array.from({ length: cards.length }, (_, i) => i));
+if (queue.length !== cardsRef.current.length) {
+queue = window.Utils.shuffleArray(Array.from({ length: cardsRef.current.length }, (_, i) => i));
 index = 0;
 }
 let isAiGenerated = false;
-// [NEW v1.4] HÀM LỌC & AUTO-ENRICH THẺ KHUYẾT THIẾU
+// HÀM LỌC & AUTO-ENRICH THẺ KHUYẾT THIẾU (TÍCH HỢP GLOBAL SYNC)
 const getValidCards = async (startIndex, targetCount, exclusionList = []) => {
 let result = [];
 let currIdx = startIndex;
 let attempts = 0;
-while (result.length < targetCount && attempts < cards.length) {
+let hasGlobalUpdates = false;
+let updatedCards = [...cardsRef.current];
+while (result.length < targetCount && attempts < cardsRef.current.length) {
 if (currIdx >= queue.length) {
 queue = window.Utils.shuffleArray([...queue]);
 currIdx = 0;
 }
 const cardIdx = queue[currIdx];
-let c = { ...cards[cardIdx] }; // Clone để xử lý an toàn
+let c = { ...updatedCards[cardIdx] };
 currIdx++;
 attempts++;
 if (exclusionList.some(ex => ex.term === c.term)) continue;
-// Xử lý thẻ khuyết nghĩa (definition)
+// [UPDATED v1.7] Xử lý thẻ khuyết nghĩa - HOẠT ĐỘNG ĐỘC LẬP VỚI isAiMode
 if (!c.definition || c.definition.trim() === "") {
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-if (isAiMode && currentApiKey && window.Utils.fillCardWithAi) {
+// CHỈ CẦN CÓ API KEY LÀ DỊCH NGHĨA. KHÔNG CẦN QUAN TÂM BẬT/TẮT BẪY AI (isAiMode).
+if (currentApiKey && window.Utils.fillCardWithAi) {
 try {
 const enrichPromise = window.Utils.fillCardWithAi(c.term, lang, currentApiKey, ['definition']);
 const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 3500));
 const res = await Promise.race([enrichPromise, timeoutPromise]);
 if (res && res.definition && res.definition.trim() !== "") {
 c.definition = res.definition;
-result.push(c);
+result.push(c); // Đủ chuẩn đưa vào game
+// Ghi đè vào mảng cục bộ
+updatedCards[cardIdx] = { ...c };
+hasGlobalUpdates = true;
 }
 } catch (e) {
-console.warn("Auto-enrich failed (Timeout/Error), skipping card:", c.term);
-// Bỏ qua (Skip) thẻ này, vòng lặp tự chạy tiếp
+console.warn("Background enrich failed, skipping:", c.term);
 }
 }
-// Nếu không có AI hoặc AI thất bại -> Bỏ qua thẻ này luôn
 } else {
 result.push(c); // Thẻ hợp lệ
 }
 }
-// Fallback: Lấy tạm dữ liệu nếu toàn bộ bộ bài đều khuyết và không có AI
+// [GLOBAL SYNC] Nếu có thẻ được dịch ngầm thành công, đồng bộ lên Tầng 6
+if (hasGlobalUpdates) {
+cardsRef.current = updatedCards;
+if (onUpdateCards) onUpdateCards(updatedCards);
+}
+// Fallback: Lấy tạm dữ liệu nếu toàn bộ bộ bài đều khuyết và không có API Key
 if (result.length < targetCount) {
-const remaining = cards.filter(c => !exclusionList.some(ex => ex.term === c.term) && !result.some(r => r.term === c.term));
+const remaining = cardsRef.current.filter(c => !exclusionList.some(ex => ex.term === c.term) && !result.some(r => r.term === c.term));
 result.push(...remaining.slice(0, targetCount - result.length));
 }
 return { validCards: result, nextIndex: currIdx, updatedQueue: queue };
 };
 // --- HARD MODE: CỘT ĐỐI XỨNG CÓ BẪY & BẪY TÁI SỬ DỤNG ---
 if (currentDiff === 'hard') {
-const count = Math.min(4, cards.length); // Tiêu thụ 4 thẻ thật
+const count = Math.min(4, cardsRef.current.length); // Tiêu thụ 4 thẻ thật
 // 1. Quét lấy 4 thẻ chuẩn
 const { validCards: realCards, nextIndex: newIndex, updatedQueue: newQueue } = await getValidCards(index, count);
 queue = newQueue;
-// 2. Mượn 2 thẻ bẫy (Sẽ gặp lại trong tương lai)
-let { validCards: trapCards } = await getValidCards(newIndex, 2, realCards);
-// Fallback nếu mượn không đủ
-if (trapCards.length < 2) {
-const fallbackTraps = window.Utils.shuffleArray(cards.filter(c => !realCards.some(r => r.term === c.term))).slice(0, 2 - trapCards.length);
-trapCards = [...trapCards, ...fallbackTraps];
+// 2. Mượn 2 thẻ bẫy bằng kỹ thuật "Ghost Fetch"
+let trapCards = [];
+const availableTraps = cardsRef.current.filter(c =>
+!realCards.some(r => r.term === c.term) &&
+c.definition && c.definition.trim() !== ""
+);
+if (availableTraps.length >= 2) {
+trapCards = window.Utils.shuffleArray([...availableTraps]).slice(0, 2);
+} else {
+const absoluteFallback = cardsRef.current.filter(c => !realCards.some(r => r.term === c.term));
+trapCards = window.Utils.shuffleArray([...absoluteFallback]).slice(0, 2);
 }
 // 3. Dựng Cột Trái (Nghĩa) - 6 Ô
 const leftItems = [...realCards, ...trapCards].map((c, i) => ({
@@ -3635,19 +3659,19 @@ for (let i = 0; i < trapCards.length; i++) {
 const trapCard = trapCards[i];
 let distortedTerm = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
+// TRONG KHI ĐÓ: Tạo bẫy AI thì VẪN bắt buộc phải có công tắc isAiMode
 if (isAiMode && window.Utils.callGeminiApi && currentApiKey) {
 try {
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(trapCard.term) : trapCard.term.includes(' ');
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
 let prompt = "";
-// [NEW v1.4] SMART PROMPTING: Tách biệt Tư duy AI cho Từ và Câu
 if (isSentence) {
 prompt = `Language: ${targetLang}. Target: "${trapCard.term}". Generate EXACTLY ONE grammatically incorrect version of this sentence (e.g., wrong tense, wrong preposition, subject-verb agreement). It must look very similar to the original sentence. Output ONLY the incorrect string, nothing else.`;
 } else {
 prompt = `Language: ${targetLang}. Target: "${trapCard.term}". Generate EXACTLY ONE misspelled version, a homophone, or a visually similar character of this target (e.g., swapped letters, missing/extra double consonants). It must look visually similar to the original word. Output ONLY the incorrect string, nothing else.`;
 }
 const aiPromise = window.Utils.callGeminiApi(prompt, null, currentApiKey);
-const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 4000)); // Timeout siêu tốc 4s
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 4000));
 const res = await Promise.race([aiPromise, timeoutPromise]);
 if (res && res.text) {
 distortedTerm = res.text.replace(/["'`*]/g, '').trim();
@@ -3655,7 +3679,7 @@ isAiGenerated = true;
 }
 } catch(e) { console.warn("AI Distortion fallback to Offline Engine"); }
 }
-// Fallback xuống Offline Distortion Engine nếu AI xịt hoặc bị tắt
+// Fallback xuống Offline Distortion Engine nếu AI xịt hoặc BỊ TẮT
 if (!distortedTerm || distortedTerm === trapCard.term) {
 distortedTerm = createDistortedTerm(trapCard.term, lang);
 }
@@ -3665,12 +3689,11 @@ term: distortedTerm,
 isTrap: true
 });
 }
-// [NEW] Thuật toán xáo trộn chống bẫy liền kề (Non-adjacent traps)
+// Thuật toán xáo trộn chống bẫy liền kề
 const shuffleNoAdjacentTraps = (arr) => {
 let res = [...arr];
 let valid = false;
 let tries = 0;
-// Xáo trộn lại tối đa 50 lần nếu phát hiện 2 bẫy nằm cạnh nhau
 while (!valid && tries < 50) {
 res = window.Utils.shuffleArray(res);
 valid = true;
@@ -3690,7 +3713,7 @@ isAiGenerated
 };
 } else {
 // --- EASY MODE: 6 CẶP CHUẨN XÁC ĐỐI XỨNG ---
-const count = Math.min(6, cards.length);
+const count = Math.min(6, cardsRef.current.length);
 const { validCards: realCards, nextIndex: newIndex, updatedQueue: newQueue } = await getValidCards(index, count);
 queue = newQueue;
 const leftItems = realCards.map((c, i) => ({
@@ -3770,15 +3793,61 @@ console.error("Fatal Fallback Error:", fatalErr);
 }
 }
 };
-const startMatch = React.useCallback(() => {
-const indices = Array.from({ length: cards.length }, (_, i) => i);
-matchQueueRef.current = { queue: window.Utils.shuffleArray(indices), index: 0 };
-nextRoundRef.current = null;
+// Khởi tạo Game và Chốt bảo hiểm Pre-flight
+const startMatch = async () => {
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
+const indices = Array.from({ length: cardsRef.current.length }, (_, i) => i);
+const shuffledQueue = window.Utils.shuffleArray(indices);
+// --- CHỐT BẢO HIỂM "ANTI-NO-DEFINITION" ---
+const missingCount = cardsRef.current.filter(c => !c.definition || c.definition.trim() === '').length;
+const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
+// [UPDATED v1.7] Không cần isAiMode. Hạ ngưỡng từ 6 xuống 4 thẻ vì Hard mode lấy 4 thẻ.
+if (missingCount >= 4) {
+if (currentApiKey) {
+setIsGenerating(true); // Hiển thị màn hình chờ
+safeShowToast(`Phát hiện thẻ thiếu nghĩa. AI đang tự động biên dịch vòng 1...`, "info");
+let updatedCards = [...cardsRef.current];
+let hasUpdates = false;
+let enrichedCount = 0;
+// Trích xuất tối đa 6 thẻ thiếu nghĩa đầu tiên trong hàng đợi để dịch cuốn chiếu
+for (let i = 0; i < shuffledQueue.length; i++) {
+if (enrichedCount >= 6) break;
+const cardIdx = shuffledQueue[i];
+const c = updatedCards[cardIdx];
+if (!c.definition || c.definition.trim() === '') {
+try {
+const res = await window.Utils.fillCardWithAi(c.term, lang, currentApiKey, ['definition']);
+if (res && res.definition && res.definition.trim() !== '') {
+updatedCards[cardIdx] = { ...c, definition: res.definition };
+hasUpdates = true;
+enrichedCount++;
+}
+await new Promise(r => setTimeout(r, 1000)); // Chống 429
+} catch(e) {
+console.warn("Pre-flight enrich error:", e);
+}
+}
+}
+// [GLOBAL SYNC] Đẩy dữ liệu dịch được lên Tầng 6
+if (hasUpdates) {
+cardsRef.current = updatedCards;
+if (onUpdateCards) onUpdateCards(updatedCards);
+}
+safeShowToast("Đã chuẩn bị xong dữ liệu! Bắt đầu trò chơi.", "success");
+} else {
+safeShowToast("Bộ bài có nhiều thẻ thiếu nghĩa. Bạn nên nhập API Key để tự động dịch!", "warning");
+}
+}
+matchQueueRef.current = { queue: shuffledQueue, index: 0 };
+nextRoundRef.current = null;
 generateMatch();
-}, [cards]);
+};
+// Đóng đinh startMatch chỉ chạy 1 lần khi Game Mount
+const hasStartedRef = React.useRef(false);
 React.useEffect(() => {
+if (hasStartedRef.current) return;
+hasStartedRef.current = true;
 if (savedState && savedState.matchState) {
 setMatchState(JSON.parse(JSON.stringify(savedState.matchState)));
 setDifficulty(savedState.difficulty || 'easy');
@@ -3791,7 +3860,7 @@ setIsGenerating(false);
 } else {
 startMatch();
 }
-}, [startMatch]);
+}, []);
 React.useEffect(() => {
 if (!timerMode || matchState.isChecked || isPaused || isLoading || isGenerating) return;
 if (timeLeft > 0) {
@@ -5715,10 +5784,10 @@ onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={set
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.8
-// Last Updated: 2026-04-03 16:05
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.9
+// Last Updated: 2026-04-04 00:15
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: Kiến trúc chuẩn hóa: Rút màn hình Setup của Điền Từ & Tìm Lỗi Sai ra ngoài GameView để fix lỗi lệch trục UI.
+// Cập nhật: Khai báo cổng `onUpdateCards` ở GameView và truyền xuống MatchGame để phục vụ tính năng Global Sync (Lưu vĩnh viễn bản dịch AI).
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onResume, gameSessions }) => {
@@ -5850,7 +5919,8 @@ title="Bật/Tắt AI tạo nhiễu khó"
 );
 };
 // 2. GAME VIEW (Controller chính - Clean Router)
-const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings }) => {
+// [UPDATED v1.9] Nhận thêm prop `onUpdateCards` để chuyển dữ liệu xuống MatchGame
+const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings, onUpdateCards }) => {
 // Chỉ giữ lại State quản lý luồng màn hình (Menu -> Playing -> Result)
 const [gameState, setGameState] = React.useState('menu');
 const [gameType, setGameType] = React.useState(null);
@@ -5906,7 +5976,6 @@ activeSessionIdRef.current = null;
 const handleSelectQuiz = () => setGameState('quiz_setup');
 const handleStartMatch = (aiMode = false) => setGameState('match_setup');
 const handleStartScramble = () => setGameState('scramble_setup');
-// [UPDATED v1.8] Mở màn hình Setup thay vì chơi luôn
 const handleStartFillBlank = () => setGameState('fillblank_setup');
 const handleStartSpotMistake = () => setGameState('spotmistake_setup');
 // Hàm khởi động chung cho mọi Game
@@ -6066,7 +6135,7 @@ onBack={() => setGameState('menu')}
 />}
 </div>
 )}
-{/* [NEW v1.8] CẤU HÌNH ĐIỀN TỪ (FILL BLANK) */}
+{/* 5. CẤU HÌNH ĐIỀN TỪ (FILL BLANK) */}
 {gameState === 'fillblank_setup' && (
 <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">
 {SafeFillBlankSetup && <SafeFillBlankSetup
@@ -6077,7 +6146,7 @@ onBack={() => setGameState('menu')}
 />}
 </div>
 )}
-{/* [NEW v1.8] CẤU HÌNH TÌM LỖI SAI (SPOT MISTAKE) */}
+{/* 6. CẤU HÌNH TÌM LỖI SAI (SPOT MISTAKE) */}
 {gameState === 'spotmistake_setup' && (
 <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">
 {SafeSpotMistakeSetup && <SafeSpotMistakeSetup
@@ -6088,7 +6157,7 @@ onBack={() => setGameState('menu')}
 />}
 </div>
 )}
-{/* 5. MÀN HÌNH KẾT QUẢ */}
+{/* 7. MÀN HÌNH KẾT QUẢ */}
 {gameState === 'result' && (
 <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">
 <div className="w-full h-full bg-white rounded-2xl shadow-xl flex flex-col items-center justify-center p-6 border-2 border-gray-100 animate-in relative overflow-hidden">
@@ -6106,9 +6175,10 @@ onBack={() => setGameState('menu')}
 </div>
 </div>
 )}
-{/* 6. MÀN HÌNH CHƠI GAME (PLAYING) */}
+{/* 8. MÀN HÌNH CHƠI GAME (PLAYING) */}
 {gameState === 'playing' && (
 <div className="block w-full h-full">
+{/* [UPDATED v1.9] Nối cáp onUpdateCards vào MatchGame */}
 {gameType === 'match' && SafeMatchGame &&
 <SafeMatchGame
 key={gameSessionId}
@@ -6126,6 +6196,7 @@ onLogWrong={onLogWrong}
 onBack={handleBack}
 onEndGame={handleEndGame}
 onAutoSave={handleAutoSave}
+onUpdateCards={onUpdateCards}
 savedState={gameSessions?.['match']}
 settings={settings}
 />
@@ -6180,7 +6251,6 @@ savedState={gameSessions?.['quiz']}
 settings={settings}
 />
 }
-{/* [UPDATED v1.8] Bơm Config Setup vào Game Mới */}
 {gameType === 'fillblank' && SafeFillBlankGame &&
 <SafeFillBlankGame
 key={gameSessionId}
@@ -6196,7 +6266,7 @@ onBookmark={onBookmark}
 notebook={notebook}
 onLogWrong={onLogWrong}
 settings={settings}
-config={gameConfig} // Pass config from Setup
+config={gameConfig}
 />
 }
 {gameType === 'spotmistake' && SafeSpotMistakeGame &&
@@ -6214,7 +6284,7 @@ onBookmark={onBookmark}
 notebook={notebook}
 onLogWrong={onLogWrong}
 settings={settings}
-config={gameConfig} // Pass config from Setup
+config={gameConfig}
 />
 }
 </div>
@@ -9468,11 +9538,11 @@ refs: { audioTimeoutRef: core.audioTimeoutRef }
 window.Block6_4_useAppLogic = useAppLogic;
 window.Block13_useAppLogic = useAppLogic; // Fallback
 window.useAppLogic = useAppLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.3
-// Last Updated: 2026-04-02 22:50
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.4
+// Last Updated: 2026-04-04 00:20
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
 // Quy tắc: Khởi tạo và kết nối các tầng giao diện (Tầng 3,4,5) với tầng logic (Tầng 6).
-// Cập nhật: Nâng cấp Smart Bookmark Proxy hỗ trợ Dual-Payload (isSmartTarget) để giấu đáp án Game.
+// Cập nhật: Cắm cáp onUpdateCards vào GameView để kích hoạt Global Sync (Lưu vĩnh viễn bản dịch AI từ Game Nối Ô).
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -9574,7 +9644,14 @@ gameSessions: coreState.gameSessions,
 setGameSessions: coreState.setGameSessions,
 setIsGamePlaying: coreState.setIsGamePlaying,
 // Truyền settings để áp dụng Font chữ cho Game
-settings: coreState.settings
+settings: coreState.settings,
+// [NEW v1.4] Nối cáp đồng bộ dữ liệu từ Game (đã dịch nghĩa AI) lên Tầng 6 & LocalStorage
+onUpdateCards: (newCards) => {
+coreState.setCards(newCards);
+if (window.CONFIG_SAMPLES && window.CONFIG_SAMPLES[coreState.lang]) {
+window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[coreState.lang].dataKey, newCards);
+}
+}
 });
 } else {
 // B. Màn hình Học (Flashcard) - Mặc định
