@@ -3166,11 +3166,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.3
-// Last Updated: 2026-04-03 14:21
+// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.4
+// Last Updated: 2026-04-03 14:50
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind và nhận dữ liệu/hàm từ Logic Hook.
 // Quy tắc: Tuyệt đối không chứa thuật toán xáo trộn, tính điểm hay đếm ngược ở đây.
-// Cập nhật: UX Mobile (Bookmark Absolute), Equal Height Columns (Flex-1 Stretch), Warning Banner cho Hard Mode.
+// Cập nhật: UX Mobile (Bookmark Absolute), Equal Height Columns (Flex-1 Stretch), Warning Banner, Chuyển nút Kiểm tra lên Header, Xóa Footer.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -3326,20 +3326,47 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* Header Controls */}
-<div className="w-full bg-white border-b p-3 flex justify-between items-center z-10 shrink-0">
+{/* [UPDATED v1.4] Header Controls (Tích hợp nút Kiểm tra) */}
+<div className="w-full bg-white border-b p-3 flex justify-between items-center z-10 shrink-0 shadow-sm">
 <div className="flex items-center gap-2">
-<button onClick={handleSaveAndBack} className="text-gray-500 hover:text-gray-700 flex items-center gap-1 font-bold text-sm"><Icons.ChevronLeft size={18} /> {t('backMenu')}</button>
+<button onClick={handleSaveAndBack} className="text-gray-500 hover:text-gray-700 flex items-center gap-1 font-bold text-sm bg-gray-50 px-2 py-1.5 rounded-lg border hover:bg-gray-100 transition-colors" title={t('backMenu')}>
+<Icons.ChevronLeft size={18} /> <span className="hidden sm:inline">{t('backMenu')}</span>
+</button>
 </div>
 <div className="text-center flex flex-col items-center">
-<h2 className={`font-bold text-${mainColor}-700`}>{t('modeMatch')}</h2>
+<h2 className={`font-bold text-${mainColor}-700 text-lg`}>{t('modeMatch')}</h2>
 {timerMode && !matchState.isChecked && (
-<span className={`text-xs font-mono font-bold ${getTimerColor(timeLeft, timeLimit)} flex items-center gap-1`}>
+<span className={`text-xs font-mono font-bold ${getTimerColor(timeLeft, timeLimit)} flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded-full mt-0.5 border`}>
 <Icons.Clock size={12} /> {timeLeft}s
 </span>
 )}
 </div>
-<button onClick={() => setShowConfirmEnd(true)} className="text-red-500 hover:text-red-700 font-bold text-xs border border-red-200 bg-red-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"><Icons.X size={14} /> {t('endGame')}</button>
+<div className="flex items-center gap-2">
+{!matchState.isChecked ? (
+<button
+onClick={() => checkMatch()}
+disabled={Object.keys(matchState.connections).length === 0}
+className={`px-3 py-1.5 sm:px-4 bg-${mainColor}-600 text-white rounded-lg font-bold shadow-sm hover:bg-${mainColor}-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all text-sm flex items-center gap-1`}
+>
+<Icons.Check size={16} /> <span className="hidden sm:inline">{t('matchCheckBtn')}</span>
+</button>
+) : (
+<div className="flex items-center gap-2 animate-in fade-in">
+<span className={`text-[10px] font-bold text-${mainColor}-600 bg-${mainColor}-50 px-2 py-1 rounded-full border border-${mainColor}-200 hidden lg:inline-block`}>
+{t('matchAutoNext', { n: matchState.timer })}
+</span>
+<button
+onClick={() => generateMatch()}
+className={`px-3 py-1.5 sm:px-4 bg-${mainColor}-600 text-white rounded-lg font-bold shadow-sm hover:bg-${mainColor}-700 active:scale-95 transition-all text-sm flex items-center gap-1`}
+>
+<span className="hidden sm:inline">{t('matchNextBtn')}</span> <Icons.ChevronRight size={16} />
+</button>
+</div>
+)}
+<button onClick={() => setShowConfirmEnd(true)} className="text-red-500 hover:text-red-700 hover:bg-red-100 font-bold text-xs border border-red-200 bg-red-50 p-1.5 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-1" title={t('endGame')}>
+<Icons.X size={16} /> <span className="hidden sm:inline">{t('endGame')}</span>
+</button>
+</div>
 </div>
 {/* Main Game Area */}
 <div className="flex-1 w-full overflow-y-auto custom-scrollbar p-4 flex flex-col items-center">
@@ -3360,7 +3387,6 @@ Thoát ngay
 </span>
 </div>
 </div>
-{/* [NEW v1.3] Thông báo cảnh báo bẫy ở Chế độ Khó */}
 {difficulty === 'hard' && (
 <div className="w-full max-w-5xl mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 animate-pulse shadow-sm text-center">
 <Icons.AlertCircle size={18} className="shrink-0" /> ⚠️ Chú ý: Chỉ có 4 cặp đúng. Có 2 ô là bẫy vô nghiệm!
@@ -3388,7 +3414,6 @@ const isBookmarked = notebook?.some(n => n.term === item.term);
 return (
 <button key={item.id} id={`match-left-${item.id}`} onClick={() => handleMatchClick('left', item.id)} disabled={matchState.isChecked || isPaused} style={{ fontFamily: 'inherit' }}
 className={`relative flex-1 flex flex-col justify-center items-center w-full p-3 md:p-4 pt-8 md:pt-10 rounded-xl border-2 text-center text-sm md:text-base lg:text-lg font-bold transition-all shadow-sm ${matchState.selectedLeft === item.id ? `border-${mainColor}-500 bg-${mainColor}-50 text-${mainColor}-700 ring-2 ring-${mainColor}-200` : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-white hover:border-gray-300'} ${matchState.connections[item.id] !== undefined ? `border-${mainColor}-300 bg-${mainColor}-50 opacity-90` : ''}`}>
-{/* [NEW v1.3] Bookmark Absolute Top-Left để tránh tranh giành không gian text */}
 <div className={`absolute top-2 left-2 p-1.5 rounded-full transition-colors z-30 shrink-0 ${isBookmarked ? 'text-yellow-500 bg-yellow-50 shadow-sm' : 'text-gray-300 hover:text-yellow-500 hover:bg-gray-100'}`} onClick={(e) => { e.stopPropagation(); if (onBookmark) onBookmark(item.term); }} title={t('addToNotebook')}>
 <Icons.Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
 </div>
@@ -3410,20 +3435,6 @@ className={`relative flex-1 flex flex-col justify-center items-center w-full p-3
 })}
 </div>
 </div>
-</div>
-{/* Footer Controls */}
-<div className="w-full p-4 border-t bg-white z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0">
-{!matchState.isChecked ? (
-<button onClick={() => checkMatch()} disabled={Object.keys(matchState.connections).length === 0} className={`w-full py-4 bg-${mainColor}-600 text-white rounded-xl font-bold shadow-lg hover:bg-${mainColor}-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform text-lg`}>{t('matchCheckBtn')}</button>
-) : (
-<div className="flex gap-3 items-center animate-in">
-<div className="flex-1 bg-gray-100 rounded-xl h-12 flex items-center justify-center relative overflow-hidden shadow-inner">
-<div className={`absolute left-0 top-0 bottom-0 bg-${mainColor}-200 transition-all duration-1000 ease-linear`} style={{ width: `${(matchState.timer / 10) * 100}%` }}></div>
-<span className={`relative z-10 font-bold text-${mainColor}-900 text-sm`}>{t('matchAutoNext', { n: matchState.timer })}</span>
-</div>
-<button onClick={() => generateMatch()} className={`px-8 py-3 h-12 bg-${mainColor}-600 text-white rounded-xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-2 active:scale-95 transition-transform`}>{t('matchNextBtn')} <Icons.ChevronRight size={20} /></button>
-</div>
-)}
 </div>
 </div>
 );
