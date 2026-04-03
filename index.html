@@ -5715,13 +5715,13 @@ onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={set
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.6
-// Last Updated: 2026-04-02 16:45
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.7
+// Last Updated: 2026-04-03 15:40
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: Cắm cáp (Bơm Props) đầy đủ cho FillBlankGame để kích hoạt Smart Bookmark. Cập nhật hàm onFinish nhận wrongCount.
+// Cập nhật: Phân quyền Game (Chỉ hiện IOE/IELTS khi học Tiếng Anh). Bơm prop `lang` vào GameMenu.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
-const GameMenu = ({ t, mainColor, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onResume, gameSessions }) => {
+const GameMenu = ({ t, mainColor, lang, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onResume, gameSessions }) => {
 const [matchAiMode, setMatchAiMode] = React.useState(false);
 const ResumeBadge = ({ type }) => {
 if (!gameSessions || !gameSessions[type]) return null;
@@ -5813,8 +5813,9 @@ title="Bật/Tắt AI tạo nhiễu khó"
 <ResumeBadge type="scramble" />
 </div>
 </div>
-{/* 4. Nút Game FillBlank */}
-<div className="relative group w-full mt-4">
+{/* 4. Nút Game FillBlank (CHỈ HIỆN KHI HỌC TIẾNG ANH) */}
+{lang === 'en' && (
+<div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
 <button onClick={handleFillBlankClick} className={`w-full p-4 bg-white border-2 border-blue-100 rounded-2xl hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
 <div className={`p-3 bg-blue-100 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors`}>
 <window.Icons.Keyboard size={28} />
@@ -5827,8 +5828,10 @@ title="Bật/Tắt AI tạo nhiễu khó"
 </button>
 <ResumeBadge type="fillblank" />
 </div>
-{/* 5. Nút Game SpotMistake */}
-<div className="relative group w-full mt-4">
+)}
+{/* 5. Nút Game SpotMistake (CHỈ HIỆN KHI HỌC TIẾNG ANH) */}
+{lang === 'en' && (
+<div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
 <button onClick={handleSpotMistakeClick} className={`w-full p-4 bg-white border-2 border-red-100 rounded-2xl hover:border-red-400 hover:bg-red-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
 <div className={`p-3 bg-red-100 text-red-600 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-colors`}>
 <window.Icons.Brain size={28} />
@@ -5841,6 +5844,7 @@ title="Bật/Tắt AI tạo nhiễu khó"
 </button>
 <ResumeBadge type="spotmistake" />
 </div>
+)}
 </div>
 </div>
 );
@@ -6018,6 +6022,7 @@ return (
 <GameMenu
 t={t}
 mainColor={mainColor}
+lang={lang} /* [NEW v1.7] Bơm Prop lang vào Menu */
 onSelectQuiz={handleSelectQuiz}
 onStartMatch={handleStartMatch}
 onStartScramble={handleStartScramble}
@@ -6155,7 +6160,6 @@ savedState={gameSessions?.['quiz']}
 settings={settings}
 />
 }
-{/* [UPDATED v1.6] Cắm cáp đầy đủ cho FillBlankGame */}
 {gameType === 'fillblank' && SafeFillBlankGame &&
 <SafeFillBlankGame
 key={gameSessionId}
@@ -6173,7 +6177,6 @@ onLogWrong={onLogWrong}
 settings={settings}
 />
 }
-{/* [UPDATED v1.6] Cập nhật hàm onFinish nhận wrongCount */}
 {gameType === 'spotmistake' && SafeSpotMistakeGame &&
 <SafeSpotMistakeGame
 key={gameSessionId}
