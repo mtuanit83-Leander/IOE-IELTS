@@ -3654,10 +3654,26 @@ term: distortedTerm,
 isTrap: true
 });
 }
+// [NEW] Thuật toán xáo trộn chống bẫy liền kề (Non-adjacent traps)
+const shuffleNoAdjacentTraps = (arr) => {
+let res = [...arr];
+let valid = false;
+let tries = 0;
+// Xáo trộn lại tối đa 50 lần nếu phát hiện 2 bẫy nằm cạnh nhau
+while (!valid && tries < 50) {
+res = window.Utils.shuffleArray(res);
+valid = true;
+for (let j = 0; j < res.length - 1; j++) {
+if (res[j].isTrap && res[j+1].isTrap) { valid = false; break; }
+}
+tries++;
+}
+return res;
+};
 return {
 pairs: realCards, // Giữ lại ref
-leftItems: window.Utils.shuffleArray(leftItems),
-rightItems: window.Utils.shuffleArray(rightItems),
+leftItems: shuffleNoAdjacentTraps(leftItems),
+rightItems: shuffleNoAdjacentTraps(rightItems),
 queueState: { queue, index: newIndex },
 isAiGenerated
 };
