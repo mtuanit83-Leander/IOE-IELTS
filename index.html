@@ -9582,18 +9582,18 @@ refs: { audioTimeoutRef: core.audioTimeoutRef }
 window.Block6_4_useAppLogic = useAppLogic;
 window.Block13_useAppLogic = useAppLogic; // Fallback
 window.useAppLogic = useAppLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.4
-// Last Updated: 2026-04-04 00:20
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.5
+// Last Updated: 2026-04-04 12:45
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
 // Quy tắc: Khởi tạo và kết nối các tầng giao diện (Tầng 3,4,5) với tầng logic (Tầng 6).
-// Cập nhật: Cắm cáp onUpdateCards vào GameView để kích hoạt Global Sync (Lưu vĩnh viễn bản dịch AI từ Game Nối Ô).
+// Cập nhật: Sửa lỗi "Đứt gãy màu nền" bằng cách áp dụng h-[100dvh] cho container bọc ngoài cùng.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
 const [isReady, setIsReady] = React.useState(false);
 React.useEffect(() => {
 const checkDependencies = () => {
-// [UPDATED] Sử dụng tên định danh mới của Tầng 6
+// Sử dụng tên định danh mới của Tầng 6
 const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal'];
 const missing = required.filter(dep => !window[dep]);
 if (missing.length === 0) {
@@ -9614,12 +9614,11 @@ React.createElement('p', { className: "text-gray-500 font-bold animate-pulse" },
 return React.createElement(MainAppContent);
 };
 const MainAppContent = () => {
-// --- 1. Gọi Hooks Logic (Sử dụng tên định danh mới) ---
+// --- 1. Gọi Hooks Logic ---
 const useAppLogic = window.Block6_4_useAppLogic || window.useAppLogic;
 const useAiLogic = window.Block6_2_useAiLogic || window.useAiLogic;
 const useDataLogic = window.Block6_3_useDataLogic || window.useDataLogic;
 const coreState = window.Block6_1_useCoreState();
-// [REF FIX] Giữ nguyên fix useRef từ các bản trước
 const coreStateRef = React.useRef(coreState);
 React.useEffect(() => {
 coreStateRef.current = coreState;
@@ -9635,7 +9634,7 @@ window.globalShowToast = coreState.setToast;
 // Tính toán màu chủ đạo ngay tại đây để đảm bảo không bị undefined
 const appMainColor = coreState.lang === 'zh' ? 'red' : (coreState.lang === 'vi' ? 'green' : 'sky');
 // ============================================================================
-// [UPDATED v1.3] SMART BOOKMARK PROXY (Dual-Payload Support)
+// SMART BOOKMARK PROXY (Dual-Payload Support)
 // Nhận diện dữ liệu kép (isSmartTarget) để giấu đáp án hoặc lưu thẻ thông thường
 // ============================================================================
 const handleSmartBookmark = React.useCallback((data) => {
@@ -9679,17 +9678,14 @@ isLoading: coreState.isAiLoading,
 cards: coreState.cards,
 lang: coreState.lang,
 onPlay: logic.actions?.speak,
-onBookmark: handleSmartBookmark, // [FIXED v1.3] Gắn Trạm trung chuyển Smart Proxy
+onBookmark: handleSmartBookmark,
 notebook: coreState.notebook,
 showToast: coreState.setToast,
 onLogWrong: dataLogic?.handleLogWrong,
-// [RESUME FEATURE] Truyền state đa phiên
 gameSessions: coreState.gameSessions,
 setGameSessions: coreState.setGameSessions,
 setIsGamePlaying: coreState.setIsGamePlaying,
-// Truyền settings để áp dụng Font chữ cho Game
 settings: coreState.settings,
-// [NEW v1.4] Nối cáp đồng bộ dữ liệu từ Game (đã dịch nghĩa AI) lên Tầng 6 & LocalStorage
 onUpdateCards: (newCards) => {
 coreState.setCards(newCards);
 if (window.CONFIG_SAMPLES && window.CONFIG_SAMPLES[coreState.lang]) {
@@ -9772,7 +9768,8 @@ onToggleBatterySaver: logic.actions?.toggleBatterySaver
 );
 }
 // --- 4. Main Layout Render ---
-return React.createElement('div', { className: `w-full h-full flex flex-col relative overflow-hidden bg-${appMainColor}-50` },
+// [UPDATED v1.5] Thay h-full bằng h-[100dvh] để ép khung giãn hết cỡ, chống lộ màu nền body.
+return React.createElement('div', { className: `w-full h-[100dvh] flex flex-col relative overflow-hidden bg-${appMainColor}-50` },
 React.createElement('div', { className: "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col pb-20 overflow-y-auto custom-scrollbar" },
 mainContent
 ),
