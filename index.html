@@ -3453,10 +3453,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.8
-// Last Updated: 2026-04-04 12:25
+// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.9
+// Last Updated: 2026-04-04 00:35
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: Nâng cấp Chốt bảo hiểm sang cơ chế BATCH PROCESSING (AI dịch 1 lần 6 câu) để tăng tốc độ khởi tạo từ 20s xuống còn 3s.
+// Cập nhật: Fix lỗi "Vòng xoay vô hạn" (Bổ sung lệnh setIsGenerating(false) bị thiếu sau quá trình Pre-flight).
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards }) => {
 // Ref lưu trữ bộ bài cục bộ để cập nhật đồng bộ mà không cần chờ React re-render
@@ -3565,7 +3565,7 @@ queue = window.Utils.shuffleArray(Array.from({ length: cardsRef.current.length }
 index = 0;
 }
 let isAiGenerated = false;
-// [UPDATED v1.8] HÀM LỌC & AUTO-ENRICH TÍCH HỢP BATCH PROCESSING (DỊCH 1 LẦN NHIỀU CÂU)
+// HÀM LỌC & AUTO-ENRICH TÍCH HỢP BATCH PROCESSING
 const getValidCards = async (startIndex, targetCount, exclusionList = []) => {
 let result = [];
 let currIdx = startIndex;
@@ -3775,9 +3775,10 @@ isAiGenerated: data.isAiGenerated
 setTimeLeft(timeLimit || 60);
 nextRoundRef.current = null;
 setTimeout(() => triggerAutoSave(), 150);
+setIsGenerating(false); // [FIX V1.9] Đảm bảo mạng lưới an toàn tắt cờ
 return;
 }
-setIsLoading(true);
+setIsLoading(true); // isLoading dùng để hiện "Đang thiết lập..."
 const data = await prepareRoundData(matchQueueRef.current, currentDiff);
 matchQueueRef.current = data.queueState;
 setIsLoading(false);
@@ -3792,6 +3793,7 @@ setTimeLeft(timeLimit || 60);
 isInitializingRef.current = false;
 setTimeout(() => triggerAutoSave(), 150);
 }
+setIsGenerating(false); // [FIX V1.9] Đảm bảo mạng lưới an toàn tắt cờ sau khi nạp xong
 } catch (error) {
 console.error("Match Game Engine Error:", error);
 setIsGenerating(false);
@@ -3816,7 +3818,7 @@ console.error("Fatal Fallback Error:", fatalErr);
 }
 }
 };
-// [UPDATED v1.8] Khởi tạo Game và Chốt bảo hiểm Pre-flight BATCH PROCESSING
+// Khởi tạo Game và Chốt bảo hiểm Pre-flight BATCH PROCESSING
 const startMatch = async () => {
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
@@ -3882,6 +3884,7 @@ safeShowToast("Bộ bài có nhiều thẻ thiếu nghĩa. Bạn nên nhập API
 }
 matchQueueRef.current = { queue: shuffledQueue, index: 0 };
 nextRoundRef.current = null;
+setIsGenerating(false); // [FIX v1.9] TẮT CỜ MÀN HÌNH CHỜ SAU KHI TIỀN XỬ LÝ (PRE-FLIGHT) XONG
 generateMatch();
 };
 // Đóng đinh startMatch chỉ chạy 1 lần khi Game Mount
