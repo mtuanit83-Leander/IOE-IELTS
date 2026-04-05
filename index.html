@@ -827,10 +827,10 @@ pure_fill_blank: [
 ]
 }
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.0
-// Last Updated: 2026-04-04 10:15
-// Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung cho toàn bộ các Game ở Tầng 5.
-// Quy tắc: Thuần tuý là Object JavaScript (window.GameAlgoEngine). Độc lập với React.
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.2
+// Last Updated: 2026-04-05 08:15
+// Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
+// Cập nhật: NÂNG CẤP (REFACTOR). Thay thế getHistoryPrompt bằng Lõi Ký ức thông minh AntiLazyMemory. Gộp các chuỗi Prompt nhiều dòng thành chuỗi an toàn tuyệt đối theo Quy tắc 3.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -951,13 +951,9 @@ return { wrongSentence: text, wrongWord: "", correction: "", explanation: "Fallb
 ai_distort: async function(text, lang, type, apiKey) {
 let prompt = "";
 if (lang === 'zh') {
-prompt = `Context: "${text}". Language: Chinese.
-Task: Create EXACTLY ONE mistake in the text. You MUST replace a character with a "Homophone" (同音字 - sounds similar but wrong meaning) or a "Visually similar character" (形近字 - looks similar).
-Rule: The 'explanation' field MUST BE 100% IN VIETNAMESE (Giải thích bằng tiếng Việt).`;
+prompt = "Context: \"" + text + "\". Language: Chinese.\nTask: Create EXACTLY ONE mistake in the text. You MUST replace a character with a \"Homophone\" (同音字 - sounds similar but wrong meaning) or a \"Visually similar character\" (形近字 - looks similar).\nRule: The 'explanation' field MUST BE 100% IN VIETNAMESE (Giải thích bằng tiếng Việt).";
 } else {
-prompt = `Context: "${text}". Language: ${lang === 'en' ? 'English' : 'Vietnamese'}.
-Task: Create EXACTLY ONE mistake. If it's a sentence, make a subtle grammar, tense, or preposition error. If it's a word, make a subtle spelling error.
-Rule: The 'explanation' field MUST BE 100% IN VIETNAMESE (Bắt buộc giải thích lỗi sai bằng tiếng Việt).`;
+prompt = "Context: \"" + text + "\". Language: " + (lang === 'en' ? 'English' : 'Vietnamese') + ".\nTask: Create EXACTLY ONE mistake. If it's a sentence, make a subtle grammar, tense, or preposition error. If it's a word, make a subtle spelling error.\nRule: The 'explanation' field MUST BE 100% IN VIETNAMESE (Bắt buộc giải thích lỗi sai bằng tiếng Việt).";
 }
 const schema = {
 type: "OBJECT",
@@ -1028,9 +1024,7 @@ if (distractors.size >= count) break;
 return Array.from(distractors).slice(0, count);
 },
 ai_generateOptions: async function(correctText, lang, type, apiKey, count = 3) {
-const prompt = `Context: "${correctText}". Language: ${lang === 'en' ? 'English' : (lang === 'zh' ? 'Chinese' : 'Vietnamese')}.
-Task: Generate EXACTLY ${count} wrong options for a multiple-choice quiz.
-CRITICAL RULE: The wrong options MUST BE STRICTLY INCORRECT logically or grammatically in this context, but look visually similar or belong to the same topic. Do NOT generate options that could be interpreted as correct.`;
+const prompt = "Context: \"" + correctText + "\". Language: " + (lang === 'en' ? 'English' : (lang === 'zh' ? 'Chinese' : 'Vietnamese')) + ".\nTask: Generate EXACTLY " + count + " wrong options for a multiple-choice quiz.\nCRITICAL RULE: The wrong options MUST BE STRICTLY INCORRECT logically or grammatically in this context, but look visually similar or belong to the same topic. Do NOT generate options that could be interpreted as correct.";
 const schema = {
 type: "OBJECT",
 properties: { distractors: { type: "ARRAY", items: { type: "STRING" } } },
@@ -1077,11 +1071,9 @@ return Array.from(noise);
 ai_getNoise: async function(correctText, lang, type, apiKey, count = 2) {
 let prompt = "";
 if (lang === 'zh') {
-prompt = `Context: "${correctText}". Task: Generate EXACTLY ${count} distractor Chinese characters (1个汉字).
-CRITICAL RULE: These characters ABSOLUTELY CANNOT be inserted into the context to form a valid sentence.`;
+prompt = "Context: \"" + correctText + "\". Task: Generate EXACTLY " + count + " distractor Chinese characters (1个汉字).\nCRITICAL RULE: These characters ABSOLUTELY CANNOT be inserted into the context to form a valid sentence.";
 } else {
-prompt = `Context: "${correctText}". Task: Generate EXACTLY ${count} distractor words.
-CRITICAL RULE: These extra words ABSOLUTELY CANNOT be inserted anywhere into the original sentence without breaking the grammar.`;
+prompt = "Context: \"" + correctText + "\". Task: Generate EXACTLY " + count + " distractor words.\nCRITICAL RULE: These extra words ABSOLUTELY CANNOT be inserted anywhere into the original sentence without breaking the grammar.";
 }
 const schema = {
 type: "OBJECT",
@@ -1107,7 +1099,6 @@ const stopWordsZh = ['的', '是', '在', '了', '和', '我', '你', '他', '�
 const stopWordsVi = ['là', 'của', 'và', 'hoặc', 'những', 'các', 'một', 'trong', 'trên', 'tôi', 'bạn'];
 let words = [];
 if (isZh) {
-// Đục bừa 2 ký tự liên tiếp nếu là tiếng Trung offline
 words = [];
 for(let i=0; i<text.length-1; i++) words.push(text.substr(i, 2));
 } else {
@@ -1134,9 +1125,7 @@ displaySentence = text.replace(regex, '[__________]');
 return { targetWord: cleanTarget, displaySentence: displaySentence, hint: "Điền từ còn thiếu" };
 },
 ai_mask: async function(text, hintFallback, lang, apiKey) {
-const prompt = `Context: "${text}". Meaning: "${hintFallback}".
-Task: Create a Cloze test (Fill-in-the-blank). Choose ONE highly specific important word (Noun, Main Verb, or Adjective) and replace it with '[__________]'.
-CRITICAL RULE: The 'hint' field MUST BE translated to natural VIETNAMESE. NO target language words allowed in the hint.`;
+const prompt = "Context: \"" + text + "\". Meaning: \"" + hintFallback + "\".\nTask: Create a Cloze test (Fill-in-the-blank). Choose ONE highly specific important word (Noun, Main Verb, or Adjective) and replace it with '[__________]'.\nCRITICAL RULE: The 'hint' field MUST BE translated to natural VIETNAMESE. NO target language words allowed in the hint.";
 const schema = {
 type: "OBJECT",
 properties: {
@@ -1148,6 +1137,115 @@ required: ["displaySentence", "targetWord", "hint"]
 };
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
+}
+},
+// ============================================================================
+// 5. ĐỘNG CƠ BẢO HIỂM & CUỐN CHIẾU (PREFLIGHT ENGINE)
+// ============================================================================
+PreflightEngine: {
+// 5.1 DỊCH LÔ KHẨN CẤP (BATCH ENRICH)
+batchEnrich: async function(cards, queueIndices, maxCount, lang, apiKey) {
+if (!apiKey || !window.Utils.callGeminiApi) return { updatedCards: cards, hasUpdates: false };
+let updatedCards = [...cards];
+let hasUpdates = false;
+const batchTargets = [];
+for (let i = 0; i < queueIndices.length; i++) {
+if (batchTargets.length >= maxCount) break;
+const cardIdx = queueIndices[i];
+const c = updatedCards[cardIdx];
+if (c && (!c.definition || c.definition.trim() === '')) {
+batchTargets.push({ idx: cardIdx, term: c.term });
+}
+}
+if (batchTargets.length > 0) {
+try {
+const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
+const prompt = "Translate these " + batchTargets.length + " " + targetLang + " items into Vietnamese. Keep definitions very short (1-6 words).\nItems:\n" + batchTargets.map((b, i) => (i+1) + ". \"" + b.term + "\"").join('\n') + "\n\nReturn EXACTLY a JSON object with a \"translations\" array.\nFormat: {\"translations\": [\"nghĩa 1\", \"nghĩa 2\", ...]}";
+const schema = {
+type: "OBJECT",
+properties: { translations: { type: "ARRAY", items: { type: "STRING" } } },
+required: ["translations"]
+};
+const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 15000));
+const res = await Promise.race([aiPromise, timeoutPromise]);
+const parsed = window.Utils.parseAiJson(res.text);
+if (parsed && parsed.translations && parsed.translations.length === batchTargets.length) {
+batchTargets.forEach((b, i) => {
+updatedCards[b.idx] = { ...updatedCards[b.idx], definition: parsed.translations[i] };
+});
+hasUpdates = true;
+if (res.tokenMetadata) {
+const used = res.tokenMetadata.totalTokenCount || 0;
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + used);
+}
+}
+} catch(e) {
+console.warn("Pre-flight Batch enrich error:", e);
+}
+}
+return { updatedCards, hasUpdates };
+},
+// 5.2 BỘ NHỚ CHỐNG LẶP (ANTI-LAZY MEMORY MODULE)
+AntiLazyMemory: {
+_getMemory: function() {
+try {
+const saved = localStorage.getItem('fc_ai_anti_lazy_history');
+return saved ? JSON.parse(saved) : [];
+} catch(e) { return []; }
+},
+add: function(word) {
+if (!word) return;
+const mem = this._getMemory();
+mem.push(word);
+if (mem.length > 20) mem.shift();
+try { localStorage.setItem('fc_ai_anti_lazy_history', JSON.stringify(mem)); } catch(e) {}
+},
+getPrompt: function() {
+const mem = this._getMemory();
+if (!mem || mem.length === 0) return "";
+return "\n\nCRITICAL ANTI-DUPLICATION RULE:\nDO NOT generate sentences, contexts or target words matching these recent ones:\n- " + mem.join('\n- ') + "\n";
+}
+},
+// 5.3 THUẬT TOÁN CUỐN CHIẾU (ROLLING QUEUE COORDINATOR)
+createQueueCoordinator: function(fetchDataFn, maxConcurrent = 2) {
+return {
+queue: [],
+isFetching: false,
+isActive: true,
+maintain: async function() {
+if (this.isFetching || !this.isActive) return;
+this.isFetching = true;
+try {
+while (this.queue.length < maxConcurrent && this.isActive) {
+const data = await fetchDataFn();
+if (data && this.isActive) {
+this.queue.push(data);
+} else {
+break;
+}
+}
+} finally {
+this.isFetching = false;
+}
+},
+pop: function() {
+const item = this.queue.shift();
+this.maintain();
+return item;
+},
+peek: function() {
+return this.queue.length > 0 ? this.queue[0] : null;
+},
+destroy: function() {
+this.isActive = false;
+this.queue = [];
+},
+length: function() {
+return this.queue.length;
+}
+};
 }
 }
 };
@@ -2263,58 +2361,18 @@ title={t('ttTestVoice')}
 // [CLEANUP] Đã xóa component BottomNav ở đây để tránh conflict
 // EXPORT TO WINDOW
 window.SettingsModal = SettingsModal;
-// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Data & Config Modals) - Version 1.2
-// Last Updated: 2026-04-02 22:05
-// Nhiệm vụ: Chứa các Modal quản lý dữ liệu tĩnh và cấu hình nhỏ (Sổ tay, API Key, Quản lý Link, Trợ giúp).
+// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 2.0
+// Last Updated: 2026-04-04 14:06
+// Nhiệm vụ: Chuyên trách dữ liệu học tập & Tiến độ của người dùng (Sổ tay, Lỗi sai, Đã thuộc).
+// Cập nhật: ĐẠI PHẪU DỌN RÁC. Đã di dời các Modal cài đặt/tiện ích sang Block 4.6, 4.7, 4.8.
 // Quy tắc: Chỉ đóng vai trò hiển thị và nhận Input từ người dùng. Mọi hành động xóa, lưu, cập nhật state phải gọi ngược lên Tầng 6 thông qua Props.
-// Cập nhật: Nâng cấp WordSelectorModal hỗ trợ "Dual-Payload" (Hiển thị một đằng, lưu một nẻo) để giấu đáp án.
 // ==================================================================================
-const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
-const [stats, setStats] = useState({ count: 0 });
-useEffect(() => {
-if(isOpen) {
-const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
-setStats({ count: pool.length });
-}
-}, [isOpen]);
-if (!isOpen) return null;
-return (
-<div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-<div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-<div className="flex justify-between items-center mb-4 border-b pb-2">
-<h3 className="font-bold text-lg flex items-center gap-2 text-purple-600">
-<Icons.Key /> {t('apiKeyLabel')}
-</h3>
-<button onClick={onClose}><Icons.X /></button>
-</div>
-<div className="space-y-4">
-<div className="bg-purple-50 p-2 rounded text-xs text-purple-800 border border-purple-100 flex justify-between">
-<span>Số Key dự phòng:</span>
-<span className="font-bold">{stats.count}</span>
-</div>
-<p className="text-xs text-gray-500 italic">Google Gemini API Key</p>
-<input
-type="password"
-value={apiKey}
-onChange={(e) => setApiKey(e.target.value)}
-className="w-full p-3 border rounded-lg text-sm bg-purple-50 focus:ring-2 focus:ring-purple-200 outline-none font-mono"
-placeholder={t('apiKeyPlace')}
-autoFocus
-/>
-<button onClick={onClose} className="w-full py-2 bg-purple-600 text-white rounded-lg font-bold shadow hover:bg-purple-700">
-<Icons.Check size={18} className="inline mr-1" /> {t('apply')}
-</button>
-</div>
-</div>
-</div>
-);
-};
-// [UPDATED] NotebookModal có nút Bút lông (onOpenHanzi)
+// 1. SỔ TAY TỪ VỰNG (NOTEBOOK)
 const NotebookModal = ({ isOpen, onClose, data, onSave, onPlay, t, mainColor, onStudy, onDelete, apiKey, lang, onCopy, sourceData, onQuiz, onScramble, onOpenHanzi }) => {
-const [editingData, setEditingData] = useState([]);
-const [fillingIndices, setFillingIndices] = useState(new Set());
-const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-useEffect(() => {
+const [editingData, setEditingData] = React.useState([]);
+const [fillingIndices, setFillingIndices] = React.useState(new Set());
+const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
+React.useEffect(() => {
 if (isOpen) {
 const loaded = JSON.parse(JSON.stringify(data)).map((item, index) => ({
 ...item,
@@ -2435,6 +2493,7 @@ await new Promise(r => setTimeout(r, 1000));
 }
 };
 if (!isOpen) return null;
+const Icons = window.Icons;
 return (
 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
 <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden relative">
@@ -2447,16 +2506,10 @@ return (
 <h3 className="text-xl font-bold text-gray-800 mb-2">Xóa toàn bộ sổ tay?</h3>
 <p className="text-gray-600 mb-6 text-sm">Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa tất cả từ vựng đang soạn thảo không?</p>
 <div className="flex gap-3">
-<button
-onClick={() => setShowConfirmDelete(false)}
-className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
->
+<button onClick={() => setShowConfirmDelete(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
 Hủy bỏ
 </button>
-<button
-onClick={confirmDeleteAll}
-className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
->
+<button onClick={confirmDeleteAll} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
 Xóa hết
 </button>
 </div>
@@ -2495,42 +2548,22 @@ placeholder={idx === editingData.length - 1 ? "+ Thêm từ mới..." : ""}
 </button>
 )}
 {item.term && (
-<button
-onClick={() => handleAiFill(idx)}
-disabled={fillingIndices.has(idx)}
-className={`text-purple-500 hover:bg-purple-50 p-1 rounded transition-colors ${fillingIndices.has(idx) ? 'animate-spin' : ''}`}
-title="Tự động điền thông minh (Smart Fill)"
->
+<button onClick={() => handleAiFill(idx)} disabled={fillingIndices.has(idx)} className={`text-purple-500 hover:bg-purple-50 p-1 rounded transition-colors ${fillingIndices.has(idx) ? 'animate-spin' : ''}`} title="Tự động điền thông minh (Smart Fill)">
 <Icons.Sparkles size={16} />
 </button>
 )}
-{/* Nút Tập viết trong Sổ tay (Chỉ hiện khi tiếng Trung) */}
 {item.term && lang === 'zh' && (
-<button
-onClick={() => onOpenHanzi(item.term)}
-className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
-title="Tập viết chữ Hán"
->
+<button onClick={() => onOpenHanzi(item.term)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors" title="Tập viết chữ Hán">
 <Icons.Brush size={16} />
 </button>
 )}
 </div>
 </div>
 <div className="col-span-3">
-<textarea
-className="w-full p-2 border rounded text-sm text-gray-600 focus:ring-2 focus:ring-blue-200 outline-none resize-none"
-rows="2"
-value={item.pronunciation}
-onChange={(e) => handleChange(idx, 'pronunciation', e.target.value)}
-/>
+<textarea className="w-full p-2 border rounded text-sm text-gray-600 focus:ring-2 focus:ring-blue-200 outline-none resize-none" rows="2" value={item.pronunciation} onChange={(e) => handleChange(idx, 'pronunciation', e.target.value)} />
 </div>
 <div className="col-span-5">
-<textarea
-className="w-full p-2 border rounded text-sm text-gray-700 focus:ring-2 focus:ring-blue-200 outline-none resize-none"
-rows="3"
-value={item.definition}
-onChange={(e) => handleChange(idx, 'definition', e.target.value)}
-/>
+<textarea className="w-full p-2 border rounded text-sm text-gray-700 focus:ring-2 focus:ring-blue-200 outline-none resize-none" rows="3" value={item.definition} onChange={(e) => handleChange(idx, 'definition', e.target.value)} />
 </div>
 <div className="col-span-1 flex justify-center items-center h-full">
 {(idx !== editingData.length - 1 || item.term) && (
@@ -2546,49 +2579,26 @@ onChange={(e) => handleChange(idx, 'definition', e.target.value)}
 </div>
 <div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between gap-3">
 <div className="grid grid-cols-4 sm:flex gap-2 w-full sm:w-auto">
-<button
-onClick={() => onStudy()}
-className={`px-2 sm:px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 text-xs sm:text-base`}
-disabled={data.length === 0}
-title={t('studyFlashcard')}
->
+<button onClick={() => onStudy()} className={`px-2 sm:px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 text-xs sm:text-base`} disabled={data.length === 0} title={t('studyFlashcard')}>
 <Icons.Book size={16} className="sm:w-[18px] sm:h-[18px]" /> {t('studyFlashcard')}
 </button>
-<button
-onClick={onQuiz}
-className={`px-2 sm:px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow hover:bg-purple-700 flex items-center justify-center gap-2 text-xs sm:text-base`}
-disabled={data.length < 2}
-title="Ôn tập bằng Game Trắc nghiệm"
->
+<button onClick={onQuiz} className={`px-2 sm:px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow hover:bg-purple-700 flex items-center justify-center gap-2 text-xs sm:text-base`} disabled={data.length < 2} title="Ôn tập bằng Game Trắc nghiệm">
 <Icons.Gamepad2 size={16} className="sm:w-[18px] sm:h-[18px]" /> Quiz
 </button>
-<button
-onClick={onScramble}
-className={`px-2 sm:px-4 py-2 bg-orange-500 text-white font-bold rounded-lg shadow hover:bg-orange-600 flex items-center justify-center gap-2 text-xs sm:text-base`}
-disabled={data.length < 1}
-title="Ôn tập bằng Game Ghép câu"
->
+<button onClick={onScramble} className={`px-2 sm:px-4 py-2 bg-orange-500 text-white font-bold rounded-lg shadow hover:bg-orange-600 flex items-center justify-center gap-2 text-xs sm:text-base`} disabled={data.length < 1} title="Ôn tập bằng Game Ghép câu">
 <Icons.Shuffle size={16} className="sm:w-[18px] sm:h-[18px]" /> Scramble
 </button>
-<button
-onClick={handleAiFillAll}
-className={`px-2 sm:px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-lg hover:bg-purple-200 flex items-center justify-center gap-2 text-xs sm:text-base`}
-disabled={data.length === 0}
-title="AI Tự điền"
->
+<button onClick={handleAiFillAll} className={`px-2 sm:px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-lg hover:bg-purple-200 flex items-center justify-center gap-2 text-xs sm:text-base`} disabled={data.length === 0} title="AI Tự điền">
 <Icons.Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" /> AI
 </button>
-<button
-onClick={handleDeleteAllClick}
-className={`px-2 sm:px-4 py-2 bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 text-xs sm:text-base`}
-disabled={editingData.filter(i => i.term).length === 0}
-title="Xóa toàn bộ"
->
+<button onClick={handleDeleteAllClick} className={`px-2 sm:px-4 py-2 bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 text-xs sm:text-base`} disabled={editingData.filter(i => i.term).length === 0} title="Xóa toàn bộ">
 <Icons.Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /> Xóa
 </button>
 </div>
 <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-<button onClick={() => onCopy && onCopy(editingData.filter(i => i.term))} className={`px-2 sm:px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 font-bold rounded-lg hover:bg-teal-100 flex items-center justify-center gap-2 text-xs sm:text-base`} disabled={data.length === 0} title="Copy Sheet"><Icons.ExternalLink size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+<button onClick={() => onCopy && onCopy(editingData.filter(i => i.term))} className={`px-2 sm:px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 font-bold rounded-lg hover:bg-teal-100 flex items-center justify-center gap-2 text-xs sm:text-base`} disabled={data.length === 0} title="Copy Sheet">
+<Icons.ExternalLink size={16} className="sm:w-[18px] sm:h-[18px]" />
+</button>
 <button onClick={handleSave} className={`px-2 sm:px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700 flex items-center justify-center gap-2 text-xs sm:text-base`}>
 <Icons.Save size={16} className="sm:w-[18px] sm:h-[18px]" /> {t('saveChanges')}
 </button>
@@ -2598,70 +2608,16 @@ title="Xóa toàn bộ"
 </div>
 );
 };
-// [UPDATED v1.2] Hỗ trợ Dual-Payload: Nhận vào chuỗi hoặc Object có {isSmartTarget: true}
-const WordSelectorModal = ({ isOpen, onClose, onSave, text, currentLang, t, mainColor }) => {
-const [selectedIndices, setSelectedIndices] = useState(new Set());
-const [words, setWords] = useState([]);
-// Xử lý Dual-Payload
-const isSmartObject = typeof text === 'object' && text !== null && text.isSmartTarget;
-const displayText = isSmartObject ? text.display : (text || "");
-const saveText = isSmartObject ? text.save : (text || "");
-useEffect(() => {
-if (!displayText) { setWords([]); return; }
-if (currentLang === 'zh') { setWords([...displayText].filter(c => c.trim().length > 0)); }
-else { setWords(displayText.split(' ').filter(w => w.length > 0)); }
-setSelectedIndices(new Set());
-}, [displayText, currentLang, isOpen]);
-const toggleWord = (index) => {
-const newSet = new Set(selectedIndices);
-newSet.has(index) ? newSet.delete(index) : newSet.add(index);
-setSelectedIndices(newSet);
-};
-if (!isOpen) return null;
-const selectedWordsList = words.filter((_, i) => selectedIndices.has(i));
-return (
-<div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-<div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
-<div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-<h3 className="font-bold text-gray-700">{t('selectWordsToSave')}</h3>
-<button onClick={onClose} data-tooltip={t('ttClose')}><Icons.X size={20} /></button>
-</div>
-<div className="p-6 overflow-y-auto max-h-[60vh]">
-<div className="flex flex-wrap gap-2 justify-center">
-{words.map((word, idx) => (
-<button key={idx} onClick={() => toggleWord(idx)} className={`px-3 py-2 rounded-lg border transition-all text-base sm:text-lg font-medium ${selectedIndices.has(idx) ? `bg-orange-100 border-${mainColor}-500 text-${mainColor}-700 shadow-md` : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-{word}
-</button>
-))}
-</div>
-</div>
-<div className="p-4 border-t bg-gray-50 flex flex-col gap-2">
-<div className="flex gap-2">
-<button onClick={() => onSave(selectedWordsList, false)} disabled={selectedIndices.size === 0} className={`flex-1 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-${mainColor}-700 shadow-md transition-all active:scale-95`}>
-{t('saveSelected')} ({selectedIndices.size})
-</button>
-<button onClick={() => onSave(selectedWordsList, true)} disabled={selectedIndices.size < 2} className={`flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-purple-700 shadow-md transition-all active:scale-95 flex items-center justify-center gap-1`} title="Ghép các từ đã chọn thành 1 từ vựng mới">
-<Icons.Link size={18} /> Lưu cụm
-</button>
-</div>
-{/* [UPDATED v1.2] Bấm nút này sẽ lưu chuỗi "saveText" (có thể chứa đáp án ẩn) */}
-<button onClick={() => onSave([saveText])} className="w-full py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition-colors">
-{t('saveWholeSentence')}
-</button>
-</div>
-</div>
-</div>
-);
-};
-// [UPDATED v1.1] MasteredModal: Thêm prop onRestoreAll và nút bấm
+// 2. DANH SÁCH ĐÃ THUỘC (MASTERED)
 const MasteredModal = ({ isOpen, onClose, data, onRestore, onRestoreAll, t, mainColor }) => {
 if (!isOpen) return null;
+const Icons = window.Icons;
 return (
 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
 <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg h-[80vh] flex flex-col overflow-hidden">
 <div className="p-4 border-b bg-green-50 flex justify-between items-center">
 <h2 className="font-bold flex gap-2 text-green-700 text-lg">
-<Icons.CheckCircle /> {t('notebookTitle') ? t('notebookTitle').replace('Sổ Tay', 'Đã Thuộc') : 'Đã Thuộc'} ({data.length})
+<Icons.CheckCircle /> Đã Thuộc ({data.length})
 </h2>
 <button onClick={onClose}><Icons.X /></button>
 </div>
@@ -2684,7 +2640,6 @@ return (
 </div>
 )}
 </div>
-{/* [UPDATED] Footer mới có 2 nút */}
 <div className="p-4 border-t bg-gray-50 flex gap-2">
 <button
 onClick={onRestoreAll}
@@ -2700,206 +2655,16 @@ title="Khôi phục toàn bộ về danh sách đang học"
 </div>
 );
 };
-const LinkManagerModal = ({ isOpen, onClose, t, defaultUrl, setDefaultUrl, exportUrl, setExportUrl, importUrl, setImportUrl, apiKeySheetUrl, setApiKeySheetUrl, onImport, onExportLink, onExportExcel, onFileImport, onSaveSettings, onFetchKey, onDownloadTemplate, lang, onImportToNotebook }) => {
-const fileInputRef = useRef(null);
-const [notebookUrl, setNotebookUrl] = useState('');
-if (!isOpen) return null;
-return (
-<div className="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 animate-in fade-in">
-<div className="bg-white rounded-xl w-full max-w-md p-6 overflow-y-auto max-h-[90vh] custom-scrollbar">
-<div className="flex justify-between mb-4">
-<h2 className="font-bold flex gap-2 text-green-700"><Icons.Link /> {t('importTitle')}</h2>
-<button onClick={onClose} data-tooltip={t('ttClose')}><Icons.X /></button>
-</div>
-<div className="mb-4 bg-purple-50 p-3 rounded-lg border border-purple-100">
-<label className="block text-sm font-bold text-purple-700 mb-1">{t('apiKeySheetLabel')}</label>
-<div className="flex gap-2">
-<input type="text" value={apiKeySheetUrl} onChange={(e) => setApiKeySheetUrl(e.target.value)} className="w-full p-2 border rounded text-sm bg-white font-mono text-xs" />
-<button onClick={() => onFetchKey(apiKeySheetUrl)} className="p-2 bg-green-600 text-white rounded"><Icons.RefreshCw size={16} /></button>
-<button onClick={onDownloadTemplate} className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600" title={t('downloadTemplate')}><Icons.Download size={16} /></button>
-<button onClick={() => onSaveSettings(window.STORAGE_KEYS.API_KEY_SHEET, apiKeySheetUrl)} className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700" title="Lưu làm mặc định"><Icons.Save size={16} /></button>
-</div>
-</div>
-<div className="mb-4">
-<label className="block text-sm font-bold text-gray-700 mb-1">{t('linkDefault')}</label>
-<div className="flex gap-2">
-<input type="text" value={defaultUrl} onChange={(e) => setDefaultUrl(e.target.value)} className="w-full p-2 border rounded text-sm bg-gray-50" />
-<button onClick={() => onSaveSettings(window.STORAGE_KEYS.DEFAULT_URL + '_' + lang, defaultUrl)} className="p-2 bg-blue-600 text-white rounded"><Icons.Save size={16} /></button>
-<button onClick={() => onImport(defaultUrl)} className="p-2 bg-green-600 text-white rounded"><Icons.RefreshCw size={16} /></button>
-</div>
-</div>
-{/* Notebook Import Section */}
-<div className="mb-4 bg-orange-50 p-3 rounded-lg border border-orange-100">
-<label className="block text-sm font-bold text-orange-700 mb-1 flex items-center gap-2">
-<Icons.BookOpen size={16}/> Nhập thêm vào Sổ tay
-</label>
-<p className="text-xs text-orange-600 mb-2 italic">Gộp dữ liệu từ link mới vào sổ tay hiện có (Tự động lọc trùng).</p>
-<div className="flex gap-2">
-<input
-type="text"
-value={notebookUrl}
-onChange={(e) => setNotebookUrl(e.target.value)}
-className="w-full p-2 border rounded text-sm bg-white"
-placeholder="Dán link Google Sheet..."
-/>
-<button
-onClick={() => onImportToNotebook(notebookUrl)}
-className="p-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-bold whitespace-nowrap text-xs flex items-center gap-1"
->
-<Icons.CloudUpload size={16}/> Gộp
-</button>
-</div>
-</div>
-<div className="mb-4">
-<label className="block text-sm font-bold text-gray-700 mb-1">{t('exportSheetLabel')}</label>
-<div className="flex gap-2">
-<input type="text" value={exportUrl} onChange={(e) => setExportUrl(e.target.value)} className="w-full p-2 border rounded text-sm bg-gray-50" />
-<button onClick={() => onSaveSettings(window.STORAGE_KEYS.EXPORT_URL + '_' + lang, exportUrl)} className="p-2 bg-blue-600 text-white rounded"><Icons.Save size={16} /></button>
-<button onClick={onExportLink} className="p-2 bg-purple-600 text-white rounded hover:bg-purple-700" data-tooltip={t('ttExportToLink')}><Icons.CloudUpload size={16} /></button>
-<button onClick={() => { if (exportUrl) window.open(exportUrl, '_blank'); }} className="p-2 bg-orange-500 text-white rounded"><Icons.ExternalLink size={16} /></button>
-</div>
-<div className="mt-2 flex gap-2">
-<input type="file" ref={fileInputRef} onChange={onFileImport} className="hidden" accept=".xlsx, .xls, .csv" />
-<button onClick={() => fileInputRef.current.click()} className="flex-1 py-2 bg-green-600 text-white rounded font-bold hover:bg-green-700 flex items-center justify-center gap-2" title={t('ttUpload')}>
-<Icons.Upload size={16} /> Nhập Excel
-</button>
-<button onClick={onExportExcel} className="flex-1 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 flex items-center justify-center gap-2" title={t('ttExport')}>
-<Icons.Download size={16} /> Xuất Excel
-</button>
-</div>
-</div>
-<hr className="my-4" />
-<div className="mb-4">
-<label className="block text-sm font-bold text-gray-700 mb-1">{t('orInput')}</label>
-<input type="text" value={importUrl} onChange={(e) => setImportUrl(e.target.value)} className="w-full p-3 border rounded" placeholder={t('inputPlace')} />
-</div>
-<button onClick={() => onImport(importUrl)} className="w-full py-3 bg-green-600 text-white rounded font-bold">
-<Icons.Check /> {t('importNow')}
-</button>
-</div>
-</div>
-);
-};
-const ManualInputModal = ({ isOpen, onClose, onImport, onAddCard, onAutoFill, t, mainColor }) => {
-const [mode, setMode] = useState('single');
-const [text, setText] = useState('');
-const [isFilling, setIsFilling] = useState(false);
-const [singleData, setSingleData] = useState({ term: '', pronunciation: '', definition: '', example: '', sinoViet: '' });
-useEffect(() => {
-if (isOpen) {
-setText('');
-setSingleData({ term: '', pronunciation: '', definition: '', example: '', sinoViet: '' });
-setMode('single');
-setIsFilling(false);
-}
-}, [isOpen]);
-const handleSingleChange = (field, value) => setSingleData(prev => ({ ...prev, [field]: value }));
-const handleSingleSubmit = () => {
-if (!singleData.term.trim()) return;
-onAddCard(singleData);
-setSingleData({ term: '', pronunciation: '', definition: '', example: '', sinoViet: '' });
-};
-const handleAutoFillClick = async () => {
-if (!singleData.term.trim()) return;
-if (!onAutoFill) { alert("Chức năng AI chưa được kết nối!"); return; }
-setIsFilling(true);
-try {
-const result = await onAutoFill(singleData.term);
-if (result) {
-if (result._tokenUsage) {
-const used = result._tokenUsage.totalTokenCount || 0;
-const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
-localStorage.setItem('fc_total_tokens', currentTotal + used);
-}
-setSingleData(prev => ({
-...prev,
-pronunciation: result.pronunciation || prev.pronunciation,
-definition: result.definition || prev.definition,
-example: result.example || prev.example,
-sinoViet: result.sinoViet || prev.sinoViet
-}));
-}
-}
-catch (e) { console.error(e); }
-finally { setIsFilling(false); }
-};
-if (!isOpen) return null;
-return (
-<div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-<div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[90vh]">
-<div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-<h3 className="font-bold text-gray-700 flex items-center gap-2"><Icons.Upload size={20} /> Thêm dữ liệu</h3>
-<button onClick={onClose}><Icons.X size={20} /></button>
-</div>
-<div className="flex border-b">
-<button className={`flex-1 py-3 text-sm font-bold transition-colors ${mode === 'single' ? `text-${mainColor}-600 border-b-2 border-${mainColor}-600 bg-blue-50/50` : 'text-gray-500 hover:bg-gray-50'}`} onClick={() => setMode('single')}>Nhập thủ công</button>
-<button className={`flex-1 py-3 text-sm font-bold transition-colors ${mode === 'batch' ? `text-${mainColor}-600 border-b-2 border-${mainColor}-600 bg-blue-50/50` : 'text-gray-500 hover:bg-gray-50'}`} onClick={() => setMode('batch')}>Nhập JSON (Nâng cao)</button>
-</div>
-<div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-{mode === 'single' ? (
-<div className="space-y-4">
-<div className="relative">
-<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Từ vựng <span className="text-red-500">*</span></label>
-<div className="flex gap-2">
-<input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none font-medium" placeholder="Ví dụ: Hello / 你好" value={singleData.term} onChange={(e) => handleSingleChange('term', e.target.value)} autoFocus />
-<button
-onClick={handleAutoFillClick}
-disabled={isFilling || !singleData.term.trim()}
-className={`p-3 rounded-lg border-2 ${isFilling ? 'bg-gray-100 border-gray-200 cursor-not-allowed' : `bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100`}`}
-title="Tự động điền bằng AI"
->
-{isFilling ? <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div> : <Icons.Sparkles size={20} />}
-</button>
-</div>
-</div>
-<div className="grid grid-cols-2 gap-2">
-<div>
-<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Phiên âm</label>
-<input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none text-gray-600 font-sans" placeholder="Ví dụ: /həˈloʊ/" value={singleData.pronunciation} onChange={(e) => handleSingleChange('pronunciation', e.target.value)} />
-</div>
-<div>
-<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Hán Việt (Tùy chọn)</label>
-<input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none text-gray-600" placeholder="Ví dụ: Nhĩ hảo" value={singleData.sinoViet} onChange={(e) => handleSingleChange('sinoViet', e.target.value)} />
-</div>
-</div>
-<div>
-<label className="block text-xs font-bold text-blue-600 mb-1 uppercase">Nghĩa ngắn gọn (Cho Game)</label>
-<textarea className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none resize-none" rows="2" placeholder="Ví dụ: Xin chào" value={singleData.definition} onChange={(e) => handleSingleChange('definition', e.target.value)} />
-</div>
-<div>
-<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Giải thích chi tiết & Ví dụ</label>
-<textarea className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none resize-none h-24" placeholder="Ví dụ: Lời chào phổ biến...\n\nHello world!" value={singleData.example} onChange={(e) => handleSingleChange('example', e.target.value)} />
-</div>
-</div>
-) : (
-<>
-<p className="text-sm text-gray-500 mb-2">Dán danh sách từ vựng dạng JSON vào bên dưới:</p>
-<textarea className="w-full p-3 border rounded-lg text-sm font-mono h-60 focus:ring-2 focus:ring-blue-200 outline-none resize-none bg-gray-50" placeholder='[{"term":"Hello", "definition":"Xin chào", "pronunciation":"/həˈloʊ/"}, ...]' value={text} onChange={(e) => setText(e.target.value)} />
-</>
-)}
-</div>
-<div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
-<button onClick={onClose} className="px-4 py-2 rounded text-gray-600 font-bold hover:bg-gray-200">{t('cancel')}</button>
-{mode === 'single' ? (
-<button onClick={handleSingleSubmit} disabled={!singleData.term.trim()} className={`px-6 py-2 rounded bg-${mainColor}-600 text-white font-bold hover:bg-${mainColor}-700 disabled:opacity-50 flex items-center gap-2 shadow-lg`}><Icons.Check size={18} /> Lưu thẻ</button>
-) : (
-<button onClick={() => onImport(text)} disabled={!text.trim()} className={`px-6 py-2 rounded bg-${mainColor}-600 text-white font-bold hover:bg-${mainColor}-700 disabled:opacity-50 flex items-center gap-2 shadow-lg`}><Icons.Upload size={18} /> Nhập JSON</button>
-)}
-</div>
-</div>
-</div>
-);
-};
-// [UPDATED] IncorrectModal có nút Bút lông (onOpenHanzi)
+// 3. SỔ TAY CẦN NHỚ / LỖI SAI (INCORRECT LIST)
 const IncorrectModal = ({ isOpen, onClose, data, onRemove, onRemoveAll, onStudy, onQuiz, onScramble, onOpenHanzi, t, mainColor }) => {
 if (!isOpen) return null;
+const Icons = window.Icons;
 return (
 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
 <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
 <div className={`p-4 border-b bg-${mainColor}-50 flex justify-between items-center`}>
 <h2 className={`font-bold flex gap-2 text-${mainColor}-700 text-lg items-center`}>
-<Icons.Brain size={24} className="text-red-500" />
-Sổ tay cần nhớ ({data.length})
+<Icons.Brain size={24} className="text-red-500" /> Sổ tay cần nhớ ({data.length})
 </h2>
 <button onClick={onClose}><Icons.X /></button>
 </div>
@@ -2912,7 +2677,6 @@ Sổ tay cần nhớ ({data.length})
 </div>
 ) : (
 <div className="space-y-2">
-{/* Header Row */}
 <div className="grid grid-cols-12 gap-2 font-bold text-xs text-gray-500 uppercase px-2 mb-1">
 <div className="col-span-1 text-center">Sai</div>
 <div className="col-span-4">Từ vựng</div>
@@ -2929,13 +2693,8 @@ Sổ tay cần nhớ ({data.length})
 <div className="col-span-4 font-bold text-gray-800 break-words">{item.term}</div>
 <div className="col-span-6 text-sm text-gray-600 break-words">{item.definition}</div>
 <div className="col-span-1 flex justify-center gap-1">
-{/* [NEW] Nút Tập viết trong Sổ tay lỗi sai */}
 {item.term && mainColor === 'red' && (
-<button
-onClick={() => onOpenHanzi(item.term)}
-className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
-title="Tập viết chữ Hán"
->
+<button onClick={() => onOpenHanzi(item.term)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors" title="Tập viết chữ Hán">
 <Icons.Brush size={18} />
 </button>
 )}
@@ -2950,37 +2709,19 @@ title="Tập viết chữ Hán"
 </div>
 <div className="p-4 border-t bg-white flex justify-between items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
 <div className="flex gap-2">
-<button
-onClick={onRemoveAll}
-disabled={data.length === 0}
-className="px-4 py-2 text-red-500 font-bold border border-red-100 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 flex items-center gap-2"
->
+<button onClick={onRemoveAll} disabled={data.length === 0} className="px-4 py-2 text-red-500 font-bold border border-red-100 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 flex items-center gap-2">
 <Icons.Trash2 size={18} /> Xóa hết
 </button>
 </div>
 <div className="flex gap-2">
 <button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Đóng</button>
-<button
-onClick={() => onStudy(data)}
-disabled={data.length === 0}
-className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
->
+<button onClick={() => onStudy(data)} disabled={data.length === 0} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
 <Icons.BookOpen size={18} /> Học ngay
 </button>
-<button
-onClick={() => onQuiz(data)}
-disabled={data.length < 2}
-className="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
-title="Trắc nghiệm"
->
+<button onClick={() => onQuiz(data)} disabled={data.length < 2} className="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2" title="Trắc nghiệm">
 <Icons.Gamepad2 size={18} /> Quiz
 </button>
-<button
-onClick={() => onScramble(data)}
-disabled={data.length < 1}
-className="px-4 py-2 bg-orange-500 text-white font-bold rounded-lg shadow hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
-title="Ghép câu"
->
+<button onClick={() => onScramble(data)} disabled={data.length < 1} className="px-4 py-2 bg-orange-500 text-white font-bold rounded-lg shadow hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2" title="Ghép câu">
 <Icons.Shuffle size={18} /> Scramble
 </button>
 </div>
@@ -2989,131 +2730,10 @@ title="Ghép câu"
 </div>
 );
 };
-const HelpModal = ({ isOpen, onClose, t, mainColor }) => {
-if (!isOpen) return null;
-const sections = [
-{
-title: t('secLearnTitle'),
-desc: t('secLearnDesc'),
-icon: <Icons.Book size={24} />,
-color: "blue"
-},
-{
-title: t('secGameTitle'),
-desc: t('secGameDesc'),
-icon: <Icons.Gamepad2 size={24} />,
-color: "purple"
-},
-{
-title: t('secNotebookTitle'),
-desc: t('secNotebookDesc'),
-icon: <Icons.BookOpen size={24} />,
-color: "orange"
-}
-];
-return (
-<div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-<div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-<div className={`p-4 border-b bg-${mainColor}-50 flex justify-between items-center`}>
-<h2 className={`font-bold flex gap-2 text-${mainColor}-700 text-lg items-center`}>
-<Icons.HelpCircle size={24} /> {t('helpTitle')}
-</h2>
-<button onClick={onClose}><Icons.X /></button>
-</div>
-<div className="flex-1 overflow-auto p-6 custom-scrollbar space-y-6">
-{/* Sections */}
-<div className="space-y-4">
-{sections.map((sec, idx) => (
-<div key={idx} className="flex gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100 items-start">
-<div className={`p-3 bg-white rounded-full shadow-sm text-${sec.color}-500 border border-${sec.color}-100 shrink-0`}>
-{sec.icon}
-</div>
-<div>
-<h3 className="font-bold text-gray-800 mb-1">{sec.title}</h3>
-<p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{sec.desc}</p>
-</div>
-</div>
-))}
-</div>
-{/* Shortcuts */}
-<div className="bg-gray-800 text-gray-200 rounded-xl p-5 shadow-inner">
-<h3 className="font-bold text-white mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
-<Icons.Keyboard size={18} /> {t('secShortcutsTitle')}
-</h3>
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-<div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full"></div> {t('keyNext')}</div>
-<div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-400 rounded-full"></div> {t('keyPrev')}</div>
-<div className="flex items-center gap-2"><div className="w-2 h-2 bg-blue-400 rounded-full"></div> {t('keyFlip')}</div>
-<div className="flex items-center gap-2"><div className="w-2 h-2 bg-yellow-400 rounded-full"></div> {t('keySpeak')}</div>
-<div className="col-span-1 sm:col-span-2 flex items-center gap-2"><div className="w-2 h-2 bg-purple-400 rounded-full"></div> {t('keyAuto')}</div>
-</div>
-</div>
-</div>
-<div className="p-4 border-t bg-gray-50 text-center">
-<button onClick={onClose} className={`w-full py-3 bg-${mainColor}-600 text-white font-bold rounded-xl shadow hover:bg-${mainColor}-700 transition-all`}>
-{t('close')}
-</button>
-</div>
-</div>
-</div>
-);
-};
-// [UPDATED] Hanzi Selector Modal (Step 3) - Giữ nguyên logic chọn chữ
-const HanziSelectorModal = ({ isOpen, onClose, text, onSelect, t }) => {
-const [chars, setChars] = useState([]);
-useEffect(() => {
-if (isOpen && text) {
-const hanziRegex = /[\u4e00-\u9fa5]/g;
-const found = text.match(hanziRegex);
-if (found) {
-setChars([...new Set(found)]);
-} else {
-setChars([]);
-}
-}
-}, [isOpen, text]);
-if (!isOpen) return null;
-return (
-<div className="fixed inset-0 z-[240] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-<div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
-<div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-<h3 className="font-bold text-gray-700">Chọn chữ để tập viết</h3>
-<button onClick={onClose}><Icons.X size={20} /></button>
-</div>
-<div className="p-6">
-{chars.length === 0 ? (
-<p className="text-center text-gray-500 italic">Không tìm thấy chữ Hán nào trong thẻ này.</p>
-) : (
-<div className="flex flex-wrap gap-3 justify-center">
-{chars.map((char, idx) => (
-<button
-key={idx}
-onClick={() => onSelect(char)}
-className="w-16 h-16 text-3xl font-serif border-2 border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 hover:text-red-600 transition-all shadow-sm flex items-center justify-center"
->
-{char}
-</button>
-))}
-</div>
-)}
-</div>
-<div className="p-4 border-t bg-gray-50 text-center">
-<button onClick={onClose} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-200 rounded-lg">Đóng</button>
-</div>
-</div>
-</div>
-);
-};
-// EXPORT RA WINDOW ĐỂ TRÁNH LỖI REFERENCE ERROR
-window.ApiKeyModal = ApiKeyModal;
+// EXPORT RA WINDOW
 window.NotebookModal = NotebookModal;
-window.LinkManagerModal = LinkManagerModal;
-window.ManualInputModal = ManualInputModal;
-window.WordSelectorModal = WordSelectorModal;
 window.MasteredModal = MasteredModal;
 window.IncorrectModal = IncorrectModal;
-window.HelpModal = HelpModal;
-window.HanziSelectorModal = HanziSelectorModal; // Export Selector
 // Block4.4: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Save/Load Modal) - Version 1.1
 // Last Updated: 2026-03-31 11:15
 // Nhiệm vụ: Quản lý tính năng Sao lưu (Backup) và Phục hồi (Restore) toàn bộ trạng thái dữ liệu của ứng dụng ra file JSON.
@@ -3490,10 +3110,467 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.18
-// Last Updated: 2026-04-04 11:46
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.2
+// Last Updated: 2026-04-04 17:15
+// Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
+// Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal
+// Cập nhật: Bổ sung khu vực UI "Kho Dữ Liệu AI" (Harvest Pool) vào LinkManagerModal.
+// ==================================================================================
+const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
+const [stats, setStats] = React.useState({ count: 0 });
+React.useEffect(() => {
+if(isOpen) {
+const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
+setStats({ count: pool.length });
+}
+}, [isOpen]);
+if (!isOpen) return null;
+return (
+<div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+<div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+<div className="flex justify-between items-center mb-4 border-b pb-2">
+<h3 className="font-bold text-lg flex items-center gap-2 text-purple-600">
+<window.Icons.Key /> {t('apiKeyLabel')}
+</h3>
+<button onClick={onClose}><window.Icons.X /></button>
+</div>
+<div className="space-y-4">
+<div className="bg-purple-50 p-2 rounded text-xs text-purple-800 border border-purple-100 flex justify-between">
+<span>Số Key dự phòng:</span>
+<span className="font-bold">{stats.count}</span>
+</div>
+<p className="text-xs text-gray-500 italic">Google Gemini API Key</p>
+<input
+type="password"
+value={apiKey}
+onChange={(e) => setApiKey(e.target.value)}
+className="w-full p-3 border rounded-lg text-sm bg-purple-50 focus:ring-2 focus:ring-purple-200 outline-none font-mono"
+placeholder={t('apiKeyPlace')}
+autoFocus
+/>
+<button onClick={onClose} className="w-full py-2 bg-purple-600 text-white rounded-lg font-bold shadow hover:bg-purple-700">
+<window.Icons.Check size={18} className="inline mr-1" /> {t('apply')}
+</button>
+</div>
+</div>
+</div>
+);
+};
+const LinkManagerModal = ({
+isOpen, onClose, t, defaultUrl, setDefaultUrl, exportUrl, setExportUrl,
+importUrl, setImportUrl, apiKeySheetUrl, setApiKeySheetUrl, onImport,
+onExportLink, onExportExcel, onFileImport, onSaveSettings, onFetchKey,
+onDownloadTemplate, lang, onImportToNotebook,
+aiHarvestPool = {}, onExportHarvestToExcel // [NEW v1.2] Props cho AI Harvest
+}) => {
+const fileInputRef = React.useRef(null);
+const [notebookUrl, setNotebookUrl] = React.useState('');
+// Tính tổng số câu hỏi AI đã thu hoạch được
+const totalHarvested = Object.values(aiHarvestPool).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+if (!isOpen) return null;
+return (
+<div className="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 animate-in fade-in">
+<div className="bg-white rounded-xl w-full max-w-md p-6 overflow-y-auto max-h-[90vh] custom-scrollbar">
+<div className="flex justify-between mb-4">
+<h2 className="font-bold flex gap-2 text-green-700"><window.Icons.Link /> {t('importTitle')}</h2>
+<button onClick={onClose} data-tooltip={t('ttClose')}><window.Icons.X /></button>
+</div>
+<div className="mb-4 bg-purple-50 p-3 rounded-lg border border-purple-100">
+<label className="block text-sm font-bold text-purple-700 mb-1">{t('apiKeySheetLabel')}</label>
+<div className="flex gap-2">
+<input type="text" value={apiKeySheetUrl} onChange={(e) => setApiKeySheetUrl(e.target.value)} className="w-full p-2 border rounded text-sm bg-white font-mono text-xs" />
+<button onClick={() => onFetchKey(apiKeySheetUrl)} className="p-2 bg-green-600 text-white rounded"><window.Icons.RefreshCw size={16} /></button>
+<button onClick={onDownloadTemplate} className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600" title={t('downloadTemplate')}><window.Icons.Download size={16} /></button>
+<button onClick={() => onSaveSettings(window.STORAGE_KEYS.API_KEY_SHEET, apiKeySheetUrl)} className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700" title="Lưu làm mặc định"><window.Icons.Save size={16} /></button>
+</div>
+</div>
+<div className="mb-4">
+<label className="block text-sm font-bold text-gray-700 mb-1">{t('linkDefault')}</label>
+<div className="flex gap-2">
+<input type="text" value={defaultUrl} onChange={(e) => setDefaultUrl(e.target.value)} className="w-full p-2 border rounded text-sm bg-gray-50" />
+<button onClick={() => onSaveSettings(window.STORAGE_KEYS.DEFAULT_URL + '_' + lang, defaultUrl)} className="p-2 bg-blue-600 text-white rounded"><window.Icons.Save size={16} /></button>
+<button onClick={() => onImport(defaultUrl)} className="p-2 bg-green-600 text-white rounded"><window.Icons.RefreshCw size={16} /></button>
+</div>
+</div>
+{/* Notebook Import Section */}
+<div className="mb-4 bg-orange-50 p-3 rounded-lg border border-orange-100">
+<label className="block text-sm font-bold text-orange-700 mb-1 flex items-center gap-2">
+<window.Icons.BookOpen size={16}/> Nhập thêm vào Sổ tay
+</label>
+<p className="text-xs text-orange-600 mb-2 italic">Gộp dữ liệu từ link mới vào sổ tay hiện có (Tự động lọc trùng).</p>
+<div className="flex gap-2">
+<input
+type="text"
+value={notebookUrl}
+onChange={(e) => setNotebookUrl(e.target.value)}
+className="w-full p-2 border rounded text-sm bg-white"
+placeholder="Dán link Google Sheet..."
+/>
+<button
+onClick={() => onImportToNotebook(notebookUrl)}
+className="p-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-bold whitespace-nowrap text-xs flex items-center gap-1"
+>
+<window.Icons.CloudUpload size={16}/> Gộp
+</button>
+</div>
+</div>
+{/* [NEW v1.2] AI Harvest Pool Section */}
+<div className="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-200 shadow-sm relative overflow-hidden">
+<div className="absolute -right-4 -top-4 opacity-10"><window.Icons.Sparkles size={64}/></div>
+<label className="block text-sm font-bold text-blue-800 mb-1 flex items-center gap-2 relative z-10">
+<window.Icons.Sparkles size={16}/> Kho Dữ Liệu AI Tự Sinh
+</label>
+<p className="text-[11px] text-blue-600 mb-3 leading-tight relative z-10">
+Tự động thu thập các câu hỏi/thử thách chất lượng cao do AI sáng tác trong quá trình bạn chơi game ở chế độ "AI Tự Sinh".
+</p>
+<div className="flex justify-between items-center bg-white p-2 rounded border border-blue-100 mb-3 relative z-10">
+<span className="text-xs font-bold text-gray-600">Tổng số câu đã thu hoạch:</span>
+<span className="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{totalHarvested}</span>
+</div>
+<button
+onClick={onExportHarvestToExcel}
+disabled={totalHarvested === 0}
+className="w-full p-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:from-gray-400 disabled:to-gray-500 shadow-md transition-all active:scale-95 relative z-10"
+>
+<window.Icons.Download size={18}/> Xuất Kho AI ra Excel
+</button>
+</div>
+<div className="mb-4">
+<label className="block text-sm font-bold text-gray-700 mb-1">{t('exportSheetLabel')}</label>
+<div className="flex gap-2">
+<input type="text" value={exportUrl} onChange={(e) => setExportUrl(e.target.value)} className="w-full p-2 border rounded text-sm bg-gray-50" />
+<button onClick={() => onSaveSettings(window.STORAGE_KEYS.EXPORT_URL + '_' + lang, exportUrl)} className="p-2 bg-blue-600 text-white rounded"><window.Icons.Save size={16} /></button>
+<button onClick={onExportLink} className="p-2 bg-purple-600 text-white rounded hover:bg-purple-700" data-tooltip={t('ttExportToLink')}><window.Icons.CloudUpload size={16} /></button>
+<button onClick={() => { if (exportUrl) window.open(exportUrl, '_blank'); }} className="p-2 bg-orange-500 text-white rounded"><window.Icons.ExternalLink size={16} /></button>
+</div>
+<div className="mt-2 flex gap-2">
+<input type="file" ref={fileInputRef} onChange={onFileImport} className="hidden" accept=".xlsx, .xls, .csv" />
+<button onClick={() => fileInputRef.current.click()} className="flex-1 py-2 bg-green-600 text-white rounded font-bold hover:bg-green-700 flex items-center justify-center gap-2" title={t('ttUpload')}>
+<window.Icons.Upload size={16} /> Nhập Excel
+</button>
+<button onClick={onExportExcel} className="flex-1 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 flex items-center justify-center gap-2" title={t('ttExport')}>
+<window.Icons.Download size={16} /> Xuất Excel
+</button>
+</div>
+</div>
+<hr className="my-4 border-gray-200" />
+<div className="mb-4">
+<label className="block text-sm font-bold text-gray-700 mb-1">{t('orInput')}</label>
+<input type="text" value={importUrl} onChange={(e) => setImportUrl(e.target.value)} className="w-full p-3 border rounded bg-gray-50 focus:ring-2 focus:ring-green-200 outline-none transition-all" placeholder={t('inputPlace')} />
+</div>
+<button onClick={() => onImport(importUrl)} className="w-full py-3 bg-green-600 text-white rounded-lg font-bold shadow-md hover:bg-green-700 active:scale-95 transition-all">
+<window.Icons.Check className="inline mr-1" /> {t('importNow')}
+</button>
+</div>
+</div>
+);
+};
+const ManualInputModal = ({ isOpen, onClose, onImport, onAddCard, onAutoFill, t, mainColor }) => {
+const [mode, setMode] = React.useState('single');
+const [text, setText] = React.useState('');
+const [isFilling, setIsFilling] = React.useState(false);
+const [singleData, setSingleData] = React.useState({ term: '', pronunciation: '', definition: '', example: '', sinoViet: '' });
+React.useEffect(() => {
+if (isOpen) {
+setText('');
+setSingleData({ term: '', pronunciation: '', definition: '', example: '', sinoViet: '' });
+setMode('single');
+setIsFilling(false);
+}
+}, [isOpen]);
+const handleSingleChange = (field, value) => setSingleData(prev => ({ ...prev, [field]: value }));
+const handleSingleSubmit = () => {
+if (!singleData.term.trim()) return;
+onAddCard(singleData);
+setSingleData({ term: '', pronunciation: '', definition: '', example: '', sinoViet: '' });
+};
+const handleAutoFillClick = async () => {
+if (!singleData.term.trim()) return;
+if (!onAutoFill) { alert("Chức năng AI chưa được kết nối!"); return; }
+setIsFilling(true);
+try {
+const result = await onAutoFill(singleData.term);
+if (result) {
+if (result._tokenUsage) {
+const used = result._tokenUsage.totalTokenCount || 0;
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + used);
+}
+setSingleData(prev => ({
+...prev,
+pronunciation: result.pronunciation || prev.pronunciation,
+definition: result.definition || prev.definition,
+example: result.example || prev.example,
+sinoViet: result.sinoViet || prev.sinoViet
+}));
+}
+}
+catch (e) { console.error(e); }
+finally { setIsFilling(false); }
+};
+if (!isOpen) return null;
+return (
+<div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+<div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[90vh]">
+<div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+<h3 className="font-bold text-gray-700 flex items-center gap-2"><window.Icons.Upload size={20} /> Thêm dữ liệu</h3>
+<button onClick={onClose}><window.Icons.X size={20} /></button>
+</div>
+<div className="flex border-b">
+<button className={`flex-1 py-3 text-sm font-bold transition-colors ${mode === 'single' ? `text-${mainColor}-600 border-b-2 border-${mainColor}-600 bg-blue-50/50` : 'text-gray-500 hover:bg-gray-50'}`} onClick={() => setMode('single')}>Nhập thủ công</button>
+<button className={`flex-1 py-3 text-sm font-bold transition-colors ${mode === 'batch' ? `text-${mainColor}-600 border-b-2 border-${mainColor}-600 bg-blue-50/50` : 'text-gray-500 hover:bg-gray-50'}`} onClick={() => setMode('batch')}>Nhập JSON (Nâng cao)</button>
+</div>
+<div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+{mode === 'single' ? (
+<div className="space-y-4">
+<div className="relative">
+<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Từ vựng <span className="text-red-500">*</span></label>
+<div className="flex gap-2">
+<input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none font-medium" placeholder="Ví dụ: Hello / 你好" value={singleData.term} onChange={(e) => handleSingleChange('term', e.target.value)} autoFocus />
+<button
+onClick={handleAutoFillClick}
+disabled={isFilling || !singleData.term.trim()}
+className={`p-3 rounded-lg border-2 ${isFilling ? 'bg-gray-100 border-gray-200 cursor-not-allowed' : `bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100`}`}
+title="Tự động điền bằng AI"
+>
+{isFilling ? <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div> : <window.Icons.Sparkles size={20} />}
+</button>
+</div>
+</div>
+<div className="grid grid-cols-2 gap-2">
+<div>
+<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Phiên âm</label>
+<input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none text-gray-600 font-sans" placeholder="Ví dụ: /həˈloʊ/" value={singleData.pronunciation} onChange={(e) => handleSingleChange('pronunciation', e.target.value)} />
+</div>
+<div>
+<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Hán Việt (Tùy chọn)</label>
+<input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none text-gray-600" placeholder="Ví dụ: Nhĩ hảo" value={singleData.sinoViet} onChange={(e) => handleSingleChange('sinoViet', e.target.value)} />
+</div>
+</div>
+<div>
+<label className="block text-xs font-bold text-blue-600 mb-1 uppercase">Nghĩa ngắn gọn (Cho Game)</label>
+<textarea className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none resize-none" rows="2" placeholder="Ví dụ: Xin chào" value={singleData.definition} onChange={(e) => handleSingleChange('definition', e.target.value)} />
+</div>
+<div>
+<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Giải thích chi tiết & Ví dụ</label>
+<textarea className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none resize-none h-24" placeholder="Ví dụ: Lời chào phổ biến...\n\nHello world!" value={singleData.example} onChange={(e) => handleSingleChange('example', e.target.value)} />
+</div>
+</div>
+) : (
+<>
+<p className="text-sm text-gray-500 mb-2">Dán danh sách từ vựng dạng JSON vào bên dưới:</p>
+<textarea className="w-full p-3 border rounded-lg text-sm font-mono h-60 focus:ring-2 focus:ring-blue-200 outline-none resize-none bg-gray-50" placeholder='[{"term":"Hello", "definition":"Xin chào", "pronunciation":"/həˈloʊ/"}, ...]' value={text} onChange={(e) => setText(e.target.value)} />
+</>
+)}
+</div>
+<div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+<button onClick={onClose} className="px-4 py-2 rounded text-gray-600 font-bold hover:bg-gray-200">{t('cancel')}</button>
+{mode === 'single' ? (
+<button onClick={handleSingleSubmit} disabled={!singleData.term.trim()} className={`px-6 py-2 rounded bg-${mainColor}-600 text-white font-bold hover:bg-${mainColor}-700 disabled:opacity-50 flex items-center gap-2 shadow-lg`}><window.Icons.Check size={18} /> Lưu thẻ</button>
+) : (
+<button onClick={() => onImport(text)} disabled={!text.trim()} className={`px-6 py-2 rounded bg-${mainColor}-600 text-white font-bold hover:bg-${mainColor}-700 disabled:opacity-50 flex items-center gap-2 shadow-lg`}><window.Icons.Upload size={18} /> Nhập JSON</button>
+)}
+</div>
+</div>
+</div>
+);
+};
+// EXPORT GLOBAL
+window.ApiKeyModal = ApiKeyModal;
+window.LinkManagerModal = LinkManagerModal;
+window.ManualInputModal = ManualInputModal;
+// Block4.7: TẦNG 4: CÁC TÍNH NĂNG & MODALS (In-game Helper Modals) - Version 1.1
+// Last Updated: 2026-04-04 13:55
+// Nhiệm vụ: Chuyên trách các công cụ phụ trợ bật lên trong quá trình học.
+// Gồm: WordSelectorModal, HanziSelectorModal
+// ==================================================================================
+// [UPDATED] Hỗ trợ Dual-Payload: Nhận vào chuỗi hoặc Object có {isSmartTarget: true}
+const WordSelectorModal = ({ isOpen, onClose, onSave, text, currentLang, t, mainColor }) => {
+const [selectedIndices, setSelectedIndices] = React.useState(new Set());
+const [words, setWords] = React.useState([]);
+// Xử lý Dual-Payload
+const isSmartObject = typeof text === 'object' && text !== null && text.isSmartTarget;
+const displayText = isSmartObject ? text.display : (text || "");
+const saveText = isSmartObject ? text.save : (text || "");
+React.useEffect(() => {
+if (!displayText) { setWords([]); return; }
+if (currentLang === 'zh') { setWords([...displayText].filter(c => c.trim().length > 0)); }
+else { setWords(displayText.split(' ').filter(w => w.length > 0)); }
+setSelectedIndices(new Set());
+}, [displayText, currentLang, isOpen]);
+const toggleWord = (index) => {
+const newSet = new Set(selectedIndices);
+newSet.has(index) ? newSet.delete(index) : newSet.add(index);
+setSelectedIndices(newSet);
+};
+if (!isOpen) return null;
+const selectedWordsList = words.filter((_, i) => selectedIndices.has(i));
+const Icons = window.Icons;
+return (
+<div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+<div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+<div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+<h3 className="font-bold text-gray-700">{t('selectWordsToSave')}</h3>
+<button onClick={onClose} data-tooltip={t('ttClose')}><Icons.X size={20} /></button>
+</div>
+<div className="p-6 overflow-y-auto max-h-[60vh]">
+<div className="flex flex-wrap gap-2 justify-center">
+{words.map((word, idx) => (
+<button key={idx} onClick={() => toggleWord(idx)} className={`px-3 py-2 rounded-lg border transition-all text-base sm:text-lg font-medium ${selectedIndices.has(idx) ? `bg-orange-100 border-${mainColor}-500 text-${mainColor}-700 shadow-md` : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+{word}
+</button>
+))}
+</div>
+</div>
+<div className="p-4 border-t bg-gray-50 flex flex-col gap-2">
+<div className="flex gap-2">
+<button onClick={() => onSave(selectedWordsList, false)} disabled={selectedIndices.size === 0} className={`flex-1 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-${mainColor}-700 shadow-md transition-all active:scale-95`}>
+{t('saveSelected')} ({selectedIndices.size})
+</button>
+<button onClick={() => onSave(selectedWordsList, true)} disabled={selectedIndices.size < 2} className={`flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-purple-700 shadow-md transition-all active:scale-95 flex items-center justify-center gap-1`} title="Ghép các từ đã chọn thành 1 từ vựng mới">
+<Icons.Link size={18} /> Lưu cụm
+</button>
+</div>
+{/* Bấm nút này sẽ lưu chuỗi "saveText" (có thể chứa đáp án ẩn) */}
+<button onClick={() => onSave([saveText])} className="w-full py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition-colors">
+{t('saveWholeSentence')}
+</button>
+</div>
+</div>
+</div>
+);
+};
+// Hanzi Selector Modal - Cửa sổ bật lên để chọn chữ Hán cần tập viết
+const HanziSelectorModal = ({ isOpen, onClose, text, onSelect, t }) => {
+const [chars, setChars] = React.useState([]);
+React.useEffect(() => {
+if (isOpen && text) {
+const hanziRegex = /[\u4e00-\u9fa5]/g;
+const found = text.match(hanziRegex);
+if (found) {
+setChars([...new Set(found)]);
+} else {
+setChars([]);
+}
+}
+}, [isOpen, text]);
+if (!isOpen) return null;
+const Icons = window.Icons;
+return (
+<div className="fixed inset-0 z-[240] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+<div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+<div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+<h3 className="font-bold text-gray-700">Chọn chữ để tập viết</h3>
+<button onClick={onClose}><Icons.X size={20} /></button>
+</div>
+<div className="p-6">
+{chars.length === 0 ? (
+<p className="text-center text-gray-500 italic">Không tìm thấy chữ Hán nào trong thẻ này.</p>
+) : (
+<div className="flex flex-wrap gap-3 justify-center">
+{chars.map((char, idx) => (
+<button
+key={idx}
+onClick={() => onSelect(char)}
+className="w-16 h-16 text-3xl font-serif border-2 border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 hover:text-red-600 transition-all shadow-sm flex items-center justify-center"
+>
+{char}
+</button>
+))}
+</div>
+)}
+</div>
+<div className="p-4 border-t bg-gray-50 text-center">
+<button onClick={onClose} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-200 rounded-lg">Đóng</button>
+</div>
+</div>
+</div>
+);
+};
+// EXPORT GLOBAL
+window.WordSelectorModal = WordSelectorModal;
+window.HanziSelectorModal = HanziSelectorModal;
+// Block4.8: TẦNG 4: CÁC TÍNH NĂNG & MODALS (User Guide & Documentation) - Version 1.1
+// Last Updated: 2026-04-04 14:00
+// Nhiệm vụ: Chuyên trách hệ thống hướng dẫn sử dụng chi tiết (Manual/Documentation). Dành không gian mở rộng nội dung text đồ sộ trong tương lai.
+// Gồm: HelpModal
+// ==================================================================================
+const HelpModal = ({ isOpen, onClose, t, mainColor }) => {
+if (!isOpen) return null;
+const Icons = window.Icons;
+const sections = [
+{
+title: t('secLearnTitle'),
+desc: t('secLearnDesc'),
+icon: <Icons.Book size={24} />,
+color: "blue"
+},
+{
+title: t('secGameTitle'),
+desc: t('secGameDesc'),
+icon: <Icons.Gamepad2 size={24} />,
+color: "purple"
+},
+{
+title: t('secNotebookTitle'),
+desc: t('secNotebookDesc'),
+icon: <Icons.BookOpen size={24} />,
+color: "orange"
+}
+];
+return (
+<div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+<div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+<div className={`p-4 border-b bg-${mainColor}-50 flex justify-between items-center`}>
+<h2 className={`font-bold flex gap-2 text-${mainColor}-700 text-lg items-center`}>
+<Icons.HelpCircle size={24} /> {t('helpTitle')}
+</h2>
+<button onClick={onClose}><Icons.X /></button>
+</div>
+<div className="flex-1 overflow-auto p-6 custom-scrollbar space-y-6">
+{/* Sections */}
+<div className="space-y-4">
+{sections.map((sec, idx) => (
+<div key={idx} className="flex gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100 items-start">
+<div className={`p-3 bg-white rounded-full shadow-sm text-${sec.color}-500 border border-${sec.color}-100 shrink-0`}>
+{sec.icon}
+</div>
+<div>
+<h3 className="font-bold text-gray-800 mb-1">{sec.title}</h3>
+<p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{sec.desc}</p>
+</div>
+</div>
+))}
+</div>
+{/* Shortcuts */}
+<div className="bg-gray-800 text-gray-200 rounded-xl p-5 shadow-inner">
+<h3 className="font-bold text-white mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
+<Icons.Keyboard size={18} /> {t('secShortcutsTitle')}
+</h3>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+<div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-400 rounded-full"></div> {t('keyNext')}</div>
+<div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-400 rounded-full"></div> {t('keyPrev')}</div>
+<div className="flex items-center gap-2"><div className="w-2 h-2 bg-blue-400 rounded-full"></div> {t('keyFlip')}</div>
+<div className="flex items-center gap-2"><div className="w-2 h-2 bg-yellow-400 rounded-full"></div> {t('keySpeak')}</div>
+<div className="col-span-1 sm:col-span-2 flex items-center gap-2"><div className="w-2 h-2 bg-purple-400 rounded-full"></div> {t('keyAuto')}</div>
+</div>
+</div>
+</div>
+<div className="p-4 border-t bg-gray-50 text-center">
+<button onClick={onClose} className={`w-full py-3 bg-${mainColor}-600 text-white font-bold rounded-xl shadow hover:bg-${mainColor}-700 transition-all`}>
+{t('close')}
+</button>
+</div>
+</div>
+</div>
+);
+};
+// EXPORT GLOBAL
+window.HelpModal = HelpModal;
+// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.19
+// Last Updated: 2026-04-04 13:28
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind.
-// Cập nhật: Biến nhãn đếm ngược 10s thành nút Tạm dừng (Pause Timer) cho phép người chơi đóng băng thời gian để xem kỹ đáp án.
+// Cập nhật: Fix lỗi tàng hình nút Pause trên Mobile (Xóa bỏ class 'hidden lg:flex' thành 'flex').
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -3677,10 +3754,10 @@ className={`px-4 py-1.5 sm:px-5 bg-${mainColor}-600 text-white rounded-xl font-b
 </button>
 ) : (
 <div className="flex items-center gap-2 animate-in fade-in">
-{/* [NEW v1.18] Nút Tạm dừng đếm ngược kết quả */}
+{/* [FIXED v1.19] Nút Tạm dừng: Thay đổi 'hidden lg:flex' thành 'flex' để hiện trên mọi thiết bị */}
 <button
 onClick={() => toggleResultPause && toggleResultPause()}
-className={`text-[10px] font-bold px-2.5 py-1.5 rounded-full border hidden lg:flex items-center gap-1.5 transition-colors ${
+className={`text-[10px] font-bold px-2.5 py-1.5 rounded-full border flex items-center gap-1.5 transition-colors ${
 matchState.isResultPaused
 ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 shadow-inner'
 : `bg-${mainColor}-50 text-${mainColor}-600 border-${mainColor}-200 hover:bg-${mainColor}-100`
@@ -6125,10 +6202,10 @@ onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={set
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.9
-// Last Updated: 2026-04-04 00:15
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.10
+// Last Updated: 2026-04-04 17:30
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: Khai báo cổng `onUpdateCards` ở GameView và truyền xuống MatchGame để phục vụ tính năng Global Sync (Lưu vĩnh viễn bản dịch AI).
+// Cập nhật: Cắm cáp `onSaveToHarvest` và `onUpdateCards` vào GameView và truyền xuống FillBlank/SpotMistake để hoàn thiện tính năng Kho AI và Vá thẻ mù.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onResume, gameSessions }) => {
@@ -6260,8 +6337,7 @@ title="Bật/Tắt AI tạo nhiễu khó"
 );
 };
 // 2. GAME VIEW (Controller chính - Clean Router)
-// [UPDATED v1.9] Nhận thêm prop `onUpdateCards` để chuyển dữ liệu xuống MatchGame
-const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings, onUpdateCards }) => {
+const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings, onUpdateCards, onSaveToHarvest }) => {
 // Chỉ giữ lại State quản lý luồng màn hình (Menu -> Playing -> Result)
 const [gameState, setGameState] = React.useState('menu');
 const [gameType, setGameType] = React.useState(null);
@@ -6519,7 +6595,6 @@ onBack={() => setGameState('menu')}
 {/* 8. MÀN HÌNH CHƠI GAME (PLAYING) */}
 {gameState === 'playing' && (
 <div className="block w-full h-full">
-{/* [UPDATED v1.9] Nối cáp onUpdateCards vào MatchGame */}
 {gameType === 'match' && SafeMatchGame &&
 <SafeMatchGame
 key={gameSessionId}
@@ -6608,6 +6683,8 @@ notebook={notebook}
 onLogWrong={onLogWrong}
 settings={settings}
 config={gameConfig}
+onUpdateCards={onUpdateCards}
+onSaveToHarvest={onSaveToHarvest}
 />
 }
 {gameType === 'spotmistake' && SafeSpotMistakeGame &&
@@ -6626,6 +6703,8 @@ notebook={notebook}
 onLogWrong={onLogWrong}
 settings={settings}
 config={gameConfig}
+onUpdateCards={onUpdateCards}
+onSaveToHarvest={onSaveToHarvest}
 />
 }
 </div>
@@ -6638,10 +6717,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 1.9
-// Last Updated: 2026-04-03 17:10
+// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 2.0
+// Last Updated: 2026-04-04 15:58
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Điền Từ (Fill-in-the-Blank).
-// Cập nhật: Sửa lỗi khuyết viền (Clipping Bug) bằng cách thêm padding px-2 cho khung cuộn.
+// Cập nhật: Nâng cấp UX Sư phạm. Bổ sung Knowledge Panel cho cả trạng thái Đúng/Sai để neo giữ kiến thức. Bổ sung nút Tạm dừng đếm ngược (UX Timer).
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const FillBlankSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -6668,7 +6747,6 @@ return (
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Điền Từ</h2>
 <div className="w-10"></div>
 </div>
-{/* [UPDATED v1.9] Thay pr-2 bằng px-2 pb-2 để tạo không gian "thở" cho các nút khi scale-105 */}
 <div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
 {/* Chọn Nguồn Dữ Liệu */}
 <div className="mb-6">
@@ -6731,6 +6809,7 @@ t, mainColor, config,
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts,
 score, combo, playedCount, time, isFinished, isGenerating, aiCountdown,
 correctCount, wrongCount,
+resultTimer, isResultPaused, toggleResultPause, // [NEW v2.0] Nhận các state UX Timer
 checkAnswer, handleNext, handleSkip, onBack, onEndGame, onSaveToNotebook, isBookmarked
 }) => {
 const Icons = window.Icons;
@@ -6877,7 +6956,6 @@ e.stopPropagation();
 if (currentQuestion && onSaveToNotebook) {
 const underlinedTarget = currentQuestion.targetWord.split('').map(char => char + '\u0332').join('');
 const sentenceWithUnderline = currentQuestion.displaySentence.replace('[__________]', underlinedTarget);
-// Gửi Payload 2 mặt: Display (câu đục lỗ giấu đáp án) và Save (câu đúng gạch chân)
 onSaveToNotebook({
 isSmartTarget: true,
 display: currentQuestion.displaySentence,
@@ -6897,7 +6975,8 @@ title="Lưu vào Sổ tay"
 </div>
 {/* Nội dung Game */}
 <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center gap-6 custom-scrollbar relative">
-{/* Khu vực Gợi ý (Nghĩa / Dịch) */}
+{/* Khu vực Gợi ý (Nghĩa / Dịch) - Ẩn đi khi đã có kết quả để tập trung vào bảng tóm tắt */}
+{checkStatus !== 'correct' && checkStatus !== 'wrong' && (
 <div className="w-full max-w-3xl bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center animate-in slide-in-from-top-4">
 <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-center gap-2">
 <span className="w-8 h-px bg-gray-300"></span>
@@ -6909,8 +6988,9 @@ title="Lưu vào Sổ tay"
 {currentQuestion.origin?.definition || currentQuestion.hint}
 </div>
 </div>
-{/* Câu hỏi đục lỗ (Chỉ hiện khi là câu văn) */}
-{currentQuestion.type === 'sentence' && (
+)}
+{/* Câu hỏi đục lỗ (Chỉ hiện khi chưa có kết quả) */}
+{currentQuestion.type === 'sentence' && checkStatus !== 'correct' && checkStatus !== 'wrong' && (
 <div className="w-full max-w-3xl text-center px-4 animate-in fade-in mt-4">
 <p className="text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed">
 {currentQuestion.displaySentence}
@@ -6919,7 +6999,6 @@ title="Lưu vào Sổ tay"
 )}
 {/* Khu vực Nhập liệu (Input) */}
 <div className="w-full max-w-lg mt-8 relative animate-in zoom-in">
-{/* Dùng readOnly thay vì disabled để giữ bàn phím ảo không bị sập */}
 <input
 ref={inputRef}
 type="text"
@@ -6941,25 +7020,22 @@ Chưa chính xác! Bạn còn {3 - attempts} lượt thử.
 </div>
 )}
 </div>
-{/* Hiển thị đáp án đúng nếu đã sai quá 3 lần (Knowledge Mining Panel) */}
-{checkStatus === 'wrong' && (
-<div className="w-full max-w-lg mt-6 bg-white rounded-2xl shadow-lg border border-red-100 overflow-visible animate-in slide-in-from-bottom-4 z-20">
-<div className="p-3 bg-red-500 text-white flex items-center justify-between px-6 font-bold rounded-t-2xl relative">
+{/* [NEW v2.0] KNOWLEDGE MINING PANEL (Bảng Tóm tắt Kiến thức) */}
+{/* Hiển thị khi có kết quả (Đúng hoặc Sai 3 lần) */}
+{(checkStatus === 'wrong' || checkStatus === 'correct') && (
+<div className={`w-full max-w-3xl mt-2 bg-white rounded-2xl shadow-lg border-2 ${checkStatus === 'correct' ? 'border-green-200' : 'border-red-200'} overflow-visible animate-in slide-in-from-bottom-4 z-20`}>
+<div className={`p-3 ${checkStatus === 'correct' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold rounded-t-xl relative`}>
 <div className="flex items-center gap-2">
-<Icons.X /> HẾT LƯỢT!
+{checkStatus === 'correct' ? <Icons.CheckCircle /> : <Icons.X />}
+{checkStatus === 'correct' ? 'CHÍNH XÁC!' : 'ĐÁP ÁN ĐÚNG LÀ:'}
 </div>
-{/* Nút Bookmark sử dụng Dual-Payload để giấu đáp án */}
 <button
 onClick={(e) => {
 e.stopPropagation();
 if (currentQuestion && onSaveToNotebook) {
 const underlinedTarget = currentQuestion.targetWord.split('').map(char => char + '\u0332').join('');
 const sentenceWithUnderline = currentQuestion.displaySentence.replace('[__________]', underlinedTarget);
-onSaveToNotebook({
-isSmartTarget: true,
-display: currentQuestion.displaySentence,
-save: sentenceWithUnderline
-});
+onSaveToNotebook({ isSmartTarget: true, display: currentQuestion.displaySentence, save: sentenceWithUnderline });
 }
 }}
 className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors shadow-sm"
@@ -6967,29 +7043,62 @@ className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-cente
 <Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'}
 </button>
 </div>
-<div className="p-6 text-center bg-white rounded-b-2xl">
-<span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Đáp án đúng là</span>
-<span className="text-3xl font-black text-green-600 tracking-wide">
+<div className="p-6 text-center bg-white rounded-b-xl flex flex-col gap-4">
+<div className="flex flex-col gap-2">
+<span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Câu hoàn chỉnh</span>
+<span className={`text-2xl md:text-3xl font-bold ${checkStatus === 'correct' ? 'text-green-800' : 'text-gray-800'} leading-relaxed`}>
+{/* Lồng ghép từ khóa vào chỗ trống và Highlight màu */}
+{currentQuestion.displaySentence.split('[__________]').map((part, i, arr) => (
+<React.Fragment key={i}>
+{part}
+{i < arr.length - 1 && (
+<span className={`px-2 mx-1 rounded-lg ${checkStatus === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600 border border-red-200'}`}>
 {currentQuestion.targetWord}
 </span>
+)}
+</React.Fragment>
+))}
+</span>
+</div>
+<div className="mt-2 pt-4 border-t border-gray-100">
+<span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Ý nghĩa</span>
+<span className="text-base font-medium text-gray-600 italic">"{currentQuestion.hint || currentQuestion.origin?.definition}"</span>
+</div>
 </div>
 </div>
 )}
 </div>
 {/* Bảng Điều Khiển Dưới Cùng */}
-<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 {checkStatus === 'correct' || checkStatus === 'wrong' ? (
+<div className="w-full max-w-md flex gap-3">
+{/* [NEW v2.0] Nút Tạm dừng đếm ngược (UX Timer Control) */}
+<button
+onClick={() => toggleResultPause && toggleResultPause()}
+className={`flex-1 py-4 font-bold text-sm rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
+isResultPaused
+? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 shadow-inner'
+: 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+}`}
+>
+{isResultPaused ? (
+<><Icons.Play size={18} fill="currentColor" /> Đã dừng</>
+) : (
+<><Icons.Pause size={18} fill="currentColor" /> Xem ({resultTimer}s)</>
+)}
+</button>
 <button
 onClick={handleNext}
 disabled={isGenerating}
-className={`w-full max-w-md py-4 bg-${checkStatus === 'correct' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg transition-transform flex justify-center items-center gap-2 ${isGenerating ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'correct' ? 'green-600' : mainColor + '-700'}`}`}
+className={`flex-[2] py-4 bg-${checkStatus === 'correct' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg transition-transform flex justify-center items-center gap-2 ${isGenerating ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'correct' ? 'green-600' : mainColor + '-700'}`}`}
 >
 {isGenerating ? (
 <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang tải...</>
 ) : (
-<>{checkStatus === 'correct' ? <Icons.Check size={24} /> : <Icons.ChevronRight size={24} />} Tiếp theo</>
+<>Tiếp theo <Icons.ChevronRight size={24} /></>
 )}
 </button>
+</div>
 ) : (
 <div className="w-full max-w-md flex gap-3">
 <button
@@ -7016,15 +7125,16 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.0
-// Last Updated: 2026-04-04 11:35
-// Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý luồng, Preload Queue, AI Pure Mode.
-// Cập nhật: ĐẠI PHẪU (REFACTOR). Loại bỏ logic đục lỗ nội bộ, gọi hàm tập trung từ window.GameAlgoEngine.ClozeEngine ở Tầng 2.
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.4
+// Last Updated: 2026-04-05 08:20
+// Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank).
+// Cập nhật: TỐI ƯU HÓA (REFACTOR). Loại bỏ quản lý mảng Ký ức thủ công. Chuyển sang sử dụng Lõi Ký ức AntiLazyMemory từ Tầng 2. Tuân thủ nguyên tắc DRY.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
 const { isAiMode, apiKey, lang, timeLimit, level, sourceMode } = config;
-const { onFinish, showToast, onLogWrong } = callbacks;
+const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest } = callbacks;
+// State Game Cơ bản
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [inputBuffer, setInputBuffer] = React.useState("");
 const [checkStatus, setCheckStatus] = React.useState('idle');
@@ -7032,27 +7142,28 @@ const [attempts, setAttempts] = React.useState(0);
 const [score, setScore] = React.useState(0);
 const [combo, setCombo] = React.useState(1);
 const [playedCount, setPlayedCount] = React.useState(0);
-const [time, setTime] = React.useState(0);
+const [time, setTime] = React.useState(0); // Tổng thời gian chơi
 const [isFinished, setIsFinished] = React.useState(false);
 const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
-const questionCache = React.useRef(new Map());
-const pendingFetchesRef = React.useRef(new Map());
+// UX Timer State cho màn hình hiển thị kết quả (Knowledge Panel)
+const [resultTimer, setResultTimer] = React.useState(0);
+const [isResultPaused, setIsResultPaused] = React.useState(false);
+// Động cơ thống nhất từ Tầng 2
+const enrichedCardsRef = React.useRef(cards);
 const deckRef = React.useRef([]);
+const coordinatorRef = React.useRef(null);
 const isGameActiveRef = React.useRef(true);
-const timerRef = React.useRef(null);
-const autoNextRef = React.useRef(null);
-const preloadedQuestionsRef = React.useRef([]);
-const isPreloadingRef = React.useRef(false);
+const gameTimerRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
-const aiGeneratedCountRef = React.useRef(0);
-const historyQueueRef = React.useRef([]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
-// Cỗ máy đóng gói Lỗi sai (Lưu cả câu & Gạch chân từ khóa)
+// Đồng bộ thẻ gốc nếu có thay đổi từ bên ngoài
+React.useEffect(() => { enrichedCardsRef.current = cards; }, [cards]);
+// Cỗ máy đóng gói Lỗi sai (Auto-Log)
 const logMistake = (question) => {
 if (!onLogWrong || !question) return;
 const baseData = question.origin || {};
@@ -7070,140 +7181,152 @@ timestamp: Date.now()
 };
 onLogWrong(mistakeCard);
 };
-// --- TÌM NẠP HOẶC TỰ SINH DỮ LIỆU (FETCH ENGINE) ---
-const fetchFillBlankData = async (idx) => {
+// Hàm lấy thẻ tiếp theo (Đảm bảo vòng lặp vô tận)
+const getNextCardIndex = () => {
+if (deckRef.current.length === 0) {
+let validIndices = enrichedCardsRef.current.map((c, i) => ({ c, i }))
+.filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '))
+.map(({ i }) => i);
+if (validIndices.length === 0) validIndices = enrichedCardsRef.current.map((_, i) => i);
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
+}
+return deckRef.current.shift() || 0;
+};
+// --- TÌM NẠP DỮ LIỆU (FETCH TASK CHO COORDINATOR) ---
+const fetchTask = async () => {
 const isPureMode = sourceMode === 'ai_pure';
 let card = null;
 if (!isPureMode) {
-card = cards[idx];
-if (!card) {
-const newIdx = idx % cards.length;
-card = cards[newIdx];
+const nextIdx = getNextCardIndex();
+card = enrichedCardsRef.current[nextIdx];
 if (!card) return null;
 }
-if (questionCache.current.has(card.term)) return questionCache.current.get(card.term);
-if (pendingFetchesRef.current.has(card.term)) return pendingFetchesRef.current.get(card.term);
-}
-const fetchTask = (async () => {
 const canCallAi = isAiMode && apiKey && window.Utils && window.Utils.callGeminiApi;
 const isSentence = !isPureMode ? (window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(card.term) : card.term.includes(' ')) : true;
 const type = isSentence ? 'sentence' : 'word';
 if (canCallAi && isSentence) {
 try {
 let result;
-// Gọi AI từ Nhà máy thuật toán (Tầng 2)
 if (isPureMode) {
-// Pure Mode: AI tự sáng tác dựa trên Level
-const prompt = window.IoeDataEngine.buildPureModePrompt(level, 'fillblank');
+// Sử dụng Lõi Ký ức chống AI lười biếng từ Tầng 2
+let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'fillblank');
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+prompt += window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.getPrompt();
+}
 const schema = window.IoeDataEngine.SCHEMAS.pure_fill_blank;
 const aiRes = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(aiRes.text);
 const sentenceToCheck = parsed.displaySentence.replace('[__________]', parsed.targetWord);
 result = { origin: { term: sentenceToCheck, definition: parsed.hint }, targetWord: parsed.targetWord, displaySentence: parsed.displaySentence, hint: parsed.hint };
+// Ghi nhớ từ khóa vào Lõi Ký ức
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.add(parsed.targetWord);
+}
+// Bắn dữ liệu AI Tự sinh vào Kho Harvest
+if (onSaveToHarvest) {
+onSaveToHarvest(level, {
+displaySentence: parsed.displaySentence,
+targetWord: parsed.targetWord,
+hint: parsed.hint
+});
+}
 } else {
-// Card Mode: AI đục lỗ dựa trên Flashcard
 result = await window.GameAlgoEngine.ClozeEngine.ai_mask(card.term, card.definition, lang, apiKey);
 result.origin = card;
 }
 const finalResult = { ...result, type: 'sentence', isAiGenerated: true };
-if (!isPureMode) questionCache.current.set(card.term, finalResult);
 if (isInitializingRef.current) {
-aiGeneratedCountRef.current += 1;
-safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`, "success");
+safeShowToast(`Đang nạp đạn AI...`, "info");
 }
 return finalResult;
 } catch (e) {
 console.warn("AI FillBlank Fallback:", e.message);
 }
 }
-// Fallback xuống Offline Engine của Nhà máy (Tầng 2)
+// Fallback xuống Offline Engine
 const textToMask = isPureMode ? "The children are playing in the garden." : card.term;
 const hintFallback = isPureMode ? "Lũ trẻ đang chơi trong vườn." : card.definition;
 const offlineRes = window.GameAlgoEngine.ClozeEngine.offline_mask(textToMask, lang, type);
-const finalFallback = {
+return {
 ...offlineRes,
 origin: isPureMode ? { term: textToMask, definition: hintFallback } : card,
 hint: isPureMode ? hintFallback : offlineRes.hint,
 type: type,
 isAiGenerated: false
 };
-if (!isPureMode) questionCache.current.set(card.term, finalFallback);
-return finalFallback;
-})();
-if (!isPureMode) pendingFetchesRef.current.set(card.term, fetchTask);
-try { return await fetchTask; } finally { if(!isPureMode) pendingFetchesRef.current.delete(card.term); }
-};
-const getNextCardIndex = () => {
-if (deckRef.current.length === 0 && cards && cards.length > 0) {
-let validIndices = cards.map((c, i) => ({ c, i }))
-.filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '))
-.map(({ i }) => i);
-if (validIndices.length === 0) validIndices = cards.map((_, i) => i);
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
-}
-return deckRef.current.shift() || 0;
-};
-const maintainQueue = async () => {
-if (isPreloadingRef.current || !isGameActiveRef.current) return;
-isPreloadingRef.current = true;
-try {
-while (preloadedQuestionsRef.current.length < 2 && isGameActiveRef.current) {
-const nextIdx = sourceMode === 'card' ? getNextCardIndex() : 0;
-const data = await fetchFillBlankData(nextIdx);
-if (data && isGameActiveRef.current) preloadedQuestionsRef.current.push(data);
-else break;
-}
-} finally { isPreloadingRef.current = false; }
 };
 const startNewGame = async () => {
 setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
-preloadedQuestionsRef.current = []; isInitializingRef.current = true; aiGeneratedCountRef.current = 0;
+isInitializingRef.current = true;
+let currentDeck = [...cards];
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i)) : [];
+// PRE-FLIGHT BATCH ENRICH (Vá lỗi thẻ mù)
+if (sourceMode === 'card' && isAiMode && apiKey && window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
+const { updatedCards, hasUpdates } = await window.GameAlgoEngine.PreflightEngine.batchEnrich(
+currentDeck, deckRef.current, 10, lang, apiKey
+);
+if (hasUpdates) {
+enrichedCardsRef.current = updatedCards;
+if (onUpdateCards) onUpdateCards(updatedCards);
+safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
+}
+}
+// Khởi tạo Bộ Điều Phối Cuốn Chiếu (Coordinator)
+if (coordinatorRef.current) coordinatorRef.current.destroy();
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+coordinatorRef.current = window.GameAlgoEngine.PreflightEngine.createQueueCoordinator(fetchTask, 2);
+} else {
+safeShowToast("Lỗi hệ thống: Không tìm thấy PreflightEngine", "error");
+return;
+}
 const isUsingAI = isAiMode || sourceMode === 'ai_pure';
 if (isUsingAI) {
 setAiCountdown(20);
 const timer = setInterval(() => { setAiCountdown(prev => { if (prev <= 1) clearInterval(timer); return prev - 1; }); }, 1000);
-const fetchAllPromise = (async () => {
-for (let i = 0; i < 3; i++) {
-const q = await fetchFillBlankData(sourceMode === 'card' ? getNextCardIndex() : 0);
-if (q && isGameActiveRef.current) preloadedQuestionsRef.current.push(q);
-await new Promise(r => setTimeout(r, 500));
-}
-})();
+// Nạp đạn cuốn chiếu ban đầu
+const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 20000));
-await Promise.race([fetchAllPromise, timeoutPromise]);
+await Promise.race([maintainPromise, timeoutPromise]);
 clearInterval(timer);
-const firstData = preloadedQuestionsRef.current.shift();
+const firstData = coordinatorRef.current.pop();
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestion(firstData);
 setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
-maintainQueue();
 }
 } else {
-const data = await fetchFillBlankData(sourceMode === 'card' ? getNextCardIndex() : 0);
+await coordinatorRef.current.maintain();
+const data = coordinatorRef.current.pop();
 if (isGameActiveRef.current && data) {
 setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); isInitializingRef.current = false;
-maintainQueue();
 }
 }
-if (timerRef.current) clearInterval(timerRef.current);
-timerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
 };
-const nextRound = async () => {
+const nextRound = () => {
 if (isGenerating) return;
-if (autoNextRef.current) clearTimeout(autoNextRef.current);
 setPlayedCount(prev => prev + 1);
-if (preloadedQuestionsRef.current.length > 0) {
-const nextData = preloadedQuestionsRef.current.shift();
+// Reset UX Timer
+setResultTimer(0);
+setIsResultPaused(false);
+// POP đạn từ Coordinator (Tự động kích hoạt nạp ngầm background)
+if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
+const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0);
-maintainQueue();
 } else {
+// Hết đạn đột xuất (Nghẽn mạng)
 setIsGenerating(true);
-const data = await fetchFillBlankData(sourceMode === 'card' ? getNextCardIndex() : 0);
-if (isGameActiveRef.current && data) {
-setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); maintainQueue();
+coordinatorRef.current.maintain().then(() => {
+if (isGameActiveRef.current) {
+const data = coordinatorRef.current.pop();
+if (data) {
+setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false);
 }
+}
+});
 }
 };
 const checkAnswer = () => {
@@ -7218,16 +7341,14 @@ return s.trim();
 if (normalize(currentQuestion.targetWord) === normalize(inputBuffer)) {
 setCheckStatus('correct'); setCorrectCount(p => p + 1); setScore(prev => prev + (15 * combo)); setCombo(prev => prev + 1);
 safeShowToast("Chính xác!", "success");
-if (autoNextRef.current) clearTimeout(autoNextRef.current);
-autoNextRef.current = setTimeout(() => { if (isGameActiveRef.current) nextRound(); }, 2000);
+setResultTimer(5); // Thiết lập đếm ngược 5 giây để xem lại
 } else {
 const newAttempts = attempts + 1;
 setAttempts(newAttempts); setCombo(1); setScore(prev => Math.max(0, prev - 5));
 if (newAttempts >= 3) {
 setCheckStatus('wrong'); setWrongCount(p => p + 1); safeShowToast("Đã hết lượt! Xem đáp án nhé.", "error");
 logMistake(currentQuestion);
-if (autoNextRef.current) clearTimeout(autoNextRef.current);
-autoNextRef.current = setTimeout(() => { if (isGameActiveRef.current) nextRound(); }, 4000);
+setResultTimer(5); // Thiết lập đếm ngược 5 giây để học từ sai
 } else {
 setCheckStatus('wrong_retry'); safeShowToast("Chưa đúng, hãy thử lại!", "warning");
 setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
@@ -7238,23 +7359,36 @@ const handleSkip = () => {
 if (checkStatus === 'idle' || checkStatus === 'wrong_retry') {
 setCombo(1); setAttempts(3); setCheckStatus('wrong'); setWrongCount(p => p + 1); safeShowToast("Đã bỏ qua!", "error");
 logMistake(currentQuestion);
-if (autoNextRef.current) clearTimeout(autoNextRef.current);
-autoNextRef.current = setTimeout(() => { if (isGameActiveRef.current) nextRound(); }, 4000);
+setResultTimer(5); // Xem đáp án 5 giây
 }
 };
+// Động cơ Đếm ngược cho màn hình Kết quả (UX Timer)
+React.useEffect(() => {
+if ((checkStatus === 'correct' || checkStatus === 'wrong') && resultTimer > 0 && !isResultPaused) {
+const id = setTimeout(() => setResultTimer(t => t - 1), 1000);
+return () => clearTimeout(id);
+} else if ((checkStatus === 'correct' || checkStatus === 'wrong') && resultTimer === 0 && !isResultPaused) {
+nextRound(); // Tự động qua bài khi hết giờ và không Pause
+}
+}, [checkStatus, resultTimer, isResultPaused]);
+const toggleResultPause = () => setIsResultPaused(p => !p);
 React.useEffect(() => {
 isGameActiveRef.current = true;
 startNewGame();
 return () => {
 isGameActiveRef.current = false;
-if (timerRef.current) clearInterval(timerRef.current);
-if (autoNextRef.current) clearTimeout(autoNextRef.current);
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+if (coordinatorRef.current) coordinatorRef.current.destroy();
 };
 }, [level, sourceMode, isAiMode, lang]);
-return { currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts, time, score, combo, playedCount, isFinished, isGenerating, aiCountdown, correctCount, wrongCount, checkAnswer, handleNext: nextRound, handleSkip };
+return {
+currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts, time, score, combo, playedCount, isFinished, isGenerating, aiCountdown, correctCount, wrongCount,
+resultTimer, isResultPaused, toggleResultPause, // Xuất API UX Timer
+checkAnswer, handleNext: nextRound, handleSkip
+};
 };
 // --- 2. GAME WRAPPER (COMPONENT KẾT NỐI UI VÀ LOGIC) ---
-const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config }) => {
+const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest }) => {
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: onQuit,
@@ -7263,10 +7397,9 @@ if (onBookmark) onBookmark(payload);
 else if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning");
 }
 };
-const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong: onLogWrong };
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest };
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
 const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
-// Kiểm tra xem từ khóa hiện tại đã có trong Sổ tay chưa
 const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
 const FillBlankPlayScreen = window.FillBlankPlayScreen || window.Block5_8_FillBlankPlayScreen;
 if (!FillBlankPlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankPlayScreen</div>;
@@ -7680,173 +7813,397 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic) - Version 1.5
-// Last Updated: 2026-04-04 10:19
-// Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Tìm Lỗi Sai.
-// Cập nhật: ĐẠI PHẪU (REFACTOR). Loại bỏ code tạo lỗi nội bộ, chuyển sang gọi hàm từ Nhà máy Thuật toán window.GameAlgoEngine ở Tầng 2. Tuân thủ nguyên tắc DRY.
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 2.2
+// Last Updated: 2026-04-05 08:30
+// Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
+// Cải tiến: TỐI ƯU HÓA (REFACTOR). Loại bỏ quản lý mảng Ký ức cục bộ. Sử dụng Lõi Ký ức AntiLazyMemory từ Tầng 2 để dùng chung bộ nhớ với các Game khác (Tuân thủ DRY).
 // ==================================================================================
-const SpotMistakeGame = ({ cards, t, mainColor, lang, isAiMode, apiKey, onFinish, onQuit, onBookmark, notebook, onLogWrong, settings, config }) => {
-// 1. Quản lý Dữ liệu gốc
-const cardsRef = React.useRef(cards);
-React.useEffect(() => { cardsRef.current = cards; }, [cards]);
-// 2. Quản lý State Trò chơi
-const [queue, setQueue] = React.useState([]);
-const [currentIndex, setCurrentIndex] = React.useState(0);
-const [roundData, setRoundData] = React.useState(null);
-const [isLoading, setIsLoading] = React.useState(true);
-const [isGenerating, setIsGenerating] = React.useState(false);
-const [isPaused, setIsPaused] = React.useState(false);
-// 3. Quản lý Điểm số & Thời gian
+// --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
+const useSpotMistakeLogic = (cards, config, callbacks) => {
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode } = config;
+const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest } = callbacks;
+const [currentQuestion, setCurrentQuestion] = React.useState(null);
+const [chunks, setChunks] = React.useState([]);
+const [stage, setStage] = React.useState('spot');
+const [selectedIndex, setSelectedIndex] = React.useState(null);
+const [inputBuffer, setInputBuffer] = React.useState("");
+const [checkStatus, setCheckStatus] = React.useState('idle');
+const [attempts, setAttempts] = React.useState(0);
 const [score, setScore] = React.useState(0);
+const [combo, setCombo] = React.useState(1);
+const [playedCount, setPlayedCount] = React.useState(0);
+const [time, setTime] = React.useState(0);
+const [isFinished, setIsFinished] = React.useState(false);
+const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
-const [timeLeft, setTimeLeft] = React.useState(config?.timeLimit || 60);
-const [timerMode] = React.useState(config?.timerMode || false);
-// Khởi tạo hàng đợi ngẫu nhiên
-React.useEffect(() => {
-if (!cardsRef.current || cardsRef.current.length === 0) return;
-const initialQueue = window.Utils ? window.Utils.shuffleArray(Array.from({length: cardsRef.current.length}, (_, i) => i)) : [];
-setQueue(initialQueue);
-setCurrentIndex(0);
-}, []);
-// Lắng nghe thay đổi hàng đợi để sang vòng mới
-React.useEffect(() => {
-if (queue.length > 0 && currentIndex < queue.length) {
-prepareRound(currentIndex);
-} else if (queue.length > 0 && currentIndex >= queue.length) {
-onFinish(score, 0, wrongCount);
-}
-}, [queue, currentIndex]);
-// Động cơ Đếm ngược (Timer)
-React.useEffect(() => {
-if (!timerMode || isPaused || isLoading || isGenerating || (roundData && roundData.isAnswered)) return;
-if (timeLeft > 0) {
-const timerId = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-return () => clearTimeout(timerId);
-} else {
-handleTimeOut();
-}
-}, [timeLeft, timerMode, isPaused, isLoading, isGenerating, roundData]);
-const handleTimeOut = () => {
-if (roundData && !roundData.isAnswered) {
-setRoundData(prev => ({ ...prev, isAnswered: true, isCorrect: false, selectedChunkId: null }));
-setWrongCount(prev => prev + 1);
-if (onLogWrong && roundData.originalCard) onLogWrong(roundData.originalCard);
-const safeShowToast = window.globalShowToast || console.log;
-safeShowToast(t('timeOut') || "Hết giờ!", "warning");
-}
+const [isGenerating, setIsGenerating] = React.useState(false);
+const [aiCountdown, setAiCountdown] = React.useState(0);
+// UX Timer State cho màn hình hiển thị kết quả
+const [resultTimer, setResultTimer] = React.useState(0);
+const [isResultPaused, setIsResultPaused] = React.useState(false);
+// Động cơ thống nhất từ Tầng 2
+const enrichedCardsRef = React.useRef(cards);
+const deckRef = React.useRef([]);
+const coordinatorRef = React.useRef(null);
+const isGameActiveRef = React.useRef(true);
+const gameTimerRef = React.useRef(null);
+const isInitializingRef = React.useRef(false);
+const aiGeneratedCountRef = React.useRef(0);
+const safeShowToast = React.useCallback((msg, type = 'success') => {
+if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
+}, [showToast]);
+// Đồng bộ thẻ gốc
+React.useEffect(() => { enrichedCardsRef.current = cards; }, [cards]);
+// Cỗ máy đóng gói Lỗi sai (Lưu cả câu đã sửa & Gạch chân từ đúng)
+const logMistake = (question) => {
+if (!onLogWrong || !question) return;
+const baseData = question.origin || {};
+const underlinedCorrection = question.correction.split('').map(char => char + '\u0332').join('');
+const sentenceWithUnderline = question.wrongSentence.replace(question.wrongWord, underlinedCorrection);
+const mistakeCard = {
+...baseData,
+id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+type: 'mistake',
+term: sentenceWithUnderline,
+definition: baseData.definition || question.hint || "Thử thách Spot Mistake",
+analysis: question.explanation,
+example: `Lỗi: ${question.wrongWord} -> Sửa: ${question.correction}`,
+tags: ['spotmistake', level, sourceMode],
+timestamp: Date.now()
 };
-// Hàm cắt nhỏ câu văn thành các khối bấm được (Chunks)
-const getChunks = (sentence, lng) => {
-if (!sentence) return [];
-if (lng === 'zh') {
-return Array.from(sentence).map((char, i) => ({ id: i, text: char }));
-} else {
-return sentence.split(' ').map((word, i) => ({ id: i, text: word }));
-}
+onLogWrong(mistakeCard);
 };
-// Chuẩn bị Vòng chơi mới
-const prepareRound = async (idx) => {
-setIsLoading(true);
-const card = cardsRef.current[queue[idx]];
-if (!card) return;
-const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(card.term) : card.term.includes(' ');
+const getNextCardIndex = () => {
+if (deckRef.current.length === 0) {
+let validIndices = enrichedCardsRef.current.map((c, i) => ({ c, i }))
+.filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '))
+.map(({ i }) => i);
+if (validIndices.length === 0) validIndices = enrichedCardsRef.current.map((_, i) => i);
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
+}
+return deckRef.current.shift() || 0;
+};
+// --- TÌM NẠP DỮ LIỆU (FETCH TASK CHO COORDINATOR) ---
+// Đã TỐI ƯU HÓA: Dùng 100% DistortionEngine từ Tầng 2 cho chế độ Card
+const fetchTask = async () => {
+const isPureMode = sourceMode === 'ai_pure';
+let card = null;
+if (!isPureMode) {
+const nextIdx = getNextCardIndex();
+card = enrichedCardsRef.current[nextIdx];
+if (!card) return null;
+}
+const canCallAi = isAiMode && apiKey && window.Utils && window.Utils.callGeminiApi;
+const isSentence = !isPureMode ? (window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(card.term) : card.term.includes(' ')) : true;
 const type = isSentence ? 'sentence' : 'word';
-let result;
-// [CẬP NHẬT V1.5] - GỌI NHÀ MÁY THUẬT TOÁN Ở TẦNG 2 (BLOCK 2.3)
-if (isAiMode && apiKey && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
-setIsGenerating(true);
+if (canCallAi && isSentence) {
 try {
-result = await window.GameAlgoEngine.DistortionEngine.ai_distort(card.term, lang, type, apiKey);
-// Ước tính Token và lưu trữ ngầm
+let parsedResult = null;
+if (isPureMode) {
+// Pure Mode: Sử dụng Lõi Ký ức chống AI lười biếng từ Tầng 2
+let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'spotmistake');
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+prompt += window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.getPrompt();
+}
+prompt += `\n\nCRITICAL RULE: The 'explanation' field MUST BE 100% IN VIETNAMESE.`;
+const schema = window.IoeDataEngine.SCHEMAS.pure_spot_mistake;
+const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Timeout (20s)")), 20000));
+const res = await Promise.race([aiPromise, timeoutPromise]);
+parsedResult = window.Utils.parseAiJson(res.text);
+// Ghi nhớ câu văn vừa tạo vào Lõi Ký ức Toàn cục
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.add(parsedResult.wrongSentence);
+}
+if (res.tokenMetadata) {
+const used = res.tokenMetadata.totalTokenCount || 0;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
-localStorage.setItem('fc_total_tokens', currentTotal + 150);
-} catch (e) {
-console.warn("AI distort failed, fallback to offline", e);
-// Fallback xuống máy Offline nếu rớt mạng
-result = window.GameAlgoEngine.DistortionEngine.offline_distort(card.term, lang, type);
+localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
-setIsGenerating(false);
-} else if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
-// Chế độ Offline
-result = window.GameAlgoEngine.DistortionEngine.offline_distort(card.term, lang, type);
-} else {
-// Rào chắn bảo vệ cuối cùng (Trường hợp Block 2.3 chưa load kịp)
-result = { wrongSentence: card.term + "x", wrongWord: card.term + "x", correction: card.term, explanation: "Fallback System" };
-}
-// Băm kết quả trả về từ Nhà máy thành các Viên gạch (Chunks)
-const chunks = getChunks(result.wrongSentence, lang);
-setRoundData({
-originalCard: card,
-wrongSentence: result.wrongSentence,
-wrongWord: result.wrongWord,
-correction: result.correction,
-explanation: result.explanation,
-chunks: chunks,
-isAnswered: false,
-selectedChunkId: null,
-isCorrect: false
+// Thu hoạch AI
+if (onSaveToHarvest) {
+onSaveToHarvest(level, {
+wrongSentence: parsedResult.wrongSentence, wrongWord: parsedResult.wrongWord,
+correction: parsedResult.correction, explanation: parsedResult.explanation
 });
-setTimeLeft(config?.timeLimit || 60);
-setIsLoading(false);
-};
-// Xử lý sự kiện Người chơi bấm vào Viên gạch (Chunk)
-const handleChunkClick = (chunk) => {
-if (isPaused || (roundData && roundData.isAnswered)) return;
-// Dọn dẹp dấu câu để so sánh chính xác tuyệt đối
-const cleanTarget = window.GameAlgoEngine && window.GameAlgoEngine._cleanWord ? window.GameAlgoEngine._cleanWord(roundData.wrongWord) : roundData.wrongWord.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
-const cleanChunk = window.GameAlgoEngine && window.GameAlgoEngine._cleanWord ? window.GameAlgoEngine._cleanWord(chunk.text) : chunk.text.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
-// Nhận diện linh hoạt (Phòng trường hợp AI trả về từ dính liền dấu câu)
-const isMatch = cleanTarget === cleanChunk || roundData.wrongWord.includes(chunk.text) || chunk.text.includes(roundData.wrongWord);
-if (isMatch) {
-setScore(prev => prev + 1);
-setRoundData(prev => ({ ...prev, isAnswered: true, isCorrect: true, selectedChunkId: chunk.id }));
-const safeShowToast = window.globalShowToast || console.log;
-safeShowToast("Chính xác!", "success");
+}
 } else {
-setWrongCount(prev => prev + 1);
-setRoundData(prev => ({ ...prev, isAnswered: true, isCorrect: false, selectedChunkId: chunk.id }));
-if (onLogWrong && roundData.originalCard) onLogWrong(roundData.originalCard);
+// Card Mode: Sử dụng AI Distortion Engine ở Tầng 2
+if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
+parsedResult = await window.GameAlgoEngine.DistortionEngine.ai_distort(card.term, lang, type, apiKey);
+} else {
+throw new Error("Missing DistortionEngine in Tầng 2");
+}
+}
+if (!parsedResult || !parsedResult.wrongSentence || !parsedResult.wrongWord) throw new Error("Invalid AI Data");
+const originData = isPureMode ? {
+term: parsedResult.wrongSentence.replace(parsedResult.wrongWord, parsedResult.correction),
+definition: "Thử thách tự sinh (AI Pure Mode)",
+analysis: parsedResult.explanation,
+isAiGenerated: true
+} : card;
+const result = { ...parsedResult, origin: originData, isAiGenerated: true };
+if (isInitializingRef.current) {
+aiGeneratedCountRef.current += 1;
+safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`, "success");
+}
+return result;
+} catch (e) {
+console.warn("AI SpotMistake Fallback:", e.message);
+if (isPureMode) {
+const fallbackList = window.IoeDataEngine.FALLBACK_DATA?.pure_spot_mistake || [{ wrongSentence: "The childrens is playing in the park.", wrongWord: "is", correction: "are", explanation: "Lỗi chủ ngữ số ít/nhiều" }];
+const fb = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+return { ...fb, origin: { term: fb.wrongSentence.replace(fb.wrongWord, fb.correction), definition: "Offline Fallback", analysis: fb.explanation }, isAiGenerated: false };
+}
+}
+}
+// FALLBACK OFFLINE: Gọi API từ Tầng 2 (Sạch sẽ, tuân thủ DRY)
+const textOrCardTerm = isPureMode ? "The dogs is eating." : card.term;
+let offlineResult = { wrongSentence: textOrCardTerm + "x", wrongWord: textOrCardTerm + "x", correction: textOrCardTerm, explanation: "Fallback" };
+if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
+offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(textOrCardTerm, lang, type);
+}
+return {
+...offlineResult,
+origin: isPureMode ? { term: textOrCardTerm, definition: "Offline Tự sinh" } : card,
+isAiGenerated: false
+};
+};
+const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Thuật toán Smart Chunking (Cắt 3 khúc & Chống bắt nhầm)
+const setupQuestion = (data) => {
+setCurrentQuestion(data);
+let wordChunks = [];
+const sentence = data.wrongSentence || "";
+const wrong = data.wrongWord || "";
+if (wrong && sentence) {
+let regex;
+try { regex = new RegExp(`\\b${escapeRegExp(wrong)}\\b`, 'i'); }
+catch(e) { regex = new RegExp(escapeRegExp(wrong), 'i'); }
+let match = sentence.match(regex);
+if (!match) {
+regex = new RegExp(escapeRegExp(wrong), 'i');
+match = sentence.match(regex);
+}
+if (match) {
+const index = match.index;
+const before = sentence.substring(0, index);
+const matchedText = sentence.substring(index, index + wrong.length);
+const after = sentence.substring(index + wrong.length);
+const beforeChunks = before.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `cb-${idx}-${Date.now()}`, text, isTarget: false }));
+const matchChunk = { id: `cm-${Date.now()}`, text: matchedText, isTarget: true };
+const afterChunks = after.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `ca-${idx}-${Date.now()}`, text, isTarget: false }));
+wordChunks = [...beforeChunks, matchChunk, ...afterChunks];
+} else {
+wordChunks = sentence.split(' ').filter(w => w.trim().length > 0).map((text, idx) => {
+const cleanText = text.replace(/[.,?!;:'"]/g, '').toLowerCase();
+const cleanWrong = wrong.replace(/[.,?!;:'"]/g, '').toLowerCase();
+return { id: `c-${idx}-${Date.now()}`, text, isTarget: cleanText === cleanWrong };
+});
+}
+} else {
+wordChunks = sentence.split(' ').map((text, idx) => ({ id: `c-${idx}-${Date.now()}`, text, isTarget: false }));
+}
+setChunks(wordChunks);
+setStage('spot'); setSelectedIndex(null); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0);
+};
+const startNewGame = async () => {
+if (sourceMode === 'card' && (!cards || cards.length === 0)) return;
+setIsGenerating(true);
+setPlayedCount(0); setScore(0); setCombo(1); setTime(0);
+setCorrectCount(0); setWrongCount(0);
+let currentDeck = [...cards];
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i)) : [];
+isInitializingRef.current = true;
+aiGeneratedCountRef.current = 0;
+// PRE-FLIGHT BATCH ENRICH (Vá lỗi thẻ mù)
+if (sourceMode === 'card' && isAiMode && apiKey && window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
+const { updatedCards, hasUpdates } = await window.GameAlgoEngine.PreflightEngine.batchEnrich(
+currentDeck, deckRef.current, 10, lang, apiKey
+);
+if (hasUpdates) {
+enrichedCardsRef.current = updatedCards;
+if (onUpdateCards) onUpdateCards(updatedCards);
+safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
+}
+}
+// Khởi tạo Bộ Điều Phối Cuốn Chiếu (Coordinator)
+if (coordinatorRef.current) coordinatorRef.current.destroy();
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+coordinatorRef.current = window.GameAlgoEngine.PreflightEngine.createQueueCoordinator(fetchTask, 2);
+} else {
+safeShowToast("Lỗi hệ thống: Không tìm thấy PreflightEngine", "error");
+return;
+}
+const isUsingAI = isAiMode || sourceMode === 'ai_pure';
+if (isUsingAI) {
+setAiCountdown(20);
+const timer = setInterval(() => {
+setAiCountdown(prev => { if (prev <= 1) clearInterval(timer); return prev - 1; });
+}, 1000);
+const maintainPromise = coordinatorRef.current.maintain();
+const timeoutPromise = new Promise(r => setTimeout(r, 20000));
+await Promise.race([maintainPromise, timeoutPromise]);
+clearInterval(timer);
+const firstData = coordinatorRef.current.pop();
+if (isGameActiveRef.current && firstData) {
+setupQuestion(firstData);
+setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
+safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
+} else if (isGameActiveRef.current) {
+const fbData = { wrongSentence: "He are my friend.", wrongWord: "are", correction: "is", explanation: "Dự phòng", origin: {term: "He is my friend", definition: "Tự sinh dự phòng"}, isAiGenerated: false };
+setupQuestion(fbData);
+setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
+safeShowToast("AI bị nghẽn mạng. Đã dùng dữ liệu dự phòng.", "warning");
+}
+} else {
+await coordinatorRef.current.maintain();
+const data = coordinatorRef.current.pop();
+if (isGameActiveRef.current && data) {
+setupQuestion(data);
+setIsGenerating(false); isInitializingRef.current = false;
+}
+}
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
+};
+const nextRound = () => {
+if (isGenerating) return;
+setResultTimer(0); setIsResultPaused(false);
+setPlayedCount(prev => prev + 1);
+if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
+const nextData = coordinatorRef.current.pop();
+setupQuestion(nextData);
+} else {
+setIsGenerating(true);
+coordinatorRef.current.maintain().then(() => {
+if (isGameActiveRef.current) {
+const data = coordinatorRef.current.pop();
+if (data) {
+setupQuestion(data); setIsGenerating(false);
+} else {
+safeShowToast("Lỗi nạp. Tự khôi phục...", "error");
+setIsGenerating(false);
+const fbData = { wrongSentence: "He are my friend.", wrongWord: "are", correction: "is", explanation: "Dự phòng", origin: {term: "He is my friend", definition: "Tự sinh dự phòng"}, isAiGenerated: false };
+setupQuestion(fbData);
+}
+}
+});
 }
 };
-const handleNext = () => {
-setCurrentIndex(prev => prev + 1);
-};
-// Tích hợp với Tầng Giao diện (Block 5.10)
-const SpotMistakePlayScreen = window.Block5_10_SpotMistakePlayScreen || window.SpotMistakePlayScreen;
-if (!SpotMistakePlayScreen) {
-return <div className="p-4 text-red-500 font-bold border-2 border-red-200 bg-red-50 rounded-xl">Lỗi hệ thống: Component giao diện SpotMistakePlayScreen (Block 5.10) chưa được nạp.</div>;
+// --- TƯƠNG TÁC NGƯỜI DÙNG ---
+const handleSpotClick = (idx) => {
+if (stage !== 'spot' || checkStatus === 'failed' || checkStatus === 'success') return;
+const clickedChunk = chunks[idx];
+if (clickedChunk.isTarget) {
+setStage('correct'); setSelectedIndex(idx); setCheckStatus('correct_spot');
+setScore(p => p + (10 * combo)); setAttempts(0);
+safeShowToast("Phát hiện chuẩn xác! Hãy sửa lại cho đúng.", "success");
+} else {
+const newAttempts = attempts + 1;
+setAttempts(newAttempts); setCombo(1); setScore(p => Math.max(0, p - 5));
+if (newAttempts >= 3) {
+setCheckStatus('failed'); setWrongCount(p => p + 1); safeShowToast("Đã hết lượt tìm lỗi!", "error");
+logMistake(currentQuestion); setResultTimer(10);
+} else {
+setCheckStatus('wrong_spot'); safeShowToast(`Chưa đúng! Còn ${3 - newAttempts} lượt.`, "warning");
+setTimeout(() => setCheckStatus(p => p === 'wrong_spot' ? 'idle' : p), 1000);
 }
+}
+};
+const handleCorrectionSubmit = () => {
+if (stage !== 'correct' || !inputBuffer.trim()) return;
+const normalize = (str) => str ? str.toLowerCase().replace(/[.,?!;:"'()[\]{}]/g, "").replace(/\s+/g, " ").trim() : "";
+const normalizedInput = normalize(inputBuffer);
+const normalizedCorrection = normalize(currentQuestion.correction);
+if (normalizedInput === normalizedCorrection) {
+setCheckStatus('success'); setCorrectCount(p => p + 1);
+setScore(p => p + (20 * combo)); setCombo(p => p + 1);
+safeShowToast("Tuyệt vời! Bạn đã sửa đúng.", "success");
+setResultTimer(6);
+} else {
+const newAttempts = attempts + 1;
+setAttempts(newAttempts); setCombo(1); setScore(p => Math.max(0, p - 5));
+if (newAttempts >= 3) {
+setCheckStatus('failed'); setWrongCount(p => p + 1); safeShowToast("Sai quá 3 lần. Xem đáp án nhé!", "error");
+logMistake(currentQuestion); setResultTimer(10);
+} else {
+setCheckStatus('wrong_correct'); safeShowToast(`Sai rồi! Còn ${3 - newAttempts} lượt.`, "warning");
+setTimeout(() => setCheckStatus(p => p === 'wrong_correct' ? 'correct_spot' : p), 1000);
+}
+}
+};
+const handleSkip = () => {
+if (checkStatus === 'success' || checkStatus === 'failed') return;
+setCombo(1); setCheckStatus('failed'); setWrongCount(p => p + 1);
+safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); setResultTimer(10);
+};
+React.useEffect(() => {
+if ((checkStatus === 'success' || checkStatus === 'failed') && resultTimer > 0 && !isResultPaused) {
+const id = setTimeout(() => setResultTimer(t => t - 1), 1000);
+return () => clearTimeout(id);
+} else if ((checkStatus === 'success' || checkStatus === 'failed') && resultTimer === 0 && !isResultPaused) {
+nextRound();
+}
+}, [checkStatus, resultTimer, isResultPaused]);
+const toggleResultPause = () => setIsResultPaused(p => !p);
+React.useEffect(() => {
+isGameActiveRef.current = true;
+startNewGame();
+return () => {
+isGameActiveRef.current = false;
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+if (coordinatorRef.current) coordinatorRef.current.destroy();
+};
+}, [level, sourceMode, isAiMode, lang]);
+return {
+currentQuestion, chunks, stage, selectedIndex, inputBuffer, setInputBuffer,
+checkStatus, attempts, score, combo, playedCount, time, isFinished,
+isGenerating, aiCountdown, correctCount, wrongCount,
+resultTimer, isResultPaused, toggleResultPause,
+handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound
+};
+};
+// --- 2. GAME WRAPPER ---
+const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest }) => {
+const gameCallbacks = {
+onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
+onBack: onQuit,
+onSaveToNotebook: (payload) => {
+if (onBookmark) { onBookmark(payload); }
+else if (window.handleSaveToNotebook) { window.handleSaveToNotebook(payload); }
+else { if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning"); }
+}
+};
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest };
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
+const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
+const isBookmarked = logic.currentQuestion?.correction && notebook?.some(n => n.term.includes(logic.currentQuestion.correction));
+const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_SpotMistakePlayScreen;
+if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
 return (
 <SpotMistakePlayScreen
-t={t}
-mainColor={mainColor}
-lang={lang}
-roundData={roundData}
-isLoading={isLoading}
-isGenerating={isGenerating}
-isPaused={isPaused}
-onPause={() => setIsPaused(!isPaused)}
-onQuit={onQuit}
-onCheck={handleChunkClick}
-onNext={handleNext}
-timerMode={timerMode}
-timeLeft={timeLeft}
-timeLimit={config?.timeLimit || 60}
-score={score}
-wrongCount={wrongCount}
+t={t} mainColor={mainColor} config={safeConfig}
+{...logic}
+onBack={gameCallbacks.onBack}
+onEndGame={gameCallbacks.onEndGame}
+onSaveToNotebook={gameCallbacks.onSaveToNotebook}
+isBookmarked={isBookmarked}
 settings={settings}
-onBookmark={onBookmark}
-notebook={notebook}
 />
 );
 };
 // EXPORT TO GLOBAL WINDOW
+window.Block5_11_useSpotMistakeLogic = useSpotMistakeLogic;
+window.useSpotMistakeLogic = useSpotMistakeLogic;
 window.Block5_11_SpotMistakeGame = SpotMistakeGame;
 window.SpotMistakeGame = SpotMistakeGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.1
-// Last Updated: 2026-03-31 11:50
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.2
+// Last Updated: 2026-04-04 16:38
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef).
+// Cập nhật: Thêm State `aiHarvestPool` để phục vụ tính năng lưu trữ câu hỏi tự sinh từ AI.
 // ==================================================================================
 // [FIX] Đưa hàm loadFont ra ngoài hook để tránh lỗi biên dịch Babel "Unexpected token"
 const loadFont = (id, url) => {
@@ -7875,7 +8232,7 @@ srsEasy: '7d'
 // --- STATE DEFINITIONS ---
 const [viewMode, setViewMode] = useState('learn');
 const [lang, setLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.LANG, 'zh') || 'zh');
-// [NEW v1.3] Chốt chặn để phân biệt lần đầu tải trang và đổi ngôn ngữ
+// Chốt chặn để phân biệt lần đầu tải trang và đổi ngôn ngữ
 const prevLangRef = useRef(lang);
 const [uiLang, setUiLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.UI_LANG, 'vi') || 'vi');
 // Data States
@@ -7888,6 +8245,8 @@ const [mastered, setMastered] = useState(() => window.Utils?.safeJsonParse('fc_m
 const [incorrectList, setIncorrectList] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, []) || []);
 const [isStudyingNotebook, setIsStudyingNotebook] = useState(false);
 const [studySourceName, setStudySourceName] = useState(null);
+// [NEW v1.2] AI Harvest Pool State: Kho lưu trữ dữ liệu tự sinh từ AI Pure Mode
+const [aiHarvestPool, setAiHarvestPool] = useState(() => window.Utils?.safeJsonParse('fc_ai_harvest_pool', {}) || {});
 // Config & Token
 const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '');
 const [totalTokens, setTotalTokens] = useState(() => parseInt(localStorage.getItem('fc_total_tokens') || '0', 10));
@@ -7927,10 +8286,9 @@ const [isShuffle, setIsShuffle] = useState(false);
 const [isAutoMode, setIsAutoMode] = useState(false);
 const [isFlipLocked, setIsFlipLocked] = useState(false);
 const [isGamePlaying, setIsGamePlaying] = useState(false);
-// [UPDATED v1.4] Quản lý Sessions đa ngôn ngữ (Global wrapper)
+// Quản lý Sessions đa ngôn ngữ (Global wrapper)
 const [globalGameSessions, setGlobalGameSessions] = useState(() => {
 const data = window.Utils?.safeJsonParse('fc_game_sessions', {});
-// Reset định dạng cũ nếu bị lỗi cấu trúc (chứa quiz/match ở root)
 if (data && (data.quiz || data.match || data.scramble)) return {};
 return data;
 });
@@ -7977,7 +8335,7 @@ if (window.speechSynthesis) {
 window.speechSynthesis.onvoiceschanged = loadVoices;
 }
 }, []);
-// [NEW v1.3] Lưu UI Lang riêng biệt để tránh kẹp chung với effect đổi ngôn ngữ
+// Lưu UI Lang riêng biệt để tránh kẹp chung với effect đổi ngôn ngữ
 useEffect(() => {
 localStorage.setItem(window.STORAGE_KEYS.UI_LANG, JSON.stringify(uiLang));
 }, [uiLang]);
@@ -7991,13 +8349,12 @@ const savedIncorrect = window.Utils?.safeJsonParse(window.STORAGE_KEYS.INCORRECT
 setNotebook(savedNote);
 setMastered(savedMaster);
 setIncorrectList(savedIncorrect);
-// [FIXED v1.3] Cầu dao bảo vệ: Chỉ reset các trạng thái tiến trình khi THỰC SỰ đổi ngôn ngữ (Không phải lúc mới khởi động)
+// Cầu dao bảo vệ: Chỉ reset các trạng thái tiến trình khi THỰC SỰ đổi ngôn ngữ (Không phải lúc mới khởi động)
 if (prevLangRef.current !== lang) {
 setCurrentCardIndex(0);
 setIsStudyingNotebook(false);
 setStudySourceName(null);
 aiQueueRef.current = [];
-// [UPDATED v1.4] Đã xóa lệnh setGameSessions({}) để giữ nguyên tiến trình đa ngôn ngữ
 prevLangRef.current = lang;
 }
 const sysDefaultUrl = window.DEFAULT_SHEETS?.[lang] || "";
@@ -8036,8 +8393,11 @@ setCards(window.CONFIG_SAMPLES?.[lang]?.sample || []);
 useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); } }, [toast]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.API_KEY, apiKey); }, [apiKey]);
-// [UPDATED v1.4] Lưu theo globalGameSessions
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_game_sessions', globalGameSessions); }, [globalGameSessions]);
+// [NEW v1.2] Tự động đồng bộ Kho Harvest xuống localStorage mỗi khi có biến động
+useEffect(() => {
+window.Utils?.safeLocalStorageSet('fc_ai_harvest_pool', aiHarvestPool);
+}, [aiHarvestPool]);
 // 5. Shuffle Effect
 useEffect(() => {
 if (isShuffle && cards.length > 1) {
@@ -8069,6 +8429,7 @@ viewMode, lang, uiLang, cards, notebook, mastered, masteredCount: mastered.lengt
 incorrectList,
 studySourceName,
 apiKey, totalTokens,
+aiHarvestPool, // [NEW v1.2] Xuất state
 showSettings, showApiKeyModal, showNotebook, showManual, showLinkManager, showWordSelect, showMastered, showIncorrectModal,
 showAiChat,
 showHelp,
@@ -8089,6 +8450,7 @@ setViewMode, setLang, setUiLang, setCards, setNotebook, setMastered, setIsStudyi
 setIncorrectList,
 setStudySourceName,
 setApiKey, setTotalTokens,
+setAiHarvestPool, // [NEW v1.2] Xuất setter
 setShowSettings, setShowApiKeyModal, setShowNotebook, setShowManual, setShowLinkManager, setShowWordSelect, setShowMastered, setShowIncorrectModal,
 setShowAiChat,
 setShowHelp,
@@ -8390,16 +8752,17 @@ handleManualAiFill
 window.Block6_2_useAiLogic = useAiLogic;
 window.Block14_useAiLogic = useAiLogic; // GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC (Fallback)
 window.useAiLogic = useAiLogic;
-// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.1
-// Last Updated: 2026-03-31 11:55
+// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.3
+// Last Updated: 2026-04-05 07:15
 // Nhiệm vụ: Xử lý toàn bộ logic liên quan đến dữ liệu: Import/Export, Sổ tay, Thẻ đã thuộc, Thuật toán SRS và Dọn rác (Garbage Collection).
 // Quy tắc: Trả về các hàm thao tác dữ liệu độc lập để App Component sử dụng. Không chứa UI.
+// Cập nhật: HOTFIX Lỗi SyntaxError Babel. Tuân thủ tuyệt đối Hiến pháp Quy tắc 3 (Gộp dòng chứa Object Key có dấu nháy đơn).
 // ==================================================================================
 const useDataLogic = (core, latestStateRef, callbacks) => {
 const { t, showToast, handleNext } = callbacks;
 const { lang } = core;
 // ==================================================================================
-// [NEW v1.2] HỆ THỐNG DỌN RÁC BỘ NHỚ (GARBAGE COLLECTION)
+// 1. HỆ THỐNG DỌN RÁC BỘ NHỚ (GARBAGE COLLECTION DÙNG CHUNG)
 // ==================================================================================
 useEffect(() => {
 const runGarbageCollector = () => {
@@ -8474,9 +8837,8 @@ const gcTimer = setTimeout(() => {
 runGarbageCollector();
 }, 2000);
 return () => clearTimeout(gcTimer);
-}, []); // Chỉ chạy 1 lần khi mount
+}, []);
 // --- HÀM HỖ TRỢ COPY AN TOÀN (SAFE COPY HELPER) ---
-// [NEW] Khắc phục lỗi copy trên môi trường không bảo mật (http/file)
 const secureCopy = (text) => {
 // Cách 1: Thử dùng API hiện đại (nếu có HTTPS/Localhost)
 if (navigator.clipboard && window.isSecureContext) {
@@ -8510,7 +8872,104 @@ showToast("Trình duyệt chặn copy. Hãy copy thủ công.", "error");
 showToast("Lỗi copy: " + err, "error");
 }
 };
-// 1. SRS ACTIONS (Hệ thống lặp lại ngắt quãng)
+// ==================================================================================
+// [NEW v1.2] HỆ THỐNG KHO LƯU TRỮ AI TỰ SINH (AI HARVEST POOL)
+// ==================================================================================
+// 1. Lưu Dữ liệu (Chống trùng lặp tự động)
+const handleSaveToHarvest = (level, data) => {
+if (!level || !data) return;
+core.setAiHarvestPool(prev => {
+const currentLevelData = prev[level] || [];
+// Nhận diện dữ liệu rác hoặc trùng lặp (dựa vào câu văn hiển thị/câu sai)
+const checkStr = data.displaySentence || data.wrongSentence || "";
+if (!checkStr) return prev; // Dữ liệu dị dạng
+const isDuplicate = currentLevelData.some(item =>
+(item.displaySentence === checkStr) || (item.wrongSentence === checkStr)
+);
+if (isDuplicate) return prev; // Lọc trùng lặp ngay từ vòng gửi xe
+const newData = [...currentLevelData, { ...data, timestamp: Date.now() }];
+const nextPool = { ...prev, [level]: newData };
+return nextPool; // Cập nhật State (useEffect ở Block 6.1 sẽ auto-sync xuống localStorage)
+});
+// Kích hoạt đánh giá dung lượng bộ nhớ ngay lập tức
+handleCheckHarvestMemory();
+};
+// 2. Dọn Rác Dung lượng (Garbage Collector 80%)
+const handleCheckHarvestMemory = () => {
+try {
+// Đọc trực tiếp từ localStorage để lấy dung lượng chuỗi thực tế
+const poolString = localStorage.getItem('fc_ai_harvest_pool');
+if (!poolString) return;
+const sizeBytes = new Blob([poolString]).size;
+const MAX_SIZE = 1024 * 1024; // Cấp tối đa 1MB cho riêng Kho AI
+const WARNING_THRESHOLD = MAX_SIZE * 0.7; // Cảnh báo ở 700KB
+const DANGER_THRESHOLD = MAX_SIZE * 0.8;  // Xén ở 800KB
+if (sizeBytes > DANGER_THRESHOLD) {
+// Auto-Reset Kích hoạt (Cắt tỉa FIFO)
+const currentPool = JSON.parse(poolString);
+let trimmedPool = {};
+let totalTrimmed = 0;
+Object.keys(currentPool).forEach(level => {
+const items = currentPool[level];
+if (items.length > 20) { // Chỉ xén khi có nhiều hơn 20 câu để đảm bảo dữ liệu gốc
+// Sắp xếp theo thời gian (cũ nhất lên đầu)
+const sorted = [...items].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+const keepCount = Math.floor(sorted.length / 2); // Giữ lại đúng 50%
+trimmedPool[level] = sorted.slice(-keepCount); // Cắt lấy nửa mới nhất
+totalTrimmed += (items.length - keepCount);
+} else {
+trimmedPool[level] = items;
+}
+});
+core.setAiHarvestPool(trimmedPool);
+window.Utils.safeLocalStorageSet('fc_ai_harvest_pool', trimmedPool);
+showToast(`Kho AI đầy (80%). Tự động dọn dẹp ${totalTrimmed} câu cũ để giải phóng bộ nhớ.`, "warning");
+} else if (sizeBytes > WARNING_THRESHOLD && !window.fc_harvest_warned) {
+// Cảnh báo mềm (Chỉ báo 1 lần mỗi lần load trang để tránh phiền phức)
+showToast("Kho AI Tự sinh sắp đầy (70%). Hãy xuất ra Excel để lưu trữ!", "warning");
+window.fc_harvest_warned = true;
+}
+} catch (e) {
+console.warn("Lỗi kiểm tra bộ nhớ Harvest:", e);
+}
+};
+// 3. Xuất ra Excel Phân loại Sheet
+const handleExportHarvestToExcel = () => {
+const pool = latestStateRef.current.aiHarvestPool;
+if (!pool || Object.keys(pool).length === 0) {
+showToast("Kho dữ liệu AI trống!", "warning");
+return;
+}
+if (!window.XLSX) {
+showToast("Thư viện Excel chưa được tải!", "error");
+return;
+}
+const wb = window.XLSX.utils.book_new();
+let hasData = false;
+Object.keys(pool).forEach(level => {
+const items = pool[level];
+if (items && items.length > 0) {
+hasData = true;
+// TUÂN THỦ QUY TẮC 3: GỘP TOÀN BỘ OBJECT KEY CÓ DẤU NHÁY ĐƠN LÊN CÙNG 1 DÒNG
+const formattedData = items.map(item => ({ 'Trình độ (Level)': level.replace('level_', '').replace(/_/g, ' ').toUpperCase(), 'Câu gốc / Câu đục lỗ': item.wrongSentence || item.displaySentence || '', 'Lỗi sai / Từ bị khuyết': item.wrongWord || '[__________]', 'Sửa lại / Từ đúng': item.correction || item.targetWord || '', 'Giải thích / Gợi ý': item.explanation || item.hint || '', 'Ngày tạo': item.timestamp ? new Date(item.timestamp).toLocaleString('vi-VN') : '' }));
+const ws = window.XLSX.utils.json_to_sheet(formattedData);
+// Xử lý tên Sheet (Excel giới hạn 31 ký tự)
+let sheetName = level.replace('level_', '').substring(0, 31);
+window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+}
+});
+if (!hasData) {
+showToast("Không có câu hỏi nào để xuất!", "warning");
+return;
+}
+// Đẩy file xuống máy người dùng
+const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,"");
+window.XLSX.writeFile(wb, `AI_Harvest_Pool_${dateStr}.xlsx`);
+showToast("Đã tải xuống file Excel thành công!", "success");
+};
+// ==================================================================================
+// 2. SRS ACTIONS (Hệ thống lặp lại ngắt quãng)
+// ==================================================================================
 const handleSrsGrade = (grade) => {
 const current = latestStateRef.current;
 const card = current.cards[current.currentCardIndex];
@@ -8541,7 +9000,9 @@ return newCards;
 });
 showToast("Đã reset về trạng thái Mới", "info");
 };
-// 2. IMPORT / EXPORT
+// ==================================================================================
+// 3. IMPORT / EXPORT (Nhập xuất cơ bản)
+// ==================================================================================
 // Import vào bộ thẻ chính (Ghi đè hoặc thay thế)
 const handleImport = async (url) => {
 if (!url) { showToast("Vui lòng nhập URL!", "error"); return; }
@@ -8629,8 +9090,6 @@ const wb = window.XLSX.utils.book_new();
 window.XLSX.utils.book_append_sheet(wb, ws, "Flashcards");
 window.XLSX.writeFile(wb, `flashcards_${lang}_${Date.now()}.xlsx`);
 };
-// [UPDATED] Sửa logic: Copy TSV thay vì JSON để dán vào Sheet dễ dàng
-// Sử dụng secureCopy thay vì navigator.clipboard trực tiếp để tránh lỗi trên http/file
 const handleExportLink = () => {
 const { cards } = latestStateRef.current;
 const tsv = window.Utils.jsonToTsv(cards);
@@ -8648,7 +9107,9 @@ return;
 }
 secureCopy(tsv);
 };
-// 3. NOTEBOOK & MASTERED
+// ==================================================================================
+// 4. NOTEBOOK & MASTERED (Quản lý Tiến độ Học thuật)
+// ==================================================================================
 const handleNotebookSave = (payload) => {
 // 1. Nhận vào Array -> Cập nhật toàn bộ (từ Modal sửa/xóa)
 if (Array.isArray(payload)) {
@@ -8672,10 +9133,8 @@ showToast("Đã thêm vào sổ tay", "success");
 core.setNotebook(newNote);
 window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[lang].noteKey, newNote);
 };
-// [FIXED v1.1] Kiểm tra kỹ tham số card để tránh lấy nhầm Event Object từ onClick
 const handleMarkMastered = (card) => {
 const { cards, mastered, currentCardIndex } = latestStateRef.current;
-// Nếu card có thuộc tính term thì dùng card đó, ngược lại lấy card hiện tại
 const target = (card && card.term) ? card : cards[currentCardIndex];
 if (!target) return;
 const newCards = cards.filter(c => c.term !== target.term);
@@ -8689,21 +9148,17 @@ core.setCurrentCardIndex(Math.max(0, newCards.length - 1));
 }
 showToast("Đã đánh dấu thuộc bài!", "success");
 };
-// [UPDATED v1.3] Khôi phục thẻ đơn lẻ - Đưa lên ĐẦU danh sách
 const handleRestoreMastered = (card) => {
 const { cards, mastered } = latestStateRef.current;
 const newMaster = mastered.filter(c => c.term !== card.term);
-// Chèn vào đầu (unshift logic)
 const newCards = [card, ...cards];
 core.setMastered(newMaster);
 core.setCards(newCards);
 window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[lang].dataKey, newCards);
 window.Utils.safeLocalStorageSet('fc_mastered_' + lang, newMaster);
-// Reset index về 0 để thấy thẻ vừa khôi phục ngay
 core.setCurrentCardIndex(0);
 showToast("Đã khôi phục thẻ (Lên đầu danh sách)!", "success");
 };
-// [UPDATED v1.3] Khôi phục toàn bộ - Đưa lên ĐẦU danh sách
 const handleRestoreAllMastered = () => {
 const { cards, mastered } = latestStateRef.current;
 if (mastered.length === 0) {
@@ -8711,27 +9166,22 @@ showToast("Danh sách trống!", "warning");
 return;
 }
 if (!confirm(`Bạn có chắc muốn khôi phục toàn bộ ${mastered.length} thẻ đã thuộc về danh sách học không?`)) return;
-// Gộp toàn bộ mastered vào trước cards
 const newCards = [...mastered, ...cards];
 core.setMastered([]);
 core.setCards(newCards);
 window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[lang].dataKey, newCards);
 window.Utils.safeLocalStorageSet('fc_mastered_' + lang, []);
-// Reset index về 0 để học lại từ đầu
 core.setCurrentCardIndex(0);
 showToast(`Đã khôi phục ${mastered.length} thẻ lên đầu danh sách!`, "success");
 };
-// [FIXED] Thêm tham số isPhrase để xử lý ghép từ
 const handleSaveWords = (items, isPhrase = false) => {
 const { notebook } = latestStateRef.current;
 let wordsToSave = [];
 if (isPhrase && Array.isArray(items)) {
-// Nếu là chế độ Lưu Cụm: Ghép tất cả từ thành 1 chuỗi
-const separator = lang === 'zh' ? '' : ' '; // Tiếng Trung không dùng dấu cách
+const separator = lang === 'zh' ? '' : ' ';
 const phrase = items.join(separator);
 wordsToSave = [phrase];
 } else {
-// Chế độ thường: Lưu từng từ riêng lẻ
 wordsToSave = Array.isArray(items) ? items : [items];
 }
 const newItems = wordsToSave.map(w => ({ term: w.term || w, definition: '', pronunciation: '', example: '' }));
@@ -8745,7 +9195,6 @@ showToast(`Đã thêm ${unique.length} mục vào sổ tay`, "success");
 return updated;
 });
 core.setShowWordSelect(false);
-// Đẩy vào hàng đợi AI nếu có API Key
 if (core.apiKey && callbacks.processAiQueue) {
 newItems.forEach(w => {
 if (!core.aiQueueRef.current.includes(w.term)) {
@@ -8755,16 +9204,15 @@ core.aiQueueRef.current.push(w.term);
 callbacks.processAiQueue();
 }
 };
-// 4. MISTAKE TRACKING (Quản lý lỗi sai)
-// ----------------------------------------------------
+// ==================================================================================
+// 5. MISTAKE TRACKING (Quản lý lỗi sai học thuật)
+// ==================================================================================
 const handleLogWrong = (card) => {
 if (!card || !card.term) return;
-const { incorrectList } = core; // Lấy trực tiếp từ core để đảm bảo mới nhất
-// Kiểm tra xem từ đã có trong danh sách chưa
+const { incorrectList } = core;
 const index = incorrectList.findIndex(c => c.term === card.term);
 let newList;
 if (index > -1) {
-// Đã có -> Tăng count
 newList = [...incorrectList];
 newList[index] = {
 ...newList[index],
@@ -8772,7 +9220,6 @@ count: (newList[index].count || 1) + 1,
 lastWrong: Date.now()
 };
 } else {
-// Chưa có -> Thêm mới
 newList = [...incorrectList, {
 ...card,
 count: 1,
@@ -8780,20 +9227,18 @@ lastWrong: Date.now()
 }];
 }
 core.setIncorrectList(newList);
-// [UPDATED v1.4] Lưu theo ngôn ngữ hiện tại
 window.Utils.safeLocalStorageSet(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, newList);
-// Không showToast để tránh làm phiền người chơi khi đang tập trung game
 };
 const handleRemoveWrong = (term) => {
 const { incorrectList } = latestStateRef.current;
 const newList = incorrectList.filter(c => c.term !== term);
 core.setIncorrectList(newList);
-// [UPDATED v1.4] Lưu theo ngôn ngữ hiện tại
 window.Utils.safeLocalStorageSet(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, newList);
 showToast("Đã xóa khỏi danh sách cần nhớ", "success");
 };
-// ----------------------------------------------------
-// 5. UTILS KHÁC
+// ==================================================================================
+// 6. CÁC HÀM TIỆN ÍCH HỆ THỐNG
+// ==================================================================================
 const handleFetchApiKey = async (url) => {
 if (!url) return;
 core.setIsAiLoading(true);
@@ -8826,7 +9271,6 @@ handleAddCard(window.Utils.convertRawRowsToCards(rows));
 };
 reader.readAsBinaryString(file);
 };
-// 6. RESET DATA
 const handleResetSettings = () => {
 if (core.resetPending) {
 core.setSettings(core.DEFAULT_SETTINGS);
@@ -8855,16 +9299,8 @@ if (core.resetTimeoutRef.current) clearTimeout(core.resetTimeoutRef.current);
 core.resetTimeoutRef.current = setTimeout(() => core.setResetPending(false), 3000);
 }
 };
-// 7. AUTO-LOAD API KEY (Effect) - Khôi phục tính năng tự động tải Key
-useEffect(() => {
-const savedSheetUrl = localStorage.getItem(window.STORAGE_KEYS.API_KEY_SHEET) || window.DEFAULT_API_KEY_SHEET;
-if (savedSheetUrl && savedSheetUrl.trim().length > 5) {
-console.log("Auto-loading API Keys from Sheet...");
-handleFetchApiKey(savedSheetUrl);
-}
-}, []);
 // ==================================================================================
-// 8. SAVE/LOAD STATE (Sao lưu & Phục hồi) - [NEW v1.1]
+// 7. SAVE/LOAD STATE (Sao lưu & Phục hồi)
 // ==================================================================================
 const handleExportSaveFile = () => {
 try {
@@ -8908,9 +9344,7 @@ count++;
 }
 if (count > 0) {
 showToast(`Đã phục hồi ${count} mục. Đang khởi động lại...`, "success");
-setTimeout(() => {
-window.location.reload();
-}, 1500);
+setTimeout(() => { window.location.reload(); }, 1500);
 resolve(true);
 } else {
 showToast("File không chứa dữ liệu hợp lệ!", "error");
@@ -8952,7 +9386,10 @@ handleReloadDefault,
 handleLogWrong,
 handleRemoveWrong,
 handleExportSaveFile,
-handleImportSaveFile
+handleImportSaveFile,
+handleSaveToHarvest,
+handleCheckHarvestMemory,
+handleExportHarvestToExcel
 };
 };
 // [QUAN TRỌNG] EXPORT GLOBAL
@@ -9376,11 +9813,11 @@ refs: { audioTimeoutRef: core.audioTimeoutRef }
 window.Block6_4_useAppLogic = useAppLogic;
 window.Block13_useAppLogic = useAppLogic; // Fallback
 window.useAppLogic = useAppLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.5
-// Last Updated: 2026-04-04 12:45
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.6
+// Last Updated: 2026-04-04 17:20
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
 // Quy tắc: Khởi tạo và kết nối các tầng giao diện (Tầng 3,4,5) với tầng logic (Tầng 6).
-// Cập nhật: Sửa lỗi "Đứt gãy màu nền" bằng cách áp dụng h-[100dvh] cho container bọc ngoài cùng.
+// Cập nhật: Cắm cáp kết nối tổng cho tính năng AI Harvest Pool (Truyền State và Action xuống Tầng 4 và Tầng 5).
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -9485,7 +9922,9 @@ coreState.setCards(newCards);
 if (window.CONFIG_SAMPLES && window.CONFIG_SAMPLES[coreState.lang]) {
 window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[coreState.lang].dataKey, newCards);
 }
-}
+},
+// [NEW v1.6] Truyền sợi cáp Thu hoạch dữ liệu AI xuống Router Game
+onSaveToHarvest: dataLogic?.handleSaveToHarvest
 });
 } else {
 // B. Màn hình Học (Flashcard) - Mặc định
@@ -9562,7 +10001,6 @@ onToggleBatterySaver: logic.actions?.toggleBatterySaver
 );
 }
 // --- 4. Main Layout Render ---
-// [UPDATED v1.5] Thay h-full bằng h-[100dvh] để ép khung giãn hết cỡ, chống lộ màu nền body.
 return React.createElement('div', { className: `w-full h-[100dvh] flex flex-col relative overflow-hidden bg-${appMainColor}-50` },
 React.createElement('div', { className: "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col pb-20 overflow-y-auto custom-scrollbar" },
 mainContent
@@ -9643,7 +10081,10 @@ onFileImport: dataLogic?.handleFileImport,
 onSaveSettings: (k, v) => localStorage.setItem(k, v),
 onFetchKey: dataLogic?.handleFetchApiKey,
 onDownloadTemplate: dataLogic?.handleDownloadTemplate,
-lang: coreState.lang
+lang: coreState.lang,
+// [NEW v1.6] Bơm dữ liệu Kho AI và Hàm xuất Excel vào giao diện Modal
+aiHarvestPool: coreState.aiHarvestPool,
+onExportHarvestToExcel: dataLogic?.handleExportHarvestToExcel
 }),
 coreState.showManual && renderComponent('ManualInputModal', {
 isOpen: true,
