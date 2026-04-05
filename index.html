@@ -8752,11 +8752,11 @@ handleManualAiFill
 window.Block6_2_useAiLogic = useAiLogic;
 window.Block14_useAiLogic = useAiLogic; // GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC (Fallback)
 window.useAiLogic = useAiLogic;
-// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.3
-// Last Updated: 2026-04-05 07:15
+// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.4
+// Last Updated: 2026-04-05 08:57
 // Nhiệm vụ: Xử lý toàn bộ logic liên quan đến dữ liệu: Import/Export, Sổ tay, Thẻ đã thuộc, Thuật toán SRS và Dọn rác (Garbage Collection).
 // Quy tắc: Trả về các hàm thao tác dữ liệu độc lập để App Component sử dụng. Không chứa UI.
-// Cập nhật: HOTFIX Lỗi SyntaxError Babel. Tuân thủ tuyệt đối Hiến pháp Quy tắc 3 (Gộp dòng chứa Object Key có dấu nháy đơn).
+// Cập nhật: Thêm cột "Câu hoàn chỉnh" (Complete Sentence) vào dữ liệu xuất Excel AI Harvest. Tuân thủ tuyệt đối Hiến pháp Quy tắc 3.
 // ==================================================================================
 const useDataLogic = (core, latestStateRef, callbacks) => {
 const { t, showToast, handleNext } = callbacks;
@@ -8950,8 +8950,8 @@ Object.keys(pool).forEach(level => {
 const items = pool[level];
 if (items && items.length > 0) {
 hasData = true;
-// TUÂN THỦ QUY TẮC 3: GỘP TOÀN BỘ OBJECT KEY CÓ DẤU NHÁY ĐƠN LÊN CÙNG 1 DÒNG
-const formattedData = items.map(item => ({ 'Trình độ (Level)': level.replace('level_', '').replace(/_/g, ' ').toUpperCase(), 'Câu gốc / Câu đục lỗ': item.wrongSentence || item.displaySentence || '', 'Lỗi sai / Từ bị khuyết': item.wrongWord || '[__________]', 'Sửa lại / Từ đúng': item.correction || item.targetWord || '', 'Giải thích / Gợi ý': item.explanation || item.hint || '', 'Ngày tạo': item.timestamp ? new Date(item.timestamp).toLocaleString('vi-VN') : '' }));
+// TUÂN THỦ QUY TẮC 3: GỘP TOÀN BỘ OBJECT KEY CÓ DẤU NHÁY ĐƠN LÊN CÙNG 1 DÒNG VÀ NỘI SUY CÂU HOÀN CHỈNH
+const formattedData = items.map(item => ({ 'Trình độ (Level)': level.replace('level_', '').replace(/_/g, ' ').toUpperCase(), 'Câu gốc / Câu đục lỗ': item.wrongSentence || item.displaySentence || '', 'Lỗi sai / Từ bị khuyết': item.wrongWord || '[__________]', 'Sửa lại / Từ đúng': item.correction || item.targetWord || '', 'Câu hoàn chỉnh': item.wrongSentence ? item.wrongSentence.replace(item.wrongWord, item.correction) : (item.displaySentence ? item.displaySentence.replace('[__________]', item.targetWord) : ''), 'Giải thích / Gợi ý': item.explanation || item.hint || '', 'Ngày tạo': item.timestamp ? new Date(item.timestamp).toLocaleString('vi-VN') : '' }));
 const ws = window.XLSX.utils.json_to_sheet(formattedData);
 // Xử lý tên Sheet (Excel giới hạn 31 ký tự)
 let sheetName = level.replace('level_', '').substring(0, 31);
