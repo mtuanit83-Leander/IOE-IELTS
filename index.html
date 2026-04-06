@@ -3907,10 +3907,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.13
-// Last Updated: 2026-04-04 11:44
+// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.14
+// Last Updated: 2026-04-06 10:02
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: Thêm cờ `isResultPaused` và hàm `toggleResultPause` để điều khiển việc tạm dừng bộ đếm ngược 10s lúc hiển thị kết quả.
+// Cập nhật: NÂNG CẤP (Incident 27). Cấy ghép "Túi Nháp Lặp Lại" (Global Retry Bag). Game tự động lưu các cặp nối sai vào túi nháp và có tỷ lệ 30% bốc lại chèn vào batch tiếp theo.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards }) => {
 // Ref lưu trữ bộ bài cục bộ để cập nhật đồng bộ mà không cần chờ React re-render
@@ -3926,7 +3926,7 @@ pairs: [], leftItems: [], rightItems: [], connections: {},
 selectedLeft: null, isChecked: false, score: 0,
 correctLines: [], wrongLines: [], missingLines: [], timer: 10,
 isAiGenerated: false,
-isResultPaused: false // [NEW v1.13] Cờ quản lý tạm dừng đếm ngược 10s
+isResultPaused: false
 });
 const [isAiMode] = React.useState(() => {
 try {
@@ -3977,6 +3977,32 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// ==================================================================================
+// [NEW v1.14] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// ==================================================================================
+const pushToRetryBag = React.useCallback((questionData) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['match']) bag['match'] = [];
+const isDup = bag['match'].some(item => item.term === questionData.term);
+if (!isDup) {
+bag['match'].push(questionData);
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+const removeFromRetryBag = React.useCallback((termToCheck) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['match']) return;
+const prevLen = bag['match'].length;
+bag['match'] = bag['match'].filter(item => item.term !== termToCheck);
+if (bag['match'].length !== prevLen) {
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+// ==================================================================================
 const prepareRoundData = async (currentQueueState, currentDiff) => {
 let { queue, index } = currentQueueState;
 if (queue.length !== cardsRef.current.length) {
@@ -3992,6 +4018,21 @@ let attempts = 0;
 let hasGlobalUpdates = false;
 let updatedCards = [...cardsRef.current];
 const missingBatch = [];
+// [NEW v1.14] Lấy thẻ từ túi nháp (Ưu tiên tối đa 30% số slot của Lô)
+let retryCards = [];
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (bag['match'] && bag['match'].length > 0) {
+const shuffledBag = window.Utils.shuffleArray([...bag['match']]);
+const maxRetry = Math.ceil(targetCount * 0.3);
+retryCards = shuffledBag.slice(0, maxRetry);
+}
+} catch(e) {}
+retryCards.forEach(rc => {
+if (!exclusionList.some(ex => ex.term === rc.term)) {
+result.push(rc);
+}
+});
 while (result.length < targetCount && attempts < cardsRef.current.length) {
 if (currIdx >= queue.length) {
 queue = window.Utils.shuffleArray([...queue]);
@@ -4001,7 +4042,8 @@ const cardIdx = queue[currIdx];
 let c = { ...updatedCards[cardIdx] };
 currIdx++;
 attempts++;
-if (exclusionList.some(ex => ex.term === c.term)) continue;
+// Chống trùng lặp với thẻ đã có trong result (bao gồm cả thẻ lấy từ túi nháp)
+if (exclusionList.some(ex => ex.term === c.term) || result.some(r => r.term === c.term)) continue;
 if (!c.definition || c.definition.trim() === "") {
 missingBatch.push({ idx: cardIdx, term: c.term });
 result.push(c);
@@ -4173,7 +4215,7 @@ pairs: data.pairs, leftItems: data.leftItems, rightItems: data.rightItems,
 connections: {}, selectedLeft: null, isChecked: false, score: 0,
 correctLines: [], wrongLines: [], missingLines: [], timer: 10,
 isAiGenerated: data.isAiGenerated,
-isResultPaused: false // [NEW v1.13] Reset cờ khi qua dòng mới
+isResultPaused: false
 });
 setTimeLeft(timeLimit || 60);
 nextRoundRef.current = null;
@@ -4191,7 +4233,7 @@ pairs: data.pairs, leftItems: data.leftItems, rightItems: data.rightItems,
 connections: {}, selectedLeft: null, isChecked: false, score: 0,
 correctLines: [], wrongLines: [], missingLines: [], timer: 10,
 isAiGenerated: data.isAiGenerated,
-isResultPaused: false // [NEW v1.13] Reset cờ khi qua dòng mới
+isResultPaused: false
 });
 setTimeLeft(timeLimit || 60);
 isInitializingRef.current = false;
@@ -4313,9 +4355,8 @@ checkMatch(true);
 }
 return () => clearTimeout(timerRef.current);
 }, [timeLeft, timerMode, matchState.isChecked, isPaused, isLoading, isGenerating]);
-// [UPDATED v1.13] Bộ đếm ngược 10s: Chặn đếm nếu isResultPaused là true
 React.useEffect(() => {
-if (isPaused) return; // Hệ thống tạm dừng tổng (Mở Menu)
+if (isPaused) return;
 if (matchState.isChecked && matchState.timer > 0 && !matchState.isResultPaused) {
 const id = setTimeout(() => setMatchState(p => ({ ...p, timer: p.timer - 1 })), 1000);
 return () => clearTimeout(id);
@@ -4323,7 +4364,6 @@ return () => clearTimeout(id);
 generateMatch();
 }
 }, [matchState.isChecked, matchState.timer, isPaused, matchState.isResultPaused]);
-// [NEW v1.13] Hàm xử lý bật/tắt bộ đếm 10s
 const toggleResultPause = () => {
 setMatchState(p => ({ ...p, isResultPaused: !p.isResultPaused }));
 };
@@ -4383,14 +4423,20 @@ if (userConnectedRightId !== undefined) {
 if (correctRight && userConnectedRightId === correctRight.id) {
 roundScore++;
 correctLines.push({ start: left.id, end: userConnectedRightId });
+// [NEW v1.14] Lật tẩy bẫy: Trả lời đúng thì Xóa khỏi túi nháp
+removeFromRetryBag(left.term);
 } else {
 wrongLines.push({ start: left.id, end: userConnectedRightId });
 if (correctRight) missingLines.push({ start: left.id, end: correctRight.id });
 if (onLogWrong && left.origin) onLogWrong(left.origin);
+// [NEW v1.14] Nối sai -> Phạt nợ
+if (left.origin) pushToRetryBag(left.origin);
 }
 } else {
 if (correctRight) missingLines.push({ start: left.id, end: correctRight.id });
 if (onLogWrong && left.origin) onLogWrong(left.origin);
+// [NEW v1.14] Bỏ trống -> Phạt nợ
+if (left.origin) pushToRetryBag(left.origin);
 }
 }
 });
@@ -4399,7 +4445,10 @@ setMatchState(p => ({ ...p, isChecked: true, score: roundScore, correctLines, wr
 if (difficulty === 'hard' && roundScore === matchState.leftItems.length) {
 safeShowToast("Xuất sắc! Bạn không sập bẫy!", "success");
 } else if (difficulty === 'hard' && roundScore < matchState.leftItems.length) {
-safeShowToast("Có lỗi sai rồi, cẩn thận sập bẫy nhé!", "warning");
+if (isTimeout) safeShowToast("Hết giờ! Cẩn thận sập bẫy nhé!", "warning");
+else safeShowToast("Có lỗi sai rồi, cẩn thận sập bẫy nhé!", "warning");
+} else if (isTimeout) {
+safeShowToast("Hết giờ! Đã tự động kiểm tra.", "warning");
 }
 setTimeout(() => preloadNextRound(), 100);
 setTimeout(() => triggerAutoSave(), 150);
@@ -4426,7 +4475,7 @@ handleSaveAndBack={handleSaveAndBack} onEndGame={onEndGame} timerMode={timerMode
 timeLeft={timeLeft} timeLimit={timeLimit} gameStats={gameStats} accuracy={accuracy}
 difficulty={difficulty} isAiMode={isAiMode} matchState={matchState} settings={settings}
 notebook={notebook} onBookmark={onBookmark} handleMatchClick={handleMatchClick}
-checkMatch={checkMatch} generateMatch={generateMatch} toggleResultPause={toggleResultPause} // [NEW v1.13] Bơm API điều khiển
+checkMatch={checkMatch} generateMatch={generateMatch} toggleResultPause={toggleResultPause}
 isGenerating={isGenerating} aiCountdown={aiCountdown}
 />
 );
@@ -4818,10 +4867,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.2
-// Last Updated: 2026-04-04 10:30
+// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.3
+// Last Updated: 2026-04-06 09:55
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật: ĐẠI PHẪU (REFACTOR). Cắt bỏ logic tạo từ rác nội bộ. Cắm cáp gọi dữ liệu trực tiếp từ Nhà máy Thuật toán window.GameAlgoEngine.ScrambleNoiseEngine ở Tầng 2.
+// Cập nhật: Cấy ghép "Túi Nháp Lặp Lại" (Global Retry Bag). Game tự động lưu câu sai vào túi và có tỷ lệ 30% bốc lại câu sai ra hỏi. Nâng cấp lõi hàng đợi thành dạng Object.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -4854,9 +4903,9 @@ const [voiceRetries, setVoiceRetries] = useState(0);
 const [voiceOptions, setVoiceOptions] = useState([]);
 const [voiceSelectedOption, setVoiceSelectedOption] = useState(null);
 const questionCache = useRef(new Map());
-const endlessQueueRef = useRef([]);
+const endlessQueueRef = useRef([]); // CHÚ Ý: Giờ đây lưu trữ Card Objects thay vì chỉ số Index
 const pendingFetchesRef = useRef(new Map());
-const deckRef = useRef([]);
+const deckRef = useRef([]); // CHÚ Ý: Giờ đây lưu trữ Card Objects thay vì chỉ số Index
 const dragItemRef = useRef(null);
 const dragOverItemRef = useRef(null);
 const autoNextRef = useRef(null);
@@ -4880,8 +4929,8 @@ const getActiveCacheToSave = useCallback((currentData) => {
 const cacheArray = [];
 const activeTerms = new Set();
 if (currentData.gameState?.origin?.term) activeTerms.add(currentData.gameState.origin.term);
-currentData.endlessQueue.forEach(idx => {
-const term = cards[idx]?.term;
+currentData.endlessQueue.forEach(cardObj => {
+const term = cardObj?.term;
 if (term) activeTerms.add(term);
 });
 activeTerms.forEach(term => {
@@ -4890,7 +4939,7 @@ cacheArray.push([term, questionCache.current.get(term)]);
 }
 });
 return cacheArray;
-}, [cards]);
+}, []);
 const triggerAutoSave = useCallback(() => {
 if (onAutoSave && latestStateRef.current) {
 const currentData = latestStateRef.current;
@@ -4909,6 +4958,56 @@ useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// ==================================================================================
+// [NEW v1.3] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// ==================================================================================
+const pushToRetryBag = useCallback((question) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['scramble']) bag['scramble'] = [];
+const isDup = bag['scramble'].some(item => item.term === question.term);
+if (!isDup) {
+bag['scramble'].push(question);
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+const removeFromRetryBag = useCallback((term) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['scramble']) return;
+const prevLen = bag['scramble'].length;
+bag['scramble'] = bag['scramble'].filter(item => item.term !== term);
+if (bag['scramble'].length !== prevLen) {
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+const getNextCardObj = () => {
+// 30% Cơ hội bốc câu sai từ Túi Nháp
+if (Math.random() < 0.3) {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (bag['scramble'] && bag['scramble'].length > 0) {
+const randIdx = Math.floor(Math.random() * bag['scramble'].length);
+return bag['scramble'][randIdx];
+}
+} catch(e) {}
+}
+// Nếu không trúng Túi Nháp, bốc từ Bộ bài gốc
+if (deckRef.current.length === 0) {
+let validCards = [];
+if (lang === 'zh') {
+validCards = cards.filter(c => window.Utils.detectSentence(c.term));
+} else {
+validCards = [...cards];
+}
+if (validCards.length === 0) return undefined;
+deckRef.current = window.Utils.shuffleArray(validCards);
+}
+return deckRef.current.shift();
+};
+// ==================================================================================
 useEffect(() => {
 isGameActiveRef.current = true;
 if (savedState && savedState.gameState) {
@@ -4916,8 +5015,28 @@ setGameState(JSON.parse(JSON.stringify(savedState.gameState)));
 setStats(savedState.stats || { correct: 0, wrong: 0 });
 setDifficulty(savedState.difficulty || 'easy');
 if (savedState.timeLeft) setTimeLeft(savedState.timeLeft);
-if (savedState.queue?.list) endlessQueueRef.current = [...savedState.queue.list];
-if (savedState.deck) deckRef.current = [...savedState.deck];
+// Khôi phục Deck (Nhận diện Index hoặc Object cũ)
+if (savedState.deck) {
+if (savedState.deck.length > 0 && typeof savedState.deck[0] === 'number') {
+deckRef.current = savedState.deck.map(idx => cards[idx]).filter(Boolean);
+} else {
+deckRef.current = [...savedState.deck];
+}
+}
+// Khôi phục Queue
+if (savedState.queue?.list) {
+if (savedState.queue.list.length > 0 && typeof savedState.queue.list[0] === 'number') {
+endlessQueueRef.current = savedState.queue.list.map(idx => cards[idx]).filter(Boolean);
+} else {
+endlessQueueRef.current = [...savedState.queue.list];
+}
+} else if (savedState.endlessQueue) {
+if (savedState.endlessQueue.length > 0 && typeof savedState.endlessQueue[0] === 'number') {
+endlessQueueRef.current = savedState.endlessQueue.map(idx => cards[idx]).filter(Boolean);
+} else {
+endlessQueueRef.current = [...savedState.endlessQueue];
+}
+}
 // Rã đông (Hydrate) Cache từ file Save vào RAM
 if (savedState.preloadedCache && Array.isArray(savedState.preloadedCache)) {
 questionCache.current = new Map(savedState.preloadedCache);
@@ -4967,21 +5086,8 @@ preloadedCache: getActiveCacheToSave(currentData)
 }));
 onBack(sessionData);
 };
-const getNextCardIndex = () => {
-if (deckRef.current.length === 0) {
-let validIndices = [];
-if (lang === 'zh') {
-validIndices = cards.map((c, i) => ({ c, i })).filter(({ c }) => window.Utils.detectSentence(c.term)).map(({ i }) => i);
-} else {
-validIndices = cards.map((_, i) => i);
-}
-if (validIndices.length === 0) return undefined;
-deckRef.current = window.Utils.shuffleArray(validIndices);
-}
-return deckRef.current.shift();
-};
-const fetchScrambleData = async (idx) => {
-const card = cards[idx];
+// [UPDATED v1.3] Đổi từ nhận Index sang nhận nguyên Card Object
+const fetchScrambleData = async (card) => {
 if (!card) return null;
 if (questionCache.current.has(card.term)) return questionCache.current.get(card.term);
 if (pendingFetchesRef.current.has(card.term)) return pendingFetchesRef.current.get(card.term);
@@ -5011,7 +5117,7 @@ targetCount = Math.floor(Math.random() * 2) + 4;
 targetCount = Math.floor(Math.random() * 3) + 5;
 }
 let noiseWords = [];
-// [CẬP NHẬT V1.2] - GỌI NHÀ MÁY THUẬT TOÁN Ở TẦNG 2 (BLOCK 2.3)
+// GỌI NHÀ MÁY THUẬT TOÁN Ở TẦNG 2
 if (isAiMode && apiKey && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise) {
 try {
 const aiCallPromise = window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise(card.term, lang, type, apiKey, targetCount);
@@ -5019,7 +5125,6 @@ const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Er
 noiseWords = await Promise.race([aiCallPromise, timeoutPromise]);
 if (noiseWords && noiseWords.length > 0) {
 isAiGenerated = true;
-// Lưu trữ log token ngầm định
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + 150);
 if (isInitializingRef.current && showToast) {
@@ -5061,11 +5166,11 @@ if (isPreloadingRef.current) return;
 isPreloadingRef.current = true;
 try {
 while (endlessQueueRef.current.length < 2 && isGameActiveRef.current) {
-const nextIdx = getNextCardIndex();
-if (nextIdx !== undefined) {
-endlessQueueRef.current.push(nextIdx);
-if (cards[nextIdx]?.term && !questionCache.current.has(cards[nextIdx].term)) {
-await fetchScrambleData(nextIdx).catch(e => console.warn("Preload error:", e));
+const nextCard = getNextCardObj();
+if (nextCard !== undefined) {
+endlessQueueRef.current.push(nextCard);
+if (nextCard?.term && !questionCache.current.has(nextCard.term)) {
+await fetchScrambleData(nextCard).catch(e => console.warn("Preload error:", e));
 }
 } else {
 break;
@@ -5076,13 +5181,13 @@ isPreloadingRef.current = false;
 }
 };
 const startNewGame = async () => {
-let validIndices = [];
+let validCards = [];
 if (lang === 'zh') {
-validIndices = cards.map((c, i) => ({ c, i })).filter(({ c }) => window.Utils.detectSentence(c.term)).map(({ i }) => i);
+validCards = cards.filter(c => window.Utils.detectSentence(c.term));
 } else {
-validIndices = cards.map((_, i) => i);
+validCards = [...cards];
 }
-if (validIndices.length === 0) {
+if (validCards.length === 0) {
 const msg = lang === 'zh' ? "Bộ thẻ này không có câu văn nào (Tiếng Trung chỉ hỗ trợ ghép câu)." : t('noSentences');
 if (showToast) safeShowToast(msg, 'warning'); else alert(msg);
 onBack();
@@ -5090,10 +5195,10 @@ return;
 }
 setIsGenerating(true);
 endlessQueueRef.current = [];
-deckRef.current = window.Utils.shuffleArray(validIndices);
+deckRef.current = window.Utils.shuffleArray(validCards);
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
-const firstIdx = getNextCardIndex();
+const firstCard = getNextCardObj();
 const isUsingAI = isAiMode && difficulty === 'hard' && inputMethod === 'tap';
 if (isUsingAI) {
 setAiCountdown(20);
@@ -5103,7 +5208,7 @@ count--;
 if (isGameActiveRef.current) setAiCountdown(count);
 if (count <= 0) clearInterval(timer);
 }, 1000);
-const dataPromise = fetchScrambleData(firstIdx);
+const dataPromise = fetchScrambleData(firstCard);
 dataPromise.then(() => {
 if (isGameActiveRef.current) maintainQueue();
 });
@@ -5120,7 +5225,7 @@ if (showToast) safeShowToast(`Hoàn tất! Đã chuẩn bị sẵn ${aiGenerated
 setTimeout(() => triggerAutoSave(), 150);
 }
 } else {
-const data = await fetchScrambleData(firstIdx);
+const data = await fetchScrambleData(firstCard);
 if (isGameActiveRef.current && data) {
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...data.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
@@ -5143,12 +5248,12 @@ setIsListening(false);
 setTimeLeft(timeLimit || 60);
 if (inputMethod === 'type') { setTimeout(() => typeInputRef.current?.focus(), 100); }
 setVoiceRetries(0); setVoiceOptions([]); setVoiceSelectedOption(null);
-let nextIdx = endlessQueueRef.current.length > 0 ? endlessQueueRef.current.shift() : getNextCardIndex();
-if (nextIdx === undefined) return;
-if (!questionCache.current.has(cards[nextIdx]?.term)) {
+let nextCard = endlessQueueRef.current.length > 0 ? endlessQueueRef.current.shift() : getNextCardObj();
+if (nextCard === undefined) return;
+if (!questionCache.current.has(nextCard?.term)) {
 setIsGenerating(true);
 }
-const data = await fetchScrambleData(nextIdx);
+const data = await fetchScrambleData(nextCard);
 if (isGameActiveRef.current && data) {
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...data.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
@@ -5203,6 +5308,10 @@ isCorrect = window.Utils.advancedNormalize(userString, lang) === window.Utils.ad
 }
 else if (inputMethod === 'voice') return;
 if (isCorrect) {
+// Bắt đúng ngay lần đầu -> Xóa sổ nợ
+if (gameState.attempts === 0) {
+removeFromRetryBag(gameState.origin.term);
+}
 setGameState(prev => ({ ...prev, isCorrect: true }));
 setStats(s => ({ ...s, correct: s.correct + 1 }));
 if (inputMethod === 'type') setInputBuffer("");
@@ -5212,6 +5321,7 @@ setTimeout(() => triggerAutoSave(), 150);
 const newAttempts = gameState.attempts + 1;
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: newAttempts }));
 if (newAttempts >= 3) {
+pushToRetryBag(gameState.origin); // Hết lượt -> Lưu túi nháp
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 if (onLogWrong && gameState.origin) { onLogWrong(gameState.origin); }
 playAndProceed(gameState.origin.term, 2000, true);
@@ -5252,11 +5362,15 @@ if (!gameState.origin || isPaused || gameState.isCorrect !== null) return;
 setVoiceSelectedOption(selectedText);
 const isCorrect = window.Utils.advancedNormalize(selectedText, lang) === window.Utils.advancedNormalize(gameState.origin.term, lang);
 if (isCorrect) {
+if (gameState.attempts === 0) {
+removeFromRetryBag(gameState.origin.term);
+}
 setGameState(prev => ({ ...prev, isCorrect: true }));
 setStats(s => ({ ...s, correct: s.correct + 1 }));
 playAndProceed(gameState.origin.term, 600, autoReadAnswer);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
+pushToRetryBag(gameState.origin); // Lưu túi nháp
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: 3 }));
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 if (onLogWrong && gameState.origin) { onLogWrong(gameState.origin); }
@@ -5367,6 +5481,7 @@ setVoiceOptions(window.Utils.shuffleArray(options));
 };
 const handleSkip = (isTimeout = false) => {
 if (isPaused || gameState.isCorrect !== null) return;
+pushToRetryBag(gameState.origin); // Lưu túi nháp
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: 3 }));
 if (showToast) {
@@ -5450,7 +5565,7 @@ userAnswer: [...prev.userAnswer, { id: `punct-${Date.now()}-${Math.random()}`, t
 }));
 setTimeout(() => triggerAutoSave(), 150);
 };
-const ScramblePlayScreen = window.ScramblePlayScreen;
+const ScramblePlayScreen = window.ScramblePlayScreen || window.Block5_3_ScramblePlayScreen;
 return (
 <ScramblePlayScreen
 t={t} mainColor={mainColor} lang={lang} settings={settings}
@@ -5818,10 +5933,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.3
-// Last Updated: 2026-04-04 10:34
+// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.4
+// Last Updated: 2026-04-06 09:48
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: ĐẠI PHẪU (REFACTOR). Cắt bỏ logic tạo đáp án nhiễu nội bộ. Cắm cáp gọi dữ liệu trực tiếp từ Nhà máy Thuật toán window.GameAlgoEngine.OptionsEngine ở Tầng 2.
+// Cập nhật: NÂNG CẤP (Incident 27). Cấy ghép "Túi Nháp Lặp Lại" (Global Retry Bag). Game tự động lưu câu sai vào túi và có tỷ lệ 30% bốc lại câu sai ra hỏi.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục khỏi lỗi "đen xì"
@@ -5856,9 +5971,9 @@ const timerRef = useRef(null);
 const autoNextTimeoutRef = useRef(null);
 const isGameActiveRef = useRef(true);
 const questionCache = useRef(new Map());
-const endlessQueueRef = useRef([]);
+const endlessQueueRef = useRef([]); // CHÚ Ý: Giờ đây lưu trữ Card Objects thay vì chỉ số Index
 const pendingFetchesRef = useRef(new Map());
-const deckRef = useRef([]);
+const deckRef = useRef([]); // CHÚ Ý: Giờ đây lưu trữ Card Objects thay vì chỉ số Index
 const positionDeckRef = useRef([]);
 const currentOptsCountRef = useRef(0);
 const stateRef = useRef({});
@@ -5871,8 +5986,8 @@ const getActiveCacheToSave = useCallback((currentData) => {
 const cacheArray = [];
 const activeTerms = new Set();
 if (currentData.currentQuestionData?.question?.term) activeTerms.add(currentData.currentQuestionData.question.term);
-currentData.endlessQueue.forEach(idx => {
-const term = cards[idx]?.term;
+currentData.endlessQueue.forEach(cardObj => {
+const term = cardObj?.term;
 if (term) activeTerms.add(term);
 });
 activeTerms.forEach(term => {
@@ -5881,7 +5996,7 @@ cacheArray.push([term, questionCache.current.get(term)]);
 }
 });
 return cacheArray;
-}, [cards]);
+}, []);
 const triggerAutoSave = useCallback(() => {
 if (onAutoSave && stateRef.current) {
 const currentData = stateRef.current;
@@ -5898,7 +6013,50 @@ useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
-// Cỗ máy đóng gói Lỗi sai chuẩn Schema Hệ thống
+// ==================================================================================
+// [NEW v1.4] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// ==================================================================================
+const pushToRetryBag = useCallback((question) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['quiz']) bag['quiz'] = [];
+const isDup = bag['quiz'].some(item => item.term === question.term);
+if (!isDup) {
+bag['quiz'].push(question);
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+const removeFromRetryBag = useCallback((term) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['quiz']) return;
+const prevLen = bag['quiz'].length;
+bag['quiz'] = bag['quiz'].filter(item => item.term !== term);
+if (bag['quiz'].length !== prevLen) {
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+const getNextCardObj = () => {
+// 30% Cơ hội bốc câu sai từ Túi Nháp
+if (Math.random() < 0.3) {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (bag['quiz'] && bag['quiz'].length > 0) {
+const randIdx = Math.floor(Math.random() * bag['quiz'].length);
+return bag['quiz'][randIdx];
+}
+} catch(e) {}
+}
+// Nếu không trúng Túi Nháp, bốc từ Bộ bài gốc
+if (deckRef.current.length === 0) {
+deckRef.current = window.Utils.shuffleArray([...cards]);
+}
+return deckRef.current.shift();
+};
+// ==================================================================================
+// Cỗ máy đóng gói Lỗi sai chuẩn Schema Hệ thống (Sổ tay)
 const logMistake = (question) => {
 if (!onLogWrong || !question) return;
 const mistakeCard = {
@@ -5909,10 +6067,6 @@ tags: ['quiz', hardMode ? 'hard' : 'easy', gameMode],
 timestamp: Date.now()
 };
 onLogWrong(mistakeCard);
-};
-const getNextCardIndex = () => {
-if (deckRef.current.length === 0) deckRef.current = window.Utils.shuffleArray(cards.map((_, i) => i));
-return deckRef.current.shift();
 };
 const getNextPosition = (numOpts) => {
 if (positionDeckRef.current.length === 0 || currentOptsCountRef.current !== numOpts) {
@@ -5931,9 +6085,28 @@ setWrongCount(savedState.stats?.wrong || savedState.wrongCount || 0);
 setCurrentQuestionData(savedState.currentQuestionData);
 setTimeLeft(savedState.timeLeft || timeLimit);
 if (savedState.quizState?.listenPlayCount !== undefined) setListenPlayCount(savedState.quizState.listenPlayCount);
-if (savedState.queue?.list) endlessQueueRef.current = [...savedState.queue.list];
-else if (savedState.endlessQueue) endlessQueueRef.current = [...savedState.endlessQueue];
-if (savedState.deck) deckRef.current = [...savedState.deck];
+// Khôi phục Deck (Nhận diện Index hoặc Object cũ)
+if (savedState.deck) {
+if (savedState.deck.length > 0 && typeof savedState.deck[0] === 'number') {
+deckRef.current = savedState.deck.map(idx => cards[idx]).filter(Boolean);
+} else {
+deckRef.current = [...savedState.deck];
+}
+}
+// Khôi phục Queue (Nhận diện Index hoặc Object cũ)
+if (savedState.queue?.list) {
+if (savedState.queue.list.length > 0 && typeof savedState.queue.list[0] === 'number') {
+endlessQueueRef.current = savedState.queue.list.map(idx => cards[idx]).filter(Boolean);
+} else {
+endlessQueueRef.current = [...savedState.queue.list];
+}
+} else if (savedState.endlessQueue) {
+if (savedState.endlessQueue.length > 0 && typeof savedState.endlessQueue[0] === 'number') {
+endlessQueueRef.current = savedState.endlessQueue.map(idx => cards[idx]).filter(Boolean);
+} else {
+endlessQueueRef.current = [...savedState.endlessQueue];
+}
+}
 if (savedState.preloadedCache && Array.isArray(savedState.preloadedCache)) {
 questionCache.current = new Map(savedState.preloadedCache);
 }
@@ -5953,8 +6126,8 @@ const handleSaveAndBack = () => {
 const data = stateRef.current;
 onBack({ ...data, timerMode, listenMode, hardMode, timeLimit, preloadedCache: getActiveCacheToSave(data) });
 };
-const fetchQuestion = async (idx) => {
-const card = cards[idx];
+// [UPDATED v1.4] Đổi từ nhận Index sang nhận nguyên Card Object
+const fetchQuestion = async (card) => {
 if (!card) return null;
 if (questionCache.current.has(card.term)) return questionCache.current.get(card.term);
 if (pendingFetchesRef.current.has(card.term)) return pendingFetchesRef.current.get(card.term);
@@ -5972,7 +6145,6 @@ if (hardMode) {
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if (isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
-// [CẬP NHẬT V1.3] GỌI AI TỪ NHÀ MÁY THUẬT TOÁN Ở TẦNG 2
 const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(correctOptText, lang, type, currentApiKey, numOptions - 1);
 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout (20s)")), 20000));
 const dists = await Promise.race([aiCallPromise, timeoutPromise]);
@@ -5990,7 +6162,6 @@ safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`
 console.warn("AI Quiz Preload Fallback:", aiError.message);
 }
 }
-// [CẬP NHẬT V1.3] GỌI OFFLINE ENGINE TỪ NHÀ MÁY THUẬT TOÁN
 if (distractors.length === 0 && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
 const distTexts = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(correctOptText, cards, lang, type, numOptions - 1);
 distractors = distTexts.map(d => ({ text: d, isCorrect: false }));
@@ -6016,10 +6187,10 @@ try { return await fetchTask; } finally { pendingFetchesRef.current.delete(card.
 };
 const preloadNextQuestions = async (count) => {
 for (let i = 0; i < count; i++) {
-const nextIdx = getNextCardIndex();
-endlessQueueRef.current.push(nextIdx);
-if (cards[nextIdx]?.term && !questionCache.current.has(cards[nextIdx].term)) {
-fetchQuestion(nextIdx).catch(e => console.warn("Preload error:", e));
+const nextCard = getNextCardObj();
+endlessQueueRef.current.push(nextCard);
+if (nextCard?.term && !questionCache.current.has(nextCard.term)) {
+fetchQuestion(nextCard).catch(e => console.warn("Preload error:", e));
 }
 }
 };
@@ -6029,12 +6200,12 @@ if (!cards || cards.length < 2) return;
 setIsGenerating(true);
 setListenPlayCount(0);
 endlessQueueRef.current = [];
-deckRef.current = window.Utils.shuffleArray(cards.map((_, i) => i));
+deckRef.current = window.Utils.shuffleArray([...cards]);
 positionDeckRef.current = [];
 currentOptsCountRef.current = 0;
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
-const firstIdx = getNextCardIndex();
+const firstCard = getNextCardObj();
 const isUsingAI = isAiMode && hardMode;
 if (isUsingAI) {
 setAiCountdown(20);
@@ -6047,17 +6218,17 @@ return prev - 1;
 // 1. Luồng nạp đạn tuần tự: Câu 1 -> 0.5s -> Câu 2 -> 0.5s -> Câu 3
 const fetchAllPromise = (async () => {
 // Nạp Câu 1 (Hiển thị ngay)
-await fetchQuestion(firstIdx);
+await fetchQuestion(firstCard);
 if (!isGameActiveRef.current) return;
 await new Promise(r => setTimeout(r, 500)); // Nghỉ 0.5s
 // Nạp Câu 2 (Dự phòng 1)
-const next1 = getNextCardIndex();
+const next1 = getNextCardObj();
 endlessQueueRef.current.push(next1);
 await fetchQuestion(next1);
 if (!isGameActiveRef.current) return;
 await new Promise(r => setTimeout(r, 500)); // Nghỉ 0.5s
 // Nạp Câu 3 (Dự phòng 2)
-const next2 = getNextCardIndex();
+const next2 = getNextCardObj();
 endlessQueueRef.current.push(next2);
 await fetchQuestion(next2);
 })();
@@ -6065,13 +6236,12 @@ await fetchQuestion(next2);
 const timeoutPromise = new Promise(r => setTimeout(r, 20000));
 await Promise.race([fetchAllPromise, timeoutPromise]);
 clearInterval(timer); // Dừng đồng hồ
-// Lấy dữ liệu câu đầu tiên để chơi (đã được fetchQuestion bảo vệ timeout 20s riêng)
-const qData = questionCache.current.get(cards[firstIdx].term);
+// Lấy dữ liệu câu đầu tiên để chơi
+const qData = questionCache.current.get(firstCard.term);
 if (isGameActiveRef.current && qData) {
 setCurrentQuestionData(qData);
 setIsGenerating(false);
 setAiCountdown(0);
-// Tắt cờ khởi tạo -> Mọi hoạt động nạp đạn ngầm sau lệnh này sẽ im lặng hoàn toàn
 isInitializingRef.current = false;
 if (showToast) {
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
@@ -6081,7 +6251,7 @@ setTimeout(() => triggerAutoSave(), 150);
 }
 } else {
 // Chế độ chơi Offline
-const qData = await fetchQuestion(firstIdx);
+const qData = await fetchQuestion(firstCard);
 if (isGameActiveRef.current) {
 setCurrentQuestionData(qData); setIsGenerating(false);
 if (gameMode === 'listen') triggerAudio(qData, 600);
@@ -6097,9 +6267,9 @@ if (!isGameActiveRef.current) return;
 setSelectedOptionIndex(null); setIsChecking(false); setFeedbackType(null); setClickedWrongIndices(new Set());
 setShowChanceToast(false); setIsAudioPlaying(false); setHasStartedListening(false);
 setTimeLeft(timeLimit); setIsRoundStarted(!timerMode); setListenPlayCount(0); cleanupTimers();
-let nextIdx = endlessQueueRef.current.length > 0 ? endlessQueueRef.current.shift() : getNextCardIndex();
-if (!questionCache.current.has(cards[nextIdx]?.term)) setIsGenerating(true);
-const qData = await fetchQuestion(nextIdx);
+let nextCard = endlessQueueRef.current.length > 0 ? endlessQueueRef.current.shift() : getNextCardObj();
+if (!questionCache.current.has(nextCard?.term)) setIsGenerating(true);
+const qData = await fetchQuestion(nextCard);
 if (isGameActiveRef.current) {
 setCurrentQuestionData(qData); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
@@ -6138,19 +6308,24 @@ cleanupTimers();
 const textToPlay = currentQuestionData.question.term;
 const proceedToNext = (delay) => { if (isGameActiveRef.current) autoNextTimeoutRef.current = setTimeout(handleNext, delay); };
 if (isTimeout) {
+pushToRetryBag(currentQuestionData.question); // Bắt lỗi Hết Giờ
 setIsChecking(true); setFeedbackType('timeout'); setStreak(0); setWrongCount(w => w + 1);
-logMistake(currentQuestionData.question); // Auto-Log
+logMistake(currentQuestionData.question);
 proceedToNext(2000); setTimeout(() => triggerAutoSave(), 150);
 return;
 }
 if (isForceReveal) {
-if (!clickedWrongIndices.has(999)) {
-setClickedWrongIndices(new Set(clickedWrongIndices).add(999));
-setShowChanceToast(true); setTimeout(() => setShowChanceToast(false), 2000);
-}
+pushToRetryBag(currentQuestionData.question); // Bắt lỗi Ép Mở Đáp Án (Thua cuộc)
+setIsChecking(true); setSelectedOptionIndex(999); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
+logMistake(currentQuestionData.question);
+proceedToNext(2500); setTimeout(() => triggerAutoSave(), 150);
 return;
 }
 if (isCorrect) {
+// Làm đúng ngay lượt đầu -> Xóa nợ trong Túi nháp (nếu có)
+if (clickedWrongIndices.size === 0) {
+removeFromRetryBag(currentQuestionData.question.term);
+}
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('correct'); setScore(s => s + 1); setStreak(s => s + 1);
 if (autoReadAnswer && onPlay) {
 let finished = false;
@@ -6163,8 +6338,9 @@ const newWrong = new Set(clickedWrongIndices).add(index);
 setClickedWrongIndices(newWrong);
 if (newWrong.size === 1) { setShowChanceToast(true); setTimeout(() => setShowChanceToast(false), 2000); return; }
 }
+pushToRetryBag(currentQuestionData.question); // Bắt lỗi khi đã xài hết mọi cơ hội cứu trợ
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
-logMistake(currentQuestionData.question); // Auto-Log
+logMistake(currentQuestionData.question);
 if (autoReadAnswer && onPlay) {
 let finished = false;
 const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proceedToNext(0); } }, 8000);
@@ -6177,7 +6353,8 @@ const handleSkip = () => {
 if (isChecking) return;
 setWrongCount(w => w + 1); setStreak(0);
 if (showToast) safeShowToast("Bỏ qua (+1 sai)", "warning");
-logMistake(currentQuestionData.question); // Auto-Log
+pushToRetryBag(currentQuestionData.question); // Bắt lỗi Bỏ Qua
+logMistake(currentQuestionData.question);
 handleNext(); setTimeout(() => triggerAutoSave(), 150);
 };
 // Render Component UI đã tách ra (GamePlayScreen)
@@ -6202,10 +6379,10 @@ onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={set
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.10
-// Last Updated: 2026-04-04 17:30
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.11
+// Last Updated: 2026-04-05 21:32
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: Cắm cáp `onSaveToHarvest` và `onUpdateCards` vào GameView và truyền xuống FillBlank/SpotMistake để hoàn thiện tính năng Kho AI và Vá thẻ mù.
+// Cập nhật: Sửa lỗi mất trí nhớ (Resume Session) cho Game Điền Từ và Tìm Lỗi Sai. Cắm cáp `onAutoSave` và `savedState` cho 2 game này.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onResume, gameSessions }) => {
@@ -6677,7 +6854,8 @@ lang={lang}
 isAiMode={true}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
 onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
-onQuit={() => handleBack(null)}
+onBack={handleBack}
+onQuit={handleBack}
 onBookmark={onBookmark}
 notebook={notebook}
 onLogWrong={onLogWrong}
@@ -6685,6 +6863,8 @@ settings={settings}
 config={gameConfig}
 onUpdateCards={onUpdateCards}
 onSaveToHarvest={onSaveToHarvest}
+onAutoSave={handleAutoSave}
+savedState={gameSessions?.['fillblank']}
 />
 }
 {gameType === 'spotmistake' && SafeSpotMistakeGame &&
@@ -6697,7 +6877,8 @@ lang={lang}
 isAiMode={true}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
 onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
-onQuit={() => handleBack(null)}
+onBack={handleBack}
+onQuit={handleBack}
 onBookmark={onBookmark}
 notebook={notebook}
 onLogWrong={onLogWrong}
@@ -6705,6 +6886,8 @@ settings={settings}
 config={gameConfig}
 onUpdateCards={onUpdateCards}
 onSaveToHarvest={onSaveToHarvest}
+onAutoSave={handleAutoSave}
+savedState={gameSessions?.['spotmistake']}
 />
 }
 </div>
@@ -6717,15 +6900,18 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank UI) - Version 2.0
-// Last Updated: 2026-04-04 15:58
-// Nhiệm vụ: Hiển thị giao diện cho trò chơi Điền Từ (Fill-in-the-Blank).
-// Cập nhật: Nâng cấp UX Sư phạm. Bổ sung Knowledge Panel cho cả trạng thái Đúng/Sai để neo giữ kiến thức. Bổ sung nút Tạm dừng đếm ngược (UX Timer).
+// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Setup & PlayScreen UI) - Version 2.1
+// Last Updated: 2026-04-06 09:05
+// Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Điền Từ (IELTS Cloze).
+// Cập nhật: NÂNG CẤP (HOTFIX). Lấy lại base v2.0 (có Knowledge Panel) và tích hợp thành công Cấu hình Timer (15s,30s,45s,60s) cùng thanh đếm ngược.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const FillBlankSetup = ({ t, mainColor, onStart, onBack }) => {
 const [level, setLevel] = React.useState('level_4_discovery_basic');
 const [sourceMode, setSourceMode] = React.useState('card'); // 'card' or 'ai_pure'
+// [NEW v2.1] State cho Timer
+const [timerMode, setTimerMode] = React.useState(false);
+const [timeLimit, setTimeLimit] = React.useState(30);
 const levels = [
 { id: 'level_1_kiddie', label: 'Kiddie', sub: 'Lớp 1-2', icon: '👶' },
 { id: 'level_2_junior_basic', label: 'Junior', sub: 'Lớp 3-4', icon: '👦' },
@@ -6738,6 +6924,9 @@ const levels = [
 { id: 'level_9_expert', label: 'Expert', sub: 'IELTS 7.5+', icon: '💎' }
 ];
 const Icons = window.Icons;
+const handleStart = () => {
+onStart({ level, sourceMode, timerMode, timeLimit });
+};
 return (
 <div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
 <div className="w-full flex items-center justify-between mb-6 shrink-0">
@@ -6774,6 +6963,26 @@ className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition
 </button>
 </div>
 </div>
+{/* [NEW v2.1] Cấu hình Thời gian (Timer Toggle) */}
+<div className={`p-4 bg-${mainColor}-50 rounded-xl border border-${mainColor}-100 transition-all mb-6`}>
+<div className="flex justify-between items-center">
+<div className="flex flex-col">
+<span className={`font-bold flex items-center gap-2 text-${mainColor}-700`}><window.Icons.Clock size={18} /> Giới hạn thời gian</span>
+<span className="text-xs text-gray-500 mt-1">{timerMode ? `${timeLimit} giây / câu` : 'Không giới hạn'}</span>
+</div>
+<div className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors relative flex items-center ${timerMode ? `bg-${mainColor}-500` : 'bg-gray-300'}`} onClick={() => setTimerMode(!timerMode)}>
+<div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${timerMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
+</div>
+</div>
+{timerMode && (
+<div className="flex justify-center gap-2 mt-4 pt-3 border-t border-white/50 animate-in fade-in">
+<span className="text-xs font-bold text-gray-500 self-center mr-2 uppercase">Chọn:</span>
+{[15, 30, 45, 60].map(t => (
+<button key={t} onClick={() => setTimeLimit(t)} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${timeLimit === t ? `bg-${mainColor}-500 text-white shadow-md scale-105` : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>{t}s</button>
+))}
+</div>
+)}
+</div>
 {/* Chọn Cấp độ - 9 Level */}
 <div className="mb-4">
 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Chọn trình độ học tập</label>
@@ -6794,7 +7003,7 @@ className={`p-2 rounded-xl border-2 flex flex-col items-center transition-all ${
 </div>
 <div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0">
 <button
-onClick={() => onStart({ level, sourceMode })}
+onClick={handleStart}
 className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-2 active:scale-95 transition-transform text-lg`}
 >
 <Icons.Play size={24} fill="currentColor" /> BẮT ĐẦU LUYỆN TẬP
@@ -6809,7 +7018,8 @@ t, mainColor, config,
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts,
 score, combo, playedCount, time, isFinished, isGenerating, aiCountdown,
 correctCount, wrongCount,
-resultTimer, isResultPaused, toggleResultPause, // [NEW v2.0] Nhận các state UX Timer
+resultTimer, isResultPaused, toggleResultPause,
+timeLeft, // [NEW v2.1] Nhận state thời gian từ Logic
 checkAnswer, handleNext, handleSkip, onBack, onEndGame, onSaveToNotebook, isBookmarked
 }) => {
 const Icons = window.Icons;
@@ -6904,6 +7114,12 @@ const shakeKeyframes = `
 return (
 <div className="w-full flex flex-col h-full bg-gray-50 relative overflow-hidden">
 <style>{shakeKeyframes}</style>
+{/* [NEW v2.1] Thanh đếm ngược thời gian (Progress bar top) */}
+{config?.timerMode && checkStatus === 'idle' && !isGenerating && (
+<div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 z-50">
+<div className={`h-full transition-all duration-1000 ease-linear ${timeLeft <= 5 ? 'bg-red-500' : `bg-${mainColor}-500`}`} style={{ width: `${(timeLeft / config.timeLimit) * 100}%` }}></div>
+</div>
+)}
 {/* POPUP XÁC NHẬN THOÁT GAME */}
 {showConfirmEnd && (
 <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
@@ -6944,7 +7160,7 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 <div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}>
 {Icon('Sparkles', { size: 18 })} x{combo}
 </div>
-<div className={`text-xl font-mono font-bold ${time > 60 ? 'text-red-500 animate-pulse' : `text-${mainColor}-600`} w-12 text-right hidden sm:block`}>
+<div className={`text-xl font-mono font-bold ${time > 60 ? 'text-red-500 animate-pulse' : `text-${mainColor}-600`} w-12 text-right hidden sm:block`} title="Tổng thời gian">
 {time}s
 </div>
 </div>
@@ -7020,7 +7236,7 @@ Chưa chính xác! Bạn còn {3 - attempts} lượt thử.
 </div>
 )}
 </div>
-{/* [NEW v2.0] KNOWLEDGE MINING PANEL (Bảng Tóm tắt Kiến thức) */}
+{/* KNOWLEDGE MINING PANEL (Bảng Tóm tắt Kiến thức) */}
 {/* Hiển thị khi có kết quả (Đúng hoặc Sai 3 lần) */}
 {(checkStatus === 'wrong' || checkStatus === 'correct') && (
 <div className={`w-full max-w-3xl mt-2 bg-white rounded-2xl shadow-lg border-2 ${checkStatus === 'correct' ? 'border-green-200' : 'border-red-200'} overflow-visible animate-in slide-in-from-bottom-4 z-20`}>
@@ -7072,7 +7288,7 @@ className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-cente
 <div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 {checkStatus === 'correct' || checkStatus === 'wrong' ? (
 <div className="w-full max-w-md flex gap-3">
-{/* [NEW v2.0] Nút Tạm dừng đếm ngược (UX Timer Control) */}
+{/* Nút Tạm dừng đếm ngược (UX Timer Control) */}
 <button
 onClick={() => toggleResultPause && toggleResultPause()}
 className={`flex-1 py-4 font-bold text-sm rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
@@ -7125,15 +7341,15 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.4
-// Last Updated: 2026-04-05 08:20
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.7
+// Last Updated: 2026-04-06 10:05
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank).
-// Cập nhật: TỐI ƯU HÓA (REFACTOR). Loại bỏ quản lý mảng Ký ức thủ công. Chuyển sang sử dụng Lõi Ký ức AntiLazyMemory từ Tầng 2. Tuân thủ nguyên tắc DRY.
+// Cập nhật: NÂNG CẤP (Incident 27). Cấy ghép "Túi Nháp Lặp Lại" (Global Retry Bag). Lưu toàn bộ Object câu sai để tiết kiệm Token AI. Bốc thăm 30% ưu tiên câu sai.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
-const { isAiMode, apiKey, lang, timeLimit, level, sourceMode } = config;
-const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest } = callbacks;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode } = config;
+const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack } = callbacks;
 // State Game Cơ bản
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [inputBuffer, setInputBuffer] = React.useState("");
@@ -7151,9 +7367,12 @@ const [aiCountdown, setAiCountdown] = React.useState(0);
 // UX Timer State cho màn hình hiển thị kết quả (Knowledge Panel)
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
+// State cho Đồng hồ đếm ngược từng câu
+const [timeLeft, setTimeLeft] = React.useState(timeLimit || 30);
 // Động cơ thống nhất từ Tầng 2
 const enrichedCardsRef = React.useRef(cards);
-const deckRef = React.useRef([]);
+const deckRef = React.useRef([]); // Lưu Object thay vì Index
+const historyQueueRef = React.useRef([]);
 const coordinatorRef = React.useRef(null);
 const isGameActiveRef = React.useRef(true);
 const gameTimerRef = React.useRef(null);
@@ -7163,8 +7382,59 @@ if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type,
 }, [showToast]);
 // Đồng bộ thẻ gốc nếu có thay đổi từ bên ngoài
 React.useEffect(() => { enrichedCardsRef.current = cards; }, [cards]);
+// BỘ NÃO LƯU TRỮ VÀ AUTO-SAVE
+const latestStateRef = React.useRef({});
+React.useEffect(() => {
+latestStateRef.current = {
+currentQuestion, inputBuffer, checkStatus, attempts,
+score, combo, playedCount, time, correctCount, wrongCount,
+deck: deckRef.current, timeLeft
+};
+}, [currentQuestion, inputBuffer, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft]);
+const triggerAutoSave = React.useCallback(() => {
+if (onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
+onAutoSave({ fillBlankState: latestStateRef.current });
+}
+}, [onAutoSave]);
+React.useEffect(() => {
+const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
+return () => { clearInterval(intervalTimer); triggerAutoSave(); };
+}, [triggerAutoSave]);
+const handleSaveAndBack = () => {
+if (onBack) {
+onBack({ fillBlankState: latestStateRef.current });
+}
+};
+// ==================================================================================
+// [NEW v2.7] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// ==================================================================================
+const pushToRetryBag = React.useCallback((questionData) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['fillblank']) bag['fillblank'] = [];
+// Dùng origin.term hoặc targetWord để chống trùng lặp
+const termToCheck = questionData.origin?.term || questionData.targetWord;
+const isDup = bag['fillblank'].some(item => (item.origin?.term || item.targetWord) === termToCheck);
+if (!isDup) {
+bag['fillblank'].push(questionData);
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+const removeFromRetryBag = React.useCallback((termToCheck) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['fillblank']) return;
+const prevLen = bag['fillblank'].length;
+bag['fillblank'] = bag['fillblank'].filter(item => (item.origin?.term || item.targetWord) !== termToCheck);
+if (bag['fillblank'].length !== prevLen) {
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+// ==================================================================================
 // Cỗ máy đóng gói Lỗi sai (Auto-Log)
-const logMistake = (question) => {
+const logMistake = React.useCallback((question) => {
 if (!onLogWrong || !question) return;
 const baseData = question.origin || {};
 const underlinedTarget = question.targetWord.split('').map(char => char + '\u0332').join('');
@@ -7180,25 +7450,33 @@ tags: ['fillblank', level, sourceMode],
 timestamp: Date.now()
 };
 onLogWrong(mistakeCard);
-};
-// Hàm lấy thẻ tiếp theo (Đảm bảo vòng lặp vô tận)
-const getNextCardIndex = () => {
-if (deckRef.current.length === 0) {
-let validIndices = enrichedCardsRef.current.map((c, i) => ({ c, i }))
-.filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '))
-.map(({ i }) => i);
-if (validIndices.length === 0) validIndices = enrichedCardsRef.current.map((_, i) => i);
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
-}
-return deckRef.current.shift() || 0;
-};
+}, [onLogWrong, level, sourceMode]);
 // --- TÌM NẠP DỮ LIỆU (FETCH TASK CHO COORDINATOR) ---
 const fetchTask = async () => {
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
+if (Math.random() < 0.3) {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (bag['fillblank'] && bag['fillblank'].length > 0) {
+const randIdx = Math.floor(Math.random() * bag['fillblank'].length);
+const retryQ = bag['fillblank'][randIdx];
+if (retryQ && retryQ.targetWord && retryQ.displaySentence) {
+return retryQ; // Trả về nguyên cục Dữ liệu đã lưu, không cần sinh lại
+}
+}
+} catch(e) {}
+}
+// 2. LUỒNG BÌNH THƯỜNG
 const isPureMode = sourceMode === 'ai_pure';
 let card = null;
 if (!isPureMode) {
-const nextIdx = getNextCardIndex();
-card = enrichedCardsRef.current[nextIdx];
+// Bốc từ Bộ bài gốc (Deck)
+if (deckRef.current.length === 0) {
+let validCards = enrichedCardsRef.current.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
+if (validCards.length === 0) validCards = [...enrichedCardsRef.current];
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
+}
+card = deckRef.current.shift();
 if (!card) return null;
 }
 const canCallAi = isAiMode && apiKey && window.Utils && window.Utils.callGeminiApi;
@@ -7208,36 +7486,26 @@ if (canCallAi && isSentence) {
 try {
 let result;
 if (isPureMode) {
-// Sử dụng Lõi Ký ức chống AI lười biếng từ Tầng 2
 let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'fillblank');
 if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
-prompt += window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.getPrompt();
+prompt += window.GameAlgoEngine.PreflightEngine.getHistoryPrompt(historyQueueRef.current);
 }
 const schema = window.IoeDataEngine.SCHEMAS.pure_fill_blank;
 const aiRes = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(aiRes.text);
 const sentenceToCheck = parsed.displaySentence.replace('[__________]', parsed.targetWord);
 result = { origin: { term: sentenceToCheck, definition: parsed.hint }, targetWord: parsed.targetWord, displaySentence: parsed.displaySentence, hint: parsed.hint };
-// Ghi nhớ từ khóa vào Lõi Ký ức
-if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
-window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.add(parsed.targetWord);
-}
-// Bắn dữ liệu AI Tự sinh vào Kho Harvest
+historyQueueRef.current.push(parsed.targetWord);
+if (historyQueueRef.current.length > 15) historyQueueRef.current.shift();
 if (onSaveToHarvest) {
-onSaveToHarvest(level, {
-displaySentence: parsed.displaySentence,
-targetWord: parsed.targetWord,
-hint: parsed.hint
-});
+onSaveToHarvest(level, { displaySentence: parsed.displaySentence, targetWord: parsed.targetWord, hint: parsed.hint });
 }
 } else {
 result = await window.GameAlgoEngine.ClozeEngine.ai_mask(card.term, card.definition, lang, apiKey);
 result.origin = card;
 }
 const finalResult = { ...result, type: 'sentence', isAiGenerated: true };
-if (isInitializingRef.current) {
-safeShowToast(`Đang nạp đạn AI...`, "info");
-}
+if (isInitializingRef.current) { safeShowToast(`Đang nạp đạn AI...`, "info"); }
 return finalResult;
 } catch (e) {
 console.warn("AI FillBlank Fallback:", e.message);
@@ -7258,22 +7526,24 @@ isAiGenerated: false
 const startNewGame = async () => {
 setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
+historyQueueRef.current = [];
 isInitializingRef.current = true;
 let currentDeck = [...cards];
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i)) : [];
-// PRE-FLIGHT BATCH ENRICH (Vá lỗi thẻ mù)
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(currentDeck) : [];
 if (sourceMode === 'card' && isAiMode && apiKey && window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
 safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
+// Khôi phục mảng index tạm thời cho hàm batchEnrich
+const tempIndices = deckRef.current.map((_, i) => i);
 const { updatedCards, hasUpdates } = await window.GameAlgoEngine.PreflightEngine.batchEnrich(
-currentDeck, deckRef.current, 10, lang, apiKey
+currentDeck, tempIndices, 10, lang, apiKey
 );
 if (hasUpdates) {
 enrichedCardsRef.current = updatedCards;
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(updatedCards) : updatedCards;
 if (onUpdateCards) onUpdateCards(updatedCards);
 safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
 }
 }
-// Khởi tạo Bộ Điều Phối Cuốn Chiếu (Coordinator)
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
 coordinatorRef.current = window.GameAlgoEngine.PreflightEngine.createQueueCoordinator(fetchTask, 2);
@@ -7285,7 +7555,6 @@ const isUsingAI = isAiMode || sourceMode === 'ai_pure';
 if (isUsingAI) {
 setAiCountdown(20);
 const timer = setInterval(() => { setAiCountdown(prev => { if (prev <= 1) clearInterval(timer); return prev - 1; }); }, 1000);
-// Nạp đạn cuốn chiếu ban đầu
 const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 20000));
 await Promise.race([maintainPromise, timeoutPromise]);
@@ -7294,6 +7563,7 @@ const firstData = coordinatorRef.current.pop();
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestion(firstData);
 setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
+setTimeLeft(timeLimit || 30);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 }
 } else {
@@ -7301,29 +7571,73 @@ await coordinatorRef.current.maintain();
 const data = coordinatorRef.current.pop();
 if (isGameActiveRef.current && data) {
 setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); isInitializingRef.current = false;
+setTimeLeft(timeLimit || 30);
 }
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
 };
+// PHỤC HỒI DỮ LIỆU TỪ SESSION
+const hasStartedRef = React.useRef(false);
+React.useEffect(() => {
+if (hasStartedRef.current) return;
+hasStartedRef.current = true;
+isGameActiveRef.current = true;
+if (savedState && savedState.fillBlankState) {
+const st = savedState.fillBlankState;
+setCurrentQuestion(st.currentQuestion);
+setInputBuffer(st.inputBuffer || "");
+setCheckStatus(st.checkStatus || 'idle');
+setAttempts(st.attempts || 0);
+setScore(st.score || 0);
+setCombo(st.combo || 1);
+setPlayedCount(st.playedCount || 0);
+setTime(st.time || 0);
+setCorrectCount(st.correctCount || 0);
+setWrongCount(st.wrongCount || 0);
+setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 30));
+if (st.deck) {
+if (st.deck.length > 0 && typeof st.deck[0] === 'number') {
+deckRef.current = st.deck.map(idx => cards[idx]).filter(Boolean);
+} else {
+deckRef.current = [...st.deck];
+}
+}
+if (coordinatorRef.current) coordinatorRef.current.destroy();
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+coordinatorRef.current = window.GameAlgoEngine.PreflightEngine.createQueueCoordinator(fetchTask, 2);
+coordinatorRef.current.maintain();
+}
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
+setIsGenerating(false);
+isInitializingRef.current = false;
+} else {
+startNewGame();
+}
+return () => {
+isGameActiveRef.current = false;
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+if (coordinatorRef.current) coordinatorRef.current.destroy();
+};
+}, []);
 const nextRound = () => {
 if (isGenerating) return;
 setPlayedCount(prev => prev + 1);
-// Reset UX Timer
 setResultTimer(0);
 setIsResultPaused(false);
-// POP đạn từ Coordinator (Tự động kích hoạt nạp ngầm background)
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0);
+setTimeLeft(timeLimit || 30);
 } else {
-// Hết đạn đột xuất (Nghẽn mạng)
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
 const data = coordinatorRef.current.pop();
 if (data) {
 setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false);
+setTimeLeft(timeLimit || 30);
 }
 }
 });
@@ -7339,16 +7653,21 @@ else s = s.replace(/[^a-z0-9]/g, '');
 return s.trim();
 };
 if (normalize(currentQuestion.targetWord) === normalize(inputBuffer)) {
+// [NEW v2.7] Trả lời đúng ngay lần đầu -> Xóa nợ trong Túi nháp
+if (attempts === 0) {
+removeFromRetryBag(currentQuestion.origin?.term || currentQuestion.targetWord);
+}
 setCheckStatus('correct'); setCorrectCount(p => p + 1); setScore(prev => prev + (15 * combo)); setCombo(prev => prev + 1);
 safeShowToast("Chính xác!", "success");
-setResultTimer(5); // Thiết lập đếm ngược 5 giây để xem lại
+setResultTimer(5);
 } else {
 const newAttempts = attempts + 1;
 setAttempts(newAttempts); setCombo(1); setScore(prev => Math.max(0, prev - 5));
 if (newAttempts >= 3) {
+pushToRetryBag(currentQuestion); // [NEW v2.7] Nhét vào túi nháp
 setCheckStatus('wrong'); setWrongCount(p => p + 1); safeShowToast("Đã hết lượt! Xem đáp án nhé.", "error");
 logMistake(currentQuestion);
-setResultTimer(5); // Thiết lập đếm ngược 5 giây để học từ sai
+setResultTimer(5);
 } else {
 setCheckStatus('wrong_retry'); safeShowToast("Chưa đúng, hãy thử lại!", "warning");
 setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
@@ -7357,50 +7676,71 @@ setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
 };
 const handleSkip = () => {
 if (checkStatus === 'idle' || checkStatus === 'wrong_retry') {
+pushToRetryBag(currentQuestion); // [NEW v2.7] Nhét vào túi nháp
 setCombo(1); setAttempts(3); setCheckStatus('wrong'); setWrongCount(p => p + 1); safeShowToast("Đã bỏ qua!", "error");
 logMistake(currentQuestion);
-setResultTimer(5); // Xem đáp án 5 giây
+setResultTimer(5);
 }
 };
+// ĐỘNG CƠ ĐẾM NGƯỢC THỜI GIAN
+React.useEffect(() => {
+let timerId = null;
+if (timerMode && (checkStatus === 'idle' || checkStatus === 'wrong_retry') && !isGenerating && currentQuestion) {
+timerId = setInterval(() => {
+setTimeLeft(prev => {
+if (prev <= 1) {
+clearInterval(timerId);
+return 0; // Hết giờ
+}
+return prev - 1;
+});
+}, 1000);
+}
+return () => { if (timerId) clearInterval(timerId); };
+}, [timerMode, checkStatus, isGenerating, currentQuestion]);
+// CƠ CHẾ GIẬT CÒ KHI HẾT GIỜ (TIMEOUT TRIGGER)
+React.useEffect(() => {
+if (timerMode && timeLeft === 0 && (checkStatus === 'idle' || checkStatus === 'wrong_retry')) {
+pushToRetryBag(currentQuestion); // [NEW v2.7] Nhét vào túi nháp
+setCombo(1);
+setAttempts(3);
+setCheckStatus('wrong');
+setWrongCount(p => p + 1);
+safeShowToast("Hết giờ! Xem đáp án nhé.", "error");
+logMistake(currentQuestion);
+setResultTimer(5);
+}
+}, [timeLeft, timerMode, checkStatus, currentQuestion, logMistake, safeShowToast, pushToRetryBag]);
 // Động cơ Đếm ngược cho màn hình Kết quả (UX Timer)
 React.useEffect(() => {
 if ((checkStatus === 'correct' || checkStatus === 'wrong') && resultTimer > 0 && !isResultPaused) {
 const id = setTimeout(() => setResultTimer(t => t - 1), 1000);
 return () => clearTimeout(id);
 } else if ((checkStatus === 'correct' || checkStatus === 'wrong') && resultTimer === 0 && !isResultPaused) {
-nextRound(); // Tự động qua bài khi hết giờ và không Pause
+nextRound();
 }
 }, [checkStatus, resultTimer, isResultPaused]);
 const toggleResultPause = () => setIsResultPaused(p => !p);
-React.useEffect(() => {
-isGameActiveRef.current = true;
-startNewGame();
-return () => {
-isGameActiveRef.current = false;
-if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-if (coordinatorRef.current) coordinatorRef.current.destroy();
-};
-}, [level, sourceMode, isAiMode, lang]);
 return {
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts, time, score, combo, playedCount, isFinished, isGenerating, aiCountdown, correctCount, wrongCount,
-resultTimer, isResultPaused, toggleResultPause, // Xuất API UX Timer
-checkAnswer, handleNext: nextRound, handleSkip
+resultTimer, isResultPaused, toggleResultPause, timeLeft,
+checkAnswer, handleNext: nextRound, handleSkip, handleSaveAndBack
 };
 };
-// --- 2. GAME WRAPPER (COMPONENT KẾT NỐI UI VÀ LOGIC) ---
-const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest }) => {
+// --- 2. GAME WRAPPER ---
+const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave }) => {
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit };
+const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, savedState }, hookCallbacks);
+const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
-onBack: onQuit,
+onBack: logic.handleSaveAndBack,
 onSaveToNotebook: (payload) => {
 if (onBookmark) onBookmark(payload);
 else if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning");
 }
 };
-const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest };
-const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
-const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
 const FillBlankPlayScreen = window.FillBlankPlayScreen || window.Block5_8_FillBlankPlayScreen;
 if (!FillBlankPlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankPlayScreen</div>;
 return (
@@ -7420,15 +7760,18 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake UI) - Version 1.16
-// Last Updated: 2026-04-03 17:15
-// Nhiệm vụ: Hiển thị giao diện cho trò chơi Tìm Lỗi Sai (SpotMistake).
-// Cập nhật: Sửa lỗi khuyết viền (Clipping Bug) bằng cách thêm padding px-2 pb-2 cho khung cuộn Cấu hình.
+// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 2.2
+// Last Updated: 2026-04-06 09:25
+// Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
+// Cập nhật: HOTFIX (Incident 26). Bọc lại thẻ cha trong return của SpotMistakeSetup để sửa lỗi JSX Adjacent Elements. Tuân thủ tuyệt đối Quy tắc 3.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình 9 cấp độ) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
 const [level, setLevel] = React.useState('level_4_discovery_basic');
-const [sourceMode, setSourceMode] = React.useState('card'); // 'card' or 'ai_pure'
+const [sourceMode, setSourceMode] = React.useState('card');
+// State cho Timer
+const [timerMode, setTimerMode] = React.useState(false);
+const [timeLimit, setTimeLimit] = React.useState(30);
 const levels = [
 { id: 'level_1_kiddie', label: 'Kiddie', sub: 'Lớp 1-2', icon: '👶' },
 { id: 'level_2_junior_basic', label: 'Junior', sub: 'Lớp 3-4', icon: '👦' },
@@ -7441,7 +7784,12 @@ const levels = [
 { id: 'level_9_expert', label: 'Expert', sub: 'IELTS 7.5+', icon: '💎' }
 ];
 const Icons = window.Icons;
+const handleStart = () => {
+onStart({ level, sourceMode, timerMode, timeLimit });
+};
 return (
+// [HOTFIX] Bọc toàn bộ bằng 1 thẻ cha duy nhất
+<div className="w-full h-full flex flex-col">
 <div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
 <div className="w-full flex items-center justify-between mb-6 shrink-0">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
@@ -7450,9 +7798,8 @@ return (
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Tìm Lỗi Sai</h2>
 <div className="w-10"></div>
 </div>
-{/* [UPDATED v1.16] Thay pr-2 bằng px-2 pb-2 để tạo không gian "thở" cho các nút khi scale-105 */}
 <div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
-{/* Chọn Nguồn Dữ Liệu (Đã được thu gọn) */}
+{/* Chọn Nguồn Dữ Liệu */}
 <div className="mb-6">
 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
 <div className="grid grid-cols-2 gap-3">
@@ -7463,22 +7810,42 @@ className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition
 <Icons.Layers size={24} className={sourceMode === 'card' ? `text-${mainColor}-600` : 'text-gray-400'} />
 <div className="text-center">
 <div className="font-bold text-gray-800 text-sm">Thẻ của tôi</div>
-<div className="text-[10px] text-gray-500">Dựa trên Flashcard có sẵn</div>
+<div className="text-[10px] text-gray-500">Dùng câu từ Flashcard</div>
 </div>
 </button>
 <button
 onClick={() => setSourceMode('ai_pure')}
-className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'ai_pure' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
+className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'ai_pure' ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
 >
-<Icons.Sparkles size={24} className={sourceMode === 'ai_pure' ? `text-${mainColor}-600` : 'text-gray-400'} />
+<Icons.Sparkles size={24} className={sourceMode === 'ai_pure' ? 'text-blue-600' : 'text-gray-400'} />
 <div className="text-center">
 <div className="font-bold text-gray-800 text-sm">AI Tự Sinh</div>
-<div className="text-[10px] text-gray-500">Tạo câu đố mới vô tận</div>
+<div className="text-[10px] text-gray-500">Tạo lỗi sai mới vô tận</div>
 </div>
 </button>
 </div>
 </div>
-{/* Chọn Cấp độ (9 Level) - Đã được thu gọn */}
+{/* Cấu hình Thời gian (Timer Toggle) */}
+<div className={`p-4 bg-${mainColor}-50 rounded-xl border border-${mainColor}-100 transition-all mb-6`}>
+<div className="flex justify-between items-center">
+<div className="flex flex-col">
+<span className={`font-bold flex items-center gap-2 text-${mainColor}-700`}><window.Icons.Clock size={18} /> Giới hạn thời gian</span>
+<span className="text-xs text-gray-500 mt-1">{timerMode ? `${timeLimit} giây / câu` : 'Không giới hạn'}</span>
+</div>
+<div className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors relative flex items-center ${timerMode ? `bg-${mainColor}-500` : 'bg-gray-300'}`} onClick={() => setTimerMode(!timerMode)}>
+<div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${timerMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
+</div>
+</div>
+{timerMode && (
+<div className="flex justify-center gap-2 mt-4 pt-3 border-t border-white/50 animate-in fade-in">
+<span className="text-xs font-bold text-gray-500 self-center mr-2 uppercase">Chọn:</span>
+{[15, 30, 45, 60].map(t => (
+<button key={t} onClick={() => setTimeLimit(t)} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${timeLimit === t ? `bg-${mainColor}-500 text-white shadow-md scale-105` : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>{t}s</button>
+))}
+</div>
+)}
+</div>
+{/* Chọn Cấp độ - 9 Level */}
 <div className="mb-4">
 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Chọn trình độ học tập</label>
 <div className="grid grid-cols-3 gap-2">
@@ -7498,39 +7865,50 @@ className={`p-2 rounded-xl border-2 flex flex-col items-center transition-all ${
 </div>
 <div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0">
 <button
-onClick={() => onStart({ level, sourceMode })}
-className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}
+onClick={handleStart}
+className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-2 active:scale-95 transition-transform text-lg`}
 >
-<Icons.Play size={24} fill="currentColor" /> BẮT ĐẦU LUYỆN TẬP
+<Icons.Play size={24} fill="currentColor" /> BẮT ĐẦU SĂN LỖI
 </button>
+</div>
 </div>
 </div>
 );
 };
 // --- 2. COMPONENT PLAY SCREEN (Màn hình chơi game thuần túy) ---
 const SpotMistakePlayScreen = ({
-t, mainColor, config,
-currentQuestion, chunks, stage, selectedIndex,
-inputBuffer, setInputBuffer, checkStatus, attempts,
-score, combo, playedCount, time, isFinished,
-isGenerating, aiCountdown, correctCount, wrongCount,
-handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound,
-onBack, onEndGame, onSaveToNotebook, isBookmarked
+t, mainColor, config, currentQuestion, chunks, stage, selectedIndex, inputBuffer, setInputBuffer,
+checkStatus, attempts, score, combo, playedCount, time, isFinished, isGenerating, aiCountdown,
+correctCount, wrongCount, handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound,
+onBack, onEndGame, onSaveToNotebook, isBookmarked,
+resultTimer, isResultPaused, toggleResultPause, timeLeft
 }) => {
 const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
-const [showConfirmEnd, React_useState_setShowConfirmEnd] = React.useState(false);
-// Auto-focus ô nhập liệu ở Giai đoạn 2
+const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
 const inputRef = React.useRef(null);
 React.useEffect(() => {
-if (stage === 'correct' && (checkStatus === 'correct_spot' || checkStatus === 'wrong_correct')) {
-setTimeout(() => inputRef.current?.focus(), 100);
+if (stage === 'correct' && inputRef.current && checkStatus !== 'success' && checkStatus !== 'failed') {
+inputRef.current.focus();
 }
 }, [stage, checkStatus]);
-// Màn hình Loading/AI Generating (Ban đầu)
+const handleKeyDown = (e) => {
+if (e.key === 'Enter') {
+if (stage === 'correct' && (checkStatus === 'correct_spot' || checkStatus === 'wrong_correct')) {
+handleCorrectionSubmit();
+} else if (checkStatus === 'success' || checkStatus === 'failed') {
+nextRound();
+}
+}
+};
+const formatTime = (seconds) => {
+const m = Math.floor(seconds / 60);
+const s = seconds % 60;
+return `${m}:${s.toString().padStart(2, '0')}`;
+};
 if (isGenerating && !currentQuestion) {
 return (
-<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in">
+<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col items-center justify-center border-2 border-gray-200 animate-in fade-in">
 <div className="relative mb-6">
 <div className={`w-20 h-20 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin`}></div>
 <div className={`absolute inset-0 flex items-center justify-center font-black text-xl text-${mainColor}-600`}>
@@ -7538,27 +7916,25 @@ return (
 </div>
 </div>
 <p className={`text-${mainColor}-600 font-bold animate-pulse text-lg`}>
-{config?.sourceMode === 'ai_pure' ? 'AI đang sáng tác thử thách...' : 'Đang chuẩn bị dữ liệu...'}
+{config?.sourceMode === 'ai_pure' ? 'AI đang nhúng lỗi sai...' : 'Đang chuẩn bị dữ liệu...'}
 </p>
 <p className="text-gray-400 text-xs mt-2 italic">(Cấp độ: {config?.level?.replace('level_', '').replace(/_/g, ' ').toUpperCase()})</p>
 <button onClick={onBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-4 py-2 rounded-lg transition-colors hover:bg-red-50">Hủy bỏ</button>
 </div>
 );
 }
-// Màn hình kết quả cuối cùng
 if (isFinished) {
 return (
-<div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl animate-in zoom-in">
+<div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl animate-in fade-in zoom-in duration-300">
 <div className={`w-24 h-24 bg-${mainColor}-100 text-${mainColor}-500 rounded-full flex items-center justify-center mb-6 shadow-inner`}>
-{Icon('Brain', { size: 48 })}
+<Icons.Award size={48} />
 </div>
-<h2 className="text-3xl font-bold text-gray-800 mb-2">Thử thách kết thúc!</h2>
-<p className="text-gray-500 mb-8 text-center max-w-xs">Bạn đã hoàn thành việc rà soát lỗi sai xuất sắc!</p>
-{/* Thống kê Đúng/Sai */}
+<h2 className="text-3xl font-bold text-gray-800 mb-2">Hoàn thành!</h2>
+<p className="text-gray-500 mb-8 text-lg">Bạn đã rà soát xong các lỗi.</p>
 <div className="grid grid-cols-3 gap-3 w-full max-w-sm mb-8">
 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
 <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Thời gian</div>
-<div className={`text-xl font-bold text-${mainColor}-600`}>{time}s</div>
+<div className={`text-xl font-bold text-${mainColor}-600`}>{formatTime(time)}</div>
 </div>
 <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm text-center">
 <div className="text-[10px] text-green-500 font-bold uppercase mb-1 flex items-center justify-center gap-1"><Icons.Check size={12}/> Đúng</div>
@@ -7569,18 +7945,30 @@ return (
 <div className="text-xl font-bold text-red-500">{wrongCount}</div>
 </div>
 </div>
-<button
-onClick={() => onEndGame({ correct: correctCount, time: time, wrong: wrongCount })}
-className={`w-full max-w-xs py-4 rounded-xl bg-${mainColor}-600 text-white font-bold text-lg hover:bg-${mainColor}-700 shadow-lg transition-all active:scale-95`}
->
-Hoàn tất
+<button onClick={() => onEndGame({ correct: correctCount, time: time, wrong: wrongCount })} className={`w-full max-w-xs py-4 rounded-xl bg-${mainColor}-600 text-white font-bold text-lg hover:bg-${mainColor}-700 shadow-lg shadow-${mainColor}-200 transition-all active:scale-95 flex items-center justify-center gap-2`}>
+<Icons.CheckCircle size={24} /> Hoàn tất
 </button>
 </div>
 );
 }
 if (!currentQuestion) return null;
+// CSS Inline cho animation shake
+const shakeKeyframes = `
+@keyframes shake {
+0%, 100% { transform: translateX(0); }
+20%, 60% { transform: translateX(-5px); }
+40%, 80% { transform: translateX(5px); }
+}
+`;
 return (
 <div className="w-full flex flex-col h-full bg-gray-50 relative overflow-hidden">
+<style>{shakeKeyframes}</style>
+{/* Thanh đếm ngược thời gian (Progress bar top) */}
+{config?.timerMode && checkStatus !== 'success' && checkStatus !== 'failed' && !isGenerating && (
+<div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 z-50">
+<div className={`h-full transition-all duration-1000 ease-linear ${timeLeft <= 5 ? 'bg-red-500' : `bg-${mainColor}-500`}`} style={{ width: `${(timeLeft / config.timeLimit) * 100}%` }}></div>
+</div>
+)}
 {/* POPUP XÁC NHẬN THOÁT GAME */}
 {showConfirmEnd && (
 <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
@@ -7591,10 +7979,10 @@ return (
 <h3 className="text-xl font-black text-gray-800 mb-2">Kết thúc phiên học?</h3>
 <p className="text-gray-600 text-sm mb-6">Bạn đang ở chế độ vô tận. Bấm Kết thúc để xem tổng hợp kết quả của phiên này.</p>
 <div className="flex w-full gap-3">
-<button onClick={() => React_useState_setShowConfirmEnd(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+<button onClick={() => setShowConfirmEnd(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
 Chơi tiếp
 </button>
-<button onClick={() => { React_useState_setShowConfirmEnd(false); onEndGame({ correct: correctCount, time: time, wrong: wrongCount }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
+<button onClick={() => { setShowConfirmEnd(false); onEndGame({ correct: correctCount, time: time, wrong: wrongCount }); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
 Kết thúc
 </button>
 </div>
@@ -7603,8 +7991,8 @@ Kết thúc
 )}
 {/* Header: Thanh trạng thái */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shrink-0 z-10 shadow-sm relative">
-<button onClick={onBack} className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors hover:bg-gray-100" title="Tạm dừng / Quay lại">
-{Icon('ChevronLeft', { size: 24 })}
+<button onClick={onBack} className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors hover:bg-gray-100" title="Quay lại">
+<Icons.ChevronLeft size={24} />
 </button>
 <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
 <div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">
@@ -7614,14 +8002,14 @@ LEVEL {config?.level?.split('_')[1]?.toUpperCase()}
 Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 </div>
 <div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
-<span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1" title="Số câu Đúng"><Icons.Check size={14}/> {correctCount || 0}</span>
+<span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1"><Icons.Check size={14}/> {correctCount || 0}</span>
 <span className="text-gray-300">|</span>
-<span className="text-xs sm:text-sm font-bold text-red-500 flex items-center gap-1" title="Số câu Sai"><Icons.X size={14}/> {wrongCount || 0}</span>
+<span className="text-xs sm:text-sm font-bold text-red-500 flex items-center gap-1"><Icons.X size={14}/> {wrongCount || 0}</span>
 </div>
 <div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}>
-🔥 x{combo}
+<Icons.Sparkles size={18} /> x{combo}
 </div>
-<div className={`text-lg sm:text-xl font-mono font-bold text-${mainColor}-600 w-12 text-right hidden sm:block`}>
+<div className={`text-xl font-mono font-bold ${time > 60 ? 'text-red-500 animate-pulse' : `text-${mainColor}-600`} w-12 text-right hidden sm:block`} title="Tổng thời gian">
 {time}s
 </div>
 </div>
@@ -7632,107 +8020,81 @@ e.stopPropagation();
 if (currentQuestion && onSaveToNotebook) {
 const underlinedCorrection = currentQuestion.correction.split('').map(char => char + '\u0332').join('');
 const sentenceWithUnderline = currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, underlinedCorrection);
-onSaveToNotebook({
-isSmartTarget: true,
-display: currentQuestion.wrongSentence,
-save: sentenceWithUnderline
-});
+onSaveToNotebook({ isSmartTarget: true, display: sentenceWithUnderline, save: sentenceWithUnderline, analysis: currentQuestion.explanation });
 }
 }}
 className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
 title="Lưu vào Sổ tay"
 >
-{Icon('Bookmark', { size: 20, fill: isBookmarked ? "currentColor" : "none" })}
+<Icons.Bookmark size={20} fill={isBookmarked ? "currentColor" : "none"} />
 </button>
-<button onClick={() => React_useState_setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
-{Icon('X', { size: 20 })}
+<button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
+<Icons.X size={20} />
 </button>
 </div>
 </div>
-{/* Body: Khu vực nội dung chính */}
-<div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 flex flex-col items-center gap-8 relative">
-{/* 1. Gợi ý nghĩa (Hint) */}
-<div className="w-full max-w-3xl bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center animate-in slide-in-from-top-4">
-<div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex justify-center items-center gap-2">
-{config?.level === 'level_1_kiddie' && <span className="text-xl">💡</span>}
-Ý nghĩa câu văn
+{/* Nội dung Game */}
+<div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center gap-6 custom-scrollbar relative">
+{/* Hướng dẫn hoặc Meaning/Gợi ý (Chỉ hiện khi chưa có kết quả cuối) */}
+{checkStatus !== 'success' && checkStatus !== 'failed' && (
+<div className="w-full max-w-3xl bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center animate-in slide-in-from-top-4">
+<div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-center gap-2">
+<span className="w-8 h-px bg-gray-300"></span>
+{config?.level === 'level_1_kiddie' ? <span className="text-xl">💡</span> : null}
+{stage === 'spot' ? 'Chạm vào từ bị sai' : 'Nhập lại từ đúng'}
+<span className="w-8 h-px bg-gray-300"></span>
 </div>
-<div className="text-lg font-medium text-gray-700 italic leading-relaxed">
-{currentQuestion.origin?.definition || currentQuestion.hint}
+<div className="text-base md:text-lg font-medium text-gray-500 italic">
+{currentQuestion.origin?.definition || currentQuestion.explanation}
 </div>
 </div>
-{/* 2. Khu vực Word Bricks */}
-<div className="w-full max-w-4xl flex flex-wrap justify-center gap-3 relative z-10">
+)}
+{/* Khu vực Câu hỏi dạng Chunks */}
+{(checkStatus !== 'success' && checkStatus !== 'failed') && (
+<div className="w-full max-w-3xl text-center px-4 animate-in fade-in mt-4 flex flex-wrap justify-center gap-x-2 gap-y-3 leading-loose">
 {chunks.map((chunk, idx) => {
-const isSelected = selectedIndex === idx;
-const isCorrectSpot = stage === 'correct' && isSelected;
-const isFailed = checkStatus === 'failed';
-const isSuccess = checkStatus === 'success';
-let brickClass = `bg-white border-gray-200 text-gray-800 hover:border-${mainColor}-400 hover:shadow-md`;
-// UX Dimming Focus: Làm mờ các viên gạch xung quanh khi đang sửa từ
-if (stage === 'correct') {
-if (isCorrectSpot) {
-brickClass = `bg-yellow-50 border-yellow-400 text-yellow-700 scale-105 shadow-md font-bold ring-2 ring-yellow-200 z-20 relative`;
-} else {
-brickClass = `bg-gray-100 border-gray-200 text-gray-400 opacity-30 blur-[1px] cursor-not-allowed transition-all duration-500`;
-}
-}
-if (isSelected && checkStatus === 'wrong_spot') {
-brickClass = "bg-red-50 border-red-500 text-red-700 animate-[shake_0.4s_ease-in-out]";
-}
-// Trạng thái cuối cùng
-if ((isFailed || isSuccess) && chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())) {
-brickClass = isSuccess ? "bg-green-500 border-green-600 text-white shadow-md font-bold" : "bg-red-500 border-red-600 text-white line-through font-bold shadow-md";
-} else if (isFailed || isSuccess) {
-brickClass = "bg-gray-100 border-gray-200 text-gray-400 opacity-50 blur-[1px]"; // Làm mờ luôn lúc show kết quả
+let chunkStyle = "text-xl md:text-2xl font-serif text-gray-800 pb-1 border-b-2 border-transparent cursor-pointer transition-all hover:bg-gray-100 rounded px-1";
+if (stage === 'correct' && selectedIndex === idx) {
+chunkStyle = `text-xl md:text-2xl font-serif text-${mainColor}-700 bg-${mainColor}-100 px-2 rounded-lg font-bold shadow-inner pb-1`;
+} else if (checkStatus === 'wrong_spot') {
+chunkStyle += " animate-[shake_0.4s_ease-in-out]";
 }
 return (
-<button
-key={chunk.id}
-onClick={() => handleSpotClick(idx)}
-disabled={stage !== 'spot' || isFailed || isSuccess}
-className={`px-4 py-3 rounded-xl border-2 text-xl md:text-2xl transition-all duration-300 active:scale-95 ${brickClass}`}
->
+<span key={chunk.id} onClick={() => handleSpotClick(idx)} className={chunkStyle}>
 {chunk.text}
-</button>
+</span>
 );
 })}
 </div>
-{/* 3. Khu vực Nhập liệu (Giai đoạn 2) */}
+)}
+{/* Khu vực Nhập liệu (Sửa lỗi) */}
 {stage === 'correct' && checkStatus !== 'success' && checkStatus !== 'failed' && (
-<div className="w-full max-w-lg mt-4 animate-in zoom-in relative z-20">
-<div className="flex flex-col items-center gap-4">
-<label className={`text-sm font-bold text-${mainColor}-600 uppercase tracking-widest`}>Sửa lại từ bị sai:</label>
-<div className="flex w-full gap-2">
+<div className="w-full max-w-sm mt-8 relative animate-in zoom-in slide-in-from-bottom-4">
+<div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-white px-2 text-xs font-bold text-gray-400 uppercase z-10">Sửa lỗi</div>
 <input
 ref={inputRef}
 type="text"
 value={inputBuffer}
 onChange={(e) => setInputBuffer(e.target.value)}
-onKeyDown={(e) => e.key === 'Enter' && handleCorrectionSubmit()}
-className={`flex-1 p-4 text-center text-2xl font-bold border-4 rounded-2xl outline-none transition-all ${checkStatus === 'wrong_correct' ? 'border-orange-400 bg-orange-50 text-orange-700 animate-[shake_0.4s_ease-in-out]' : `border-${mainColor}-200 focus:border-${mainColor}-500 focus:ring-4 focus:ring-${mainColor}-100 bg-white text-gray-800 shadow-xl`}`}
-placeholder="Nhập từ đúng..."
-autoComplete="off"
-spellCheck="false"
+onKeyDown={handleKeyDown}
+placeholder="Gõ từ đúng..."
+autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck="false"
+className={`w-full p-4 text-center text-xl font-bold border-4 rounded-xl outline-none transition-all duration-200 shadow-sm ${checkStatus === 'wrong_correct' ? 'bg-orange-50 border-orange-500 text-orange-700 animate-[shake_0.4s_ease-in-out]' : `bg-white border-${mainColor}-200 text-${mainColor}-700 focus:border-${mainColor}-500 focus:ring-4 focus:ring-${mainColor}-100`}`}
 />
-<button
-onClick={handleCorrectionSubmit}
-className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 transition-all active:scale-95`}
->
-<Icons.Check size={28} />
-</button>
-</div>
-<p className="text-xs text-gray-400 italic">Gợi ý: Bạn còn {3 - attempts} lượt thử sửa lỗi.</p>
-</div>
+{checkStatus === 'wrong_correct' && (
+<div className="absolute -bottom-6 left-0 right-0 text-center text-orange-500 font-bold text-xs animate-in slide-in-from-top-1">
+Sửa chưa đúng! Còn {3 - attempts} lượt.
 </div>
 )}
-{/* 4. Hiển thị Giải thích & Nút Lưu Thẻ */}
+</div>
+)}
+{/* KNOWLEDGE MINING PANEL (Bảng Tóm tắt Kiến thức) */}
 {(checkStatus === 'success' || checkStatus === 'failed') && (
-<div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-gray-100 overflow-visible animate-in slide-in-from-bottom-6 z-30">
-<div className={`p-4 ${checkStatus === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold rounded-t-2xl relative`}>
+<div className={`w-full max-w-3xl mt-2 bg-white rounded-2xl shadow-lg border-2 ${checkStatus === 'success' ? 'border-green-200' : 'border-red-200'} overflow-visible animate-in slide-in-from-bottom-4 z-20`}>
+<div className={`p-3 ${checkStatus === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold rounded-t-xl relative`}>
 <div className="flex items-center gap-2">
 {checkStatus === 'success' ? <Icons.CheckCircle /> : <Icons.X />}
-{checkStatus === 'success' ? 'CHÍNH XÁC!' : 'HẾT LƯỢT!'}
+{checkStatus === 'success' ? 'SỬA LỖI XUẤT SẮC!' : 'ĐÁP ÁN ĐÚNG LÀ:'}
 </div>
 <button
 onClick={(e) => {
@@ -7740,11 +8102,7 @@ e.stopPropagation();
 if (currentQuestion && onSaveToNotebook) {
 const underlinedCorrection = currentQuestion.correction.split('').map(char => char + '\u0332').join('');
 const sentenceWithUnderline = currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, underlinedCorrection);
-onSaveToNotebook({
-isSmartTarget: true,
-display: currentQuestion.wrongSentence,
-save: sentenceWithUnderline
-});
+onSaveToNotebook({ isSmartTarget: true, display: sentenceWithUnderline, save: sentenceWithUnderline, analysis: currentQuestion.explanation });
 }
 }}
 className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors shadow-sm"
@@ -7752,76 +8110,86 @@ className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-cente
 <Icons.Bookmark size={14} fill={isBookmarked ? "white" : "none"} /> {isBookmarked ? 'Đã lưu' : 'Lưu vào Sổ tay'}
 </button>
 </div>
-<div className="p-6 space-y-4 bg-white rounded-b-2xl">
-<div className="flex justify-between items-center border-b pb-4">
-<div className="text-center flex-1 border-r">
-<div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Bị sai</div>
-<div className="text-xl font-bold text-red-500 line-through">{currentQuestion.wrongWord}</div>
+<div className="p-6 bg-white rounded-b-xl flex flex-col gap-6">
+<div className="flex justify-center items-center gap-4 text-xl md:text-2xl font-bold">
+<span className="text-red-500 line-through decoration-2 decoration-red-500">{currentQuestion.wrongWord}</span>
+<Icons.ArrowRight className="text-gray-300" size={24} />
+<span className="text-green-600 bg-green-50 px-3 py-1 rounded-lg border border-green-200">{currentQuestion.correction}</span>
 </div>
-<div className="text-center flex-1">
-<div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Sửa đúng</div>
-<div className="text-xl font-bold text-green-600">{currentQuestion.correction}</div>
-</div>
-</div>
-<div>
-<div className={`text-xs font-bold text-${mainColor}-400 uppercase mb-1 flex items-center gap-1`}>
-<Icons.Sparkles size={14}/> Phân tích ngữ pháp
-</div>
-<p className="text-gray-700 leading-relaxed italic text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
-{currentQuestion.explanation}
+<div className="text-center pt-4 border-t border-gray-100">
+<span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Câu Hoàn Chỉnh</span>
+<p className="text-xl text-gray-800 font-serif leading-relaxed">
+{currentQuestion.wrongSentence.split(currentQuestion.wrongWord).map((part, i, arr) => (
+<React.Fragment key={i}>
+{part}
+{i < arr.length - 1 && (
+<span className="text-green-600 font-bold underline decoration-2 underline-offset-4">{currentQuestion.correction}</span>
+)}
+</React.Fragment>
+))}
 </p>
+</div>
+<div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-left">
+<span className="text-xs font-bold text-blue-500 uppercase tracking-wider block mb-1 flex items-center gap-1"><Icons.Info size={14}/> Giải thích lỗi sai</span>
+<p className="text-blue-800 text-sm leading-relaxed">{currentQuestion.explanation}</p>
 </div>
 </div>
 </div>
 )}
 </div>
-{/* Footer: Bảng điều khiển */}
-<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
+{/* Bảng Điều Khiển Dưới Cùng */}
+<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 {checkStatus === 'success' || checkStatus === 'failed' ? (
+<div className="w-full max-w-md flex gap-3">
+<button
+onClick={() => toggleResultPause && toggleResultPause()}
+className={`flex-1 py-4 font-bold text-sm rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${isResultPaused ? 'bg-yellow-50 text-yellow-700 border-yellow-300 shadow-inner' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+>
+{isResultPaused ? <><Icons.Play size={18} fill="currentColor" /> Đã dừng</> : <><Icons.Pause size={18} fill="currentColor" /> Xem ({resultTimer}s)</>}
+</button>
 <button
 onClick={nextRound}
 disabled={isGenerating}
-className={`w-full max-w-md py-4 bg-${mainColor}-600 text-white font-bold text-lg rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform ${isGenerating ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${mainColor}-700`}`}
+className={`flex-[2] py-4 bg-${checkStatus === 'success' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg transition-transform flex justify-center items-center gap-2 ${isGenerating ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'success' ? 'green-600' : mainColor + '-700'}`}`}
 >
-{isGenerating ? (
-<><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang tải...</>
-) : (
-<>Tiếp theo <Icons.ChevronRight size={24} /></>
-)}
+{isGenerating ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang tải...</> : <>Tiếp theo <Icons.ChevronRight size={24} /></>}
 </button>
+</div>
 ) : (
+<div className="w-full max-w-md flex gap-3">
 <button
 onClick={handleSkip}
-className="w-full max-w-md py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all border border-gray-200 active:scale-95"
+className="flex-1 py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all border border-gray-200 active:scale-95"
 >
-Bỏ qua câu này
+Bỏ qua
 </button>
+<button
+onClick={stage === 'spot' ? undefined : handleCorrectionSubmit}
+disabled={stage === 'spot' || !inputBuffer.trim()}
+className={`flex-[2] py-4 bg-${mainColor}-600 text-white font-bold text-lg rounded-xl shadow-lg transition-all ${stage === 'spot' || !inputBuffer.trim() ? 'opacity-50 cursor-not-allowed' : `hover:bg-${mainColor}-700 active:scale-95`}`}
+>
+{stage === 'spot' ? 'Chọn 1 từ sai' : 'Kiểm tra'}
+</button>
+</div>
 )}
 </div>
-<style>{`
-@keyframes shake {
-0%, 100% { transform: translateX(0); }
-20%, 60% { transform: translateX(-5px); }
-40%, 80% { transform: translateX(5px); }
-}
-`}</style>
 </div>
 );
 };
-// EXPORT TO WINDOW
+// EXPORT RA GLOBAL WINDOW
 window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 2.2
-// Last Updated: 2026-04-05 08:30
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 2.6
+// Last Updated: 2026-04-06 09:56
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
-// Cải tiến: TỐI ƯU HÓA (REFACTOR). Loại bỏ quản lý mảng Ký ức cục bộ. Sử dụng Lõi Ký ức AntiLazyMemory từ Tầng 2 để dùng chung bộ nhớ với các Game khác (Tuân thủ DRY).
+// Cải tiến: NÂNG CẤP (Incident 27). Cấy ghép "Túi Nháp Lặp Lại" (Global Retry Bag). Lưu toàn bộ Object câu sai để tiết kiệm Token AI. Bốc thăm 30% ưu tiên câu sai.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
-const { isAiMode, apiKey, lang, timeLimit, level, sourceMode } = config;
-const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest } = callbacks;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode } = config;
+const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack } = callbacks;
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [chunks, setChunks] = React.useState([]);
 const [stage, setStage] = React.useState('spot');
@@ -7841,9 +8209,12 @@ const [aiCountdown, setAiCountdown] = React.useState(0);
 // UX Timer State cho màn hình hiển thị kết quả
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
+// State cho Đồng hồ đếm ngược từng câu
+const [timeLeft, setTimeLeft] = React.useState(timeLimit || 30);
 // Động cơ thống nhất từ Tầng 2
 const enrichedCardsRef = React.useRef(cards);
 const deckRef = React.useRef([]);
+const historyQueueRef = React.useRef([]);
 const coordinatorRef = React.useRef(null);
 const isGameActiveRef = React.useRef(true);
 const gameTimerRef = React.useRef(null);
@@ -7854,38 +8225,93 @@ if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type,
 }, [showToast]);
 // Đồng bộ thẻ gốc
 React.useEffect(() => { enrichedCardsRef.current = cards; }, [cards]);
+// BỘ NÃO LƯU TRỮ VÀ AUTO-SAVE
+const latestStateRef = React.useRef({});
+React.useEffect(() => {
+latestStateRef.current = {
+currentQuestion, chunks, stage, selectedIndex, inputBuffer, checkStatus, attempts,
+score, combo, playedCount, time, correctCount, wrongCount, deck: deckRef.current,
+timeLeft
+};
+}, [currentQuestion, chunks, stage, selectedIndex, inputBuffer, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft]);
+const triggerAutoSave = React.useCallback(() => {
+if (onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
+onAutoSave({ spotMistakeState: latestStateRef.current });
+}
+}, [onAutoSave]);
+React.useEffect(() => {
+const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
+return () => { clearInterval(intervalTimer); triggerAutoSave(); };
+}, [triggerAutoSave]);
+const handleSaveAndBack = () => {
+if (onBack) {
+onBack({ spotMistakeState: latestStateRef.current });
+}
+};
+// ==================================================================================
+// [NEW v2.6] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// ==================================================================================
+const pushToRetryBag = React.useCallback((questionData) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['spotmistake']) bag['spotmistake'] = [];
+const termToCheck = questionData.origin?.term || questionData.wrongSentence;
+const isDup = bag['spotmistake'].some(item => (item.origin?.term || item.wrongSentence) === termToCheck);
+if (!isDup) {
+bag['spotmistake'].push(questionData);
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+const removeFromRetryBag = React.useCallback((termToCheck) => {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (!bag['spotmistake']) return;
+const prevLen = bag['spotmistake'].length;
+bag['spotmistake'] = bag['spotmistake'].filter(item => (item.origin?.term || item.wrongSentence) !== termToCheck);
+if (bag['spotmistake'].length !== prevLen) {
+localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
+}
+} catch(e) {}
+}, []);
+// ==================================================================================
 // Cỗ máy đóng gói Lỗi sai (Lưu cả câu đã sửa & Gạch chân từ đúng)
-const logMistake = (question) => {
+const logMistake = React.useCallback((question) => {
 if (!onLogWrong || !question) return;
 const baseData = question.origin || {};
 const underlinedCorrection = question.correction.split('').map(char => char + '\u0332').join('');
 const sentenceWithUnderline = question.wrongSentence.replace(question.wrongWord, underlinedCorrection);
 const mistakeCard = {
-...baseData,
-id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-type: 'mistake',
-term: sentenceWithUnderline,
-definition: baseData.definition || question.hint || "Thử thách Spot Mistake",
-analysis: question.explanation,
-example: `Lỗi: ${question.wrongWord} -> Sửa: ${question.correction}`,
-tags: ['spotmistake', level, sourceMode],
-timestamp: Date.now()
+...baseData, id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, type: 'mistake',
+term: sentenceWithUnderline, definition: baseData.definition || question.hint || "Thử thách Spot Mistake",
+analysis: question.explanation, example: `Lỗi: ${question.wrongWord} -> Sửa: ${question.correction}`,
+tags: ['spotmistake', level, sourceMode], timestamp: Date.now()
 };
 onLogWrong(mistakeCard);
-};
+}, [onLogWrong, level, sourceMode]);
 const getNextCardIndex = () => {
 if (deckRef.current.length === 0) {
-let validIndices = enrichedCardsRef.current.map((c, i) => ({ c, i }))
-.filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '))
-.map(({ i }) => i);
+let validIndices = enrichedCardsRef.current.map((c, i) => ({ c, i })).filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' ')).map(({ i }) => i);
 if (validIndices.length === 0) validIndices = enrichedCardsRef.current.map((_, i) => i);
 deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
 }
 return deckRef.current.shift() || 0;
 };
 // --- TÌM NẠP DỮ LIỆU (FETCH TASK CHO COORDINATOR) ---
-// Đã TỐI ƯU HÓA: Dùng 100% DistortionEngine từ Tầng 2 cho chế độ Card
 const fetchTask = async () => {
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
+if (Math.random() < 0.3) {
+try {
+const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+if (bag['spotmistake'] && bag['spotmistake'].length > 0) {
+const randIdx = Math.floor(Math.random() * bag['spotmistake'].length);
+const retryQ = bag['spotmistake'][randIdx];
+if (retryQ && retryQ.wrongSentence && retryQ.wrongWord) {
+return retryQ;
+}
+}
+} catch(e) {}
+}
 const isPureMode = sourceMode === 'ai_pure';
 let card = null;
 if (!isPureMode) {
@@ -7900,27 +8326,23 @@ if (canCallAi && isSentence) {
 try {
 let parsedResult = null;
 if (isPureMode) {
-// Pure Mode: Sử dụng Lõi Ký ức chống AI lười biếng từ Tầng 2
 let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'spotmistake');
 if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
-prompt += window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.getPrompt();
+prompt += window.GameAlgoEngine.PreflightEngine.getHistoryPrompt(historyQueueRef.current);
 }
-prompt += `\n\nCRITICAL RULE: The 'explanation' field MUST BE 100% IN VIETNAMESE.`;
+prompt += "\n\nCRITICAL RULE: The 'explanation' field MUST BE 100% IN VIETNAMESE.";
 const schema = window.IoeDataEngine.SCHEMAS.pure_spot_mistake;
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
 const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Timeout (20s)")), 20000));
 const res = await Promise.race([aiPromise, timeoutPromise]);
 parsedResult = window.Utils.parseAiJson(res.text);
-// Ghi nhớ câu văn vừa tạo vào Lõi Ký ức Toàn cục
-if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
-window.GameAlgoEngine.PreflightEngine.AntiLazyMemory.add(parsedResult.wrongSentence);
-}
+historyQueueRef.current.push(parsedResult.wrongSentence);
+if (historyQueueRef.current.length > 15) historyQueueRef.current.shift();
 if (res.tokenMetadata) {
 const used = res.tokenMetadata.totalTokenCount || 0;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
-// Thu hoạch AI
 if (onSaveToHarvest) {
 onSaveToHarvest(level, {
 wrongSentence: parsedResult.wrongSentence, wrongWord: parsedResult.wrongWord,
@@ -7928,7 +8350,6 @@ correction: parsedResult.correction, explanation: parsedResult.explanation
 });
 }
 } else {
-// Card Mode: Sử dụng AI Distortion Engine ở Tầng 2
 if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 parsedResult = await window.GameAlgoEngine.DistortionEngine.ai_distort(card.term, lang, type, apiKey);
 } else {
@@ -7938,9 +8359,7 @@ throw new Error("Missing DistortionEngine in Tầng 2");
 if (!parsedResult || !parsedResult.wrongSentence || !parsedResult.wrongWord) throw new Error("Invalid AI Data");
 const originData = isPureMode ? {
 term: parsedResult.wrongSentence.replace(parsedResult.wrongWord, parsedResult.correction),
-definition: "Thử thách tự sinh (AI Pure Mode)",
-analysis: parsedResult.explanation,
-isAiGenerated: true
+definition: "Thử thách tự sinh (AI Pure Mode)", analysis: parsedResult.explanation, isAiGenerated: true
 } : card;
 const result = { ...parsedResult, origin: originData, isAiGenerated: true };
 if (isInitializingRef.current) {
@@ -7957,20 +8376,15 @@ return { ...fb, origin: { term: fb.wrongSentence.replace(fb.wrongWord, fb.correc
 }
 }
 }
-// FALLBACK OFFLINE: Gọi API từ Tầng 2 (Sạch sẽ, tuân thủ DRY)
 const textOrCardTerm = isPureMode ? "The dogs is eating." : card.term;
 let offlineResult = { wrongSentence: textOrCardTerm + "x", wrongWord: textOrCardTerm + "x", correction: textOrCardTerm, explanation: "Fallback" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
 offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(textOrCardTerm, lang, type);
 }
-return {
-...offlineResult,
-origin: isPureMode ? { term: textOrCardTerm, definition: "Offline Tự sinh" } : card,
-isAiGenerated: false
-};
+return { ...offlineResult, origin: isPureMode ? { term: textOrCardTerm, definition: "Offline Tự sinh" } : card, isAiGenerated: false };
 };
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-// Thuật toán Smart Chunking (Cắt 3 khúc & Chống bắt nhầm)
+// Thuật toán Smart Chunking
 const setupQuestion = (data) => {
 setCurrentQuestion(data);
 let wordChunks = [];
@@ -8006,17 +8420,17 @@ wordChunks = sentence.split(' ').map((text, idx) => ({ id: `c-${idx}-${Date.now(
 }
 setChunks(wordChunks);
 setStage('spot'); setSelectedIndex(null); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0);
+setTimeLeft(timeLimit || 30);
 };
 const startNewGame = async () => {
 if (sourceMode === 'card' && (!cards || cards.length === 0)) return;
 setIsGenerating(true);
-setPlayedCount(0); setScore(0); setCombo(1); setTime(0);
-setCorrectCount(0); setWrongCount(0);
+setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
+historyQueueRef.current = [];
 let currentDeck = [...cards];
 deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i)) : [];
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
-// PRE-FLIGHT BATCH ENRICH (Vá lỗi thẻ mù)
 if (sourceMode === 'card' && isAiMode && apiKey && window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
 safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
 const { updatedCards, hasUpdates } = await window.GameAlgoEngine.PreflightEngine.batchEnrich(
@@ -8028,7 +8442,6 @@ if (onUpdateCards) onUpdateCards(updatedCards);
 safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
 }
 }
-// Khởi tạo Bộ Điều Phối Cuốn Chiếu (Coordinator)
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
 coordinatorRef.current = window.GameAlgoEngine.PreflightEngine.createQueueCoordinator(fetchTask, 2);
@@ -8068,6 +8481,47 @@ setIsGenerating(false); isInitializingRef.current = false;
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
 };
+// PHỤC HỒI DỮ LIỆU TỪ SESSION
+const hasStartedRef = React.useRef(false);
+React.useEffect(() => {
+if (hasStartedRef.current) return;
+hasStartedRef.current = true;
+isGameActiveRef.current = true;
+if (savedState && savedState.spotMistakeState) {
+const st = savedState.spotMistakeState;
+setCurrentQuestion(st.currentQuestion);
+setChunks(st.chunks || []);
+setStage(st.stage || 'spot');
+setSelectedIndex(st.selectedIndex !== undefined ? st.selectedIndex : null);
+setInputBuffer(st.inputBuffer || "");
+setCheckStatus(st.checkStatus || 'idle');
+setAttempts(st.attempts || 0);
+setScore(st.score || 0);
+setCombo(st.combo || 1);
+setPlayedCount(st.playedCount || 0);
+setTime(st.time || 0);
+setCorrectCount(st.correctCount || 0);
+setWrongCount(st.wrongCount || 0);
+setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 30));
+if (st.deck) deckRef.current = st.deck;
+if (coordinatorRef.current) coordinatorRef.current.destroy();
+if (window.GameAlgoEngine && window.GameAlgoEngine.PreflightEngine) {
+coordinatorRef.current = window.GameAlgoEngine.PreflightEngine.createQueueCoordinator(fetchTask, 2);
+coordinatorRef.current.maintain();
+}
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
+setIsGenerating(false);
+isInitializingRef.current = false;
+} else {
+startNewGame();
+}
+return () => {
+isGameActiveRef.current = false;
+if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+if (coordinatorRef.current) coordinatorRef.current.destroy();
+};
+}, []);
 const nextRound = () => {
 if (isGenerating) return;
 setResultTimer(0); setIsResultPaused(false);
@@ -8091,6 +8545,7 @@ setupQuestion(fbData);
 }
 });
 }
+setTimeout(() => triggerAutoSave(), 150);
 };
 // --- TƯƠNG TÁC NGƯỜI DÙNG ---
 const handleSpotClick = (idx) => {
@@ -8104,6 +8559,7 @@ safeShowToast("Phát hiện chuẩn xác! Hãy sửa lại cho đúng.", "succes
 const newAttempts = attempts + 1;
 setAttempts(newAttempts); setCombo(1); setScore(p => Math.max(0, p - 5));
 if (newAttempts >= 3) {
+pushToRetryBag(currentQuestion); // [NEW v2.6] Nhét vào túi nháp
 setCheckStatus('failed'); setWrongCount(p => p + 1); safeShowToast("Đã hết lượt tìm lỗi!", "error");
 logMistake(currentQuestion); setResultTimer(10);
 } else {
@@ -8111,6 +8567,7 @@ setCheckStatus('wrong_spot'); safeShowToast(`Chưa đúng! Còn ${3 - newAttempt
 setTimeout(() => setCheckStatus(p => p === 'wrong_spot' ? 'idle' : p), 1000);
 }
 }
+setTimeout(() => triggerAutoSave(), 150);
 };
 const handleCorrectionSubmit = () => {
 if (stage !== 'correct' || !inputBuffer.trim()) return;
@@ -8118,6 +8575,10 @@ const normalize = (str) => str ? str.toLowerCase().replace(/[.,?!;:"'()[\]{}]/g,
 const normalizedInput = normalize(inputBuffer);
 const normalizedCorrection = normalize(currentQuestion.correction);
 if (normalizedInput === normalizedCorrection) {
+// [NEW v2.6] Trả lời đúng ngay lần đầu -> Xóa nợ trong Túi nháp
+if (attempts === 0) {
+removeFromRetryBag(currentQuestion.origin?.term || currentQuestion.wrongSentence);
+}
 setCheckStatus('success'); setCorrectCount(p => p + 1);
 setScore(p => p + (20 * combo)); setCombo(p => p + 1);
 safeShowToast("Tuyệt vời! Bạn đã sửa đúng.", "success");
@@ -8126,6 +8587,7 @@ setResultTimer(6);
 const newAttempts = attempts + 1;
 setAttempts(newAttempts); setCombo(1); setScore(p => Math.max(0, p - 5));
 if (newAttempts >= 3) {
+pushToRetryBag(currentQuestion); // [NEW v2.6] Nhét vào túi nháp
 setCheckStatus('failed'); setWrongCount(p => p + 1); safeShowToast("Sai quá 3 lần. Xem đáp án nhé!", "error");
 logMistake(currentQuestion); setResultTimer(10);
 } else {
@@ -8133,12 +8595,45 @@ setCheckStatus('wrong_correct'); safeShowToast(`Sai rồi! Còn ${3 - newAttempt
 setTimeout(() => setCheckStatus(p => p === 'wrong_correct' ? 'correct_spot' : p), 1000);
 }
 }
+setTimeout(() => triggerAutoSave(), 150);
 };
 const handleSkip = () => {
 if (checkStatus === 'success' || checkStatus === 'failed') return;
+pushToRetryBag(currentQuestion); // [NEW v2.6] Nhét vào túi nháp
 setCombo(1); setCheckStatus('failed'); setWrongCount(p => p + 1);
 safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); setResultTimer(10);
+setTimeout(() => triggerAutoSave(), 150);
 };
+// ĐỘNG CƠ ĐẾM NGƯỢC THỜI GIAN
+React.useEffect(() => {
+let timerId = null;
+if (timerMode && checkStatus !== 'success' && checkStatus !== 'failed' && !isGenerating && currentQuestion) {
+timerId = setInterval(() => {
+setTimeLeft(prev => {
+if (prev <= 1) {
+clearInterval(timerId);
+return 0; // Hết giờ
+}
+return prev - 1;
+});
+}, 1000);
+}
+return () => { if (timerId) clearInterval(timerId); };
+}, [timerMode, checkStatus, isGenerating, currentQuestion]);
+// CƠ CHẾ GIẬT CÒ KHI HẾT GIỜ (TIMEOUT TRIGGER)
+React.useEffect(() => {
+if (timerMode && timeLeft === 0 && checkStatus !== 'success' && checkStatus !== 'failed') {
+pushToRetryBag(currentQuestion); // [NEW v2.6] Nhét vào túi nháp
+setCombo(1);
+setAttempts(3);
+setCheckStatus('failed');
+setWrongCount(p => p + 1);
+safeShowToast("Hết giờ! Xem đáp án nhé.", "error");
+logMistake(currentQuestion);
+setResultTimer(10);
+setTimeout(() => triggerAutoSave(), 150);
+}
+}, [timeLeft, timerMode, checkStatus, currentQuestion, logMistake, safeShowToast, triggerAutoSave, pushToRetryBag]);
 React.useEffect(() => {
 if ((checkStatus === 'success' || checkStatus === 'failed') && resultTimer > 0 && !isResultPaused) {
 const id = setTimeout(() => setResultTimer(t => t - 1), 1000);
@@ -8148,37 +8643,28 @@ nextRound();
 }
 }, [checkStatus, resultTimer, isResultPaused]);
 const toggleResultPause = () => setIsResultPaused(p => !p);
-React.useEffect(() => {
-isGameActiveRef.current = true;
-startNewGame();
-return () => {
-isGameActiveRef.current = false;
-if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-if (coordinatorRef.current) coordinatorRef.current.destroy();
-};
-}, [level, sourceMode, isAiMode, lang]);
 return {
 currentQuestion, chunks, stage, selectedIndex, inputBuffer, setInputBuffer,
 checkStatus, attempts, score, combo, playedCount, time, isFinished,
 isGenerating, aiCountdown, correctCount, wrongCount,
-resultTimer, isResultPaused, toggleResultPause,
-handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound
+resultTimer, isResultPaused, toggleResultPause, timeLeft,
+handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound, handleSaveAndBack
 };
 };
 // --- 2. GAME WRAPPER ---
-const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest }) => {
+const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave }) => {
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit };
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
+const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState }, hookCallbacks);
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
-onBack: onQuit,
+onBack: logic.handleSaveAndBack,
 onSaveToNotebook: (payload) => {
 if (onBookmark) { onBookmark(payload); }
 else if (window.handleSaveToNotebook) { window.handleSaveToNotebook(payload); }
 else { if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning"); }
 }
 };
-const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest };
-const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: 60 }, hookCallbacks);
 const isBookmarked = logic.currentQuestion?.correction && notebook?.some(n => n.term.includes(logic.currentQuestion.correction));
 const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_SpotMistakePlayScreen;
 if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
@@ -8199,11 +8685,11 @@ window.Block5_11_useSpotMistakeLogic = useSpotMistakeLogic;
 window.useSpotMistakeLogic = useSpotMistakeLogic;
 window.Block5_11_SpotMistakeGame = SpotMistakeGame;
 window.SpotMistakeGame = SpotMistakeGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.2
-// Last Updated: 2026-04-04 16:38
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.3
+// Last Updated: 2026-04-06 09:36
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef).
-// Cập nhật: Thêm State `aiHarvestPool` để phục vụ tính năng lưu trữ câu hỏi tự sinh từ AI.
+// Cập nhật: Khai sinh State toàn cục `globalRetryBag` để lưu trữ vĩnh viễn các câu hỏi làm sai (In-session Retry Bag).
 // ==================================================================================
 // [FIX] Đưa hàm loadFont ra ngoài hook để tránh lỗi biên dịch Babel "Unexpected token"
 const loadFont = (id, url) => {
@@ -8245,8 +8731,10 @@ const [mastered, setMastered] = useState(() => window.Utils?.safeJsonParse('fc_m
 const [incorrectList, setIncorrectList] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, []) || []);
 const [isStudyingNotebook, setIsStudyingNotebook] = useState(false);
 const [studySourceName, setStudySourceName] = useState(null);
-// [NEW v1.2] AI Harvest Pool State: Kho lưu trữ dữ liệu tự sinh từ AI Pure Mode
+// AI Harvest Pool State: Kho lưu trữ dữ liệu tự sinh từ AI Pure Mode
 const [aiHarvestPool, setAiHarvestPool] = useState(() => window.Utils?.safeJsonParse('fc_ai_harvest_pool', {}) || {});
+// [NEW v1.3] Global Retry Bag: Túi Nháp lưu trữ vĩnh viễn các câu làm sai theo từng Game
+const [globalRetryBag, setGlobalRetryBag] = useState(() => window.Utils?.safeJsonParse('fc_global_retry_bag', {}) || {});
 // Config & Token
 const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '');
 const [totalTokens, setTotalTokens] = useState(() => parseInt(localStorage.getItem('fc_total_tokens') || '0', 10));
@@ -8394,10 +8882,14 @@ useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.API_KEY, apiKey); }, [apiKey]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_game_sessions', globalGameSessions); }, [globalGameSessions]);
-// [NEW v1.2] Tự động đồng bộ Kho Harvest xuống localStorage mỗi khi có biến động
+// Tự động đồng bộ Kho Harvest xuống localStorage mỗi khi có biến động
 useEffect(() => {
 window.Utils?.safeLocalStorageSet('fc_ai_harvest_pool', aiHarvestPool);
 }, [aiHarvestPool]);
+// [NEW v1.3] Tự động đồng bộ Túi nháp (Retry Bag) xuống localStorage
+useEffect(() => {
+window.Utils?.safeLocalStorageSet('fc_global_retry_bag', globalRetryBag);
+}, [globalRetryBag]);
 // 5. Shuffle Effect
 useEffect(() => {
 if (isShuffle && cards.length > 1) {
@@ -8429,7 +8921,8 @@ viewMode, lang, uiLang, cards, notebook, mastered, masteredCount: mastered.lengt
 incorrectList,
 studySourceName,
 apiKey, totalTokens,
-aiHarvestPool, // [NEW v1.2] Xuất state
+aiHarvestPool,
+globalRetryBag, // [NEW v1.3] Xuất state
 showSettings, showApiKeyModal, showNotebook, showManual, showLinkManager, showWordSelect, showMastered, showIncorrectModal,
 showAiChat,
 showHelp,
@@ -8450,7 +8943,8 @@ setViewMode, setLang, setUiLang, setCards, setNotebook, setMastered, setIsStudyi
 setIncorrectList,
 setStudySourceName,
 setApiKey, setTotalTokens,
-setAiHarvestPool, // [NEW v1.2] Xuất setter
+setAiHarvestPool,
+setGlobalRetryBag, // [NEW v1.3] Xuất setter
 setShowSettings, setShowApiKeyModal, setShowNotebook, setShowManual, setShowLinkManager, setShowWordSelect, setShowMastered, setShowIncorrectModal,
 setShowAiChat,
 setShowHelp,
@@ -9396,11 +9890,11 @@ handleExportHarvestToExcel
 window.Block6_3_useDataLogic = useDataLogic;
 window.Block15_useDataLogic = useDataLogic; // Fallback
 window.useDataLogic = useDataLogic;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.2
-// Last Updated: 2026-04-02 23:35
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.3
+// Last Updated: 2026-04-06 09:38
 // Nhiệm vụ: Bộ điều khiển trung tâm (Main Controller). Gom nhóm toàn bộ logic từ các hooks con và cung cấp API/Actions cho UI.
 // Quy tắc: Đóng vai trò là cầu nối giữa Data Layer (Tầng 6) và Presentation Layer (Tầng 3, 4, 5).
-// Cập nhật: Vá lỗi Data Stripping tại handleOpenWordSelector để bảo toàn Dual-Payload.
+// Cập nhật: Bổ sung API `addToRetryBag` và `removeFromRetryBag` để điều khiển Túi Nháp Toàn Cục.
 // ==================================================================================
 // [MODIFIED] Nhận 'core' từ tham số để dùng chung state với App
 const useAppLogic = (core) => {
@@ -9408,7 +9902,8 @@ const useAppLogic = (core) => {
 const {
 viewMode, lang, uiLang, cards, notebook, apiKey,
 currentCardIndex, isFlipped, isAutoPlaying, isShuffle, isAutoMode, isFlipLocked,
-settings, voices, isAiModeLearn, isCurrentCardInNotebook, isMuted
+settings, voices, isAiModeLearn, isCurrentCardInNotebook, isMuted,
+globalRetryBag // [NEW v1.3] Lấy State túi nháp toàn cục
 } = core;
 // Derived State
 const mainColor = lang === 'zh' ? 'red' : (lang === 'vi' ? 'green' : 'sky');
@@ -9437,7 +9932,6 @@ return text;
 const showToast = (message, type = 'success') => {
 core.setToast({ text: message, type, id: Date.now() });
 };
-// [UPDATED v1.1] Hỗ trợ cỡ chữ riêng cho mặt sau
 const getCardStyle = (isBack = false) => {
 const size = isBack ? (settings.backFontSize || 1.25) : (settings.fontSize || 3);
 const style = { fontSize: `${size}rem`, fontWeight: settings.fontWeight };
@@ -9449,7 +9943,7 @@ default: style.fontFamily = 'ui-sans-serif, system-ui, sans-serif';
 }
 return style;
 };
-// [NEW v1.2] Hàm tạo âm thanh Ting nhẹ (4% Volume)
+// Hàm tạo âm thanh Ting nhẹ (4% Volume)
 const playTing = () => {
 try {
 const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -9458,12 +9952,10 @@ const ctx = new AudioContext();
 const osc = ctx.createOscillator();
 const gain = ctx.createGain();
 osc.type = 'sine';
-osc.frequency.setValueAtTime(30, ctx.currentTime); // Tần số cao (Tiếng chuông)
-osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.5); // Hạ tone nhẹ
-// [UPDATED] Khống chế Volume cố định 0.04 (4%)
+osc.frequency.setValueAtTime(30, ctx.currentTime);
+osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.5);
 gain.gain.setValueAtTime(0.04, ctx.currentTime);
-// [UPDATED] Fade out xuống 0.001 để đường cong dốc hơn, tạo cảm giác dứt khoát và nhỏ hơn
-gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5); // Fade out
+gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
 osc.connect(gain);
 gain.connect(ctx.destination);
 osc.start();
@@ -9472,13 +9964,11 @@ osc.stop(ctx.currentTime + 0.3);
 console.warn("Audio Context Error:", e);
 }
 };
-// [FIXED V1.4] Hàm speak tối ưu cho Android
+// Hàm speak tối ưu cho Android
 const speak = useCallback((text, rate = null, voice = null, onEnd = null) => {
 const safeOnEnd = () => { if (onEnd) onEnd(); };
-// 1. Dọn dẹp timer cũ
 if (core.audioTimeoutRef.current) clearTimeout(core.audioTimeoutRef.current);
 if (!text || text.trim() === '') { safeOnEnd(); return; }
-// 2. Logic Mute (Giả lập)
 if (core.isMuted) {
 const simulatedDuration = 1200 + (text.length * 80);
 core.audioTimeoutRef.current = setTimeout(() => {
@@ -9486,18 +9976,12 @@ safeOnEnd();
 }, simulatedDuration);
 return;
 }
-// 3. Kiểm tra hỗ trợ
 if (!window.speechSynthesis) { safeOnEnd(); return; }
-// [NEW v1.2] Phát tiếng Ting trước
 playTing();
-// [CRITICAL FIX] Hủy giọng cũ trước
 window.speechSynthesis.cancel();
-// [CRITICAL FIX] Đánh thức Chrome Android nếu bị kẹt
 if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-// 4. Tạo Utterance
 const createAndSpeak = () => {
 const u = new SpeechSynthesisUtterance(text);
-// [ANDROID FIX] Ghim đối tượng
 window.fc_currentUtterance = u;
 const detectLang = (str) => {
 if (/[\u4e00-\u9fa5]/.test(str)) return 'zh-CN';
@@ -9506,7 +9990,6 @@ return 'en-US';
 };
 const detectedLang = detectLang(text);
 u.lang = detectedLang;
-// Voice selection logic
 let v = voice;
 if (!v) {
 if (settings.selectedVoice) {
@@ -9523,13 +10006,11 @@ window.fc_currentUtterance = null;
 safeOnEnd();
 };
 u.onerror = (e) => {
-// console.warn("TTS Error:", e);
 window.fc_currentUtterance = null;
 if (e.error !== 'interrupted' && e.error !== 'canceled') safeOnEnd();
 };
 window.speechSynthesis.speak(u);
 };
-// [CRITICAL FIX] Delay 300ms (thay vì 50ms) để chờ tiếng Ting và để Android kịp xử lý lệnh cancel()
 core.audioTimeoutRef.current = setTimeout(createAndSpeak, 300);
 }, [voices, settings, lang, core.isMuted]);
 const stopSpeaking = useCallback(() => {
@@ -9539,7 +10020,6 @@ if (core.audioTimeoutRef.current) clearTimeout(core.audioTimeoutRef.current);
 if (core.autoPlayTimeoutRef.current) clearTimeout(core.autoPlayTimeoutRef.current);
 }, []);
 // 3. NAVIGATION
-// Logic Shuffle mới: Tuần tự trên danh sách xáo -> Hết vòng thì xáo lại
 const handleNext = useCallback(() => {
 const { cards, isShuffle, currentCardIndex } = latestStateRef.current;
 core.setIsFlipped(false);
@@ -9547,18 +10027,15 @@ core.setIsContentHidden(false);
 stopSpeaking();
 setTimeout(() => {
 if (isShuffle) {
-// Nếu đang ở thẻ cuối cùng
 if (currentCardIndex >= cards.length - 1) {
-// Xáo trộn lại toàn bộ danh sách
 const reshuffled = window.Utils.shuffleArray([...cards]);
 core.setCards(reshuffled);
-core.setCurrentCardIndex(0); // Về đầu
+core.setCurrentCardIndex(0);
 showToast("Đã đi hết 1 vòng! Đang xáo trộn lại bộ bài.", "info");
 } else {
 core.setCurrentCardIndex(prev => prev + 1);
 }
 } else {
-// Chế độ thường: Đi tuần tự, hết thì vòng lại 0 (Loop)
 core.setCurrentCardIndex(prev => (prev + 1) % cards.length);
 }
 }, 150);
@@ -9576,7 +10053,7 @@ core.setIsAutoPlaying(false);
 core.setIsContentHidden(false);
 stopSpeaking();
 } else {
-speak(''); // Đánh thức audio context
+speak('');
 core.setIsAutoMode(true);
 core.setIsAutoPlaying(true);
 core.setIsContentHidden(false);
@@ -9609,22 +10086,18 @@ if (newState) window.speechSynthesis.cancel();
 return newState;
 });
 }, []);
-// Xử lý bật tắt Shuffle và khôi phục dữ liệu gốc
 const handleToggleShuffle = useCallback(() => {
 const nextState = !core.isShuffle;
 core.setIsShuffle(nextState);
 if (nextState) {
 showToast("Đã bật trộn bài", "info");
 } else {
-// Logic khôi phục thứ tự gốc
 let originalData = [];
-// 1. Xác định nguồn dữ liệu đang học
 if (core.studySourceName && core.studySourceName.includes("Sổ tay cần nhớ")) {
 originalData = core.incorrectList;
 } else if ((core.studySourceName && core.studySourceName.includes("Sổ tay từ vựng")) || core.isStudyingNotebook) {
 originalData = core.notebook;
 } else {
-// Mặc định: Dữ liệu gốc
 const saved = window.Utils?.safeJsonParse(window.CONFIG_SAMPLES?.[core.lang]?.dataKey, null);
 originalData = saved || window.CONFIG_SAMPLES?.[core.lang]?.sample || [];
 }
@@ -9635,14 +10108,48 @@ core.setCurrentCardIndex(0);
 showToast("Đã tắt trộn bài (Về thứ tự gốc)", "info");
 }
 }, [core.isShuffle, core.studySourceName, core.isStudyingNotebook, core.lang, core.notebook, core.incorrectList]);
-// 4. KẾT NỐI MODULES (Update an toàn theo chuẩn mới)
+// ==================================================================================
+// 4. [NEW v1.3] RETRY BAG APIS (CÁC HÀM QUẢN LÝ TÚI NHÁP TOÀN CỤC)
+// ==================================================================================
+// Nạp câu hỏi vào túi nháp khi làm sai
+const addToRetryBag = useCallback((gameType, questionData) => {
+if (!gameType || !questionData) return;
+core.setGlobalRetryBag(prev => {
+const currentBag = prev[gameType] || [];
+// Kiểm tra trùng lặp (Dùng term hoặc displaySentence làm khóa nhận diện)
+const termToCheck = questionData.term || questionData.origin?.term || questionData.displaySentence || questionData.wrongSentence;
+if (!termToCheck) return prev;
+const isDup = currentBag.some(item => {
+const itemTerm = item.term || item.origin?.term || item.displaySentence || item.wrongSentence;
+return itemTerm === termToCheck;
+});
+if (isDup) return prev;
+// Đẩy dữ liệu mới vào túi của Game tương ứng
+return { ...prev, [gameType]: [...currentBag, questionData] };
+});
+}, [core.setGlobalRetryBag]);
+// Rút câu hỏi ra khỏi túi nháp khi đã làm đúng
+const removeFromRetryBag = useCallback((gameType, termToRemove) => {
+if (!gameType || !termToRemove) return;
+core.setGlobalRetryBag(prev => {
+const currentBag = prev[gameType] || [];
+const newBag = currentBag.filter(item => {
+const itemTerm = item.term || item.origin?.term || item.displaySentence || item.wrongSentence;
+return itemTerm !== termToRemove;
+});
+if (newBag.length === currentBag.length) return prev; // Không có gì thay đổi
+return { ...prev, [gameType]: newBag };
+});
+}, [core.setGlobalRetryBag]);
+// ==================================================================================
+// 5. KẾT NỐI MODULES
+// ==================================================================================
 const AiLogicHook = window.Block6_2_useAiLogic || window.Block14_useAiLogic || window.useAiLogic;
 const DataLogicHook = window.Block6_3_useDataLogic || window.Block15_useDataLogic || window.useDataLogic;
 const aiLogic = AiLogicHook ? AiLogicHook(core, latestStateRef, { speak, handleNext, showToast, stopSpeaking }) : {};
 const dataLogic = DataLogicHook ? DataLogicHook(core, latestStateRef, { t, showToast, handleNext, processAiQueue: aiLogic.processAiQueue }) : {};
 const handleOpenIncorrect = () => core.setShowIncorrectModal(true);
 const handleCloseIncorrect = () => core.setShowIncorrectModal(false);
-// [UPDATED v1.3] Xóa toàn bộ danh sách cần nhớ theo ngôn ngữ
 const handleRemoveAllIncorrect = () => {
 core.setIncorrectList([]);
 window.Utils.safeLocalStorageSet(window.STORAGE_KEYS.INCORRECT_LIST + '_' + core.lang, []);
@@ -9736,7 +10243,6 @@ if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 switch (e.key) {
 case 'ArrowRight': case 'd': case 'D': handleNext(); break;
 case 'ArrowLeft': case 'a': case 'A': handlePrev(); break;
-// [UPDATED v1.2] Loại bỏ Enter, chỉ giữ lại phím Space để lật thẻ
 case ' ': e.preventDefault(); core.setIsFlipped(prev => !prev); break;
 case 's': case 'S': const card = cards[currentCardIndex]; if (card) speak(card.term); break;
 case 'p': case 'P': toggleAutoPlay(); break;
@@ -9768,15 +10274,14 @@ handleOpenSettings: () => core.setShowSettings(true),
 handleCloseSettings: () => core.setShowSettings(false),
 handleCancelSettings: () => core.setShowSettings(false),
 onMissingKey: () => { showToast("Cần Google Gemini API Key", "warning"); core.setShowApiKeyModal(true); },
-// [FIXED v1.2] Sửa lỗi Data Stripping tại đây: Cho phép nhận payload dạng Object
 handleOpenWordSelector: (payload) => {
 let targetData;
 if (payload && typeof payload === 'object' && payload.isSmartTarget) {
-targetData = payload; // Giữ nguyên Object Dual-Payload
+targetData = payload;
 } else if (typeof payload === 'string' && payload.trim() !== '') {
-targetData = payload; // Nhận String thuần
+targetData = payload;
 } else {
-targetData = cards[currentCardIndex]?.term || ''; // Fallback mặc định
+targetData = cards[currentCardIndex]?.term || '';
 }
 core.setWordSelectTarget(targetData);
 core.setShowWordSelect(true);
@@ -9805,6 +10310,8 @@ handleCloseHanziSelector,
 handleStartWriting,
 handleCloseHanziWriter,
 setIsGamePlaying: core.setIsGamePlaying,
+addToRetryBag,      // [NEW v1.3] Export API Nạp túi nháp
+removeFromRetryBag  // [NEW v1.3] Export API Xóa túi nháp
 },
 refs: { audioTimeoutRef: core.audioTimeoutRef }
 };
