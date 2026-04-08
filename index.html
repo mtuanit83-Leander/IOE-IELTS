@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.6
-// Last Updated: 2026-04-08 21:23
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.7
+// Last Updated: 2026-04-08 23:45
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: ĐẠI PHẪU DỮ LIỆU MẪU (Bước 3 - Hoàn tất). Xóa sổ hoàn toàn window.CONFIG_SAMPLES và các hàm liên quan để làm sạch bộ nhớ, giảm dung lượng tệp. Tuân thủ Điều 3.
+// Cập nhật: ĐẠI PHẪU API KEY (Gỡ xung đột Schema). Chuyển model sang gemini-1.5-flash ổn định. Gọt sạch JSON cứng trong Prompt. Đồng bộ biến lưu trữ API Key. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -85,11 +85,13 @@ window.DEFAULT_PROMPTS = {
 enrich_word: `Phân tích "{term}" ({lang}->Vi). QUY TẮC QUAN TRỌNG:Nếu là tiếng Trung, dịch sát nghĩa HSK3. Nếu là Tiếng Anh, CHỈ lấy nghĩa thông dụng nhất (A1-A2). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa/translate cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt: Danh từ, Động từ, Tính từ, Trạng từ, Giới từ, Đại từ, Liên từ), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals, Daily Life...), analysis(Giải thích ý nghĩa, cách dùng chi tiết), sinoViet(Hán Việt nếu là Trung/Việt, hoặc Dịch chi tiết/Giải thích thêm nếu là Anh), example(câu chứa từ + dịch), image_keyword(English).`,
 enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt)(Sát nghĩa nhất), partOfSpeech(Ghi là "Câu văn" hoặc "Thành ngữ"), topic(Phân loại chủ đề Tiếng Anh, VD: Weather, Work, Relationships...), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English).`,
 // --- 2. QUIZ (Trắc nghiệm - Agnostic & Tối ưu Token) ---
-quiz_word: `Context: "{baseText}". Target: "{targetText}". Generate 4 tricky wrong answers in the EXACT SAME language and script as "{targetText}". Use similar spelling, homophones, or antonyms. Return ONLY raw JSON {"distractors":["w1","w2","w3","w4"]} without markdown tags.`,
-quiz_sentence: `Context: "{baseText}". Target: "{targetText}". Generate 4 tricky wrong sentences in the EXACT SAME language and script as "{targetText}". Change only 1-2 words (grammar, tense, logic) to create plausible mistakes. Return ONLY raw JSON {"distractors":["s1","s2","s3","s4"]} without markdown tags.`,
+// [HOTFIX v1.7] Xóa bỏ định dạng JSON cứng để nhường chỗ cho responseSchema
+quiz_word: `Context: "{baseText}". Target: "{targetText}". Generate 4 tricky wrong answers in the EXACT SAME language and script as "{targetText}". Use similar spelling, homophones, or antonyms.`,
+quiz_sentence: `Context: "{baseText}". Target: "{targetText}". Generate 4 tricky wrong sentences in the EXACT SAME language and script as "{targetText}". Change only 1-2 words (grammar, tense, logic) to create plausible mistakes.`,
 // --- 3. MATCH (Nối ô) ---
-match_word: `Tạo 1 nghĩa sai (Việt) theo logic: Viết/Đọc gần giống hoặc Trái nghĩa cho MỖI từ sau: {itemsText}. JSON: 'distractors' ({count} string).`,
-match_sentence: `Tạo 1 bản dịch sai (Việt) theo logic: Sai ngữ pháp/Chủ thể hoặc Ngược nghĩa cho MỖI câu sau: {itemsText}. JSON: 'distractors' ({count} string).`,
+// [HOTFIX v1.7] Xóa bỏ định dạng JSON cứng
+match_word: `Tạo 1 nghĩa sai (Việt) theo logic: Viết/Đọc gần giống hoặc Trái nghĩa cho MỖI từ sau: {itemsText}.`,
+match_sentence: `Tạo 1 bản dịch sai (Việt) theo logic: Sai ngữ pháp/Chủ thể hoặc Ngược nghĩa cho MỖI câu sau: {itemsText}.`,
 // --- 4. GRAMMAR ---
 grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, súc tích, Plain text."
 };
@@ -189,7 +191,8 @@ console.log("Wake Lock released.");
 },
 callGeminiApi: async (prompt, schema = null, apiKeyOverride = null) => {
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-let currentKey = apiKeyOverride || localStorage.getItem('fc_apikey');
+// [HOTFIX v1.7] Đồng bộ đọc biến lưu trữ API Key đúng tên
+let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if (currentKey && !keyPool.includes(currentKey)) { keyPool.unshift(currentKey); } else if (currentKey) { keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)]; }
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Vui lòng cấu hình trong Settings)");
 let resultText = null; let tokenMetadata = null; let successKey = null; let lastError = null;
@@ -198,7 +201,8 @@ const k = keyPool[i]; if (!k || k.length < 10) continue;
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 if (schema) { body.generationConfig = { responseMimeType: "application/json", responseSchema: schema }; }
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+// [HOTFIX v1.7] Đổi model sang gemini-1.5-flash chuẩn Google API
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const d = await res.json();
 if (d.error) throw new Error(d.error.message);
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
@@ -208,7 +212,8 @@ successKey = k; break;
 } catch (e) { console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message); lastError = e; }
 }
 if (!resultText) throw new Error(`Tất cả ${keyPool.length} API Key đều lỗi. (Lỗi cuối: ${lastError?.message})`);
-if (successKey && successKey !== localStorage.getItem('fc_apikey')) { localStorage.setItem('fc_apikey', successKey); console.log("Updated primary API Key to working key."); }
+// [HOTFIX v1.7] Đồng bộ ghi biến lưu trữ API Key đúng tên
+if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) { localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey); console.log("Updated primary API Key to working key."); }
 return { text: resultText, tokenMetadata };
 },
 fetchWithFallback: async (url) => {
@@ -331,7 +336,8 @@ let lastError = null;
 for (const k of keyPool) {
 if (!k || k.length < 10) continue;
 try {
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+// [HOTFIX v1.7] Đổi model sang gemini-1.5-flash chuẩn Google API
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload)
@@ -353,8 +359,9 @@ lastError = e;
 }
 }
 if (!finalResult) throw new Error(`AI Error (Tất cả Key đều lỗi): ${lastError?.message}`);
-if (successKey && successKey !== localStorage.getItem('fc_apikey')) {
-localStorage.setItem('fc_apikey', successKey);
+// [HOTFIX v1.7] Đồng bộ ghi biến lưu trữ API Key đúng tên
+if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
+localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey);
 console.log("SmartFill: Auto-switched to working key:", successKey.slice(-5));
 }
 const text = finalResult.candidates?.[0]?.content?.parts?.[0]?.text;
