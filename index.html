@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.7
-// Last Updated: 2026-04-08 23:45
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.10
+// Last Updated: 2026-04-09 00:20
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: ĐẠI PHẪU API KEY (Gỡ xung đột Schema). Chuyển model sang gemini-1.5-flash ổn định. Gọt sạch JSON cứng trong Prompt. Đồng bộ biến lưu trữ API Key. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: HOTFIX KHẨN CẤP. Khôi phục window.CONFIG_SAMPLES dạng tối giản (chỉ định tuyến Key) để vá lỗi Crash khi Tầng 6 lưu dữ liệu AI. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -79,6 +79,12 @@ zh: { vocab: "https://docs.google.com/spreadsheets/d/17lPYQ1mVWisPhHydugT6IEtl2b
 vi: { default: "https://docs.google.com/spreadsheets/d/1PYZdSPE6zPpweYCmBcjuJwY-D1pGX2yD0Nm5RQUEwRg/edit?gid=0#gid=0" }
 };
 window.DEFAULT_API_KEY_SHEET = "https://docs.google.com/spreadsheets/d/19IzNZnMSR9Q3r-h15iGqSxTovfxzZQsm3NmQGkfFOcs/edit?usp=drive_link";
+// KHÔI PHỤC DI SẢN (Chỉ chứa định tuyến Key, tuyệt đối không chứa Thẻ mẫu)
+window.CONFIG_SAMPLES = {
+en: { dataKey: 'fc_data_en', noteKey: 'fc_notebook_en' },
+zh: { dataKey: 'fc_data_zh', noteKey: 'fc_notebook_zh' },
+vi: { dataKey: 'fc_data_vi', noteKey: 'fc_notebook_vi' }
+};
 // HỆ THỐNG PROMPT TÁCH BIỆT (TỐI ƯU HÓA)
 window.DEFAULT_PROMPTS = {
 // --- 1. ENRICH (Làm giàu thẻ) ---
@@ -171,6 +177,7 @@ template = template.split(`{${k}}`).join(v);
 }
 return template;
 },
+getStorageConfig: (lang) => window.CONFIG_SAMPLES[lang] || window.CONFIG_SAMPLES['en'],
 wakeLock: null,
 requestWakeLock: async () => {
 if ('wakeLock' in navigator) {
@@ -191,18 +198,19 @@ console.log("Wake Lock released.");
 },
 callGeminiApi: async (prompt, schema = null, apiKeyOverride = null) => {
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-// [HOTFIX v1.7] Đồng bộ đọc biến lưu trữ API Key đúng tên
 let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if (currentKey && !keyPool.includes(currentKey)) { keyPool.unshift(currentKey); } else if (currentKey) { keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)]; }
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Vui lòng cấu hình trong Settings)");
 let resultText = null; let tokenMetadata = null; let successKey = null; let lastError = null;
 for (let i = 0; i < keyPool.length; i++) {
-const k = keyPool[i]; if (!k || k.length < 10) continue;
+const rawK = keyPool[i]; if (!rawK || rawK.length < 10) continue;
+// [HOTFIX] Bộ lọc rác: Xóa sạch khoảng trắng và nháy kép lỡ dính vào API Key
+const k = rawK.replace(/["'\s]/g, "");
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 if (schema) { body.generationConfig = { responseMimeType: "application/json", responseSchema: schema }; }
-// [HOTFIX v1.7] Đổi model sang gemini-1.5-flash chuẩn Google API
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+// [HOTFIX KHẨN CẤP] Trả lại về bản 2.5-flash theo API thực tế
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const d = await res.json();
 if (d.error) throw new Error(d.error.message);
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
@@ -212,7 +220,6 @@ successKey = k; break;
 } catch (e) { console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message); lastError = e; }
 }
 if (!resultText) throw new Error(`Tất cả ${keyPool.length} API Key đều lỗi. (Lỗi cuối: ${lastError?.message})`);
-// [HOTFIX v1.7] Đồng bộ ghi biến lưu trữ API Key đúng tên
 if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) { localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey); console.log("Updated primary API Key to working key."); }
 return { text: resultText, tokenMetadata };
 },
@@ -223,7 +230,6 @@ const strategies = [{ name: "Direct", url: finalUrl }, { name: "AllOrigins", url
 let err; for (const s of strategies) { try { const res = await fetch(s.url); if (res.ok) return res; } catch (e) { err = e; } }
 throw new Error("Lỗi tải dữ liệu");
 },
-// [NEW v1.4] Bổ sung đọc cột Topic (index 8)
 convertRawRowsToCards: (rows) => {
 if (!rows || rows.length === 0) return [];
 return rows.slice(1).map(row => {
@@ -246,7 +252,6 @@ if (!csvText || csvText.length < 5) return [];
 const rows = csvText.split('\n').filter(l => l.trim()).map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(p => p.replace(/^"|"$/g, '').trim()));
 return window.Utils.convertRawRowsToCards(rows);
 },
-// [NEW v1.5] Sanitize giữ lại Topic và Analysis
 sanitizeCards: (rawCards) => {
 if (!Array.isArray(rawCards)) return [];
 return rawCards.map(c => ({
@@ -260,7 +265,6 @@ if (!text) return false;
 const str = text.trim();
 return /[.?!。？！]/.test(str) || str.split(/\s+/).length > 4 || (str.length > 7 && /[\u4e00-\u9fa5]/.test(str));
 },
-// [NEW v1.4] Thêm cột Topic khi xuất file Excel
 jsonToTsv: (data) => {
 if (!Array.isArray(data) || data.length === 0) return "";
 const headers = ['term', 'pronunciation', 'definition', 'analysis', 'sinoViet', 'example', 'image', 'partOfSpeech', 'topic'];
@@ -282,11 +286,9 @@ if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Thiếu Key Poo
 const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
 const isSentence = window.Utils.detectSentence(cleanTermForAi);
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
-// [NEW v1.5] Lấy danh sách Topic cố định để ép AI (Phương án 1)
 const currentLevel = localStorage.getItem('fc_current_level_' + lang) ? localStorage.getItem('fc_current_level_' + lang).replace(/"/g, '') : (lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4'));
 const predefinedTopics = window.IoeDataEngine?.TOPICS?.[currentLevel] || [];
 const topicRestriction = predefinedTopics.length > 0 ? ` Mục topic BẮT BUỘC chọn chính xác 1 từ khóa trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.` : '';
-// [NEW v1.4] Thêm topic vào Schema để AI trả về
 const fullProperties = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
@@ -333,11 +335,13 @@ required: requiredFields
 let finalResult = null;
 let successKey = null;
 let lastError = null;
-for (const k of keyPool) {
-if (!k || k.length < 10) continue;
+for (const rawK of keyPool) {
+if (!rawK || rawK.length < 10) continue;
+// [HOTFIX] Bộ lọc rác: Xóa sạch khoảng trắng và nháy kép
+const k = rawK.replace(/["'\s]/g, "");
 try {
-// [HOTFIX v1.7] Đổi model sang gemini-1.5-flash chuẩn Google API
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, {
+// [HOTFIX KHẨN CẤP] Trả lại về bản 2.5-flash theo API thực tế
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload)
@@ -359,7 +363,6 @@ lastError = e;
 }
 }
 if (!finalResult) throw new Error(`AI Error (Tất cả Key đều lỗi): ${lastError?.message}`);
-// [HOTFIX v1.7] Đồng bộ ghi biến lưu trữ API Key đúng tên
 if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey);
 console.log("SmartFill: Auto-switched to working key:", successKey.slice(-5));
