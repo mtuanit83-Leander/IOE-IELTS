@@ -7614,10 +7614,10 @@ aiWaitTime={aiWaitTime} resultTimer={resultTimer} isResultPaused={isResultPaused
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.19
-// Last Updated: 2026-04-11 14:45
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.20
+// Last Updated: 2026-04-11 16:55
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [QA DEBUG] Bơm biến `topic` vào `snapshotConfig` để truyền xuống tất cả các Game. Khắc phục triệt để lỗi "Đứt cáp chủ đề toàn hệ thống" khiến AI Tự sinh bị lạc đề. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] Mở khóa 3 Game nâng cao (OddOneOut, FillBlank, SpotMistake) cho phân hệ Tiếng Trung. Cập nhật nhãn động (IELTS/HSK/IOE) dựa theo ngôn ngữ. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions }) => {
@@ -7719,8 +7719,8 @@ title="Bật/Tắt AI tạo nhiễu khó"
 <ResumeBadge type="scramble" />
 </div>
 </div>
-{/* 4. Nút Game Odd One Out (CHỈ HIỆN KHI DATA LÀ TỪ VỰNG) */}
-{activeDataMode === 'vocab' && (
+{/* 4. Nút Game Odd One Out (CHỈ HIỆN KHI DATA LÀ TỪ VỰNG VÀ KHÔNG PHẢI TIẾNG VIỆT) */}
+{lang !== 'vi' && activeDataMode === 'vocab' && (
 <div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
 <button onClick={handleOddOneOutClick} className={`w-full p-4 bg-white border-2 border-pink-100 rounded-2xl hover:border-pink-400 hover:bg-pink-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
 <div className={`p-3 bg-pink-100 text-pink-600 rounded-xl group-hover:bg-pink-600 group-hover:text-white transition-colors`}>
@@ -7728,22 +7728,22 @@ title="Bật/Tắt AI tạo nhiễu khó"
 </div>
 <div className="text-left flex-1">
 <div className="font-bold text-lg text-gray-800">Từ Khác Loại</div>
-<div className="text-xs text-gray-500 font-medium">Tìm từ lạc loài trong nhóm (IOE)</div>
+<div className="text-xs text-gray-500 font-medium">Tìm từ lạc loài trong nhóm ({lang === 'zh' ? 'HSK' : 'IOE'})</div>
 </div>
 <window.Icons.ChevronRight size={20} className="text-gray-300" />
 </button>
 <ResumeBadge type="oddoneout" />
 </div>
 )}
-{/* 5. Nút Game FillBlank (CHỈ HIỆN KHI TIẾNG ANH & LÀ CÂU VĂN) */}
-{lang === 'en' && activeDataMode === 'sentence' && (
+{/* 5. Nút Game FillBlank (CHỈ HIỆN KHI KHÔNG PHẢI TIẾNG VIỆT & LÀ CÂU VĂN) */}
+{lang !== 'vi' && activeDataMode === 'sentence' && (
 <div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
 <button onClick={handleFillBlankClick} className={`w-full p-4 bg-white border-2 border-blue-100 rounded-2xl hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
 <div className={`p-3 bg-blue-100 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors`}>
 <window.Icons.Keyboard size={28} />
 </div>
 <div className="text-left flex-1">
-<div className="font-bold text-lg text-gray-800">Điền Từ (IELTS)</div>
+<div className="font-bold text-lg text-gray-800">Điền Từ ({lang === 'zh' ? 'HSK' : 'IELTS'})</div>
 <div className="text-xs text-gray-500 font-medium">Luyện gõ chính xác từ khóa</div>
 </div>
 <window.Icons.ChevronRight size={20} className="text-gray-300" />
@@ -7751,15 +7751,15 @@ title="Bật/Tắt AI tạo nhiễu khó"
 <ResumeBadge type="fillblank" />
 </div>
 )}
-{/* 6. Nút Game SpotMistake (CHỈ HIỆN KHI TIẾNG ANH & LÀ CÂU VĂN) */}
-{lang === 'en' && activeDataMode === 'sentence' && (
+{/* 6. Nút Game SpotMistake (CHỈ HIỆN KHI KHÔNG PHẢI TIẾNG VIỆT & LÀ CÂU VĂN) */}
+{lang !== 'vi' && activeDataMode === 'sentence' && (
 <div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
 <button onClick={handleSpotMistakeClick} className={`w-full p-4 bg-white border-2 border-red-100 rounded-2xl hover:border-red-400 hover:bg-red-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
 <div className={`p-3 bg-red-100 text-red-600 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-colors`}>
 <window.Icons.Brain size={28} />
 </div>
 <div className="text-left flex-1">
-<div className="font-bold text-lg text-gray-800">Tìm Lỗi Sai (IOE)</div>
+<div className="font-bold text-lg text-gray-800">Tìm Lỗi Sai ({lang === 'zh' ? 'HSK' : 'IOE'})</div>
 <div className="text-xs text-gray-500 font-medium">Săn lỗi ngữ pháp & Sửa từ</div>
 </div>
 <window.Icons.ChevronRight size={20} className="text-gray-300" />
