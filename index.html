@@ -625,27 +625,27 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.26
-// Last Updated: 2026-04-11 15:55
+// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.30
+// Last Updated: 2026-04-12 21:30
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các Prompt cho AI.
-// Cập nhật: [QA DEBUG] Nâng cấp Sư phạm AI Pure Mode (Chế độ Từ vựng). Mở rộng không gian sáng tạo, cho phép AI sinh Cụm từ (Compound words), Phrasal verbs, Thành ngữ (Idioms) tối đa 4 từ ở các Level cao thay vì bóp nghẹt ở "Từ đơn". Áp dụng cho cả Quiz và Scramble. Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [QA DEBUG] Thanh trừng "Ảo giác ép buộc độ dài". Xóa bỏ mọi lệnh giới hạn số lượng từ vựng trong GRADE_CONTEXTS và getMicroTierDistortionRule. Bổ sung Lệnh Thép giữ nguyên câu gốc. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 window.IoeDataEngine = {
 // 1. HỆ THỐNG CẤP ĐỘ ĐÀO TẠO NỀN TẢNG (GRADE CONTEXTS)
 GRADE_CONTEXTS: {
-en_level_1: "Level 1 (Kiddie - Pre-A1/Grade 1-2). Grammar: Singular/Plural (s/es), basic articles (a/an). Vocabulary: Extremely basic nouns. Sentences < 6 words.",
-en_level_2: "Level 2 (Junior Basic - A1/Grade 3-4). Grammar: Subject/Object Pronouns, Simple Present, verb 'to be'. Sentences 6-8 words.",
-en_level_3: "Level 3 (Junior Advanced - A1+/Grade 5). Grammar: Prepositions, Possessive Adjectives, Present Continuous. Sentences 7-9 words.",
-en_level_4: "Level 4 (Discovery Basic - A2/Grade 6-7). Grammar: Past Simple, Comparative Adjectives. Sentences 8-12 words.",
-en_level_5: "Level 5 (Discovery Advanced - A2+/Grade 8-9). Grammar: Superlative Adjectives, Future Simple (will), Basic Conjunctions. Sentences 10-14 words.",
-en_level_6: "Level 6 (Pre-IELTS - B1/Grade 10/IELTS 4.0). Grammar: Present Perfect, definite article 'the', Modal Verbs. Sentences 12-16 words.",
-en_level_7: "Level 7 (Breakthrough - B1+/Grade 11-12/IELTS 5.0). Grammar: Passive voice, Gerunds/Infinitives, Conditionals type 1 & 2. Sentences 14-18 words.",
+en_level_1: "Level 1 (Kiddie - Pre-A1/Grade 1-2). Grammar: Singular/Plural (s/es), basic articles (a/an). Vocabulary: Extremely basic nouns.",
+en_level_2: "Level 2 (Junior Basic - A1/Grade 3-4). Grammar: Subject/Object Pronouns, Simple Present, verb 'to be'.",
+en_level_3: "Level 3 (Junior Advanced - A1+/Grade 5). Grammar: Prepositions, Possessive Adjectives, Present Continuous.",
+en_level_4: "Level 4 (Discovery Basic - A2/Grade 6-7). Grammar: Past Simple, Comparative Adjectives.",
+en_level_5: "Level 5 (Discovery Advanced - A2+/Grade 8-9). Grammar: Superlative Adjectives, Future Simple (will), Basic Conjunctions.",
+en_level_6: "Level 6 (Pre-IELTS - B1/Grade 10/IELTS 4.0). Grammar: Present Perfect, definite article 'the', Modal Verbs.",
+en_level_7: "Level 7 (Breakthrough - B1+/Grade 11-12/IELTS 5.0). Grammar: Passive voice, Gerunds/Infinitives, Conditionals type 1 & 2.",
 en_level_8: "Level 8 (Academic - B2/IELTS 5.5-6.5). Grammar: Relative clauses, Word Forms, Academic Conjunctions. Formal vocabulary.",
 en_level_9: "Level 9 (Expert - C1+/IELTS 7.0+). Grammar: Inversions, Mixed conditionals, Advanced collocations. Sophisticated vocabulary.",
-zh_level_1: "HSK 1 (Beginner). Grammar: Basic pronouns, 'Shi' (是), 'You' (有). Vocabulary: 500 basic survival words. Sentences < 6 words.",
-zh_level_2: "HSK 2 (Elementary). Grammar: Questions with 'Ma/Ne' (吗/呢), Aspect particles (了/着/过). Sentences < 10 words.",
-zh_level_3: "HSK 3 (Pre-Intermediate). Grammar: 'Ba' (把) and 'Bei' (被) structures, Simple complex sentences. Sentences < 15 words.",
-zh_level_4: "HSK 4 (Intermediate). Grammar: Comparative structures, Result/State complements. Sentences < 20 words.",
+zh_level_1: "HSK 1 (Beginner). Grammar: Basic pronouns, 'Shi' (是), 'You' (有). Vocabulary: 500 basic survival words.",
+zh_level_2: "HSK 2 (Elementary). Grammar: Questions with 'Ma/Ne' (吗/呢), Aspect particles (了/着/过).",
+zh_level_3: "HSK 3 (Pre-Intermediate). Grammar: 'Ba' (把) and 'Bei' (被) structures, Simple complex sentences.",
+zh_level_4: "HSK 4 (Intermediate). Grammar: Comparative structures, Result/State complements.",
 zh_level_5: "HSK 5 (Upper-Intermediate). Vocabulary: Chengyu (Idioms), Formal written language (书面语), Social & Economic terms.",
 zh_level_6: "HSK 6 (Advanced). Vocabulary: Academic debate, global issues, artistic appreciation. Complex grammar.",
 zh_level_7: "HSK 7 (Expert). Vocabulary: Educational research, international relations, tech breakthroughs. Professional fluency.",
@@ -764,8 +764,8 @@ items: {
 type: "OBJECT",
 properties: {
 id: { type: "STRING" },
-words: { type: "ARRAY", items: { type: "STRING" }, description: "Mảng 4 từ tiếng Anh, có 1 từ khác loại" },
-oddWord: { type: "STRING", description: "Từ khác loại" },
+words: { type: "ARRAY", items: { type: "STRING" }, description: "Mảng 4 từ/câu, có 1 mục khác loại" },
+oddWord: { type: "STRING", description: "Mục khác loại" },
 explanation: { type: "STRING", description: "Giải thích ngắn gọn bằng tiếng Việt" }
 },
 required: ["id", "words", "oddWord", "explanation"]
@@ -795,8 +795,8 @@ required: ["displaySentence", "targetWord", "hint"]
 pure_oddoneout: {
 type: "OBJECT",
 properties: {
-words: { type: "ARRAY", items: { type: "STRING" }, description: "Mảng 4 từ tiếng Anh, có 1 từ khác loại" },
-oddWord: { type: "STRING", description: "Từ khác loại" },
+words: { type: "ARRAY", items: { type: "STRING" }, description: "Mảng 4 từ/câu, có 1 mục khác loại" },
+oddWord: { type: "STRING", description: "Mục khác loại" },
 explanation: { type: "STRING", description: "Giải thích ngắn gọn bằng tiếng Việt" }
 },
 required: ["words", "oddWord", "explanation"]
@@ -968,6 +968,7 @@ return "You are an expert Language Examiner.\nTARGET LEVEL: " + mappedKey + ".\n
 // HÀM 0 (ĐÃ ĐỔI TÊN THÀNH DISTORTION RULE): DÀNH CHO GAME NỐI Ô VÀ TÌM LỖI SAI
 getMicroTierDistortionRule: function(targetLang, dataMode, mappedKey, topic) {
 let rule = "";
+const antiLengthRule = "CRITICAL: YOU MUST REWRITE THE EXACT SAME CONTEXT SENTENCE. DO NOT INVENT A NEW SENTENCE OR CHANGE ITS LENGTH. ONLY CHANGE ONE WORD TO MAKE IT INCORRECT. ";
 if (targetLang === 'English' && dataMode === 'vocab') {
 if (['en_level_1'].includes(mappedKey)) rule = "The traps MUST be single words related to the TOPIC FOCUS. Make EXACTLY ONE basic spelling mistake (e.g., missing a single letter, or adding an extra vowel). DO NOT write full sentences.";
 else if (['en_level_2', 'en_level_3'].includes(mappedKey)) rule = "The traps MUST be single words related to the TOPIC FOCUS. Make ONE basic morphological error (e.g., wrong plural 's/es', basic vowel swap). DO NOT write full sentences.";
@@ -976,26 +977,26 @@ else if (['en_level_6'].includes(mappedKey)) rule = "The traps MUST be single wo
 else if (['en_level_7', 'en_level_8'].includes(mappedKey)) rule = "The traps MUST be single words related to the TOPIC FOCUS. Make EXACTLY ONE advanced morphological error (e.g., using the wrong suffix or prefix like '-tion' instead of '-sion', 'un-' instead of 'in-'). DO NOT write full sentences.";
 else rule = "The traps MUST be single words related to the TOPIC FOCUS. Focus on highly plausible but incorrect academic word formations or false friends. The wrong word must look like a valid academic term. DO NOT write full sentences.";
 } else if (targetLang === 'English' && dataMode === 'sentence') {
-if (['en_level_1'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY wrong singular/plural nouns (s/es) or incorrect basic articles (a/an). Keep sentences under 6 words.";
-else if (['en_level_2', 'en_level_3'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY basic subject-verb agreement (is/are) or wrong subject/object pronouns. Keep sentences 6-9 words.";
-else if (['en_level_4', 'en_level_5'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE intermediate grammar mistake: ONLY incorrect basic prepositions (in/on/at) or wrong comparative/superlative forms.";
-else if (['en_level_6'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammar mistake: ONLY misusing Present Perfect vs Past Simple, or wrong modal verbs. Sentence length 12-16 words.";
-else if (['en_level_7', 'en_level_8'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced mistake: ONLY incorrect passive voice, wrong gerund/infinitive, or conditional errors.";
-else rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced academic mistake: ONLY subtle errors in relative clauses, misuse of cohesive devices, or inversion errors. The sentence must look correct to a beginner.";
+if (['en_level_1'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY wrong singular/plural nouns (s/es) or incorrect basic articles (a/an).";
+else if (['en_level_2', 'en_level_3'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY basic subject-verb agreement (is/are) or wrong subject/object pronouns.";
+else if (['en_level_4', 'en_level_5'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE intermediate grammar mistake: ONLY incorrect basic prepositions (in/on/at) or wrong comparative/superlative forms.";
+else if (['en_level_6'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammar mistake: ONLY misusing Present Perfect vs Past Simple, or wrong modal verbs.";
+else if (['en_level_7', 'en_level_8'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced mistake: ONLY incorrect passive voice, wrong gerund/infinitive, or conditional errors.";
+else rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced academic mistake: ONLY subtle errors in relative clauses, misuse of cohesive devices, or inversion errors. The sentence must look correct to a beginner.";
 } else if (targetLang === 'Chinese' && dataMode === 'vocab') {
 if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = "The traps MUST be single vocabulary words (1-2 chars) related to the TOPIC FOCUS. Replace EXACTLY ONE character with a very basic Homophone (同音字) or Visually similar character (形近字). DO NOT write full sentences.";
 else if (['zh_level_3', 'zh_level_4'].includes(mappedKey)) rule = "The traps MUST be single vocabulary words (2-3 chars) related to the TOPIC FOCUS. Replace one character with a Homophone (同音字) or use a Near-synonym (近义词) that is incorrect for the context. DO NOT write full sentences.";
 else if (['zh_level_5', 'zh_level_6'].includes(mappedKey)) rule = "The traps MUST be single vocabulary words (2-4 chars) related to the TOPIC FOCUS. Focus on formal words (书面语) or confusing Near-synonyms (近义词辨析). DO NOT write full sentences.";
 else rule = "The traps MUST be single vocabulary words related to the TOPIC FOCUS. Focus on 4-character Idioms (成语) or academic terms. Replace one character to create a subtle lexical error. DO NOT write full sentences.";
 } else if (targetLang === 'Chinese' && dataMode === 'sentence') {
-if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic mistake: ONLY wrong measure word (量词) or wrong basic pronouns. Keep sentences under 10 characters.";
-else if (['zh_level_3', 'zh_level_4'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE structural mistake: ONLY missing structural particles (的/得/地) or wrong order of time/place modifiers.";
-else if (['zh_level_5', 'zh_level_6'].includes(mappedKey)) rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammatical mistake: ONLY complex complements (result/state) or misuse of Near-synonyms (近义词) in context.";
-else rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE highly advanced logical or semantic mistake: ONLY misuse of Chengyu (成语) in context or subtle logical paradoxes.";
+if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic mistake: ONLY wrong measure word (量词) or wrong basic pronouns.";
+else if (['zh_level_3', 'zh_level_4'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE structural mistake: ONLY missing structural particles (的/得/地) or wrong order of time/place modifiers.";
+else if (['zh_level_5', 'zh_level_6'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammatical mistake: ONLY complex complements (result/state) or misuse of Near-synonyms (近义词) in context.";
+else rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE highly advanced logical or semantic mistake: ONLY misuse of Chengyu (成语) in context or subtle logical paradoxes.";
 } else if (targetLang === 'Vietnamese' && dataMode === 'vocab') {
 rule = "The traps MUST be single words related to the TOPIC FOCUS. Replace one word or syllable with a plausible but incorrect near-synonym. DO NOT write full sentences.";
 } else if (targetLang === 'Vietnamese' && dataMode === 'sentence') {
-rule = "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammatical or semantic mistake (e.g., wrong word order, misused common words).";
+rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammatical or semantic mistake (e.g., wrong word order, misused common words).";
 }
 return rule;
 },
@@ -1029,7 +1030,7 @@ optionsRule = "The 3 distractors MUST be highly natural Vietnamese sentences but
 }
 return optionsRule;
 },
-// HÀM 2: DÀNH CHO GAME GHÉP CÂU (SCRAMBLE NOISE) - ĐÃ CẬP NHẬT ĐỂ TRỊ LỖI CHUNK COLLISION
+// HÀM 2: DÀNH CHO GAME GHÉP CÂU (SCRAMBLE NOISE)
 getMicroTierNoiseRule: function(targetLang, dataMode, mappedKey, topic) {
 let noiseRule = "";
 if (targetLang === 'English') {
@@ -1074,8 +1075,21 @@ clozeRule = "Choose an important Subject Noun, a key Action Verb, or a descripti
 return clozeRule;
 },
 // HÀM 4: DÀNH CHO GAME TỪ KHÁC LOẠI (ODD ONE OUT)
-getMicroTierOddRule: function(targetLang, mappedKey, topic) {
+getMicroTierOddRule: function(targetLang, dataMode, mappedKey, topic) {
 let oddRule = "";
+if (dataMode === 'sentence') {
+if (targetLang === 'English') {
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) oddRule = "Provide 4 full sentences. 3 sentences MUST share the same basic grammatical tense (e.g., Present Simple) or semantic theme, and 1 sentence MUST use a different tense or opposite meaning.";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) oddRule = "Provide 4 full sentences. 3 sentences MUST share a specific intermediate grammatical structure (e.g., Conditionals type 1, or passive voice), and 1 sentence MUST NOT.";
+else oddRule = "Provide 4 full sentences. 3 sentences MUST share the same subtle academic tone, cohesive devices, or advanced grammatical inversion, and 1 sentence MUST NOT.";
+} else if (targetLang === 'Chinese') {
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) oddRule = "Provide 4 full sentences. 3 sentences MUST share the same basic sentence pattern (e.g., 'Shi' sentences) or topic, and 1 MUST be different.";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) oddRule = "Provide 4 full sentences. 3 sentences MUST use the same specific particle (like 'Ba' 把 or 'Bei' 被) or complement structure, and 1 MUST NOT.";
+else oddRule = "Provide 4 full sentences. 3 sentences MUST share the same formal rhetorical device or classical Chinese phrasing, and 1 MUST NOT.";
+} else {
+oddRule = "Provide 4 full sentences. 3 sentences MUST share the same grammatical structure or semantic theme, and 1 MUST be the odd one out.";
+}
+} else {
 if (targetLang === 'English') {
 if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) oddRule = "Categorize based on simple Semantic meaning (e.g., 3 fruits vs 1 animal, or 3 colors vs 1 vehicle).";
 else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) oddRule = "Categorize based on Parts of Speech (e.g., 3 nouns vs 1 verb) or Word Endings (e.g., 3 '-tion' words vs 1 '-ment' word).";
@@ -1087,9 +1101,25 @@ else oddRule = "Categorize based on Idiom structures (Chengyu patterns), or emot
 } else if (targetLang === 'Vietnamese') {
 oddRule = "Categorize based on clear Semantic meaning or basic Parts of Speech (e.g., 3 nouns vs 1 verb) in Vietnamese.";
 }
+}
 return oddRule;
 },
-// 5. HÀM TẠO LỆNH CHO AI PURE MODE (TỰ SINH CÂU HỎI KHÔNG CẦN THẺ)
+// 5. HÀM 5: QUY ĐỊNH HÌNH THÁI TỪ VỰNG THEO 5 CẤP ĐỘ (TIERED VOCABULARY RULE)
+getMicroTierVocabTypeRule: function(mappedKey) {
+if (['en_level_1', 'en_level_2', 'zh_level_1', 'zh_level_2'].includes(mappedKey)) {
+return "CRITICAL TIER RULE (Level 1-2): The vocabulary item(s) MUST be SINGLE BASIC WORDS (e.g., 'apple', 'run', 'happy'). DO NOT use phrases or compound words.";
+} else if (['en_level_3', 'en_level_4', 'zh_level_3', 'zh_level_4'].includes(mappedKey)) {
+return "CRITICAL TIER RULE (Level 3-4): The vocabulary item(s) MUST be COMPOUND WORDS or SHORT BASIC PHRASES of exactly 2 words (e.g., 'ice cream', 'wake up', '看书').";
+} else if (['en_level_5', 'en_level_6', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) {
+return "CRITICAL TIER RULE (Level 5-6): The vocabulary item(s) MUST be PHRASAL VERBS or COMMON COLLOCATIONS (2-3 words, e.g., 'give up', 'make a decision', '取得进步').";
+} else if (['en_level_7', 'en_level_8', 'zh_level_7', 'zh_level_8'].includes(mappedKey)) {
+return "CRITICAL TIER RULE (Level 7-8): The vocabulary item(s) MUST be ACADEMIC TERMS, FORMAL COLLOCATIONS, or ADVANCED PHRASAL VERBS (e.g., 'mitigate the impact', 'take into consideration').";
+} else if (['en_level_9', 'zh_level_9'].includes(mappedKey)) {
+return "CRITICAL TIER RULE (Level 9): The vocabulary item(s) MUST be IDIOMS, LITERARY EXPRESSIONS, or HIGHLY NUANCED PHRASES (max 4 words, e.g., 'a blessing in disguise', '莫名其妙').";
+}
+return "CRITICAL TIER RULE: The vocabulary item(s) must be suitable for the level. It can be a single word or a short phrase (max 4 words).";
+},
+// 6. HÀM TẠO LỆNH CHO AI PURE MODE (TỰ SINH CÂU HỎI KHÔNG CẦN THẺ)
 buildPureModePrompt: function(levelKey, gameType, dataMode = 'vocab', topic = "") {
 const oldToNewMap = {
 level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2',
@@ -1111,6 +1141,7 @@ return "You are an expert Language Examiner creating a matching game for " + tar
 }
 let taskInstruction = "";
 let pedagogyRule = "";
+const vocabTierRule = dataMode === 'vocab' ? this.getMicroTierVocabTypeRule(mappedKey) : "";
 if (gameType === 'spotmistake') {
 taskInstruction = "Generate ONE natural " + targetLang + " sentence. Then, intentionally create EXACTLY ONE grammatical, vocabulary, or preposition mistake in that sentence. Return the wrong sentence, the wrong word, the correction, and a short Vietnamese explanation.";
 const rule = this.getMicroTierDistortionRule(targetLang, 'sentence', mappedKey, actualTopic);
@@ -1120,37 +1151,38 @@ taskInstruction = "Generate ONE natural " + targetLang + " sentence. Choose ONE 
 const rule = this.getMicroTierClozeRule(targetLang, 'sentence', mappedKey, actualTopic);
 if (rule) pedagogyRule = "\nCLOZE SELECTION RULE: " + rule;
 } else if (gameType === 'oddoneout') {
-taskInstruction = "Generate a 'Odd One Out' vocabulary question. Provide an array of 4 " + targetLang + " words. 3 words must share a common feature and 1 word must be the odd one out. Return the 4 words, the odd word, and a short Vietnamese explanation of the rule.";
-const rule = this.getMicroTierOddRule(targetLang, mappedKey, actualTopic);
+const forcedVocabRule = dataMode === 'vocab' ? this.getMicroTierVocabTypeRule(mappedKey) : "";
+const itemType = dataMode === 'sentence' ? 'sentences' : 'vocabulary items';
+taskInstruction = "Generate an 'Odd One Out' question. Provide an array of 4 " + targetLang + " " + itemType + " strictly matching the target level. " + forcedVocabRule + " 3 items must share a common feature and 1 item must be the odd one out. Return the 4 items, the odd item, and a short Vietnamese explanation of the rule.";
+const rule = this.getMicroTierOddRule(targetLang, dataMode, mappedKey, actualTopic);
 if (rule) pedagogyRule = "\nODD ONE OUT RULE: " + rule;
 } else if (gameType === 'quiz') {
 if (dataMode === 'sentence') {
 taskInstruction = "Generate ONE natural " + targetLang + " sentence strictly matching the target level, along with its accurate Vietnamese translation.";
 } else {
-taskInstruction = "Generate ONE " + targetLang + " vocabulary item strictly matching the target level, along with its accurate, short Vietnamese translation. For basic levels, use single words. For advanced levels, you CAN use compound words, phrasal verbs, collocations, or short idioms (max 4 words). CRITICAL: DO NOT write full complete sentences.";
+taskInstruction = "Generate ONE " + targetLang + " vocabulary item strictly matching the target level, along with its accurate, short Vietnamese translation. " + vocabTierRule + " ABSOLUTELY NO full complete sentences (No Subject-Verb-Object structures with punctuation).";
 }
 } else if (gameType === 'scramble') {
-// [QA DEBUG] Vá lỗi "Cưỡng chế Câu văn". Mở rẽ nhánh dataMode để AI sinh đúng từ vựng hoặc câu văn tùy theo tab người dùng chọn.
 if (dataMode === 'sentence') {
 taskInstruction = "Generate ONE natural " + targetLang + " sentence strictly matching the target level, along with its accurate Vietnamese translation. The sentence should have enough words to be scrambled.";
 } else {
-taskInstruction = "Generate ONE " + targetLang + " vocabulary item strictly matching the target level, along with its accurate, short Vietnamese translation. For basic levels, use single words. For advanced levels, you CAN use compound words, phrasal verbs, collocations, or short idioms (max 4 words). CRITICAL: DO NOT write full complete sentences.";
+taskInstruction = "Generate ONE " + targetLang + " vocabulary item strictly matching the target level, along with its accurate, short Vietnamese translation. " + vocabTierRule + " ABSOLUTELY NO full complete sentences (No Subject-Verb-Object structures with punctuation).";
 }
 } else if (gameType === 'match') {
 if (dataMode === 'sentence') {
 taskInstruction = "Generate an array of 5 natural " + targetLang + " sentences strictly matching the target level. For each sentence, provide its accurate Vietnamese translation. Ensure the sentences are distinct in meaning.";
 } else {
-taskInstruction = "Generate an array of 5 " + targetLang + " vocabulary items strictly matching the target level. For each item, provide its accurate, short Vietnamese translation. Ensure the words are distinct in meaning.";
+taskInstruction = "Generate an array of 5 " + targetLang + " vocabulary items strictly matching the target level. For each item, provide its accurate, short Vietnamese translation. " + vocabTierRule + " Ensure the words are distinct in meaning.";
 }
 }
 const diversityRule = "\nCRITICAL (ANTI-LAZINESS): Use rich, vivid vocabulary and diverse contexts. Flexibly vary sentence structures (complex sentences, relative clauses, passive voice, inversions, questions, etc.) naturally and appropriately for the level. ABSOLUTELY AVOID repeating basic S+V+O structures. Do not use overly common, generic, or 'lazy' words (e.g., 'apple', 'cat', 'happy', 'good') unless it is specifically Level 1.";
 return "You are an expert Language Tutor creating interactive exercises.\nTARGET LEVEL: " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + pedagogyRule + "\nRULES:\n1. The vocabulary and grammar complexity MUST strictly match the LEVEL CONTEXT. Do not use overly complex words for lower levels.\n2. Ensure the sentence is culturally neutral and easy to understand.\n3. Your output MUST be ONLY a raw JSON object matching the requested schema. Do not include markdown tags like ```json.\n4. " + diversityRule;
 }
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.34
-// Last Updated: 2026-04-12 11:15
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.35
+// Last Updated: 2026-04-12 12:55
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật: [GIAI ĐOẠN 1] Cạo gọt Block 2.3. Cắt bỏ PreflightEngine và PureModeEngine (đã chuyển sang Block 2.5 và 2.6). Chỉ giữ lại 5 động cơ thuật toán Game lõi. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [THỬ THÁCH AI - BƯỚC 2] Bổ sung hàm lai ai_generate_from_card vào OddOneOutEngine. Nâng cấp ai_generate hỗ trợ dataMode. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1525,7 +1557,7 @@ const fallbackZhChars = ['的','了','是','不','我','人','大','中','国','
 pool.push(...fallbackZhChars);
 } else {
 const vowels = lang === 'vi' ? ['a','e','i','o','u','y','ă','â','ê','ô','ơ','ư'] : ['a','e','i','o','u'];
-const consonants = lang === 'vi' ? ['b','c','d','đ','g','h','k','l','m','n','p','q','r','s','t','v','x'] : ['b','c','d','f','g','h','k','l','m','n','p','r','s','t','v','w','y'];
+const consonants = lang === 'vi' ? ['b','c','d','f','g','h','k','l','m','n','p','q','r','s','t','v','x'] : ['b','c','d','f','g','h','k','l','m','n','p','r','s','t','v','w','y'];
 pool.push(...vowels, ...vowels, ...consonants); // Bơm nhiều nguyên âm hơn để gây lú
 }
 const shuffledPool = window.Utils.shuffleArray(pool);
@@ -1708,7 +1740,7 @@ fb = { words: ["apple", "banana", "orange", "cat"], oddWord: "cat", explanation:
 }
 return fb;
 },
-ai_generate: async function(level, lang, apiKey, historyPrompt = "", topic = "") {
+ai_generate: async function(level, lang, apiKey, historyPrompt = "", topic = "", dataMode = 'vocab') {
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'vi' ? 'Vietnamese' : 'English');
 let prompt = "You are an expert " + targetLang + " Tutor.\nTARGET LEVEL: " + level + ".\nTASK: Generate a 'Odd One Out' vocabulary question. Provide an array of 4 " + targetLang + " words. 3 words must share a common feature (e.g., verbs) and 1 word must be the odd one out.\nCRITICAL RULES:\n1. The vocabulary MUST strictly match the TARGET LEVEL.\n2. The explanation field MUST BE 100% IN VIETNAMESE.";
 let injectedRule = "";
@@ -1716,7 +1748,7 @@ if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOddRule) {
 const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2', level_3_junior_advanced: 'en_level_3', level_4_discovery_basic: 'en_level_4', level_5_discovery_advanced: 'en_level_5', level_6_pre_ielts: 'en_level_6', level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8', level_9_expert: 'en_level_9' };
 let mappedKey = oldToNewMap[level] || level;
 if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'en_level_4';
-const ruleStr = window.IoeDataEngine.getMicroTierOddRule(targetLang, mappedKey, topic);
+const ruleStr = window.IoeDataEngine.getMicroTierOddRule(targetLang, dataMode, mappedKey, topic);
 if (ruleStr) injectedRule = "\nODD ONE OUT RULE: " + ruleStr;
 }
 prompt += injectedRule;
@@ -1732,6 +1764,36 @@ required: ["words", "oddWord", "explanation"]
 };
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
+},
+ai_generate_from_card: async function(baseCard, lang, dataMode, level, topic, apiKey) {
+const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'vi' ? 'Vietnamese' : 'English');
+const itemType = dataMode === 'sentence' ? 'sentences' : 'vocabulary items';
+let prompt = "You are an expert " + targetLang + " Tutor.\nTARGET LEVEL: " + level + ".\nTOPIC FOCUS: " + (topic || "General") + ".\n";
+prompt += "TASK: I will provide you with a base " + targetLang + " item and its meaning. You must generate an 'Odd One Out' question containing EXACTLY 4 " + itemType + ".\n";
+prompt += "Base item: \"" + baseCard.term + "\" (Meaning: " + baseCard.definition + ").\n";
+prompt += "You MUST include this exact base item in your array of 4 items. You can either make the base item the 'Odd One Out', OR make it one of the 3 similar items and generate a new 'Odd One Out' that belongs to the array.\n";
+prompt += "CRITICAL RULES:\n1. The vocabulary MUST strictly match the TARGET LEVEL.\n2. The explanation field MUST BE 100% IN VIETNAMESE.\n";
+let injectedRule = "";
+if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOddRule) {
+const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2', level_3_junior_advanced: 'en_level_3', level_4_discovery_basic: 'en_level_4', level_5_discovery_advanced: 'en_level_5', level_6_pre_ielts: 'en_level_6', level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8', level_9_expert: 'en_level_9' };
+let mappedKey = oldToNewMap[level] || level;
+if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'en_level_4';
+const ruleStr = window.IoeDataEngine.getMicroTierOddRule(targetLang, dataMode, mappedKey, topic);
+if (ruleStr) injectedRule = "\nODD ONE OUT RULE: " + ruleStr;
+}
+prompt += injectedRule;
+const schema = {
+type: "OBJECT",
+properties: {
+words: { type: "ARRAY", items: { type: "STRING" } },
+oddWord: { type: "STRING" },
+explanation: { type: "STRING" }
+},
+required: ["words", "oddWord", "explanation"]
+};
+const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
+const parsed = window.Utils.parseAiJson(res.text);
+return { ...parsed, originCards: [baseCard], isAiGenerated: true, _tokenUsage: res.tokenMetadata };
 }
 }
 };
@@ -2564,11 +2626,11 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.14
-// Last Updated: 2026-04-07 23:25
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.15
+// Last Updated: 2026-04-12 22:15
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
 // Quy tắc: Tuân thủ tuyệt đối quy tắc 3 chống SyntaxError. KHÔNG MINIFY CODE quá đà.
-// Cập nhật: TỐI ƯU MOBILE UX (Vấn đề 9). Vắt kiệt kích thước ControlBar trên Mobile (w-9 h-9, gap-1.5) để chống rớt dòng. Xóa bỏ margin-top chuẩn bị cho việc ghim đáy.
+// Cập nhật: [TÍNH NĂNG NHẢY THẺ] Tích hợp ô Input "tàng hình" (Quick Jump) vào góc thẻ Flashcard để nhảy nhanh. Khóa (disabled) khi đang Auto-play. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
@@ -2637,7 +2699,7 @@ return (
 </div>
 );
 };
-const FlashcardDisplay = ({ isFlipped, setIsFlipped, isAutoPlaying, currentCardIndex, cards, settings, mainColor, speak, getCardStyle, isAiMode, setAiMode, t, onMissingKey, isLoading, AiModeSwitch, onEnrichCard, onNext, onPrev, onExplainGrammar, onSrsGrade, onResetSrs, isContentHidden, isMuted, onToggleMute, lang, onOpenHanzi }) => {
+const FlashcardDisplay = ({ isFlipped, setIsFlipped, isAutoPlaying, currentCardIndex, cards, settings, mainColor, speak, getCardStyle, isAiMode, setAiMode, t, onMissingKey, isLoading, AiModeSwitch, onEnrichCard, onNext, onPrev, onExplainGrammar, onSrsGrade, onResetSrs, isContentHidden, isMuted, onToggleMute, lang, onOpenHanzi, onJumpToCard }) => {
 const currentCard = cards[currentCardIndex];
 const hasImage = currentCard?.image && currentCard.image.trim() !== "";
 const isDefFirst = settings.startSide === 'def';
@@ -2646,9 +2708,11 @@ const isSentence = currentCard ? window.Utils.detectSentence(currentCard.term) :
 const [typingInput, setTypingInput] = React.useState('');
 const [typingStatus, setTypingStatus] = React.useState('idle');
 const typingInputRef = React.useRef(null);
+const [jumpInput, setJumpInput] = React.useState('');
 React.useEffect(() => {
 setTypingInput('');
 setTypingStatus('idle');
+setJumpInput('');
 }, [currentCardIndex]);
 React.useEffect(() => {
 const handleGlobalKeyDown = (e) => {
@@ -2722,6 +2786,16 @@ if (speak && !isAutoPlaying) speak(currentCard.term);
 } else {
 setTypingStatus('wrong');
 }
+};
+const handleJumpSubmit = () => {
+if (!jumpInput) return;
+let target = parseInt(jumpInput, 10);
+if (isNaN(target)) { setJumpInput(''); return; }
+if (target < 1) target = 1;
+if (target > cards.length) target = cards.length;
+if (onJumpToCard && target !== currentCardIndex + 1) { onJumpToCard(target); }
+setJumpInput('');
+if (document.activeElement) document.activeElement.blur();
 };
 const isSrsEnabled = settings.srsEnabled !== false;
 const sinoVietLabel = mainColor === 'sky' ? "Dịch chi tiết" : t('sinoVietLabel');
@@ -2819,7 +2893,25 @@ className={`px-4 rounded-xl font-bold text-white shadow transition-all active:sc
 {!isFlipped && (
 <AiModeSwitch isAiMode={isAiMode} setAiMode={setAiMode} t={t} onMissingKey={onMissingKey} isLoading={isLoading} className="absolute top-3 right-3 z-50" />
 )}
-<span className="text-xs text-gray-400 self-start">{currentCardIndex + 1}/{cards.length}</span>
+{/* TÍNH NĂNG NHẢY THẺ (QUICK JUMP) */}
+<div className="self-start flex items-center text-xs text-gray-400 relative z-[60]" onClick={e => e.stopPropagation()}>
+<input
+type="text" inputMode="numeric" pattern="[0-9]*"
+value={jumpInput !== '' ? jumpInput : (currentCardIndex + 1)}
+onChange={(e) => setJumpInput(e.target.value.replace(/\D/g, ''))}
+onKeyDown={(e) => { if (e.key === 'Enter') handleJumpSubmit(); }}
+disabled={isAutoPlaying}
+className={`w-8 sm:w-10 text-center bg-transparent outline-none transition-all py-0.5 rounded font-bold ${isAutoPlaying ? 'cursor-default' : 'hover:bg-gray-100 focus:bg-blue-50 focus:text-blue-600 focus:ring-1 focus:ring-blue-300 cursor-text'}`}
+title={isAutoPlaying ? "Đang chạy tự động" : "Nhập số để chuyển thẻ"}
+/>
+<span className="mx-0.5">/</span>
+<span>{cards.length}</span>
+{jumpInput !== '' && parseInt(jumpInput, 10) !== currentCardIndex + 1 && (
+<button onClick={handleJumpSubmit} className="ml-1.5 p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors flex items-center justify-center shadow-sm">
+<window.Icons.Check size={12} strokeWidth={3} />
+</button>
+)}
+</div>
 <div className={`flex-1 flex flex-col md:flex-row items-center justify-center w-full relative md:overflow-hidden min-h-[150px]`}>
 {!delayedHidden ? (
 <>
@@ -7685,10 +7777,10 @@ queueLength={queueLength}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.20
-// Last Updated: 2026-04-11 16:55
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.22
+// Last Updated: 2026-04-12 17:53
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [QA DEBUG] Mở khóa 3 Game nâng cao (OddOneOut, FillBlank, SpotMistake) cho phân hệ Tiếng Trung. Cập nhật nhãn động (IELTS/HSK/IOE) dựa theo ngôn ngữ. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] Vá lỗi Phản ứng phụ (Regression). Phục hồi lệnh gán cứng isAiMode={true} cho Game Điền Từ và Tìm Lỗi Sai vì AI là linh hồn của 2 game này (Mặc định luôn chạy AI). Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions }) => {
@@ -8235,7 +8327,7 @@ cards={cards}
 t={t}
 mainColor={mainColor}
 lang={lang}
-isAiMode={true}
+isAiMode={gameConfig.aiMode || false}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
 onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
 onQuit={() => handleBack(null)}
@@ -10124,35 +10216,51 @@ window.Block5_11_useSpotMistakeLogic = useSpotMistakeLogic;
 window.useSpotMistakeLogic = useSpotMistakeLogic;
 window.Block5_11_SpotMistakeGame = SpotMistakeGame;
 window.SpotMistakeGame = SpotMistakeGame;
-// Block5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.3
-// Last Updated: 2026-04-12 08:45
+// Block5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.4
+// Last Updated: 2026-04-12 13:00
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Từ Khác Loại (Odd One Out).
-// Cập nhật: TÍCH HỢP ĐỒNG HỒ ĐẾM ĐẠN (QUEUE COUNTER). Bổ sung prop `queueLength` và cấy ghép Nhãn nguồn dữ liệu (AI/Thẻ) đồng bộ. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [THỬ THÁCH AI - BƯỚC 3] Tích hợp Nút gạt Thử thách AI (aiMode) vào giao diện Cấu hình. Đồng bộ lưu trữ cấu hình vào localStorage. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const OddOneOutSetup = ({ t, mainColor, onStart, onBack }) => {
 const [sourceMode, setSourceMode] = React.useState('card'); // 'card' or 'ai_pure'
-// State cho Timer
+// State cho Timer & AI
 const [timerMode, setTimerMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(15);
+const [aiMode, setAiMode] = React.useState(false); // [NEW v1.4] State cho Thử thách AI
+// [NEW v1.4] Tự động lưu/tải cấu hình
+React.useEffect(() => {
+try {
+const savedConfig = localStorage.getItem('fc_oddoneout_config');
+if (savedConfig) {
+const config = JSON.parse(savedConfig);
+setSourceMode(config.sourceMode ?? 'card');
+setTimerMode(config.timerMode ?? false);
+setTimeLimit(config.timeLimit ?? 15);
+setAiMode(config.aiMode ?? false);
+}
+} catch (e) { console.warn("Load config failed", e); }
+}, []);
 const Icons = window.Icons;
+const MenuToggle = window.MenuToggle; // [NEW v1.4] Lấy MenuToggle từ Tầng 3
 const handleStart = () => {
-// Level đã được gỡ bỏ khỏi UI, dữ liệu sẽ được Router truyền thẳng vào
-onStart({ sourceMode, timerMode, timeLimit });
+const config = { sourceMode, timerMode, timeLimit, aiMode };
+localStorage.setItem('fc_oddoneout_config', JSON.stringify(config)); // Lưu lại thói quen setup
+onStart(config);
 };
 return (
 <div className="w-full h-full flex flex-col">
 <div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
-<div className="w-full flex items-center justify-between mb-6 shrink-0">
+<div className="w-full flex items-center justify-between mb-6 shrink-0 mt-2">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
 <Icons.ChevronLeft size={24}/>
 </button>
 <h2 className="text-xl font-bold text-gray-800">Cấu hình: Từ Khác Loại</h2>
 <div className="w-10"></div>
 </div>
-<div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
+<div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-2 space-y-3">
 {/* Chọn Nguồn Dữ Liệu */}
-<div className="mb-6">
+<div className="mb-2">
 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
 <div className="grid grid-cols-2 gap-3">
 <button onClick={() => setSourceMode('card')} className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}>
@@ -10162,7 +10270,7 @@ return (
 <div className="text-[10px] text-gray-500">Tìm từ khác nhóm từ vựng</div>
 </div>
 </button>
-<button onClick={() => setSourceMode('ai_pure')} className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'ai_pure' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}>
+<button onClick={() => { setSourceMode('ai_pure'); setAiMode(false); }} className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'ai_pure' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}>
 <Icons.Sparkles size={24} className={sourceMode === 'ai_pure' ? `text-${mainColor}-600` : 'text-gray-400'} />
 <div className="text-center">
 <div className="font-bold text-gray-800 text-sm">AI Tự Sinh</div>
@@ -10171,29 +10279,24 @@ return (
 </button>
 </div>
 </div>
+{/* [NEW v1.4] Công tắc Thử thách AI */}
+<MenuToggle active={aiMode} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={sourceMode === 'ai_pure' ? "(Chế độ Tự sinh đã bao gồm AI)" : (aiMode ? "AI nhào nặn nhóm từ tinh vi" : "Thuật toán phân loại nội bộ")} disabled={sourceMode === 'ai_pure'} />
 {/* Cấu hình Thời gian */}
-<div className={`p-4 bg-${mainColor}-50 rounded-xl border border-${mainColor}-100 transition-all mb-6`}>
-<div className="flex justify-between items-center">
-<div className="flex flex-col">
-<span className={`font-bold flex items-center gap-2 text-${mainColor}-700`}><window.Icons.Clock size={18} /> Giới hạn thời gian</span>
-<span className="text-xs text-gray-500 mt-1">{timerMode ? `${timeLimit} giây / câu` : 'Không giới hạn'}</span>
-</div>
-<div className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors relative flex items-center ${timerMode ? `bg-${mainColor}-500` : 'bg-gray-300'}`} onClick={() => setTimerMode(!timerMode)}>
-<div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${timerMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
-</div>
-</div>
-{timerMode && (
-<div className="flex justify-center gap-2 mt-4 pt-3 border-t border-white/50 animate-in fade-in">
-<span className="text-xs font-bold text-gray-500 self-center mr-2 uppercase">Chọn:</span>
+<MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / câu` : 'Thoải mái thời gian'} extra={
+<div className="mt-3 pt-2 border-t border-orange-100 flex justify-between items-center animate-in fade-in">
+<span className="text-[10px] font-bold text-orange-400 uppercase">Chọn thời gian:</span>
+<div className="flex gap-1">
 {[10, 15, 20, 30].map(t => (
-<button key={t} onClick={() => setTimeLimit(t)} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${timeLimit === t ? `bg-${mainColor}-500 text-white shadow-md scale-105` : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>{t}s</button>
+<button key={t} onClick={(e) => { e.stopPropagation(); setTimeLimit(t); }} className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${timeLimit === t ? `bg-orange-500 text-white border-orange-500 shadow-md` : 'bg-white text-gray-500 border-gray-200 hover:bg-orange-50'}`}>
+{t}s
+</button>
 ))}
 </div>
-)}
 </div>
+} />
 </div>
-<div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0">
-<button onClick={handleStart} className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}>
+<div className="w-full mt-4 pt-4 border-t border-gray-100 bg-white pb-safe shrink-0">
+<button onClick={handleStart} className={`w-full py-4 bg-${mainColor}-600 text-white rounded-xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}>
 <Icons.Play size={24} fill="currentColor" /> TÌM TỪ KHÁC LOẠI
 </button>
 </div>
@@ -10438,10 +10541,10 @@ window.OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.5
-// Last Updated: 2026-04-12 12:30
+// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.7
+// Last Updated: 2026-04-12 15:55
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [GIAI ĐOẠN 2 - CẮM CÁP] Đổi đường dẫn gọi Động cơ Đa luồng sang QueueEngine (Block 2.5) và Động cơ AI (batchEnrich, getHistoryPrompt) sang AiFactoryEngine (Block 2.6). Bơm bổ sung tham số topic. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] Vá lỗi theo Báo cáo DEBUG.md: Sửa ánh xạ isAiMode, chặn spam Bỏ qua khi isGenerating, vá Memory Leak ở Timer AI, xóa nút Hủy bỏ ở màn hình Loading 22s. Tuân thủ tuyệt đối Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -10474,6 +10577,7 @@ const isGameActiveRef = React.useRef(true);
 const gameTimerRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
+const deckRef = React.useRef([]); // Thêm deckRef để quản lý rút bài
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
@@ -10483,7 +10587,7 @@ const latestStateRef = React.useRef({});
 React.useEffect(() => {
 latestStateRef.current = {
 currentQuestion, selectedIndex, checkStatus, attempts,
-score, combo, playedCount, time, correctCount, wrongCount, timeLeft
+score, combo, playedCount, time, correctCount, wrongCount, timeLeft, deck: deckRef.current
 };
 }, [currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft]);
 const triggerAutoSave = React.useCallback(() => {
@@ -10579,7 +10683,7 @@ let historyPrompt = "";
 if (window.AiFactoryEngine) {
 historyPrompt = window.AiFactoryEngine.getHistoryPrompt(historyQueueRef.current);
 }
-const parsedResult = await window.GameAlgoEngine.OddOneOutEngine.ai_generate(level, lang, currentApiKey, historyPrompt, config?.topic);
+const parsedResult = await window.GameAlgoEngine.OddOneOutEngine.ai_generate(level, lang, currentApiKey, historyPrompt, config?.topic, config?.dataMode);
 // Chiến dịch Bàn Tay Sắt: Xé nhỏ mảng từ vựng, lưu TỪNG TỪ MỘT vào danh sách đen để chặn lặp
 if (parsedResult && parsedResult.words && Array.isArray(parsedResult.words)) {
 parsedResult.words.forEach(w => {
@@ -10609,11 +10713,52 @@ localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
 return { ...parsedResult, isAiGenerated: true };
 } catch (e) {
-console.warn("AI OddOneOut Fallback:", e.message);
+console.warn("AI OddOneOut Pure Fallback:", e.message);
 }
 }
-// 3. THẺ GỐC HOẶC KHO CỨU HỘ (Nếu AI Pure sập mạng hoặc đang ở Card Mode)
-// Động cơ offline_generate ở Tầng 2.3 đã được nâng cấp chọc thẳng vào FallbackDataEngine khi thiếu thẻ
+// 2.5 HYBRID AI MODE (Thử thách AI với Thẻ gốc)
+if (!isPureMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OddOneOutEngine.ai_generate_from_card) {
+let poppedIdx = null;
+try {
+if (deckRef.current.length === 0) {
+let validIndices = enrichedCardsRef.current.map((_, i) => i);
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
+}
+poppedIdx = deckRef.current.shift();
+const baseCard = enrichedCardsRef.current[poppedIdx];
+if (baseCard) {
+const dataMode = config?.dataMode || 'vocab';
+const topic = config?.topic || '';
+const aiPromise = window.GameAlgoEngine.OddOneOutEngine.ai_generate_from_card(baseCard, lang, dataMode, level, topic, currentApiKey);
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Hybrid Timeout")), 15000));
+const parsedResult = await Promise.race([aiPromise, timeoutPromise]);
+if (parsedResult && parsedResult.words && parsedResult.oddWord) {
+if (parsedResult._tokenUsage) {
+const used = parsedResult._tokenUsage.totalTokenCount || 0;
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + used);
+}
+if (onSaveToHarvest) {
+onSaveToHarvest(level, {
+displaySentence: parsedResult.words.join(' • '),
+targetWord: parsedResult.oddWord,
+hint: parsedResult.explanation
+});
+}
+if (isInitializingRef.current) {
+aiGeneratedCountRef.current += 1;
+safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`, "success");
+}
+return { ...parsedResult, isAiGenerated: true };
+}
+}
+} catch (e) {
+console.warn("Hybrid AI OddOneOut Fallback:", e.message);
+// Fallback: Nhét lại thẻ vào đầu bộ bài để cỗ máy offline xử lý
+if (poppedIdx !== null) deckRef.current.unshift(poppedIdx);
+}
+}
+// 3. THẺ GỐC HOẶC KHO CỨU HỘ (Nếu AI Pure sập mạng hoặc đang ở Card Mode ko AI)
 if (window.GameAlgoEngine && window.GameAlgoEngine.OddOneOutEngine && window.GameAlgoEngine.OddOneOutEngine.offline_generate) {
 const offlineResult = window.GameAlgoEngine.OddOneOutEngine.offline_generate(enrichedCardsRef.current, lang);
 if (offlineResult) return { ...offlineResult, isAiGenerated: false };
@@ -10631,6 +10776,7 @@ historyQueueRef.current = [];
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
 let currentDeck = [...cards];
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i)) : [];
 // PRE-FLIGHT BATCH ENRICH (Vá lỗi thẻ mù cho Card Mode)
 if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
 safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
@@ -10644,7 +10790,7 @@ safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// [ĐỒNG BỘ v1.5] Nâng mức trần nạp đạn lên 4 viên
+// [ĐỒNG BỘ v1.6] Giữ mức trần nạp đạn lên 4 viên
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 } else {
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
@@ -10652,12 +10798,13 @@ return;
 }
 const isUsingAI = isAiMode || sourceMode === 'ai_pure';
 if (isUsingAI) {
-setAiCountdown(20);
+setAiCountdown(22);
 const timer = setInterval(() => {
+if (!isGameActiveRef.current) { clearInterval(timer); return; } // [QA DEBUG] Vá Memory Leak
 setAiCountdown(prev => { if (prev <= 1) clearInterval(timer); return prev - 1; });
 }, 1000);
 const maintainPromise = coordinatorRef.current.maintain();
-const timeoutPromise = new Promise(r => setTimeout(r, 20000));
+const timeoutPromise = new Promise(r => setTimeout(r, 22000));
 await Promise.race([maintainPromise, timeoutPromise]);
 clearInterval(timer);
 const firstData = coordinatorRef.current.pop();
@@ -10704,9 +10851,10 @@ setTime(st.time || 0);
 setCorrectCount(st.correctCount || 0);
 setWrongCount(st.wrongCount || 0);
 setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 15));
+if (st.deck) deckRef.current = st.deck;
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// [ĐỒNG BỘ v1.5] Nâng mức trần nạp đạn lên 4 viên khi Phục hồi Session
+// [ĐỒNG BỘ v1.6] Nâng mức trần nạp đạn lên 4 viên khi Phục hồi Session
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 coordinatorRef.current.maintain();
 }
@@ -10750,7 +10898,7 @@ setTimeout(() => triggerAutoSave(), 150);
 };
 // --- TƯƠNG TÁC NGƯỜI DÙNG ---
 const handleOptionClick = (idx) => {
-if (checkStatus === 'success' || checkStatus === 'failed') return;
+if (checkStatus === 'success' || checkStatus === 'failed' || isGenerating) return; // [QA DEBUG] Chặn Click ẩn khi đang nạp
 const clickedWord = currentQuestion.words[idx];
 setSelectedIndex(idx);
 const isCorrect = clickedWord.toLowerCase().trim() === currentQuestion.oddWord.toLowerCase().trim();
@@ -10777,7 +10925,7 @@ setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
 setTimeout(() => triggerAutoSave(), 150);
 };
 const handleSkip = () => {
-if (checkStatus === 'success' || checkStatus === 'failed') return;
+if (checkStatus === 'success' || checkStatus === 'failed' || isGenerating) return; // [QA DEBUG] Bịt lỗ hổng Spam Skip
 pushToRetryBag(currentQuestion);
 setCombo(1); setCheckStatus('failed'); setWrongCount(p => p + 1); setAttempts(2);
 safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); setResultTimer(8);
@@ -10830,7 +10978,8 @@ handleOptionClick, handleSkip, nextRound, handleSaveAndBack
 const OddOneOutGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, onPlay }) => {
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit };
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-const logic = useOddOneOutLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 15, savedState }, hookCallbacks);
+// [QA DEBUG] Fix Điểm mù 1: Đồng bộ quyền sinh sát isAiMode từ safeConfig
+const logic = useOddOneOutLogic(cards, { ...safeConfig, isAiMode: safeConfig.aiMode || false, apiKey, lang, timeLimit: safeConfig.timeLimit || 15, savedState }, hookCallbacks);
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: logic.handleSaveAndBack,
@@ -12252,11 +12401,11 @@ handleExportHarvestToExcel
 window.Block6_3_useDataLogic = useDataLogic;
 window.Block15_useDataLogic = useDataLogic; // Fallback
 window.useDataLogic = useDataLogic;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.4
-// Last Updated: 2026-04-08 21:20
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.5
+// Last Updated: 2026-04-12 21:55
 // Nhiệm vụ: Bộ điều khiển trung tâm (Main Controller). Gom nhóm toàn bộ logic từ các hooks con và cung cấp API/Actions cho UI.
 // Quy tắc: Đóng vai trò là cầu nối giữa Data Layer (Tầng 6) và Presentation Layer (Tầng 3, 4, 5).
-// Cập nhật: ĐẠI PHẪU DỮ LIỆU MẪU (Bước 2 - Phần 2). Xóa sổ sự phụ thuộc vào CONFIG_SAMPLES tại hàm `handleToggleShuffle`.
+// Cập nhật: [TÍNH NĂNG NHẢY THẺ] Khai báo action `handleJumpToCard` để xử lý logic nhảy thẳng đến thẻ bất kỳ, tích hợp dọn dẹp state lật thẻ và ngắt âm thanh. Tuân thủ Điều 3.
 // ==================================================================================
 // [MODIFIED] Nhận 'core' từ tham số để dùng chung state với App
 const useAppLogic = (core) => {
@@ -12409,6 +12558,17 @@ core.setIsContentHidden(false);
 stopSpeaking();
 setTimeout(() => core.setCurrentCardIndex(prev => (prev - 1 + cards.length) % cards.length), 150);
 }, [stopSpeaking]);
+// [NEW v1.5] Logic Nhảy thẳng đến thẻ bất kỳ (Quick Jump)
+const handleJumpToCard = useCallback((inputNumber) => {
+const { cards } = latestStateRef.current;
+const targetIndex = parseInt(inputNumber, 10) - 1;
+if (!isNaN(targetIndex) && targetIndex >= 0 && targetIndex < cards.length) {
+core.setCurrentCardIndex(targetIndex);
+core.setIsFlipped(false);
+core.setIsContentHidden(false);
+stopSpeaking();
+}
+}, [stopSpeaking]);
 const toggleAutoPlay = useCallback(() => {
 if (latestStateRef.current.isAutoPlaying) {
 core.setIsAutoPlaying(false);
@@ -12469,7 +12629,7 @@ showToast("Đã tắt trộn bài (Về thứ tự gốc)", "info");
 }
 }, [core.isShuffle, core.studySourceName, core.isStudyingNotebook, core.lang, core.notebook, core.incorrectList]);
 // ==================================================================================
-// 4. [NEW v1.3] RETRY BAG APIS (CÁC HÀM QUẢN LÝ TÚI NHÁP TOÀN CỤC)
+// 4. RETRY BAG APIS (CÁC HÀM QUẢN LÝ TÚI NHÁP TOÀN CỤC)
 // ==================================================================================
 // Nạp câu hỏi vào túi nháp khi làm sai
 const addToRetryBag = useCallback((gameType, questionData) => {
@@ -12629,6 +12789,7 @@ setters: { ...core, setIsShuffle: handleToggleShuffle },
 actions: {
 t, showToast, getCardStyle, speak, stopSpeaking,
 handleNext, handlePrev, toggleAutoPlay, handleStopAutoPlay,
+handleJumpToCard, // [NEW v1.5] Export hàm nhảy thẻ
 handleOpenSettings: () => core.setShowSettings(true),
 handleCloseSettings: () => core.setShowSettings(false),
 handleCancelSettings: () => core.setShowSettings(false),
@@ -12669,8 +12830,8 @@ handleCloseHanziSelector,
 handleStartWriting,
 handleCloseHanziWriter,
 setIsGamePlaying: core.setIsGamePlaying,
-addToRetryBag,      // [NEW v1.3] Export API Nạp túi nháp
-removeFromRetryBag  // [NEW v1.3] Export API Xóa túi nháp
+addToRetryBag,
+removeFromRetryBag
 },
 refs: { audioTimeoutRef: core.audioTimeoutRef }
 };
@@ -12679,10 +12840,10 @@ refs: { audioTimeoutRef: core.audioTimeoutRef }
 window.Block6_4_useAppLogic = useAppLogic;
 window.Block13_useAppLogic = useAppLogic; // Fallback
 window.useAppLogic = useAppLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.8
-// Last Updated: 2026-04-12 12:40
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.9
+// Last Updated: 2026-04-12 22:20
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [GIAI ĐOẠN 3] Khai báo Tầng 7. Bổ sung QueueEngine và AiFactoryEngine vào mảng kiểm tra Dependencies để đảm bảo 2 trạm vi dịch vụ mới khởi động xong trước khi mở App. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [TÍNH NĂNG NHẢY THẺ] Truyền prop onJumpToCard từ Tầng 6 xuống FlashcardDisplay ở Tầng 3. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -12848,7 +13009,8 @@ isContentHidden: coreState.isContentHidden,
 isMuted: coreState.isMuted,
 onToggleMute: logic.actions?.handleToggleMute,
 lang: coreState.lang,
-onOpenHanzi: logic.actions?.handleOpenHanziStudy
+onOpenHanzi: logic.actions?.handleOpenHanziStudy,
+onJumpToCard: logic.actions?.handleJumpToCard // [NEW v1.9] Truyền hàm nhảy thẻ xuống
 })
 )
 );
