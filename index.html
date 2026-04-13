@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.13
-// Last Updated: 2026-04-11 13:47
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.14
+// Last Updated: 2026-04-13 10:00
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [QA DEBUG] Vá lỗi Xung đột Ngữ cảnh Đa ngôn ngữ (Context Collision). Viết lại prompt quiz_word và quiz_sentence để nhận song song {term} (Gốc) và {definition} (Bản dịch đích) chống ảo giác AI.
+// Cập nhật: [INDEXEDDB MIGRATION - BƯỚC 1] Xây dựng hạ tầng window.FcDB. Khởi tạo IndexedDB và tự động di cư ngầm dữ liệu Kho AI từ localStorage sang. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -105,7 +105,7 @@ grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, sú
 window.UI_TEXT = {
 vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Hoặc nhập link trực tiếp:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "Định nghĩa", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "Dừng", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
-zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重复次数", resetData: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
+zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
 // CÁC HÀM TIỆN ÍCH (UTILS)
 window.Utils = {
@@ -623,6 +623,77 @@ if (text && text.trim()) distractors.add(text.trim());
 fIdx++;
 }
 return Array.from(distractors).slice(0, 4);
+}
+};
+// [NEW v1.14] KHỞI TẠO ĐỘNG CƠ FcDB (Flashcard Database) SỬ DỤNG INDEXEDDB API
+window.FcDB = {
+dbName: 'FlashcardLiteDB',
+storeName: 'keyvaluepairs',
+db: null,
+init: function() {
+return new Promise((resolve, reject) => {
+if (this.db) {
+resolve();
+return;
+}
+const request = indexedDB.open(this.dbName, 1);
+request.onupgradeneeded = (event) => {
+const db = event.target.result;
+if (!db.objectStoreNames.contains(this.storeName)) {
+db.createObjectStore(this.storeName);
+}
+};
+request.onsuccess = async (event) => {
+this.db = event.target.result;
+// THỰC THI CHIẾN DỊCH DI CƯ NGẦM (MIGRATION)
+try {
+const oldHarvestPoolStr = localStorage.getItem('fc_ai_harvest_pool');
+if (oldHarvestPoolStr) {
+const oldPool = JSON.parse(oldHarvestPoolStr);
+await this.set('fc_ai_harvest_pool', oldPool);
+localStorage.removeItem('fc_ai_harvest_pool');
+console.log('[FcDB] Migrated Harvest Pool to IndexedDB successfully. Freed local storage.');
+}
+} catch(e) {
+console.error('[FcDB] Migration Error:', e);
+}
+resolve();
+};
+request.onerror = (event) => {
+console.error('[FcDB] Init Error:', event.target.error);
+reject(event.target.error);
+};
+});
+},
+get: function(key) {
+return new Promise((resolve, reject) => {
+if (!this.db) { reject(new Error('DB not initialized')); return; }
+const transaction = this.db.transaction([this.storeName], 'readonly');
+const store = transaction.objectStore(this.storeName);
+const request = store.get(key);
+request.onsuccess = () => resolve(request.result);
+request.onerror = (e) => reject(e.target.error);
+});
+},
+set: function(key, value) {
+return new Promise((resolve, reject) => {
+if (!this.db) { reject(new Error('DB not initialized')); return; }
+const transaction = this.db.transaction([this.storeName], 'readwrite');
+const store = transaction.objectStore(this.storeName);
+const request = store.put(value, key);
+request.onsuccess = () => resolve();
+request.onerror = (e) => reject(e.target.error);
+});
+},
+remove: function(key) {
+return new Promise((resolve, reject) => {
+if (!this.db) { reject(new Error('DB not initialized')); return; }
+const transaction = this.db.transaction([this.storeName], 'readwrite');
+const store = transaction.objectStore(this.storeName);
+const request = store.delete(key);
+request.onsuccess = () => resolve();
+request.onerror = (e) => reject(e.target.error);
+});
 }
 };
 // Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.30
@@ -4274,11 +4345,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.4
-// Last Updated: 2026-04-07 14:05
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.5
+// Last Updated: 2026-04-13 08:15
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal
-// Cập nhật: NÂNG CẤP (Giai đoạn 3.2). Đập đi xây lại LinkManagerModal thành 2 trạm nạp: Nguồn Từ Vựng và Nguồn Câu Văn. Tối ưu UX.
+// Cập nhật: [HARVEST POOL UI] Nâng cấp giao diện Quản lý Kho AI: Thêm lưới nút bấm (Xem trước, Làm rỗng, Xuất Excel). Tích hợp Khung Preview nội bộ có phân nhóm theo Level. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [stats, setStats] = React.useState({ count: 0 });
@@ -4325,10 +4396,11 @@ isOpen, onClose, t, defaultUrl, setDefaultUrl, exportUrl, setExportUrl,
 importUrl, setImportUrl, apiKeySheetUrl, setApiKeySheetUrl, onImport,
 onExportLink, onExportExcel, onFileImport, onSaveSettings, onFetchKey,
 onDownloadTemplate, lang, onImportToNotebook,
-aiHarvestPool = {}, onExportHarvestToExcel
+aiHarvestPool = {}, onExportHarvestToExcel, onClearHarvestPool
 }) => {
 const fileInputRef = React.useRef(null);
 const [notebookUrl, setNotebookUrl] = React.useState('');
+const [showPreview, setShowPreview] = React.useState(false); // [NEW v1.5] State cho khung Xem trước Kho AI
 // [NEW v1.4] Master Links State
 const defaultVocabKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_vocab';
 const defaultSentenceKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_sentence';
@@ -4338,6 +4410,7 @@ React.useEffect(() => {
 if (isOpen) {
 setVocabUrl(localStorage.getItem(defaultVocabKey) || window.DEFAULT_SHEETS?.[lang]?.vocab || '');
 setSentenceUrl(localStorage.getItem(defaultSentenceKey) || window.DEFAULT_SHEETS?.[lang]?.sentence || '');
+setShowPreview(false); // Reset preview state
 }
 }, [isOpen, lang]);
 const totalHarvested = Object.values(aiHarvestPool).reduce((sum, arr) => sum + (arr?.length || 0), 0);
@@ -4400,21 +4473,64 @@ return (
 </button>
 </div>
 </div>
+{/* [UPDATE v1.5] BẢNG QUẢN LÝ KHO AI */}
 <div className="mb-4 bg-indigo-50 p-3 rounded-lg border border-indigo-200 shadow-sm relative overflow-hidden">
 <div className="absolute -right-4 -top-4 opacity-10"><window.Icons.Sparkles size={64}/></div>
 <label className="block text-sm font-bold text-indigo-800 mb-1 flex items-center gap-2 relative z-10">
 <window.Icons.Sparkles size={16}/> Kho Dữ Liệu AI Tự Sinh
 </label>
 <p className="text-[11px] text-indigo-600 mb-3 leading-tight relative z-10">
-Tự động thu thập các câu hỏi/thử thách chất lượng cao do AI sáng tác trong quá trình bạn chơi game ở chế độ "AI Tự Sinh".
+Tự động thu thập các câu hỏi/thử thách do AI sáng tác trong quá trình chơi game ở chế độ "AI Tự Sinh".
 </p>
 <div className="flex justify-between items-center bg-white p-2 rounded border border-indigo-100 mb-3 relative z-10">
 <span className="text-xs font-bold text-gray-600">Tổng số câu đã thu hoạch:</span>
 <span className="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{totalHarvested}</span>
 </div>
+{/* Lưới nút bấm quản lý */}
+<div className="grid grid-cols-2 gap-2 mb-2 relative z-10">
+<button onClick={() => setShowPreview(!showPreview)} disabled={totalHarvested === 0} className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-sm border ${showPreview ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'} disabled:opacity-50`}>
+<window.Icons.Eye size={14}/> {showPreview ? 'Đóng xem trước' : 'Xem trước'}
+</button>
+<button onClick={() => { if(onClearHarvestPool) onClearHarvestPool(); setShowPreview(false); }} disabled={totalHarvested === 0} className="p-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-sm disabled:opacity-50">
+<window.Icons.Trash2 size={14}/> Làm rỗng
+</button>
+</div>
 <button onClick={onExportHarvestToExcel} disabled={totalHarvested === 0} className="w-full p-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:from-gray-400 disabled:to-gray-500 shadow-md transition-all active:scale-95 relative z-10">
 <window.Icons.Download size={18}/> Xuất Kho AI ra Excel
 </button>
+{/* Khung Preview Nội bộ */}
+{showPreview && totalHarvested > 0 && (
+<div className="mt-3 bg-white border border-indigo-100 rounded-lg p-2 max-h-[250px] overflow-y-auto custom-scrollbar relative z-10 animate-in slide-in-from-top-2">
+{Object.entries(aiHarvestPool).map(([level, items]) => {
+if (!items || items.length === 0) return null;
+const cleanLvl = level.replace('level_', '').replace(/_/g, ' ').toUpperCase();
+return (
+<div key={level} className="mb-3 last:mb-0">
+<div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1 border-b border-indigo-50 pb-1 sticky top-0 bg-white/90 backdrop-blur-sm z-20">
+{cleanLvl} ({items.length})
+</div>
+<div className="space-y-2">
+{items.map((item, idx) => {
+// Nội suy linh hoạt để hỗ trợ nhiều format Game
+const qText = item.wrongSentence || item.displaySentence || item.term || 'Chưa rõ';
+const aText = item.correction || item.targetWord || item.oddWord || 'Chưa rõ';
+const isWordsArray = Array.isArray(item.words); // Game Từ Khác Loại
+const displayQ = isWordsArray ? item.words.join(' • ') : qText;
+return (
+<div key={idx} className="bg-gray-50 p-2 rounded border border-gray-100 text-[10px]">
+<div className="font-bold text-gray-700 mb-0.5 line-clamp-2">{displayQ}</div>
+<div className="flex items-center gap-1 text-green-600 font-bold">
+<window.Icons.ChevronRight size={10} className="shrink-0" /> <span className="line-clamp-1">{aText}</span>
+</div>
+</div>
+);
+})}
+</div>
+</div>
+);
+})}
+</div>
+)}
 </div>
 <div className="mb-4">
 <label className="block text-sm font-bold text-gray-700 mb-1">{t('exportSheetLabel')}</label>
@@ -11017,11 +11133,11 @@ window.Block5_13_useOddOneOutLogic = useOddOneOutLogic;
 window.useOddOneOutLogic = useOddOneOutLogic;
 window.Block5_13_OddOneOutGame = OddOneOutGame;
 window.OddOneOutGame = OddOneOutGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.7
-// Last Updated: 2026-04-08 21:10
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.8
+// Last Updated: 2026-04-13 10:10
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật: ĐẠI PHẪU DỮ LIỆU MẪU (Bước 1). Cắt đứt luồng Fallback nạp thẻ mẫu khi mảng trống. Dứt khoát trả về mảng rỗng. Loại bỏ sự phụ thuộc vào CONFIG_SAMPLES.
+// Cập nhật: [INDEXEDDB MIGRATION - BƯỚC 2] Chuyển aiHarvestPool và globalRetryBag sang nạp bất đồng bộ từ window.FcDB. Thêm cờ isDbReady. Tuân thủ Điều 3.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -11052,7 +11168,6 @@ const [lang, setLang] = useState(() => window.Utils?.safeJsonParse(window.STORAG
 // Chốt chặn để phân biệt lần đầu tải trang và đổi ngôn ngữ
 const prevLangRef = useRef(lang);
 const [uiLang, setUiLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.UI_LANG, 'vi') || 'vi');
-// [HOTFIX v1.6] Đọc trực tiếp chuỗi thô (Raw String) để tránh crash JSON.parse
 const [dataMode, setDataMode] = useState(() => {
 const saved = localStorage.getItem('fc_data_mode');
 return saved ? saved.replace(/"/g, '') : 'vocab';
@@ -11068,15 +11183,15 @@ return saved ? saved.replace(/"/g, '') : '';
 });
 // Data States
 const [cards, setCards] = useState([]);
-// [UPDATE v1.7] Loại bỏ phụ thuộc CONFIG_SAMPLES
 const [notebook, setNotebook] = useState(() => window.Utils?.safeJsonParse('fc_notebook_' + lang, []) || []);
 const [mastered, setMastered] = useState(() => window.Utils?.safeJsonParse('fc_mastered_' + lang, []) || []);
 const [incorrectList, setIncorrectList] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, []) || []);
 const [isStudyingNotebook, setIsStudyingNotebook] = useState(false);
 const [studySourceName, setStudySourceName] = useState(null);
-// AI Harvest Pool State & Retry Bag
-const [aiHarvestPool, setAiHarvestPool] = useState(() => window.Utils?.safeJsonParse('fc_ai_harvest_pool', {}) || {});
-const [globalRetryBag, setGlobalRetryBag] = useState(() => window.Utils?.safeJsonParse('fc_global_retry_bag', {}) || {});
+// [NEW v1.8] INDEXEDDB ASYNC STATE
+const [isDbReady, setIsDbReady] = useState(false);
+const [aiHarvestPool, setAiHarvestPool] = useState({});
+const [globalRetryBag, setGlobalRetryBag] = useState({});
 // Config & Token
 const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '');
 const [totalTokens, setTotalTokens] = useState(() => parseInt(localStorage.getItem('fc_total_tokens') || '0', 10));
@@ -11144,6 +11259,32 @@ const resetTimeoutRef = useRef(null);
 const aiQueueRef = useRef([]);
 const isAiQueueProcessing = useRef(false);
 // --- INITIALIZATION EFFECTS ---
+// [NEW v1.8] ĐỘNG CƠ KHỞI TẠO CƠ SỞ DỮ LIỆU (INDEXEDDB INIT)
+useEffect(() => {
+const initPersistence = async () => {
+if (!window.FcDB) {
+console.error('[CoreState] FcDB not found in window');
+setIsDbReady(true); // Cầu dao an toàn: vẫn cho app chạy
+return;
+}
+try {
+// 1. Mở kết nối và thực hiện Migration nếu cần
+await window.FcDB.init();
+// 2. Nạp dữ liệu Kho AI
+const pool = await window.FcDB.get('fc_ai_harvest_pool');
+if (pool) setAiHarvestPool(pool);
+// 3. Nạp dữ liệu Túi Nháp
+const bag = await window.FcDB.get('fc_global_retry_bag');
+if (bag) setGlobalRetryBag(bag);
+setIsDbReady(true);
+console.log('[CoreState] IndexedDB ready. States hydrated.');
+} catch (e) {
+console.error('[CoreState] IndexedDB Init Error:', e);
+setIsDbReady(true); // Fallback
+}
+};
+initPersistence();
+}, []);
 // 1. Load Fonts
 useEffect(() => {
 const googleId = 'fc-google-fonts';
@@ -11172,7 +11313,6 @@ localStorage.setItem(window.STORAGE_KEYS.UI_LANG, JSON.stringify(uiLang));
 // 3. EFFECT: Đổi Ngôn Ngữ -> Tải các Sổ tay và Khởi tạo Level
 useEffect(() => {
 localStorage.setItem(window.STORAGE_KEYS.LANG, JSON.stringify(lang));
-// [UPDATE v1.7] Loại bỏ phụ thuộc CONFIG_SAMPLES
 const savedNote = window.Utils?.safeJsonParse('fc_notebook_' + lang, []) || [];
 const savedMaster = window.Utils?.safeJsonParse('fc_mastered_' + lang, []) || [];
 const savedIncorrect = window.Utils?.safeJsonParse(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, []) || [];
@@ -11185,7 +11325,6 @@ setCurrentCardIndex(0);
 setIsStudyingNotebook(false);
 setStudySourceName(null);
 aiQueueRef.current = [];
-// [HOTFIX v1.6] Khôi phục an toàn (Không dùng JSON.parse cho chuỗi thô)
 const defLvl = lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4');
 const savedLvl = localStorage.getItem('fc_current_level_' + lang);
 setCurrentLevel(savedLvl ? savedLvl.replace(/"/g, '') : defLvl);
@@ -11214,7 +11353,6 @@ setCards(targetCards);
 window.Utils.safeLocalStorageSet('fc_data_' + lang, targetCards);
 setCurrentCardIndex(0);
 } else if (!isAiLoading) {
-// [UPDATE v1.7] Nếu bể cạn -> Trả về mảng rỗng một cách dứt khoát (Dọn dẹp tàn dư Sample Data)
 setCards([]);
 window.Utils.safeLocalStorageSet('fc_data_' + lang, []);
 setCurrentCardIndex(0);
@@ -11225,9 +11363,13 @@ useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.API_KEY, apiKey); }, [apiKey]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_game_sessions', globalGameSessions); }, [globalGameSessions]);
-useEffect(() => { window.Utils?.safeLocalStorageSet('fc_ai_harvest_pool', aiHarvestPool); }, [aiHarvestPool]);
-useEffect(() => { window.Utils?.safeLocalStorageSet('fc_global_retry_bag', globalRetryBag); }, [globalRetryBag]);
-// [HOTFIX v1.6] Lưu dạng chuỗi nguyên bản (raw string) không có JSON.stringify
+// [NEW v1.8] LƯU TRỮ TRÊN INDEXEDDB (ASYNC)
+useEffect(() => {
+if (isDbReady && window.FcDB) window.FcDB.set('fc_ai_harvest_pool', aiHarvestPool);
+}, [aiHarvestPool, isDbReady]);
+useEffect(() => {
+if (isDbReady && window.FcDB) window.FcDB.set('fc_global_retry_bag', globalRetryBag);
+}, [globalRetryBag, isDbReady]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_data_mode', dataMode); }, [dataMode]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_current_level_' + lang, currentLevel); }, [currentLevel, lang]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_current_topic_' + lang, currentTopic); }, [currentTopic, lang]);
@@ -11260,6 +11402,7 @@ return {
 // State
 viewMode, lang, uiLang, cards, notebook, mastered, masteredCount: mastered.length, isStudyingNotebook,
 incorrectList, studySourceName, apiKey, totalTokens, aiHarvestPool, globalRetryBag,
+isDbReady, // [NEW v1.8] Báo cáo tình trạng DB cho App Component
 // Multi-dimensional State
 dataMode, setDataMode,
 currentLevel, setCurrentLevel,
@@ -11285,7 +11428,6 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 };
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
-window.Block12_useCoreState = useCoreState; // GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC (Fallback)
 window.useCoreState = useCoreState;
 // Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.5
 // Last Updated: 2026-04-08 19:55
@@ -11567,10 +11709,10 @@ handleManualAiFill
 window.Block6_2_useAiLogic = useAiLogic;
 window.Block14_useAiLogic = useAiLogic; // GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC (Fallback)
 window.useAiLogic = useAiLogic;
-// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.10
-// Last Updated: 2026-04-08 21:15
+// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.14
+// Last Updated: 2026-04-13 11:30
 // Nhiệm vụ: Xử lý toàn bộ logic liên quan đến dữ liệu: Import/Export, Sổ tay, Thẻ đã thuộc, Thuật toán SRS và Dọn rác.
-// Cập nhật: ĐẠI PHẪU DỮ LIỆU MẪU (Bước 2 - Phần 1). Xóa bỏ hoàn toàn sự phụ thuộc vào CONFIG_SAMPLES ở các hàm lưu trữ. Thay bằng chuỗi key động 'fc_data_' + lang.
+// Cập nhật: [FIX SYNTAX ERROR] Sửa dứt điểm lỗi cú pháp ở object trả về của hàm handleExportHarvestToExcel (Bỏ các dấu nháy thừa). Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 const useDataLogic = (core, latestStateRef, callbacks) => {
 const { t, showToast, handleNext } = callbacks;
@@ -11762,7 +11904,7 @@ allNewItems = allNewItems.concat(parsedCards);
 return { masterData: masterDataObj, totalCards: total, flatItems: allNewItems };
 };
 // ==================================================================================
-// 2. HỆ THỐNG KHO LƯU TRỮ AI TỰ SINH (AI HARVEST POOL)
+// 2. HỆ THỐNG KHO LƯU TRỮ AI TỰ SINH (AI HARVEST POOL) - NÂNG CẤP INDEXEDDB
 // ==================================================================================
 const handleSaveToHarvest = (level, data) => {
 if (!level || !data) return;
@@ -11776,25 +11918,28 @@ const isDuplicate = currentLevelData.some(item =>
 if (isDuplicate) return prev;
 const newData = [...currentLevelData, { ...data, timestamp: Date.now() }];
 const nextPool = { ...prev, [level]: newData };
+// [INDEXEDDB] Ghi ngầm dữ liệu xuống database
+if (window.FcDB && core.isDbReady) {
+window.FcDB.set('fc_ai_harvest_pool', nextPool);
+}
 return nextPool;
 });
 handleCheckHarvestMemory();
 };
-const handleCheckHarvestMemory = () => {
+const handleCheckHarvestMemory = async () => {
 try {
-const poolString = localStorage.getItem('fc_ai_harvest_pool');
-if (!poolString) return;
-const sizeBytes = new Blob([poolString]).size;
-const MAX_SIZE = 1024 * 1024;
-const WARNING_THRESHOLD = MAX_SIZE * 0.7;
-const DANGER_THRESHOLD = MAX_SIZE * 0.8;
-if (sizeBytes > DANGER_THRESHOLD) {
-const currentPool = JSON.parse(poolString);
+// [INDEXEDDB] Ở môi trường DB, chúng ta kiểm tra dung lượng theo số câu
+const currentPool = latestStateRef.current.aiHarvestPool;
+if (!currentPool) return;
+const totalItems = Object.values(currentPool).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+const DANGER_COUNT = 2000; // Ngưỡng bắt đầu cắt tỉa (Dành cho DB)
+const WARNING_COUNT = 1500;
+if (totalItems > DANGER_COUNT) {
 let trimmedPool = {};
 let totalTrimmed = 0;
 Object.keys(currentPool).forEach(level => {
 const items = currentPool[level];
-if (items.length > 20) {
+if (items && items.length > 50) {
 const sorted = [...items].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 const keepCount = Math.floor(sorted.length / 2);
 trimmedPool[level] = sorted.slice(-keepCount);
@@ -11804,16 +11949,17 @@ trimmedPool[level] = items;
 }
 });
 core.setAiHarvestPool(trimmedPool);
-window.Utils.safeLocalStorageSet('fc_ai_harvest_pool', trimmedPool);
-showToast(`Kho AI đầy. Tự động dọn dẹp ${totalTrimmed} câu cũ để giải phóng bộ nhớ.`, "warning");
-} else if (sizeBytes > WARNING_THRESHOLD && !window.fc_harvest_warned) {
-showToast("Kho AI sắp đầy (70%). Hãy xuất ra Excel để lưu trữ!", "warning");
+if (window.FcDB) await window.FcDB.set('fc_ai_harvest_pool', trimmedPool);
+showToast(`Hệ thống tự động dọn dẹp ${totalTrimmed} câu cũ trong Kho AI để tối ưu tốc độ.`, "warning");
+} else if (totalItems > WARNING_COUNT && !window.fc_harvest_warned) {
+showToast("Kho AI đang rất lớn. Hãy xuất ra Excel để lưu trữ và Làm rỗng kho!", "warning");
 window.fc_harvest_warned = true;
 }
 } catch (e) {
-console.warn("Lỗi kiểm tra bộ nhớ Harvest:", e);
+console.warn("Lỗi bảo trì Kho AI:", e);
 }
 };
+// [FIXED SYNTAX v1.14] Chuẩn hóa Format xuất Excel (11 cột) hỗ trợ Import ngược lại
 const handleExportHarvestToExcel = () => {
 const pool = latestStateRef.current.aiHarvestPool;
 if (!pool || Object.keys(pool).length === 0) {
@@ -11826,13 +11972,64 @@ return;
 }
 const wb = window.XLSX.utils.book_new();
 let hasData = false;
-Object.keys(pool).forEach(level => {
-const items = pool[level];
+Object.keys(pool).forEach(levelKey => {
+const items = pool[levelKey];
 if (items && items.length > 0) {
 hasData = true;
-const formattedData = items.map(item => ({ 'Trình độ (Level)': level.replace('level_', '').replace(/_/g, ' ').toUpperCase(), 'Câu gốc / Câu đục lỗ': item.wrongSentence || item.displaySentence || '', 'Lỗi sai / Từ bị khuyết': item.wrongWord || '[__________]', 'Sửa lại / Từ đúng': item.correction || item.targetWord || '', 'Câu hoàn chỉnh': item.wrongSentence ? item.wrongSentence.replace(item.wrongWord, item.correction) : (item.displaySentence ? item.displaySentence.replace('[__________]', item.targetWord) : ''), 'Giải thích / Gợi ý': item.explanation || item.hint || '', 'Ngày tạo': item.timestamp ? new Date(item.timestamp).toLocaleString('vi-VN') : '' }));
+// Trích xuất mã ngôn ngữ và level từ key (VD: 'en_level_4' -> lang: 'en', level: 'en_level_4')
+const parts = levelKey.split('_');
+const languageCode = parts[0] || '';
+const levelCode = levelKey;
+const formattedData = items.map(item => {
+let term = '';
+let definition = '';
+let analysis = '';
+let example = '';
+let pos = '';
+// Nhận diện cấu trúc dữ liệu theo từng Game
+if (item.wrongSentence && item.wrongWord && item.correction) {
+pos = "Spot Mistake";
+term = item.wrongSentence;
+definition = item.correction;
+analysis = item.explanation || '';
+example = "Câu hoàn chỉnh: " + item.wrongSentence.replace(item.wrongWord, item.correction);
+} else if (item.displaySentence && item.displaySentence.includes('[__________]') && item.targetWord) {
+pos = "Fill Blank";
+term = item.displaySentence;
+definition = item.targetWord;
+analysis = item.hint || '';
+example = "Câu hoàn chỉnh: " + item.displaySentence.replace('[__________]', item.targetWord);
+if (item.hint) example += " | Bản dịch: " + item.hint;
+} else if (item.words && item.oddWord) {
+pos = "Odd One Out";
+term = Array.isArray(item.words) ? item.words.join(' • ') : item.words;
+definition = item.oddWord;
+analysis = item.explanation || '';
+example = item.hint ? "Nghĩa: " + item.hint : "";
+} else {
+pos = "Pure AI";
+term = item.displaySentence || item.term || '';
+definition = item.targetWord || item.definition || '';
+analysis = item.hint || item.explanation || item.analysis || '';
+example = item.example || '';
+}
+// [FIXED] Bơm vào Format 11 Cột chuẩn - Xóa bỏ dấu nháy thừa ở các key
+return {
+term: term,
+pronunciation: '',
+definition: definition,
+analysis: analysis,
+sinoViet: '',
+example: example,
+image: '',
+partOfSpeech: pos,
+topic: item.topic || '',
+level: levelCode,
+language: languageCode
+};
+});
 const ws = window.XLSX.utils.json_to_sheet(formattedData);
-let sheetName = level.replace('level_', '').substring(0, 31);
+let sheetName = levelKey.substring(0, 31);
 window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
 }
 });
@@ -11841,8 +12038,17 @@ showToast("Không có câu hỏi nào để xuất!", "warning");
 return;
 }
 const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,"");
-window.XLSX.writeFile(wb, `AI_Harvest_Pool_${dateStr}.xlsx`);
-showToast("Đã tải xuống file Excel thành công!", "success");
+window.XLSX.writeFile(wb, `AI_Harvest_Pool_Standard_${dateStr}.xlsx`);
+showToast("Đã tải xuống file Excel chuẩn 11 cột!", "success");
+};
+// [INDEXEDDB] Cỗ máy xóa trắng Kho Dữ Liệu AI sử dụng DB
+const handleClearHarvestPool = async () => {
+if (!confirm("Hành động này sẽ xóa vĩnh viễn toàn bộ câu hỏi AI đã thu hoạch. Bạn có chắc chắn muốn làm rỗng kho?")) return;
+core.setAiHarvestPool({});
+if (window.FcDB) {
+await window.FcDB.set('fc_ai_harvest_pool', {});
+}
+showToast("Đã làm rỗng kho dữ liệu AI!", "success");
 };
 // ==================================================================================
 // 3. SRS ACTIONS
@@ -12266,7 +12472,7 @@ const keys = text.split(/[\n,]/).map(k => k.trim()).filter(k => k.length > 20 &&
 if (keys.length > 0) {
 window.Utils.safeLocalStorageSet('fc_apikey_pool', keys);
 core.setApiKey(keys[0]);
-showToast(`Đã tải ${keys.length} API Key!`, "success");
+showToast(`Đã nạp ${keys.length} API Key!`, "success");
 } else {
 showToast("Không tìm thấy Key hợp lệ", "warning");
 }
@@ -12394,7 +12600,8 @@ handleExportSaveFile,
 handleImportSaveFile,
 handleSaveToHarvest,
 handleCheckHarvestMemory,
-handleExportHarvestToExcel
+handleExportHarvestToExcel,
+handleClearHarvestPool
 };
 };
 // [QUAN TRỌNG] EXPORT GLOBAL
@@ -12840,10 +13047,10 @@ refs: { audioTimeoutRef: core.audioTimeoutRef }
 window.Block6_4_useAppLogic = useAppLogic;
 window.Block13_useAppLogic = useAppLogic; // Fallback
 window.useAppLogic = useAppLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.9
-// Last Updated: 2026-04-12 22:20
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.12
+// Last Updated: 2026-04-13 11:40
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [TÍNH NĂNG NHẢY THẺ] Truyền prop onJumpToCard từ Tầng 6 xuống FlashcardDisplay ở Tầng 3. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [FIX REACT ERROR #310] Di dời chốt chặn isDbReady (Early Return) xuống bên dưới toàn bộ khai báo Hooks để tuân thủ tuyệt đối Rules of Hooks. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -12851,7 +13058,7 @@ const [isReady, setIsReady] = React.useState(false);
 React.useEffect(() => {
 const checkDependencies = () => {
 // Sử dụng tên định danh mới của Tầng 6 & Tầng 2
-const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine'];
+const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB'];
 const missing = required.filter(dep => !window[dep]);
 if (missing.length === 0) {
 setIsReady(true);
@@ -12871,7 +13078,9 @@ React.createElement('p', { className: "text-gray-500 font-bold animate-pulse" },
 return React.createElement(MainAppContent);
 };
 const MainAppContent = () => {
-// --- 1. Gọi Hooks Logic ---
+// ============================================================================
+// 1. GỌI TẤT CẢ HOOKS TRƯỚC TIÊN (TUYỆT ĐỐI KHÔNG ĐƯỢC CÓ EARLY RETURN Ở TRÊN)
+// ============================================================================
 const useAppLogic = window.Block6_4_useAppLogic || window.useAppLogic;
 const useAiLogic = window.Block6_2_useAiLogic || window.useAiLogic;
 const useDataLogic = window.Block6_3_useDataLogic || window.useDataLogic;
@@ -12880,42 +13089,49 @@ const coreStateRef = React.useRef(coreState);
 React.useEffect(() => {
 coreStateRef.current = coreState;
 }, [coreState]);
+// Khởi tạo các Custom Hooks logic (luôn luôn được gọi, dù isDbReady là false)
 const logic = useAppLogic ? useAppLogic(coreState) : {};
-// Truyền coreStateRef
 const ai = (useAiLogic && logic.actions) ? useAiLogic(coreState, coreStateRef, logic.actions) : {};
 const dataLogic = (useDataLogic && logic.actions) ? useDataLogic(coreState, coreStateRef, logic.actions) : {};
 // Gán Global Toast
 React.useEffect(() => {
 window.globalShowToast = coreState.setToast;
 }, []);
-// Tính toán màu chủ đạo ngay tại đây để đảm bảo không bị undefined
-const appMainColor = coreState.lang === 'zh' ? 'red' : (coreState.lang === 'vi' ? 'green' : 'sky');
-// ============================================================================
-// SMART BOOKMARK PROXY (Dual-Payload Support)
-// Nhận diện dữ liệu kép (isSmartTarget) để giấu đáp án hoặc lưu thẻ thông thường
-// ============================================================================
+// Khởi tạo hàm xử lý Smart Bookmark
 const handleSmartBookmark = React.useCallback((data) => {
 if (!data) return;
 if (typeof data === 'string') {
-// [Game Cũ]: Mở cửa sổ Word Selector để chọn Từ/Cụm/Câu và gọi AI
 if (logic.actions?.handleOpenWordSelector) {
 logic.actions.handleOpenWordSelector(data);
 }
 } else if (typeof data === 'object') {
 if (data.isSmartTarget) {
-// [Dual-Payload Game Mới]: Đẩy sang Word Selector để giấu đáp án
 if (logic.actions?.handleOpenWordSelector) {
 logic.actions.handleOpenWordSelector(data);
 }
 } else {
-// [Lưu trực tiếp]: Lưu thẳng Object đã được đóng gói chuẩn vào Sổ tay
 if (logic.actions?.handleNotebookSave) {
 logic.actions.handleNotebookSave(data);
 }
 }
 }
 }, [logic.actions]);
-// --- 2. Render Helper ---
+// ============================================================================
+// 1.5. CHỐT CHẶN CƠ SỞ DỮ LIỆU INDEXEDDB (EARLY RETURN)
+// (Phải đặt ở đây để không làm đứt gãy luồng khai báo Hooks ở trên)
+// ============================================================================
+if (!coreState.isDbReady) {
+return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50" },
+React.createElement('div', { className: "w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" }),
+React.createElement('p', { className: "text-blue-600 font-bold animate-pulse" }, "Đang nạp dữ liệu từ Database...")
+);
+}
+// ============================================================================
+// 2. TÍNH TOÁN RENDER & UI (Chỉ chạy khi DB đã sẵn sàng)
+// ============================================================================
+// Tính toán màu chủ đạo ngay tại đây để đảm bảo không bị undefined
+const appMainColor = coreState.lang === 'zh' ? 'red' : (coreState.lang === 'vi' ? 'green' : 'sky');
+// Render Helper
 const renderComponent = (compName, props) => {
 const Comp = window[compName];
 if (!Comp) return null;
@@ -13010,7 +13226,7 @@ isMuted: coreState.isMuted,
 onToggleMute: logic.actions?.handleToggleMute,
 lang: coreState.lang,
 onOpenHanzi: logic.actions?.handleOpenHanziStudy,
-onJumpToCard: logic.actions?.handleJumpToCard // [NEW v1.9] Truyền hàm nhảy thẻ xuống
+onJumpToCard: logic.actions?.handleJumpToCard
 })
 )
 );
@@ -13120,7 +13336,8 @@ onFetchKey: dataLogic?.handleFetchApiKey,
 onDownloadTemplate: dataLogic?.handleDownloadTemplate,
 lang: coreState.lang,
 aiHarvestPool: coreState.aiHarvestPool,
-onExportHarvestToExcel: dataLogic?.handleExportHarvestToExcel
+onExportHarvestToExcel: dataLogic?.handleExportHarvestToExcel,
+onClearHarvestPool: dataLogic?.handleClearHarvestPool
 }),
 coreState.showManual && renderComponent('ManualInputModal', {
 isOpen: true,
