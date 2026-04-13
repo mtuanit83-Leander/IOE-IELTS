@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.14
-// Last Updated: 2026-04-13 10:00
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.16
+// Last Updated: 2026-04-13 15:35
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [INDEXEDDB MIGRATION - BƯỚC 1] Xây dựng hạ tầng window.FcDB. Khởi tạo IndexedDB và tự động di cư ngầm dữ liệu Kho AI từ localStorage sang. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [INDEXEDDB MIGRATION - PHẦN 3] Nâng cấp thuật toán Migration trong FcDB.init() để quét và di cư tự động toàn bộ Hồ sơ học thuật đa ngôn ngữ (Sổ tay, Đã thuộc, Lỗi sai) sang IndexedDB. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -625,7 +625,7 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// [NEW v1.14] KHỞI TẠO ĐỘNG CƠ FcDB (Flashcard Database) SỬ DỤNG INDEXEDDB API
+// [NEW v1.16] KHỞI TẠO ĐỘNG CƠ FcDB (Flashcard Database) SỬ DỤNG INDEXEDDB API
 window.FcDB = {
 dbName: 'FlashcardLiteDB',
 storeName: 'keyvaluepairs',
@@ -647,12 +647,42 @@ request.onsuccess = async (event) => {
 this.db = event.target.result;
 // THỰC THI CHIẾN DỊCH DI CƯ NGẦM (MIGRATION)
 try {
+// 1. Di cư Kho AI
 const oldHarvestPoolStr = localStorage.getItem('fc_ai_harvest_pool');
 if (oldHarvestPoolStr) {
 const oldPool = JSON.parse(oldHarvestPoolStr);
 await this.set('fc_ai_harvest_pool', oldPool);
 localStorage.removeItem('fc_ai_harvest_pool');
-console.log('[FcDB] Migrated Harvest Pool to IndexedDB successfully. Freed local storage.');
+console.log('[FcDB] Migrated Harvest Pool to IndexedDB successfully.');
+}
+// 2. Di cư Túi Nháp Toàn cục
+const oldRetryBagStr = localStorage.getItem('fc_global_retry_bag');
+if (oldRetryBagStr) {
+const oldBag = JSON.parse(oldRetryBagStr);
+await this.set('fc_global_retry_bag', oldBag);
+localStorage.removeItem('fc_global_retry_bag');
+console.log('[FcDB] Migrated Global Retry Bag to IndexedDB successfully.');
+}
+// 3. [NEW v1.16] Di cư Đa ngôn ngữ (Notebook, Mastered, Incorrect List)
+const keysToMigrate = [];
+for (let i = 0; i < localStorage.length; i++) {
+const key = localStorage.key(i);
+if (key && (key.startsWith('fc_notebook_') || key.startsWith('fc_mastered_') || key.startsWith('fc_incorrect_list_'))) {
+keysToMigrate.push(key);
+}
+}
+for (const key of keysToMigrate) {
+const oldDataStr = localStorage.getItem(key);
+if (oldDataStr) {
+try {
+const parsedData = JSON.parse(oldDataStr);
+await this.set(key, parsedData);
+localStorage.removeItem(key);
+console.log(`[FcDB] Migrated ${key} to IndexedDB successfully.`);
+} catch(err) {
+console.warn(`[FcDB] Failed to parse/migrate ${key}:`, err);
+}
+}
 }
 } catch(e) {
 console.error('[FcDB] Migration Error:', e);
@@ -1250,10 +1280,10 @@ const diversityRule = "\nCRITICAL (ANTI-LAZINESS): Use rich, vivid vocabulary an
 return "You are an expert Language Tutor creating interactive exercises.\nTARGET LEVEL: " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + pedagogyRule + "\nRULES:\n1. The vocabulary and grammar complexity MUST strictly match the LEVEL CONTEXT. Do not use overly complex words for lower levels.\n2. Ensure the sentence is culturally neutral and easy to understand.\n3. Your output MUST be ONLY a raw JSON object matching the requested schema. Do not include markdown tags like ```json.\n4. " + diversityRule;
 }
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.35
-// Last Updated: 2026-04-12 12:55
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.36
+// Last Updated: 2026-04-13 16:55
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật: [THỬ THÁCH AI - BƯỚC 2] Bổ sung hàm lai ai_generate_from_card vào OddOneOutEngine. Nâng cấp ai_generate hỗ trợ dataMode. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] Gia cố hàm offline_generateOptions. Lập lưới lọc thép cấm tuyệt đối chuỗi rỗng lọt vào bẫy nhiễu. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1472,16 +1502,16 @@ const originTopic = baseCard.topic || "";
 const originPOS = baseCard.partOfSpeech || "";
 if (type === 'sentence') {
 if (!isReverse) {
-const otherCards = deck.filter(c => c.definition && c.definition !== correctText && c.term !== baseCard.term);
+const otherCards = deck.filter(c => c.definition && c.definition.trim() !== "" && c.definition !== correctText && c.term !== baseCard.term);
 otherCards.sort((a, b) => Math.abs(a.definition.length - correctText.length) - Math.abs(b.definition.length - correctText.length));
 for (let c of otherCards) {
 if (distractors.size >= count) break;
-distractors.add(c.definition);
+distractors.add(c.definition.trim());
 }
 } else {
 if (window.GameAlgoEngine.DistortionEngine.offline_distort) {
 const trap1 = window.GameAlgoEngine.DistortionEngine.offline_distort(correctText, lang, type).wrongSentence;
-if (trap1 && trap1 !== correctText) distractors.add(trap1);
+if (trap1 && trap1.trim() !== "" && trap1 !== correctText) distractors.add(trap1.trim());
 }
 const isChinese = lang === 'zh';
 const words = isChinese ? Array.from(correctText) : correctText.split(' ').map(w => w.replace(/[.,?!;:'"]/g, ''));
@@ -1489,15 +1519,17 @@ const minLen = isChinese ? 1 : 4;
 const validWords = words.filter(w => w.length >= minLen);
 if (validWords.length > 0) {
 const kw = validWords[Math.floor(Math.random() * validWords.length)];
-let pool = deck.filter(c => c.term !== baseCard.term && c.term && !c.term.includes(' '));
+let pool = deck.filter(c => c.term && c.term.trim() !== "" && c.term !== baseCard.term && !c.term.includes(' '));
 if (originTopic) pool = pool.filter(c => c.topic === originTopic);
-if (pool.length === 0) pool = deck.filter(c => c.term !== baseCard.term && c.term && !c.term.includes(' '));
+if (pool.length === 0) pool = deck.filter(c => c.term && c.term.trim() !== "" && c.term !== baseCard.term && !c.term.includes(' '));
 if (pool.length > 0) {
-const swapWord = pool[Math.floor(Math.random() * pool.length)].term;
+const swapWord = pool[Math.floor(Math.random() * pool.length)].term.trim();
+if (swapWord) {
 if (isChinese) {
 distractors.add(correctText.replace(kw, swapWord));
 } else {
 distractors.add(correctText.replace(new RegExp(`\\b${kw}\\b`, 'i'), swapWord));
+}
 }
 }
 }
@@ -1506,19 +1538,23 @@ if (words.length >= minWordsForShuffle) {
 const mid = Math.floor(words.length / 2);
 const temp = [...words];
 let t = temp[mid]; temp[mid] = temp[mid-1]; temp[mid-1] = t;
-distractors.add(temp.join(isChinese ? '' : ' '));
+const shuffledText = temp.join(isChinese ? '' : ' ').trim();
+if (shuffledText) distractors.add(shuffledText);
 }
-const otherCards = deck.filter(c => c.term && c.term !== correctText && window.Utils.detectSentence(c.term));
+const otherCards = deck.filter(c => c.term && c.term.trim() !== "" && c.term !== correctText && window.Utils.detectSentence(c.term));
 otherCards.sort((a, b) => Math.abs(a.term.length - correctText.length) - Math.abs(b.term.length - correctText.length));
 for (let c of otherCards) {
 if (distractors.size >= count) break;
-distractors.add(c.term);
+distractors.add(c.term.trim());
 }
 }
 }
 else {
-const getVal = (c) => isReverse ? c.term : c.definition;
-let pool = deck.filter(c => getVal(c) && getVal(c) !== correctText && c.term !== baseCard.term);
+const getVal = (c) => {
+const val = isReverse ? c.term : c.definition;
+return val ? val.trim() : "";
+};
+let pool = deck.filter(c => getVal(c) !== "" && getVal(c) !== correctText && c.term !== baseCard.term);
 let l1 = pool.filter(c => c.topic === originTopic && c.partOfSpeech === originPOS && originTopic && originPOS);
 l1 = window.Utils.shuffleArray(l1);
 for (let c of l1) { if (distractors.size >= count) break; distractors.add(getVal(c)); }
@@ -1539,11 +1575,11 @@ l3 = window.Utils.shuffleArray(l3);
 for (let c of l3) { if (distractors.size >= count) break; distractors.add(getVal(c)); }
 }
 if (distractors.size < count) {
-let l4 = window.Utils.shuffleArray(pool.filter(c => getVal(c) && !distractors.has(getVal(c))));
+let l4 = window.Utils.shuffleArray(pool.filter(c => getVal(c) !== "" && !distractors.has(getVal(c))));
 for (let c of l4) { if (distractors.size >= count) break; distractors.add(getVal(c)); }
 }
 }
-let arr = Array.from(distractors);
+let arr = Array.from(distractors).filter(item => item && item.trim() !== "");
 if (arr.length < count) {
 let fallbackPool = [];
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
@@ -5232,12 +5268,12 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.28
-// Last Updated: 2026-04-12 11:25
+// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.31
+// Last Updated: 2026-04-13 17:00
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: [GIAI ĐOẠN 2 - CẮM CÁP] Đổi đường dẫn gọi Động cơ Đa luồng sang QueueEngine (Block 2.5) và Động cơ AI sang AiFactoryEngine (Block 2.6). Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] Áp dụng "Lưới Lọc Thép" triệt để cho việc tạo bẫy. Bơm Fallback động theo số lượng yêu cầu. Tuân thủ Điều 3.
 // ==================================================================================
-const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config }) => {
+const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
@@ -5252,6 +5288,7 @@ const langRef = React.useRef(lang);
 const sourceModeRef = React.useRef('card');
 const onSaveToHarvestRef = React.useRef(onSaveToHarvest);
 const onUpdateCardsRef = React.useRef(onUpdateCards);
+const globalRetryBagRef = React.useRef(globalRetryBag);
 const [matchState, setMatchState] = React.useState({
 pairs: [], leftItems: [], rightItems: [], connections: {},
 selectedLeft: null, isChecked: false, score: 0,
@@ -5286,6 +5323,7 @@ React.useEffect(() => { langRef.current = lang; }, [lang]);
 React.useEffect(() => { sourceModeRef.current = sourceMode; }, [sourceMode]);
 React.useEffect(() => { onSaveToHarvestRef.current = onSaveToHarvest; }, [onSaveToHarvest]);
 React.useEffect(() => { onUpdateCardsRef.current = onUpdateCards; }, [onUpdateCards]);
+React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 const [timeLeft, setTimeLeft] = React.useState(timeLimit || 60);
 const [gameStats, setGameStats] = React.useState({ correct: 0, wrong: 0 });
 const [isLoading, setIsLoading] = React.useState(false);
@@ -5293,7 +5331,7 @@ const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
 const [queueLength, setQueueLength] = React.useState(0);
 const [aiWaitTime, setAiWaitTime] = React.useState(0);
-const matchQueueRef = React.useRef({ queue: [], index: 0 });
+const deckRef = React.useRef([]);
 const coordinatorRef = React.useRef(null);
 const timerRef = React.useRef(null);
 const latestStateRef = React.useRef({});
@@ -5305,7 +5343,7 @@ isGameActiveRef.current = true;
 return () => { isGameActiveRef.current = false; };
 }, []);
 React.useEffect(() => {
-latestStateRef.current = { matchState, difficulty, gameStats, timeLeft };
+latestStateRef.current = { matchState, difficulty, gameStats, timeLeft, deck: deckRef.current };
 }, [matchState, difficulty, gameStats, timeLeft]);
 // Logic giảm aiWaitTime
 React.useEffect(() => {
@@ -5321,7 +5359,7 @@ onAutoSave({
 matchState: latestStateRef.current.matchState,
 difficulty: latestStateRef.current.difficulty,
 gameStats: latestStateRef.current.gameStats,
-queueState: matchQueueRef.current,
+deck: deckRef.current,
 timeLeft: latestStateRef.current.timeLeft
 });
 }
@@ -5340,30 +5378,14 @@ setQueueLength(coordinatorRef.current.length());
 return () => clearInterval(queueScanner);
 }, []);
 // ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC) - ĐÃ CHUYỂN GIAO QUYỀN CHO TẦNG 6
 // ==================================================================================
-const pushToRetryBag = React.useCallback((questionData) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['match']) bag['match'] = [];
-const isDup = bag['match'].some(item => item.term === questionData.term);
-if (!isDup) {
-bag['match'].push(questionData);
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
-const removeFromRetryBag = React.useCallback((termToCheck) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['match']) return;
-const prevLen = bag['match'].length;
-bag['match'] = bag['match'].filter(item => item.term !== termToCheck);
-if (bag['match'].length !== prevLen) {
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
+const localPushToRetryBag = React.useCallback((questionData) => {
+if (addToRetryBag) addToRetryBag('match', questionData);
+}, [addToRetryBag]);
+const localRemoveFromRetryBag = React.useCallback((termToCheck) => {
+if (removeFromRetryBag) removeFromRetryBag('match', termToCheck);
+}, [removeFromRetryBag]);
 // ==================================================================================
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
@@ -5378,10 +5400,10 @@ let trapCards = [];
 const targetCount = currentDiff === 'hard' ? 4 : 5;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 let pureHardSuccess = false;
-// 0. BỐC TỪ TÚI NHÁP (RETRY BAG)
+// 0. BỐC TỪ TÚI NHÁP (RETRY BAG) TRÊN RAM
 let retryCards = [];
 try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+const bag = globalRetryBagRef.current || {};
 if (bag['match'] && bag['match'].length > 0) {
 const maxRetry = Math.ceil(targetCount * 0.3);
 retryCards = window.Utils.shuffleArray([...bag['match']]).slice(0, maxRetry);
@@ -5447,63 +5469,39 @@ console.warn("PureMode Match Fallback:", e);
 }
 // 2 & 3. USER DECK & FALLBACK ENGINE (Nếu PureHard sập hoặc đang ở Card Mode)
 if (!pureHardSuccess && realCards.length < targetCount) {
-let { queue, index } = matchQueueRef.current;
 let pool = [...retryCards, ...realCards];
-// Bước 2: Bốc từ User Deck
+// Bước 2: Bốc từ User Deck (Sử dụng deckRef)
 let attempts = 0;
-let updatedCards = [...cardsRef.current];
-let missingBatch = [];
-let hasGlobalUpdates = false;
-while (pool.length < targetCount && attempts < cardsRef.current.length) {
-if (index >= queue.length) {
-queue = window.Utils.shuffleArray([...queue]);
-index = 0;
+let maxAttempts = (cardsRef.current?.length || 20) * 2; // Chống lặp vô tận
+while (pool.length < targetCount && attempts < maxAttempts) {
+if (deckRef.current.length === 0 && currentSourceMode !== 'ai_pure') {
+// Rà soát Lưới Lọc Thép để nạp lại đạn
+let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validCards.length < targetCount && window.FallbackDataEngine) {
+const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRef.current : 'en';
+const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+if (fbItems && fbItems.length >= targetCount) validCards = fbItems;
 }
-const cardIdx = queue[index];
-let c = { ...updatedCards[cardIdx] };
-index++; attempts++;
-if (pool.some(r => r.term === c.term)) continue;
-if (!c.definition || c.definition.trim() === "") {
-missingBatch.push({ idx: cardIdx, term: c.term });
+if (validCards.length < targetCount) {
+validCards = [
+{ term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" },
+{ term: "Cat", definition: "Con mèo" }, { term: "Dog", definition: "Con chó" },
+{ term: "Bird", definition: "Con chim" }
+];
+}
+deckRef.current = window.Utils.shuffleArray(validCards);
+}
+if (deckRef.current.length > 0) {
+const c = deckRef.current.shift();
+attempts++;
+if (!pool.some(r => r.term === c.term)) {
 pool.push(c);
+}
 } else {
-pool.push(c);
+break;
 }
-}
-matchQueueRef.current = { queue, index };
-// Dịch nền (Background Translation) nếu thẻ rỗng nghĩa
-if (missingBatch.length > 0 && currentApiKey && window.Utils.callGeminiApi) {
-let timeoutId;
-try {
-const targetLang = langRef.current === 'zh' ? 'Chinese' : (langRef.current === 'en' ? 'English' : 'Vietnamese');
-const prompt = `Translate these ${missingBatch.length} ${targetLang} items into Vietnamese. Keep definitions very short (1-6 words).\nItems:\n${missingBatch.map((b, i) => `${i+1}. "${b.term}"`).join('\n')}\n\nReturn EXACTLY a JSON object with a "translations" array.\nFormat: {"translations": ["nghĩa 1", "nghĩa 2", ...]}`;
-const schema = { type: "OBJECT", properties: { translations: { type: "ARRAY", items: { type: "STRING" } } }, required: ["translations"] };
-const aiPromise = window.Utils.callGeminiApi(prompt, schema, currentApiKey);
-const timeoutPromise = new Promise((_, r) => { timeoutId = setTimeout(() => r(new Error("Timeout")), 10000); });
-const res = await Promise.race([aiPromise, timeoutPromise]);
-clearTimeout(timeoutId);
-const parsed = window.Utils.parseAiJson(res.text);
-if (parsed && parsed.translations && parsed.translations.length === missingBatch.length) {
-missingBatch.forEach((b, i) => {
-updatedCards[b.idx] = { ...updatedCards[b.idx], definition: parsed.translations[i] };
-const resItem = pool.find(r => r.term === b.term);
-if (resItem) resItem.definition = parsed.translations[i];
-});
-hasGlobalUpdates = true;
-if (res.tokenMetadata) {
-const used = res.tokenMetadata.totalTokenCount || 0;
-const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
-localStorage.setItem('fc_total_tokens', currentTotal + used);
-}
-}
-} catch (e) {
-if (timeoutId) clearTimeout(timeoutId);
-}
-}
-pool = pool.filter(c => c.definition && c.definition.trim() !== "");
-if (hasGlobalUpdates) {
-cardsRef.current = updatedCards;
-if (onUpdateCardsRef.current) onUpdateCardsRef.current(updatedCards);
 }
 // Bước 3: Rút cứu hộ (FallbackDataEngine) nếu vẫn thiếu
 if (pool.length < targetCount) {
@@ -5528,7 +5526,8 @@ pool.push({ term: "Fallback " + pool.length, definition: "Dự phòng " + pool.l
 realCards = pool.slice(0, targetCount);
 // 4. TẠO BẪY (DISTORTION ENGINE) CHO HARD MODE
 if (currentDiff === 'hard') {
-const availableTraps = cardsRef.current.filter(c => !realCards.some(r => r.term === c.term) && c.definition && c.definition.trim() !== "");
+const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+const availableTraps = cleanDeckForTraps.filter(c => !realCards.some(r => r.term === c.term));
 let trapSources = window.Utils.shuffleArray([...availableTraps]).slice(0, 2);
 // Rút thêm bẫy cứu hộ nếu thẻ user không đủ
 if (trapSources.length < 2) {
@@ -5639,19 +5638,45 @@ const silentUtterance = new SpeechSynthesisUtterance('');
 silentUtterance.volume = 0;
 window.speechSynthesis.speak(silentUtterance);
 }
-let shuffledQueue = [];
-if (sourceMode === 'card') {
-if (!cardsRef.current || cardsRef.current.length < 4) {
-safeShowToast("Bộ thẻ trống! Đang sử dụng dữ liệu dự phòng...", "warning");
-}
-shuffledQueue = window.Utils.shuffleArray(Array.from({ length: (cardsRef.current || []).length }, (_, i) => i));
-const missingCount = (cardsRef.current || []).filter(c => !c.definition || c.definition.trim() === '').length;
+let currentDeck = sourceMode === 'card' ? [...(cardsRef.current || [])] : [];
+let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-if (missingCount >= 4 && currentApiKey && window.Utils.callGeminiApi) {
-safeShowToast(`Bộ bài có nhiều thẻ thiếu nghĩa. AI sẽ dịch ngầm trong lúc bạn chơi...`, "info");
+// PRE-FLIGHT BATCH ENRICH
+if (sourceMode === 'card' && isAiMode && currentApiKey && window.AiFactoryEngine) {
+safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
+const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(currentDeck, initialIndices, 10, langRef.current, currentApiKey);
+if (hasUpdates) {
+currentDeck = updatedCards;
+cardsRef.current = updatedCards;
+if (onUpdateCardsRef.current) onUpdateCardsRef.current(updatedCards);
+safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
 }
 }
-matchQueueRef.current = { queue: shuffledQueue, index: 0 };
+// LƯỚI LỌC THÉP
+if (sourceMode === 'card') {
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+const neededCards = difficulty === 'hard' ? 4 : 5;
+if (validCards.length < neededCards) {
+safeShowToast(`Bộ thẻ không đủ ${neededCards} thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...`, "warning");
+if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRef.current : 'en';
+const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+if (fbItems && fbItems.length >= neededCards) validCards = fbItems;
+}
+if (validCards.length < neededCards) {
+validCards = [
+{ term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" },
+{ term: "Cat", definition: "Con mèo" }, { term: "Dog", definition: "Con chó" },
+{ term: "Bird", definition: "Con chim" }
+];
+}
+}
+deckRef.current = window.Utils.shuffleArray(validCards);
+} else {
+deckRef.current = [];
+}
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 // Cắm cáp sang QueueEngine
 if (window.QueueEngine && window.QueueEngine.createBatchQueueCoordinator) {
@@ -5702,7 +5727,7 @@ setMatchState(JSON.parse(JSON.stringify(savedState.matchState)));
 setDifficulty(savedState.difficulty || 'easy');
 setGameStats(savedState.gameStats || { correct: 0, wrong: 0 });
 if (savedState.timeLeft) setTimeLeft(savedState.timeLeft);
-if (savedState.queueState) matchQueueRef.current = JSON.parse(JSON.stringify(savedState.queueState));
+if (savedState.deck) deckRef.current = [...savedState.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 // Cắm cáp sang QueueEngine khi Resume Session
 if (window.QueueEngine && window.QueueEngine.createBatchQueueCoordinator) {
@@ -5778,17 +5803,17 @@ if (userConnectedRightId !== undefined) {
 if (correctRight && userConnectedRightId === correctRight.id) {
 roundScore++;
 correctLines.push({ start: left.id, end: userConnectedRightId });
-removeFromRetryBag(left.term);
+localRemoveFromRetryBag(left.term);
 } else {
 wrongLines.push({ start: left.id, end: userConnectedRightId });
 if (correctRight) missingLines.push({ start: left.id, end: correctRight.id });
 if (onLogWrong && left.origin) onLogWrong(left.origin);
-if (left.origin) pushToRetryBag(left.origin);
+if (left.origin) localPushToRetryBag(left.origin);
 }
 } else {
 if (correctRight) missingLines.push({ start: left.id, end: correctRight.id });
 if (onLogWrong && left.origin) onLogWrong(left.origin);
-if (left.origin) pushToRetryBag(left.origin);
+if (left.origin) localPushToRetryBag(left.origin);
 }
 }
 });
@@ -5841,7 +5866,7 @@ const sessionData = JSON.parse(JSON.stringify({
 matchState: currentData.matchState,
 difficulty: currentData.difficulty,
 gameStats: currentData.gameStats,
-queueState: matchQueueRef.current,
+deck: currentData.deck,
 timeLeft: currentData.timeLeft
 }));
 onBack(sessionData);
@@ -6282,12 +6307,12 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.10
-// Last Updated: 2026-04-12 11:50
+// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.12
+// Last Updated: 2026-04-13 17:25
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật: [GIAI ĐOẠN 2 - CẮM CÁP] Đổi đường dẫn gọi Động cơ Đa luồng sang QueueEngine (Block 2.5) và Động cơ AI sang AiFactoryEngine (Block 2.6). Bơm bổ sung tham số topic/dataMode. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] CHUẨN HÓA 100% MÃ NGUỒN. Áp dụng "Lưới Lọc Thép" cho deckRef. Vá 3 Điểm mù: (1) Lọc rác khi tạo Noise, (2) Khử độc Túi nháp RetryBag, (3) Cộng dồn (Append) Fallback thay vì Ghi đè (Overwrite). Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
-const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config }) => {
+const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) {
 showToast({ text: msg, type: type, id: Date.now() });
@@ -6341,6 +6366,9 @@ const latestStateRef = React.useRef({});
 const isGameActiveRef = React.useRef(true);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
+// Đồng bộ túi nháp RAM
+const globalRetryBagRef = React.useRef(globalRetryBag);
+React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
 React.useEffect(() => {
 latestStateRef.current = { gameState, difficulty, stats, timeLeft, deck: deckRef.current };
@@ -6371,30 +6399,14 @@ setQueueLength(coordinatorRef.current.length());
 return () => clearInterval(queueScanner);
 }, []);
 // ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC) - ĐÃ CHUYỂN GIAO QUYỀN CHO TẦNG 6
 // ==================================================================================
-const pushToRetryBag = React.useCallback((question) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['scramble']) bag['scramble'] = [];
-const isDup = bag['scramble'].some(item => item.term === question.term);
-if (!isDup) {
-bag['scramble'].push(question);
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
-const removeFromRetryBag = React.useCallback((term) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['scramble']) return;
-const prevLen = bag['scramble'].length;
-bag['scramble'] = bag['scramble'].filter(item => item.term !== term);
-if (bag['scramble'].length !== prevLen) {
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
+const localPushToRetryBag = React.useCallback((questionData) => {
+if (addToRetryBag) addToRetryBag('scramble', questionData);
+}, [addToRetryBag]);
+const localRemoveFromRetryBag = React.useCallback((termToCheck) => {
+if (removeFromRetryBag) removeFromRetryBag('scramble', termToCheck);
+}, [removeFromRetryBag]);
 // ==================================================================================
 // TÌM NẠP DỮ LIỆU ĐƯỜNG ỐNG THỐNG NHẤT (UNIFIED DATA PIPELINE)
 // ==================================================================================
@@ -6404,13 +6416,16 @@ let isAiGenerated = false;
 const currentDataMode = config?.dataMode || 'vocab';
 const isPureMode = sourceMode === 'ai_pure';
 // 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp
+// [VÁ ĐIỂM MÙ SỐ 2] Lọc thẻ mù trước khi bốc từ Túi nháp (Poisoned Retry Bag)
 if (Math.random() < 0.3) {
 try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+const bag = globalRetryBagRef.current || {};
 if (bag['scramble'] && bag['scramble'].length > 0) {
-const randIdx = Math.floor(Math.random() * bag['scramble'].length);
-const retryQ = bag['scramble'][randIdx];
-if (retryQ) card = retryQ;
+const validRetryCards = bag['scramble'].filter(c => c && c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validRetryCards.length > 0) {
+const randIdx = Math.floor(Math.random() * validRetryCards.length);
+card = validRetryCards[randIdx];
+}
 }
 } catch(e) {}
 }
@@ -6437,20 +6452,29 @@ console.warn("PureMode Engine Fallback:", e);
 }
 // 3. THẺ CỦA TÔI (HOẶC AI SẬP PHẢI RÚT THẺ THAY THẾ)
 if (!card) {
-if (deckRef.current.length === 0) {
-let validCards = [];
-if (lang === 'zh') {
-validCards = (cardsRef.current || []).filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
-} else {
-validCards = [...(cardsRef.current || [])];
+if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
+// [VÁ ĐIỂM MÙ SỐ 1] Lọc thẻ mù khi nạp lại băng đạn rỗng trong quá trình chơi vô tận
+let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validCards.length < 2 && window.FallbackDataEngine) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+// Cộng dồn Fallback
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
 }
-if (validCards.length > 0) {
+}
+if (validCards.length === 0) {
+validCards = [{ term: "Learning languages is fun", definition: "Học ngôn ngữ rất vui" }];
+}
 deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
-}
 }
 card = deckRef.current.shift();
 }
-// 4. KHO DỰ PHÒNG TỰ ĐỘNG (KHI BỘ BÀI TRỐNG HOẶC ÍT THẺ)
+// 4. KHO DỰ PHÒNG TỰ ĐỘNG (KHI BỘ BÀI TRỐNG HOẶC ÍT THẺ - Chốt chặn cuối)
 if (!card) {
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
@@ -6505,7 +6529,9 @@ safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`
 } catch (e) { console.warn("AI Scramble Distractor fallback", e.message); }
 }
 if ((!noiseWords || noiseWords.length === 0) && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine && window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise) {
-noiseWords = window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise(card.term, cardsRef.current || [], lang, type, targetCount);
+// [VÁ ĐIỂM MÙ] Truyền thẻ sạch xuống Tầng 2 để tạo nhiễu
+const cleanDeck = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+noiseWords = window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise(card.term, cleanDeck, lang, type, targetCount);
 }
 if (noiseWords && noiseWords.length > 0) {
 let finalNoiseWords = [];
@@ -6532,7 +6558,49 @@ setStats({ correct: 0, wrong: 0 });
 historyQueueRef.current = [];
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
-deckRef.current = []; // Reset deck để ép fetchTask phải nạp lại từ đầu
+let currentDeck = sourceMode === 'card' ? [...cards] : [];
+let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
+if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
+safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
+const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(
+currentDeck, initialIndices, 10, lang, apiKey
+);
+if (hasUpdates) {
+currentDeck = updatedCards;
+if (onUpdateCards) onUpdateCards(updatedCards);
+safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
+}
+}
+if (sourceMode === 'card') {
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validCards.length < 2) {
+safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
+if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+// [VÁ ĐIỂM MÙ SỐ 3] Cộng dồn Fallback, tuyệt đối KHÔNG ghi đè (Overwrite)
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
+}
+}
+if (validCards.length < 2) {
+const defaults = [
+{ term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" },
+{ term: "Learning languages is fun", definition: "Học ngôn ngữ rất vui" }
+];
+const existingTerms = new Set(validCards.map(c => c.term));
+const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...neededDefaults];
+}
+}
+deckRef.current = window.Utils.shuffleArray(validCards);
+} else {
+deckRef.current = [];
+}
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 // [CẮM CÁP] Gọi sang QueueEngine mới
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
@@ -6691,7 +6759,7 @@ isCorrect = window.Utils.advancedNormalize(userString, lang) === window.Utils.ad
 else if (inputMethod === 'voice') return;
 if (isCorrect) {
 if (gameState.attempts === 0) {
-removeFromRetryBag(gameState.origin.term);
+localRemoveFromRetryBag(gameState.origin.term);
 }
 setGameState(prev => ({ ...prev, isCorrect: true }));
 setStats(s => ({ ...s, correct: s.correct + 1 }));
@@ -6703,7 +6771,7 @@ setTimeout(() => triggerAutoSave(), 150);
 const newAttempts = gameState.attempts + 1;
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: newAttempts }));
 if (newAttempts >= 3) {
-pushToRetryBag(gameState.origin);
+localPushToRetryBag(gameState.origin);
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 if (onLogWrong && gameState.origin) { onLogWrong(gameState.origin); }
 setResultTimer(5);
@@ -6745,7 +6813,7 @@ setVoiceSelectedOption(selectedText);
 const isCorrect = window.Utils.advancedNormalize(selectedText, lang) === window.Utils.advancedNormalize(gameState.origin.term, lang);
 if (isCorrect) {
 if (gameState.attempts === 0) {
-removeFromRetryBag(gameState.origin.term);
+localRemoveFromRetryBag(gameState.origin.term);
 }
 setGameState(prev => ({ ...prev, isCorrect: true }));
 setStats(s => ({ ...s, correct: s.correct + 1 }));
@@ -6753,7 +6821,7 @@ setResultTimer(3);
 if (autoReadAnswer && onPlay) onPlay(gameState.origin.term);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
-pushToRetryBag(gameState.origin);
+localPushToRetryBag(gameState.origin);
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: 3 }));
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 if (onLogWrong && gameState.origin) { onLogWrong(gameState.origin); }
@@ -6878,7 +6946,7 @@ setVoiceOptions(window.Utils.shuffleArray(options));
 };
 const handleSkip = (isTimeout = false) => {
 if (isGenerating || isPaused || gameState.isCorrect !== null) return;
-pushToRetryBag(gameState.origin);
+localPushToRetryBag(gameState.origin);
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: 3 }));
 if (showToast) {
@@ -7370,12 +7438,12 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.21
-// Last Updated: 2026-04-12 12:00
+// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.26
+// Last Updated: 2026-04-13 17:15
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: [GIAI ĐOẠN 2 - CẮM CÁP] Đổi đường dẫn gọi Động cơ Đa luồng sang QueueEngine (Block 2.5) và Động cơ AI sang AiFactoryEngine (Block 2.6). Bơm bổ sung tham số topic/dataMode. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] CHUẨN HÓA 100% MÃ NGUỒN. Vá 3 Điểm mù: (1) Lọc rác ở Fallback array, (2) Khử độc Túi nháp RetryBag, (3) Cộng dồn (Append) Fallback thay vì Ghi đè (Overwrite) ở handleStartGame. Tuân thủ tuyệt đối Điều 3.1 Hiến Pháp.
 // ==================================================================================
-const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config }) => {
+const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục khỏi lỗi "đen xì"
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) {
@@ -7408,7 +7476,7 @@ const [aiCountdown, setAiCountdown] = React.useState(0);
 const [aiWaitTime, setAiWaitTime] = React.useState(0);
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
-// [NEW v1.21] Biến đếm đạn
+// Biến đếm đạn
 const [queueLength, setQueueLength] = React.useState(0);
 const audioTimeoutRef = React.useRef(null);
 const timerRef = React.useRef(null);
@@ -7421,6 +7489,9 @@ const cardsRef = React.useRef(cards);
 const stateRef = React.useRef({});
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
+// Đồng bộ túi nháp RAM
+const globalRetryBagRef = React.useRef(globalRetryBag);
+React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
 React.useEffect(() => {
 stateRef.current = { gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, deck: deckRef.current, isAiMode, listenPlayCount };
@@ -7457,42 +7528,30 @@ setQueueLength(coordinatorRef.current.length());
 return () => clearInterval(queueScanner);
 }, []);
 // ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC) - ĐÃ CHUYỂN GIAO QUYỀN CHO TẦNG 6
 // ==================================================================================
-const pushToRetryBag = React.useCallback((question) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['quiz']) bag['quiz'] = [];
-const isDup = bag['quiz'].some(item => item.term === question.term);
-if (!isDup) {
-bag['quiz'].push(question);
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
-const removeFromRetryBag = React.useCallback((term) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['quiz']) return;
-const prevLen = bag['quiz'].length;
-bag['quiz'] = bag['quiz'].filter(item => item.term !== term);
-if (bag['quiz'].length !== prevLen) {
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
+const localPushToRetryBag = React.useCallback((question) => {
+if (addToRetryBag) addToRetryBag('quiz', question);
+}, [addToRetryBag]);
+const localRemoveFromRetryBag = React.useCallback((term) => {
+if (removeFromRetryBag) removeFromRetryBag('quiz', term);
+}, [removeFromRetryBag]);
 // ==================================================================================
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
 let card = null;
 // 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp
+// [VÁ ĐIỂM MÙ SỐ 2] Lọc thẻ mù trước khi bốc từ Túi nháp (Poisoned Retry Bag)
 if (Math.random() < 0.3) {
 try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+const bag = globalRetryBagRef.current || {};
 if (bag['quiz'] && bag['quiz'].length > 0) {
-const randIdx = Math.floor(Math.random() * bag['quiz'].length);
-card = bag['quiz'][randIdx];
+const validRetryCards = bag['quiz'].filter(c => c && c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validRetryCards.length > 0) {
+const randIdx = Math.floor(Math.random() * validRetryCards.length);
+card = validRetryCards[randIdx];
+}
 }
 } catch(e) {}
 }
@@ -7564,7 +7623,6 @@ const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if ((isAiMode || sourceMode === 'ai_pure') && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
 const distractorLang = isReverse ? lang : 'vi';
-// Sửa API Contract: truyền nguyên Object card và cờ isReverse để chống ảo giác
 const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(card, distractorLang, type, currentApiKey, numOptions - 1, level, config?.topic, isReverse);
 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout (20s)")), 20000));
 const dists = await Promise.race([aiCallPromise, timeoutPromise]);
@@ -7581,14 +7639,16 @@ safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`
 } catch (aiError) { console.warn("AI Quiz Preload Fallback:", aiError.message); }
 }
 if (distractors.length === 0 && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
-const distTexts = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(correctOptText, cardsRef.current || [], lang, type, numOptions - 1, isReverse);
+const cleanDeck = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+const distTexts = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(correctOptText, cleanDeck, lang, type, numOptions - 1, isReverse);
 distractors = distTexts.map(d => ({ text: d, isCorrect: false }));
 }
 }
 } catch(e) { console.warn("Fetch Question Error:", e); }
 // Rớt mạng hoặc cạn kiệt từ vựng (Fallback Options)
 if (distractors.length < numOptions - 1) {
-let pool = (cardsRef.current || []).filter(c => c.term !== card.term && !historyQueueRef.current.includes(c.term));
+// [VÁ ĐIỂM MÙ SỐ 1] Lọc thẻ mù cho mảng Fallback rác
+let pool = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '' && c.term !== card.term && !historyQueueRef.current.includes(c.term));
 // Nếu pool từ bộ bài không đủ, móc sang FallbackDataEngine xin thêm
 if (pool.length < numOptions - 1 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
@@ -7596,7 +7656,8 @@ const mode = dataMode === 'sentence' ? 'sentence' : 'vocab';
 const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 15);
 if (fbItems) {
-pool = [...pool, ...fbItems.filter(f => f.term !== card.term && !historyQueueRef.current.includes(f.term))];
+const cleanFbs = fbItems.filter(f => f.term && f.term.trim() !== '' && f.definition && f.definition.trim() !== '' && f.term !== card.term && !historyQueueRef.current.includes(f.term));
+pool = [...pool, ...cleanFbs];
 }
 }
 // Dùng push để bảo tồn đáp án AI
@@ -7637,10 +7698,50 @@ window.speechSynthesis.speak(silentUtterance);
 }
 setIsGenerating(true);
 setListenPlayCount(0);
-deckRef.current = sourceMode === 'card' ? window.Utils.shuffleArray([...cards]) : [];
+let currentDeck = sourceMode === 'card' ? [...cards] : [];
+let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
 historyQueueRef.current = [];
+if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
+safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
+const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(currentDeck, initialIndices, 10, lang, apiKey);
+if (hasUpdates) {
+currentDeck = updatedCards;
+if (onUpdateCards) onUpdateCards(updatedCards);
+safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
+}
+}
+if (sourceMode === 'card') {
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validCards.length < 4) {
+safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
+if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = dataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+// [VÁ ĐIỂM MÙ SỐ 3] Cộng dồn Fallback, tuyệt đối KHÔNG ghi đè (Overwrite) làm mất dữ liệu gốc của User
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
+}
+}
+if (validCards.length < 4) {
+const defaults = [
+{ term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" },
+{ term: "Cat", definition: "Con mèo" }, { term: "Dog", definition: "Con chó" }
+];
+const existingTerms = new Set(validCards.map(c => c.term));
+const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...neededDefaults];
+}
+}
+deckRef.current = window.Utils.shuffleArray(validCards);
+} else {
+deckRef.current = [];
+}
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 // ĐỒNG BỘ: Nâng mức trần nạp đạn (QueueTargetSize) lên 4
@@ -7822,14 +7923,14 @@ setResultTimer(delaySec);
 }
 };
 if (isTimeout) {
-pushToRetryBag(currentQuestionData.question);
+localPushToRetryBag(currentQuestionData.question);
 setIsChecking(true); setFeedbackType('timeout'); setStreak(0); setWrongCount(w => w + 1);
 logMistake(currentQuestionData.question);
 proceedToNext(2000); setTimeout(() => triggerAutoSave(), 150);
 return;
 }
 if (isForceReveal) {
-pushToRetryBag(currentQuestionData.question);
+localPushToRetryBag(currentQuestionData.question);
 setIsChecking(true); setSelectedOptionIndex(999); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
 logMistake(currentQuestionData.question);
 proceedToNext(2500); setTimeout(() => triggerAutoSave(), 150);
@@ -7837,7 +7938,7 @@ return;
 }
 if (isCorrect) {
 if (clickedWrongIndices.size === 0) {
-removeFromRetryBag(currentQuestionData.question.term);
+localRemoveFromRetryBag(currentQuestionData.question.term);
 }
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('correct'); setScore(s => s + 1); setStreak(s => s + 1);
 if (autoReadAnswer && onPlay) {
@@ -7851,7 +7952,7 @@ const newWrong = new Set(clickedWrongIndices).add(index);
 setClickedWrongIndices(newWrong);
 if (newWrong.size === 1) { setShowChanceToast(true); setTimeout(() => setShowChanceToast(false), 2000); return; }
 }
-pushToRetryBag(currentQuestionData.question);
+localPushToRetryBag(currentQuestionData.question);
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
 logMistake(currentQuestionData.question);
 if (autoReadAnswer && onPlay) {
@@ -7866,7 +7967,7 @@ const handleSkip = () => {
 if (isChecking || aiWaitTime > 0 || isGenerating) return;
 setWrongCount(w => w + 1); setStreak(0);
 if (showToast) safeShowToast("Bỏ qua (+1 sai)", "warning");
-pushToRetryBag(currentQuestionData.question);
+localPushToRetryBag(currentQuestionData.question);
 logMistake(currentQuestionData.question);
 handleNext(); setTimeout(() => triggerAutoSave(), 150);
 };
@@ -8902,15 +9003,15 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 3.1
-// Last Updated: 2026-04-12 12:10
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 3.3
+// Last Updated: 2026-04-13 17:35
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank).
-// Cập nhật: [GIAI ĐOẠN 2 - CẮM CÁP] Đổi đường dẫn gọi Động cơ Đa luồng sang QueueEngine (Block 2.5) và Động cơ AI (batchEnrich, getHistoryPrompt) sang AiFactoryEngine (Block 2.6). Bơm bổ sung tham số topic/dataMode. Tuân thủ Điều 3.
+// Cập nhật: [QA DEBUG] CHUẨN HÓA 100% MÃ NGUỒN. Áp dụng "Lưới Lọc Thép" cho deckRef. Vá Điểm mù: (1) Lọc rác khi nạp lại bài, (2) Khử độc Túi nháp RetryBag, (3) Cộng dồn (Append) Fallback thay vì Ghi đè (Overwrite). Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
-const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode } = config;
-const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack } = callbacks;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag } = config;
+const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag } = callbacks;
 // State Game Cơ bản
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [inputBuffer, setInputBuffer] = React.useState("");
@@ -8939,6 +9040,9 @@ const coordinatorRef = React.useRef(null);
 const isGameActiveRef = React.useRef(true);
 const gameTimerRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
+// Đồng bộ túi nháp RAM
+const globalRetryBagRef = React.useRef(globalRetryBag);
+React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
@@ -8977,32 +9081,14 @@ onBack({ fillBlankState: latestStateRef.current });
 }
 };
 // ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC) - ĐÃ CHUYỂN GIAO QUYỀN CHO TẦNG 6
 // ==================================================================================
 const pushToRetryBag = React.useCallback((questionData) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['fillblank']) bag['fillblank'] = [];
-// Dùng origin.term hoặc targetWord để chống trùng lặp
-const termToCheck = questionData.origin?.term || questionData.targetWord;
-const isDup = bag['fillblank'].some(item => (item.origin?.term || item.targetWord) === termToCheck);
-if (!isDup) {
-bag['fillblank'].push(questionData);
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
-const removeFromRetryBag = React.useCallback((termToCheck) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['fillblank']) return;
-const prevLen = bag['fillblank'].length;
-bag['fillblank'] = bag['fillblank'].filter(item => (item.origin?.term || item.targetWord) !== termToCheck);
-if (bag['fillblank'].length !== prevLen) {
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
+if (addToRetryBag) addToRetryBag('fillblank', questionData);
+}, [addToRetryBag]);
+const localRemoveFromRetryBag = React.useCallback((termToCheck) => {
+if (removeFromRetryBag) removeFromRetryBag('fillblank', termToCheck);
+}, [removeFromRetryBag]);
 // Cỗ máy đóng gói Lỗi sai (Auto-Log)
 const logMistake = React.useCallback((question) => {
 if (!onLogWrong || !question) return;
@@ -9026,14 +9112,15 @@ onLogWrong(mistakeCard);
 // ==================================================================================
 const fetchTask = async () => {
 // 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
+// [VÁ ĐIỂM MÙ SỐ 2] Lọc thẻ mù trước khi bốc từ Túi nháp (Poisoned Retry Bag)
 if (Math.random() < 0.3) {
 try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+const bag = globalRetryBagRef.current || {};
 if (bag['fillblank'] && bag['fillblank'].length > 0) {
-const randIdx = Math.floor(Math.random() * bag['fillblank'].length);
-const retryQ = bag['fillblank'][randIdx];
-if (retryQ && retryQ.targetWord && retryQ.displaySentence) {
-return retryQ; // Trả về nguyên cục Dữ liệu đã lưu, không cần sinh lại
+const validRetryCards = bag['fillblank'].filter(c => c && c.targetWord && c.displaySentence);
+if (validRetryCards.length > 0) {
+const randIdx = Math.floor(Math.random() * validRetryCards.length);
+return validRetryCards[randIdx]; // Trả về nguyên cục Dữ liệu đã lưu, không cần sinh lại
 }
 }
 } catch(e) {}
@@ -9069,8 +9156,26 @@ console.warn("AI FillBlank PureMode Fallback:", e.message);
 let baseCard = null;
 if (!isPureMode || deckRef.current.length > 0) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
-let validCards = enrichedCardsRef.current.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
-if (validCards.length === 0) validCards = [...enrichedCardsRef.current];
+// [VÁ ĐIỂM MÙ SỐ 1] Lọc thẻ mù khi nạp lại băng đạn rỗng trong quá trình chơi vô tận
+let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
+if (sentenceCards.length < 2) sentenceCards = validCards;
+validCards = sentenceCards;
+if (validCards.length < 2 && window.FallbackDataEngine) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+// [VÁ ĐIỂM MÙ SỐ 3] Cộng dồn Fallback, tuyệt đối KHÔNG ghi đè (Overwrite)
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
+}
+}
+if (validCards.length === 0) {
+validCards = [{ term: "Learning languages is very fun.", definition: "Học ngôn ngữ rất thú vị." }];
+}
 deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
 }
 baseCard = deckRef.current.shift();
@@ -9079,7 +9184,7 @@ baseCard = deckRef.current.shift();
 if (!baseCard) {
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const mode = config.dataMode === 'sentence' ? 'sentence' : 'vocab';
+const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
 const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 1);
 if (fbItems && fbItems.length > 0) baseCard = fbItems[0];
@@ -9117,20 +9222,51 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 historyQueueRef.current = [];
 isInitializingRef.current = true;
-let currentDeck = [...cards];
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(currentDeck) : [];
+let currentDeck = sourceMode === 'card' ? [...cards] : [];
+let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
 safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
-const tempIndices = deckRef.current.map((_, i) => i);
 const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(
-currentDeck, tempIndices, 10, lang, apiKey
+currentDeck, initialIndices, 10, lang, apiKey
 );
 if (hasUpdates) {
-enrichedCardsRef.current = updatedCards;
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(updatedCards) : updatedCards;
+currentDeck = updatedCards;
 if (onUpdateCards) onUpdateCards(updatedCards);
 safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
 }
+}
+if (sourceMode === 'card') {
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
+if (sentenceCards.length < 2) sentenceCards = validCards;
+validCards = sentenceCards;
+if (validCards.length < 2) {
+safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
+if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+// [VÁ ĐIỂM MÙ SỐ 3] Cộng dồn Fallback, tuyệt đối KHÔNG ghi đè (Overwrite)
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
+}
+}
+if (validCards.length < 2) {
+const defaults = [
+{ term: "Learning languages is very fun.", definition: "Học ngôn ngữ rất thú vị." },
+{ term: "I practice English every day.", definition: "Tôi thực hành tiếng Anh mỗi ngày." }
+];
+const existingTerms = new Set(validCards.map(c => c.term));
+const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...neededDefaults];
+}
+}
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
+} else {
+deckRef.current = [];
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
@@ -9252,7 +9388,7 @@ return s.trim();
 };
 if (normalize(currentQuestion.targetWord) === normalize(inputBuffer)) {
 if (attempts === 0) {
-removeFromRetryBag(currentQuestion.origin?.term || currentQuestion.targetWord);
+localRemoveFromRetryBag(currentQuestion.origin?.term || currentQuestion.targetWord);
 }
 setCheckStatus('correct'); setCorrectCount(p => p + 1); setScore(prev => prev + (15 * combo)); setCombo(prev => prev + 1);
 safeShowToast("Chính xác!", "success");
@@ -9328,10 +9464,10 @@ checkAnswer, handleNext: nextRound, handleSkip, handleSaveAndBack
 };
 };
 // --- 2. GAME WRAPPER ---
-const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave }) => {
+const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit };
-const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, savedState }, hookCallbacks);
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag };
+const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, savedState, globalRetryBag }, hookCallbacks);
 const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
@@ -9807,15 +9943,15 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 2.9
-// Last Updated: 2026-04-12 12:20
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 3.1
+// Last Updated: 2026-04-13 17:45
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
-// Cập nhật: [GIAI ĐOẠN 2 - CẮM CÁP] Đổi đường dẫn gọi Động cơ Đa luồng sang QueueEngine (Block 2.5) và Động cơ AI sang AiFactoryEngine (Block 2.6). Bơm bổ sung tham số topic/dataMode. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG] CHUẨN HÓA 100% MÃ NGUỒN. Áp dụng "Lưới Lọc Thép" cho deckRef. Vá Điểm mù: (1) Lọc rác khi nạp lại bài, (2) Khử độc Túi nháp RetryBag, (3) Cộng dồn (Append) Fallback thay vì Ghi đè (Overwrite). Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
-const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode } = config;
-const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack } = callbacks;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag } = config;
+const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag } = callbacks;
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [chunks, setChunks] = React.useState([]);
 const [stage, setStage] = React.useState('spot');
@@ -9841,13 +9977,16 @@ const [timeLeft, setTimeLeft] = React.useState(timeLimit || 30);
 const [queueLength, setQueueLength] = React.useState(0);
 // Động cơ thống nhất từ Tầng 2
 const enrichedCardsRef = React.useRef(cards);
-const deckRef = React.useRef([]);
+const deckRef = React.useRef([]); // Lưu Object thay vì Index
 const historyQueueRef = React.useRef([]);
 const coordinatorRef = React.useRef(null);
 const isGameActiveRef = React.useRef(true);
 const gameTimerRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
+// Đồng bộ túi nháp RAM
+const globalRetryBagRef = React.useRef(globalRetryBag);
+React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
@@ -9886,31 +10025,14 @@ onBack({ spotMistakeState: latestStateRef.current });
 }
 };
 // ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC) - ĐÃ CHUYỂN GIAO QUYỀN CHO TẦNG 6
 // ==================================================================================
 const pushToRetryBag = React.useCallback((questionData) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['spotmistake']) bag['spotmistake'] = [];
-const termToCheck = questionData.origin?.term || questionData.wrongSentence;
-const isDup = bag['spotmistake'].some(item => (item.origin?.term || item.wrongSentence) === termToCheck);
-if (!isDup) {
-bag['spotmistake'].push(questionData);
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
-const removeFromRetryBag = React.useCallback((termToCheck) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['spotmistake']) return;
-const prevLen = bag['spotmistake'].length;
-bag['spotmistake'] = bag['spotmistake'].filter(item => (item.origin?.term || item.wrongSentence) !== termToCheck);
-if (bag['spotmistake'].length !== prevLen) {
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
+if (addToRetryBag) addToRetryBag('spotmistake', questionData);
+}, [addToRetryBag]);
+const localRemoveFromRetryBag = React.useCallback((termToCheck) => {
+if (removeFromRetryBag) removeFromRetryBag('spotmistake', termToCheck);
+}, [removeFromRetryBag]);
 // Cỗ máy đóng gói Lỗi sai (Lưu cả câu đã sửa & Gạch chân từ đúng)
 const logMistake = React.useCallback((question) => {
 if (!onLogWrong || !question) return;
@@ -9925,27 +10047,20 @@ tags: ['spotmistake', level, sourceMode], timestamp: Date.now()
 };
 onLogWrong(mistakeCard);
 }, [onLogWrong, level, sourceMode]);
-const getNextCardIndex = () => {
-if (deckRef.current.length === 0) {
-let validIndices = enrichedCardsRef.current.map((c, i) => ({ c, i })).filter(({ c }) => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' ')).map(({ i }) => i);
-if (validIndices.length === 0) validIndices = enrichedCardsRef.current.map((_, i) => i);
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
-}
-return deckRef.current.shift() || 0;
-};
 // ==================================================================================
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
 // 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
+// [VÁ ĐIỂM MÙ SỐ 2] Lọc thẻ mù trước khi bốc từ Túi nháp (Poisoned Retry Bag)
 if (Math.random() < 0.3) {
 try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+const bag = globalRetryBagRef.current || {};
 if (bag['spotmistake'] && bag['spotmistake'].length > 0) {
-const randIdx = Math.floor(Math.random() * bag['spotmistake'].length);
-const retryQ = bag['spotmistake'][randIdx];
-if (retryQ && retryQ.wrongSentence && retryQ.wrongWord) {
-return retryQ; // Trả về cục Data trọn vẹn, không cần qua bước bóp méo
+const validRetryCards = bag['spotmistake'].filter(c => c && c.wrongSentence && c.wrongWord);
+if (validRetryCards.length > 0) {
+const randIdx = Math.floor(Math.random() * validRetryCards.length);
+return validRetryCards[randIdx]; // Trả về cục Data trọn vẹn, không cần qua bước bóp méo
 }
 }
 } catch(e) {}
@@ -9995,8 +10110,30 @@ console.warn("AI SpotMistake Fallback:", e.message);
 // 3. THẺ GỐC HOẶC KHO CỨU HỘ (Nếu AI Pure sập hoặc đang ở Card Mode)
 let baseCard = null;
 if (!isPureMode || deckRef.current.length > 0) {
-const nextIdx = getNextCardIndex();
-baseCard = enrichedCardsRef.current[nextIdx];
+if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
+// [VÁ ĐIỂM MÙ SỐ 1] Lọc thẻ mù khi nạp lại băng đạn rỗng trong quá trình chơi vô tận
+let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
+if (sentenceCards.length === 0) sentenceCards = validCards;
+validCards = sentenceCards;
+if (validCards.length < 2 && window.FallbackDataEngine) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = 'sentence';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+// [VÁ ĐIỂM MÙ SỐ 3] Cộng dồn Fallback, tuyệt đối KHÔNG ghi đè (Overwrite)
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
+}
+}
+if (validCards.length === 0) {
+validCards = [{ term: "The childrens are playing in the park.", definition: "Bọn trẻ đang chơi trong công viên. (Dự phòng)" }];
+}
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
+}
+baseCard = deckRef.current.shift();
 }
 // Cứu hộ khẩn cấp nếu bộ bài rỗng
 if (!baseCard) {
@@ -10076,20 +10213,54 @@ const startNewGame = async () => {
 setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 historyQueueRef.current = [];
-let currentDeck = [...cards];
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i)) : [];
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
+let currentDeck = sourceMode === 'card' ? [...cards] : [];
+let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
 safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
 const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(
-currentDeck, deckRef.current, 10, lang, apiKey
+currentDeck, initialIndices, 10, lang, apiKey
 );
 if (hasUpdates) {
 enrichedCardsRef.current = updatedCards;
+currentDeck = updatedCards;
 if (onUpdateCards) onUpdateCards(updatedCards);
 safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
 }
+}
+if (sourceMode === 'card') {
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
+if (sentenceCards.length === 0) sentenceCards = validCards;
+validCards = sentenceCards;
+if (validCards.length < 2) {
+safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
+if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = 'sentence';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
+// [VÁ ĐIỂM MÙ SỐ 3] Cộng dồn Fallback, tuyệt đối KHÔNG ghi đè (Overwrite)
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
+}
+}
+if (validCards.length < 2) {
+const defaults = [
+{ term: "The childrens are playing in the park.", definition: "Bọn trẻ đang chơi trong công viên. (Dự phòng)" },
+{ term: "She go to school everyday.", definition: "Cô ấy đi học mỗi ngày. (Dự phòng)" }
+];
+const existingTerms = new Set(validCards.map(c => c.term));
+const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...neededDefaults];
+}
+}
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
+} else {
+deckRef.current = [];
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
@@ -10152,7 +10323,13 @@ setTime(st.time || 0);
 setCorrectCount(st.correctCount || 0);
 setWrongCount(st.wrongCount || 0);
 setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 30));
-if (st.deck) deckRef.current = st.deck;
+if (st.deck) {
+if (st.deck.length > 0 && typeof st.deck[0] === 'number') {
+deckRef.current = st.deck.map(idx => cards[idx]).filter(Boolean);
+} else {
+deckRef.current = [...st.deck];
+}
+}
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 // [ĐỒNG BỘ] Nâng mức trần nạp đạn lên 4 viên khi Phục hồi Session
@@ -10224,7 +10401,7 @@ const normalizedInput = normalize(inputBuffer);
 const normalizedCorrection = normalize(currentQuestion.correction);
 if (normalizedInput === normalizedCorrection) {
 if (attempts === 0) {
-removeFromRetryBag(currentQuestion.origin?.term || currentQuestion.wrongSentence);
+localRemoveFromRetryBag(currentQuestion.origin?.term || currentQuestion.wrongSentence);
 }
 setCheckStatus('success'); setCorrectCount(p => p + 1);
 setScore(p => p + (20 * combo)); setCombo(p => p + 1);
@@ -10299,10 +10476,10 @@ handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound, handleSaveAndBac
 };
 };
 // --- 2. GAME WRAPPER ---
-const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave }) => {
-const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit };
+const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag };
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState }, hookCallbacks);
+const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks);
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: logic.handleSaveAndBack,
@@ -10657,15 +10834,15 @@ window.OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.7
-// Last Updated: 2026-04-12 15:55
+// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.9
+// Last Updated: 2026-04-13 17:55
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [QA DEBUG] Vá lỗi theo Báo cáo DEBUG.md: Sửa ánh xạ isAiMode, chặn spam Bỏ qua khi isGenerating, vá Memory Leak ở Timer AI, xóa nút Hủy bỏ ở màn hình Loading 22s. Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [QA DEBUG] CHUẨN HÓA 100% MÃ NGUỒN. Áp dụng "Lưới Lọc Thép" cho deckRef. Vá 3 Điểm mù: (1) Lọc rác khi nạp lại bài, (2) Khử độc Túi nháp RetryBag, (3) Cộng dồn (Append) Fallback thay vì Ghi đè (Overwrite). Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
-const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode } = config;
-const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack } = callbacks;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag } = config;
+const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag } = callbacks;
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [selectedIndex, setSelectedIndex] = React.useState(null);
 const [checkStatus, setCheckStatus] = React.useState('idle');
@@ -10693,7 +10870,10 @@ const isGameActiveRef = React.useRef(true);
 const gameTimerRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
-const deckRef = React.useRef([]); // Thêm deckRef để quản lý rút bài
+const deckRef = React.useRef([]); // Quản lý rút bài bằng Object thay vì Index
+// Đồng bộ túi nháp RAM
+const globalRetryBagRef = React.useRef(globalRetryBag);
+React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 const safeShowToast = React.useCallback((msg, type = 'success') => {
 if (showToast) showToast({ text: typeof msg === 'string' ? msg : msg.text, type, id: Date.now() });
 }, [showToast]);
@@ -10733,28 +10913,11 @@ onBack({ oddOneOutState: latestStateRef.current });
 // [CORE] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
 // ==================================================================================
 const pushToRetryBag = React.useCallback((questionData) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['oddoneout']) bag['oddoneout'] = [];
-const termToCheck = questionData.oddWord;
-const isDup = bag['oddoneout'].some(item => item.oddWord === termToCheck && item.words.join() === questionData.words.join());
-if (!isDup) {
-bag['oddoneout'].push(questionData);
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
-const removeFromRetryBag = React.useCallback((termToCheck, wordsArray) => {
-try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
-if (!bag['oddoneout']) return;
-const prevLen = bag['oddoneout'].length;
-bag['oddoneout'] = bag['oddoneout'].filter(item => !(item.oddWord === termToCheck && item.words.join() === wordsArray.join()));
-if (bag['oddoneout'].length !== prevLen) {
-localStorage.setItem('fc_global_retry_bag', JSON.stringify(bag));
-}
-} catch(e) {}
-}, []);
+if (addToRetryBag) addToRetryBag('oddoneout', questionData);
+}, [addToRetryBag]);
+const localRemoveFromRetryBag = React.useCallback((termToCheck, wordsArray) => {
+if (removeFromRetryBag) removeFromRetryBag('oddoneout', termToCheck, wordsArray);
+}, [removeFromRetryBag]);
 // Cỗ máy đóng gói Lỗi sai (Lưu log để hiện trong Sổ tay Lỗi sai)
 const logMistake = React.useCallback((question) => {
 if (!onLogWrong || !question) return;
@@ -10763,10 +10926,10 @@ const mistakeCard = {
 ...baseData,
 id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 type: 'mistake',
-term: question.words.join(' • '),
+term: Array.isArray(question.words) ? question.words.join(' • ') : question.words,
 definition: `Từ khác loại: ${question.oddWord}`,
 analysis: question.explanation,
-example: `Nhóm từ: ${question.words.join(', ')}`,
+example: `Nhóm từ: ${Array.isArray(question.words) ? question.words.join(', ') : question.words}`,
 tags: ['oddoneout', level, sourceMode],
 timestamp: Date.now()
 };
@@ -10777,14 +10940,15 @@ onLogWrong(mistakeCard);
 // ==================================================================================
 const fetchTask = async () => {
 // 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
+// [VÁ ĐIỂM MÙ SỐ 2] Khử độc túi nháp: Lọc các câu rỗng từ phiên bản cũ
 if (Math.random() < 0.3) {
 try {
-const bag = JSON.parse(localStorage.getItem('fc_global_retry_bag')) || {};
+const bag = globalRetryBagRef.current || {};
 if (bag['oddoneout'] && bag['oddoneout'].length > 0) {
-const randIdx = Math.floor(Math.random() * bag['oddoneout'].length);
-const retryQ = bag['oddoneout'][randIdx];
-if (retryQ && retryQ.words && retryQ.oddWord) {
-return retryQ;
+const validRetryCards = bag['oddoneout'].filter(c => c && c.words && c.oddWord && c.explanation);
+if (validRetryCards.length > 0) {
+const randIdx = Math.floor(Math.random() * validRetryCards.length);
+return validRetryCards[randIdx];
 }
 }
 } catch(e) {}
@@ -10817,7 +10981,7 @@ safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`
 }
 if (onSaveToHarvest) {
 onSaveToHarvest(level, {
-displaySentence: parsedResult.words.join(' • '),
+displaySentence: Array.isArray(parsedResult.words) ? parsedResult.words.join(' • ') : parsedResult.words,
 targetWord: parsedResult.oddWord,
 hint: parsedResult.explanation
 });
@@ -10834,18 +10998,27 @@ console.warn("AI OddOneOut Pure Fallback:", e.message);
 }
 // 2.5 HYBRID AI MODE (Thử thách AI với Thẻ gốc)
 if (!isPureMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OddOneOutEngine.ai_generate_from_card) {
-let poppedIdx = null;
+let poppedCard = null;
 try {
 if (deckRef.current.length === 0) {
-let validIndices = enrichedCardsRef.current.map((_, i) => i);
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validIndices) : validIndices;
+// [LƯỚI LỌC THÉP] Lọc thẻ mù khi nạp đạn lại trong chế độ card
+let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validCards.length < 4 && window.FallbackDataEngine) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, 'vocab', level, 20);
+if (fbItems && fbItems.length >= 4) {
+const existingTerms = new Set(validCards.map(v => v.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
 }
-poppedIdx = deckRef.current.shift();
-const baseCard = enrichedCardsRef.current[poppedIdx];
-if (baseCard) {
+}
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
+}
+poppedCard = deckRef.current.shift();
+if (poppedCard) {
 const dataMode = config?.dataMode || 'vocab';
 const topic = config?.topic || '';
-const aiPromise = window.GameAlgoEngine.OddOneOutEngine.ai_generate_from_card(baseCard, lang, dataMode, level, topic, currentApiKey);
+const aiPromise = window.GameAlgoEngine.OddOneOutEngine.ai_generate_from_card(poppedCard, lang, dataMode, level, topic, currentApiKey);
 const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Hybrid Timeout")), 15000));
 const parsedResult = await Promise.race([aiPromise, timeoutPromise]);
 if (parsedResult && parsedResult.words && parsedResult.oddWord) {
@@ -10856,7 +11029,7 @@ localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
 if (onSaveToHarvest) {
 onSaveToHarvest(level, {
-displaySentence: parsedResult.words.join(' • '),
+displaySentence: Array.isArray(parsedResult.words) ? parsedResult.words.join(' • ') : parsedResult.words,
 targetWord: parsedResult.oddWord,
 hint: parsedResult.explanation
 });
@@ -10871,42 +11044,72 @@ return { ...parsedResult, isAiGenerated: true };
 } catch (e) {
 console.warn("Hybrid AI OddOneOut Fallback:", e.message);
 // Fallback: Nhét lại thẻ vào đầu bộ bài để cỗ máy offline xử lý
-if (poppedIdx !== null) deckRef.current.unshift(poppedIdx);
+if (poppedCard) deckRef.current.unshift(poppedCard);
 }
 }
 // 3. THẺ GỐC HOẶC KHO CỨU HỘ (Nếu AI Pure sập mạng hoặc đang ở Card Mode ko AI)
 if (window.GameAlgoEngine && window.GameAlgoEngine.OddOneOutEngine && window.GameAlgoEngine.OddOneOutEngine.offline_generate) {
-const offlineResult = window.GameAlgoEngine.OddOneOutEngine.offline_generate(enrichedCardsRef.current, lang);
+// [VÁ ĐIỂM MÙ SỐ 1] Lọc rác khi tạo mảng bẫy offline
+const cleanDeck = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+const offlineResult = window.GameAlgoEngine.OddOneOutEngine.offline_generate(cleanDeck, lang);
 if (offlineResult) return { ...offlineResult, isAiGenerated: false };
 }
 // Chốt chặn bảo vệ cuối cùng (Tránh Crash App)
-return { words: ["apple", "banana", "orange", "cat"], oddWord: "cat", explanation: "Cat là động vật (Dự phòng).", isAiGenerated: false };
+return { words: ["apple", "banana", "orange", "cat"], oddWord: "cat", explanation: "Cat là động vật (Dự phòng tuyệt đối).", isAiGenerated: false };
 };
 const startNewGame = async () => {
-if (sourceMode === 'card' && (!cards || cards.length < 4)) {
-safeShowToast("Chế độ Thẻ cần ít nhất 4 từ vựng. Đang kích hoạt dữ liệu dự phòng...", "warning");
-}
 setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 historyQueueRef.current = [];
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
 let currentDeck = [...cards];
-deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i)) : [];
+let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 // PRE-FLIGHT BATCH ENRICH (Vá lỗi thẻ mù cho Card Mode)
 if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
 safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
-const tempIndices = Array.from({length: currentDeck.length}, (_, i) => i);
-const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(currentDeck, tempIndices, 10, lang, apiKey);
+const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(currentDeck, initialIndices, 10, lang, apiKey);
 if (hasUpdates) {
+currentDeck = updatedCards;
 enrichedCardsRef.current = updatedCards;
 if (onUpdateCards) onUpdateCards(updatedCards);
 safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
 }
 }
+// [LƯỚI LỌC THÉP] + [VÁ ĐIỂM MÙ SỐ 3]
+if (sourceMode === 'card') {
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validCards.length < 4) {
+safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
+if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, 'vocab', level, 20);
+// [CỘNG DỒN FALLBACK]
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs];
+}
+}
+// Chốt chặn cuối nếu vẫn < 4
+if (validCards.length < 4) {
+const defaults = [
+{ term: "Apple", definition: "Quả táo", partOfSpeech: "Noun" },
+{ term: "Banana", definition: "Quả chuối", partOfSpeech: "Noun" },
+{ term: "Orange", definition: "Quả cam", partOfSpeech: "Noun" },
+{ term: "Cat", definition: "Con mèo", partOfSpeech: "Animal" }
+];
+const existingTerms = new Set(validCards.map(c => c.term));
+const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...neededDefaults];
+}
+}
+deckRef.current = window.Utils.shuffleArray(validCards);
+} else {
+deckRef.current = [];
+}
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// [ĐỒNG BỘ v1.6] Giữ mức trần nạp đạn lên 4 viên
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 } else {
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
@@ -10916,7 +11119,7 @@ const isUsingAI = isAiMode || sourceMode === 'ai_pure';
 if (isUsingAI) {
 setAiCountdown(22);
 const timer = setInterval(() => {
-if (!isGameActiveRef.current) { clearInterval(timer); return; } // [QA DEBUG] Vá Memory Leak
+if (!isGameActiveRef.current) { clearInterval(timer); return; }
 setAiCountdown(prev => { if (prev <= 1) clearInterval(timer); return prev - 1; });
 }, 1000);
 const maintainPromise = coordinatorRef.current.maintain();
@@ -10931,7 +11134,6 @@ setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 15);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 } else if (isGameActiveRef.current) {
-// DUMB UI: Không tự xử lý Fallback nữa, Coordinator sẽ lo
 safeShowToast("Mạng không ổn định. Đã khởi tạo dữ liệu dự phòng.", "warning");
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 }
@@ -10967,10 +11169,15 @@ setTime(st.time || 0);
 setCorrectCount(st.correctCount || 0);
 setWrongCount(st.wrongCount || 0);
 setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 15));
-if (st.deck) deckRef.current = st.deck;
+if (st.deck) {
+if (st.deck.length > 0 && typeof st.deck[0] === 'number') {
+deckRef.current = st.deck.map(idx => cards[idx]).filter(Boolean);
+} else {
+deckRef.current = [...st.deck];
+}
+}
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// [ĐỒNG BỘ v1.6] Nâng mức trần nạp đạn lên 4 viên khi Phục hồi Session
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 coordinatorRef.current.maintain();
 }
@@ -11014,13 +11221,13 @@ setTimeout(() => triggerAutoSave(), 150);
 };
 // --- TƯƠNG TÁC NGƯỜI DÙNG ---
 const handleOptionClick = (idx) => {
-if (checkStatus === 'success' || checkStatus === 'failed' || isGenerating) return; // [QA DEBUG] Chặn Click ẩn khi đang nạp
+if (checkStatus === 'success' || checkStatus === 'failed' || isGenerating) return;
 const clickedWord = currentQuestion.words[idx];
 setSelectedIndex(idx);
 const isCorrect = clickedWord.toLowerCase().trim() === currentQuestion.oddWord.toLowerCase().trim();
 if (isCorrect) {
 if (attempts === 0) {
-removeFromRetryBag(currentQuestion.oddWord, currentQuestion.words);
+localRemoveFromRetryBag(currentQuestion.oddWord, currentQuestion.words);
 }
 setCheckStatus('success'); setCorrectCount(p => p + 1);
 setScore(p => p + (15 * combo)); setCombo(p => p + 1);
@@ -11041,7 +11248,7 @@ setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
 setTimeout(() => triggerAutoSave(), 150);
 };
 const handleSkip = () => {
-if (checkStatus === 'success' || checkStatus === 'failed' || isGenerating) return; // [QA DEBUG] Bịt lỗ hổng Spam Skip
+if (checkStatus === 'success' || checkStatus === 'failed' || isGenerating) return;
 pushToRetryBag(currentQuestion);
 setCombo(1); setCheckStatus('failed'); setWrongCount(p => p + 1); setAttempts(2);
 safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); setResultTimer(8);
@@ -11091,11 +11298,10 @@ handleOptionClick, handleSkip, nextRound, handleSaveAndBack
 };
 };
 // --- 2. GAME WRAPPER ---
-const OddOneOutGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, onPlay }) => {
-const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit };
+const OddOneOutGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, onPlay, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag };
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-// [QA DEBUG] Fix Điểm mù 1: Đồng bộ quyền sinh sát isAiMode từ safeConfig
-const logic = useOddOneOutLogic(cards, { ...safeConfig, isAiMode: safeConfig.aiMode || false, apiKey, lang, timeLimit: safeConfig.timeLimit || 15, savedState }, hookCallbacks);
+const logic = useOddOneOutLogic(cards, { ...safeConfig, isAiMode: safeConfig.aiMode || false, apiKey, lang, timeLimit: safeConfig.timeLimit || 15, savedState, globalRetryBag }, hookCallbacks);
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: logic.handleSaveAndBack,
@@ -11133,11 +11339,11 @@ window.Block5_13_useOddOneOutLogic = useOddOneOutLogic;
 window.useOddOneOutLogic = useOddOneOutLogic;
 window.Block5_13_OddOneOutGame = OddOneOutGame;
 window.OddOneOutGame = OddOneOutGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.8
-// Last Updated: 2026-04-13 10:10
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.9
+// Last Updated: 2026-04-13 15:45
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật: [INDEXEDDB MIGRATION - BƯỚC 2] Chuyển aiHarvestPool và globalRetryBag sang nạp bất đồng bộ từ window.FcDB. Thêm cờ isDbReady. Tuân thủ Điều 3.
+// Cập nhật: [INDEXEDDB MIGRATION - PHẦN 3] Nạp bất đồng bộ Sổ tay (notebook, mastered, incorrectList) từ IndexedDB thay vì LocalStorage đồng bộ. Tuân thủ Điều 3.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -11183,9 +11389,9 @@ return saved ? saved.replace(/"/g, '') : '';
 });
 // Data States
 const [cards, setCards] = useState([]);
-const [notebook, setNotebook] = useState(() => window.Utils?.safeJsonParse('fc_notebook_' + lang, []) || []);
-const [mastered, setMastered] = useState(() => window.Utils?.safeJsonParse('fc_mastered_' + lang, []) || []);
-const [incorrectList, setIncorrectList] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, []) || []);
+const [notebook, setNotebook] = useState([]);
+const [mastered, setMastered] = useState([]);
+const [incorrectList, setIncorrectList] = useState([]);
 const [isStudyingNotebook, setIsStudyingNotebook] = useState(false);
 const [studySourceName, setStudySourceName] = useState(null);
 // [NEW v1.8] INDEXEDDB ASYNC STATE
@@ -11313,12 +11519,17 @@ localStorage.setItem(window.STORAGE_KEYS.UI_LANG, JSON.stringify(uiLang));
 // 3. EFFECT: Đổi Ngôn Ngữ -> Tải các Sổ tay và Khởi tạo Level
 useEffect(() => {
 localStorage.setItem(window.STORAGE_KEYS.LANG, JSON.stringify(lang));
-const savedNote = window.Utils?.safeJsonParse('fc_notebook_' + lang, []) || [];
-const savedMaster = window.Utils?.safeJsonParse('fc_mastered_' + lang, []) || [];
-const savedIncorrect = window.Utils?.safeJsonParse(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, []) || [];
+const loadUserData = async () => {
+if (isDbReady && window.FcDB) {
+const savedNote = await window.FcDB.get('fc_notebook_' + lang) || [];
+const savedMaster = await window.FcDB.get('fc_mastered_' + lang) || [];
+const savedIncorrect = await window.FcDB.get(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang) || [];
 setNotebook(savedNote);
 setMastered(savedMaster);
 setIncorrectList(savedIncorrect);
+}
+};
+loadUserData();
 // Cầu dao bảo vệ: Chỉ reset các trạng thái khi THỰC SỰ đổi ngôn ngữ
 if (prevLangRef.current !== lang) {
 setCurrentCardIndex(0);
@@ -11332,7 +11543,7 @@ const savedTopic = localStorage.getItem('fc_current_topic_' + lang);
 setCurrentTopic(savedTopic ? savedTopic.replace(/"/g, '') : '');
 prevLangRef.current = lang;
 }
-}, [lang]);
+}, [lang, isDbReady]);
 // EFFECT: ĐỘNG CƠ "VÒI NƯỚC" - ĐỒNG BỘ DỮ LIỆU ĐA CHIỀU
 useEffect(() => {
 // Nếu người dùng đang ôn tập Sổ tay/Lỗi sai thì không được xả nước đè lên
@@ -11709,10 +11920,10 @@ handleManualAiFill
 window.Block6_2_useAiLogic = useAiLogic;
 window.Block14_useAiLogic = useAiLogic; // GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC (Fallback)
 window.useAiLogic = useAiLogic;
-// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.14
-// Last Updated: 2026-04-13 11:30
+// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data Management Logic) - Version 1.15
+// Last Updated: 2026-04-13 16:00
 // Nhiệm vụ: Xử lý toàn bộ logic liên quan đến dữ liệu: Import/Export, Sổ tay, Thẻ đã thuộc, Thuật toán SRS và Dọn rác.
-// Cập nhật: [FIX SYNTAX ERROR] Sửa dứt điểm lỗi cú pháp ở object trả về của hàm handleExportHarvestToExcel (Bỏ các dấu nháy thừa). Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [INDEXEDDB MIGRATION - PHẦN 3] Cắt cáp LocalStorage. Chuyển toàn bộ thao tác lưu Sổ tay (Notebook), Đã thuộc (Mastered) và Lỗi sai (IncorrectList) sang ghi bất đồng bộ trên window.FcDB. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 const useDataLogic = (core, latestStateRef, callbacks) => {
 const { t, showToast, handleNext } = callbacks;
@@ -12226,7 +12437,8 @@ showToast("Tất cả từ trong link đã có trong sổ tay!", "info");
 return prev;
 }
 const updated = [...prev, ...uniqueItems];
-window.Utils.safeLocalStorageSet('fc_notebook_' + lang, updated);
+// [INDEXEDDB] Ghi ngầm Sổ tay xuống DB
+if (window.FcDB) window.FcDB.set('fc_notebook_' + lang, updated);
 showToast(`Đã gộp ${uniqueItems.length} thẻ mới vào Sổ tay!`, "success");
 return updated;
 });
@@ -12330,7 +12542,8 @@ secureCopy(tsv);
 const handleNotebookSave = (payload) => {
 if (Array.isArray(payload)) {
 core.setNotebook(payload);
-window.Utils.safeLocalStorageSet('fc_notebook_' + lang, payload);
+// [INDEXEDDB] Lưu Sổ tay
+if (window.FcDB) window.FcDB.set('fc_notebook_' + lang, payload);
 showToast("Đã cập nhật sổ tay!", "success");
 return;
 }
@@ -12346,7 +12559,8 @@ newNote = [...notebook, card];
 showToast("Đã thêm vào sổ tay", "success");
 }
 core.setNotebook(newNote);
-window.Utils.safeLocalStorageSet('fc_notebook_' + lang, newNote);
+// [INDEXEDDB] Lưu Sổ tay
+if (window.FcDB) window.FcDB.set('fc_notebook_' + lang, newNote);
 };
 const handleMarkMastered = (card) => {
 const { cards, mastered, currentCardIndex } = latestStateRef.current;
@@ -12356,8 +12570,10 @@ const newCards = cards.filter(c => c.term !== target.term);
 const newMastered = [...mastered, target];
 core.setCards(newCards);
 core.setMastered(newMastered);
+// Lưu thẻ đang học vào LocalStorage bình thường
 window.Utils.safeLocalStorageSet('fc_data_' + lang, newCards);
-window.Utils.safeLocalStorageSet('fc_mastered_' + lang, newMastered);
+// [INDEXEDDB] Lưu Thẻ đã thuộc
+if (window.FcDB) window.FcDB.set('fc_mastered_' + lang, newMastered);
 if (currentCardIndex >= newCards.length) {
 core.setCurrentCardIndex(Math.max(0, newCards.length - 1));
 }
@@ -12370,7 +12586,8 @@ const newCards = [card, ...cards];
 core.setMastered(newMaster);
 core.setCards(newCards);
 window.Utils.safeLocalStorageSet('fc_data_' + lang, newCards);
-window.Utils.safeLocalStorageSet('fc_mastered_' + lang, newMaster);
+// [INDEXEDDB] Lưu Thẻ đã thuộc
+if (window.FcDB) window.FcDB.set('fc_mastered_' + lang, newMaster);
 core.setCurrentCardIndex(0);
 showToast("Đã khôi phục thẻ (Lên đầu danh sách)!", "success");
 };
@@ -12385,7 +12602,8 @@ const newCards = [...mastered, ...cards];
 core.setMastered([]);
 core.setCards(newCards);
 window.Utils.safeLocalStorageSet('fc_data_' + lang, newCards);
-window.Utils.safeLocalStorageSet('fc_mastered_' + lang, []);
+// [INDEXEDDB] Làm rỗng danh sách Đã thuộc
+if (window.FcDB) window.FcDB.set('fc_mastered_' + lang, []);
 core.setCurrentCardIndex(0);
 showToast(`Đã khôi phục ${mastered.length} thẻ lên đầu danh sách!`, "success");
 };
@@ -12405,7 +12623,8 @@ const existingTerms = new Set(prev.map(i => i.term));
 const unique = newItems.filter(i => !existingTerms.has(i.term));
 if (unique.length === 0) return prev;
 const updated = [...prev, ...unique];
-window.Utils.safeLocalStorageSet('fc_notebook_' + lang, updated);
+// [INDEXEDDB] Lưu Sổ tay
+if (window.FcDB) window.FcDB.set('fc_notebook_' + lang, updated);
 showToast(`Đã thêm ${unique.length} mục vào sổ tay`, "success");
 return updated;
 });
@@ -12434,13 +12653,15 @@ newList[index] = { ...newList[index], count: (newList[index].count || 1) + 1, la
 newList = [...incorrectList, { ...card, count: 1, lastWrong: Date.now() }];
 }
 core.setIncorrectList(newList);
-window.Utils.safeLocalStorageSet(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, newList);
+// [INDEXEDDB] Lưu Danh sách lỗi sai
+if (window.FcDB) window.FcDB.set(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, newList);
 };
 const handleRemoveWrong = (term) => {
 const { incorrectList } = latestStateRef.current;
 const newList = incorrectList.filter(c => c.term !== term);
 core.setIncorrectList(newList);
-window.Utils.safeLocalStorageSet(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, newList);
+// [INDEXEDDB] Xóa lỗi sai
+if (window.FcDB) window.FcDB.set(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang, newList);
 showToast("Đã xóa khỏi danh sách cần nhớ", "success");
 };
 // ==================================================================================
@@ -12608,11 +12829,11 @@ handleClearHarvestPool
 window.Block6_3_useDataLogic = useDataLogic;
 window.Block15_useDataLogic = useDataLogic; // Fallback
 window.useDataLogic = useDataLogic;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.5
-// Last Updated: 2026-04-12 21:55
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.6
+// Last Updated: 2026-04-13 14:20
 // Nhiệm vụ: Bộ điều khiển trung tâm (Main Controller). Gom nhóm toàn bộ logic từ các hooks con và cung cấp API/Actions cho UI.
 // Quy tắc: Đóng vai trò là cầu nối giữa Data Layer (Tầng 6) và Presentation Layer (Tầng 3, 4, 5).
-// Cập nhật: [TÍNH NĂNG NHẢY THẺ] Khai báo action `handleJumpToCard` để xử lý logic nhảy thẳng đến thẻ bất kỳ, tích hợp dọn dẹp state lật thẻ và ngắt âm thanh. Tuân thủ Điều 3.
+// Cập nhật: [INDEXEDDB MIGRATION - PHẦN 2] Chuẩn hóa các hàm addToRetryBag và removeFromRetryBag để hỗ trợ mọi Game (đặc biệt là OddOneOut). Xuất API chuẩn để Tầng 5 ngừng chọc thẳng vào localStorage. Tuân thủ Điều 3.
 // ==================================================================================
 // [MODIFIED] Nhận 'core' từ tham số để dùng chung state với App
 const useAppLogic = (core) => {
@@ -12621,7 +12842,7 @@ const {
 viewMode, lang, uiLang, cards, notebook, apiKey,
 currentCardIndex, isFlipped, isAutoPlaying, isShuffle, isAutoMode, isFlipLocked,
 settings, voices, isAiModeLearn, isCurrentCardInNotebook, isMuted,
-globalRetryBag // [NEW v1.3] Lấy State túi nháp toàn cục
+globalRetryBag // Lấy State túi nháp toàn cục
 } = core;
 // Derived State
 const mainColor = lang === 'zh' ? 'red' : (lang === 'vi' ? 'green' : 'sky');
@@ -12765,7 +12986,7 @@ core.setIsContentHidden(false);
 stopSpeaking();
 setTimeout(() => core.setCurrentCardIndex(prev => (prev - 1 + cards.length) % cards.length), 150);
 }, [stopSpeaking]);
-// [NEW v1.5] Logic Nhảy thẳng đến thẻ bất kỳ (Quick Jump)
+// Logic Nhảy thẳng đến thẻ bất kỳ (Quick Jump)
 const handleJumpToCard = useCallback((inputNumber) => {
 const { cards } = latestStateRef.current;
 const targetIndex = parseInt(inputNumber, 10) - 1;
@@ -12827,7 +13048,6 @@ originalData = core.incorrectList;
 } else if ((core.studySourceName && core.studySourceName.includes("Sổ tay từ vựng")) || core.isStudyingNotebook) {
 originalData = core.notebook;
 } else {
-// [UPDATE v1.4] Đã nhổ tận gốc CONFIG_SAMPLES, thay bằng đọc trực tiếp theo dynamic key
 originalData = window.Utils?.safeJsonParse('fc_data_' + core.lang, []) || [];
 }
 core.setCards(originalData);
@@ -12836,7 +13056,7 @@ showToast("Đã tắt trộn bài (Về thứ tự gốc)", "info");
 }
 }, [core.isShuffle, core.studySourceName, core.isStudyingNotebook, core.lang, core.notebook, core.incorrectList]);
 // ==================================================================================
-// 4. RETRY BAG APIS (CÁC HÀM QUẢN LÝ TÚI NHÁP TOÀN CỤC)
+// 4. RETRY BAG APIS (CÁC HÀM QUẢN LÝ TÚI NHÁP TOÀN CỤC) - NÂNG CẤP v1.6
 // ==================================================================================
 // Nạp câu hỏi vào túi nháp khi làm sai
 const addToRetryBag = useCallback((gameType, questionData) => {
@@ -12844,10 +13064,14 @@ if (!gameType || !questionData) return;
 core.setGlobalRetryBag(prev => {
 const currentBag = prev[gameType] || [];
 // Kiểm tra trùng lặp (Dùng term hoặc displaySentence làm khóa nhận diện)
-const termToCheck = questionData.term || questionData.origin?.term || questionData.displaySentence || questionData.wrongSentence;
+const termToCheck = questionData.term || questionData.origin?.term || questionData.displaySentence || questionData.wrongSentence || questionData.oddWord;
 if (!termToCheck) return prev;
 const isDup = currentBag.some(item => {
-const itemTerm = item.term || item.origin?.term || item.displaySentence || item.wrongSentence;
+const itemTerm = item.term || item.origin?.term || item.displaySentence || item.wrongSentence || item.oddWord;
+// Xử lý đặc thù cho OddOneOut (cần check thêm mảng words)
+if (gameType === 'oddoneout' && item.words && questionData.words) {
+return itemTerm === termToCheck && item.words.join() === questionData.words.join();
+}
 return itemTerm === termToCheck;
 });
 if (isDup) return prev;
@@ -12856,12 +13080,19 @@ return { ...prev, [gameType]: [...currentBag, questionData] };
 });
 }, [core.setGlobalRetryBag]);
 // Rút câu hỏi ra khỏi túi nháp khi đã làm đúng
-const removeFromRetryBag = useCallback((gameType, termToRemove) => {
+const removeFromRetryBag = useCallback((gameType, termToRemove, extraData = null) => {
 if (!gameType || !termToRemove) return;
 core.setGlobalRetryBag(prev => {
 const currentBag = prev[gameType] || [];
 const newBag = currentBag.filter(item => {
-const itemTerm = item.term || item.origin?.term || item.displaySentence || item.wrongSentence;
+const itemTerm = item.term || item.origin?.term || item.displaySentence || item.wrongSentence || item.oddWord;
+// Xử lý đặc thù cho OddOneOut
+if (gameType === 'oddoneout' && extraData && item.words) {
+if (itemTerm === termToRemove && item.words.join() === extraData.join()) {
+return false; // Loại bỏ (Match cả oddWord và words)
+}
+return true; // Giữ lại
+}
 return itemTerm !== termToRemove;
 });
 if (newBag.length === currentBag.length) return prev; // Không có gì thay đổi
@@ -12996,7 +13227,7 @@ setters: { ...core, setIsShuffle: handleToggleShuffle },
 actions: {
 t, showToast, getCardStyle, speak, stopSpeaking,
 handleNext, handlePrev, toggleAutoPlay, handleStopAutoPlay,
-handleJumpToCard, // [NEW v1.5] Export hàm nhảy thẻ
+handleJumpToCard,
 handleOpenSettings: () => core.setShowSettings(true),
 handleCloseSettings: () => core.setShowSettings(false),
 handleCancelSettings: () => core.setShowSettings(false),
