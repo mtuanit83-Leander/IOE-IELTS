@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.16
-// Last Updated: 2026-04-13 15:35
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.03
+// Last Updated: 2026-04-15 16:40
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [INDEXEDDB MIGRATION - PHẦN 3] Nâng cấp thuật toán Migration trong FcDB.init() để quét và di cư tự động toàn bộ Hồ sơ học thuật đa ngôn ngữ (Sổ tay, Đã thuộc, Lỗi sai) sang IndexedDB. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [VÁ LỖI TREO LOADING] Bọc API gọi AI bằng Promise.race với Timeout 15s. Kích hoạt tự động đứt gãy để Tầng 2.7 kéo cáp cứu hộ Offline. Tuân thủ Điều 3.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -70,9 +70,10 @@ DEFAULT_URL: 'fc_default_url',
 API_KEY_SHEET: 'fc_apikey_sheet_url',
 INCORRECT_LIST: 'fc_incorrect_list',
 LANG: 'fc_current_lang',
-UI_LANG: 'fc_ui_lang'
+UI_LANG: 'fc_ui_lang',
+ACTIVE_EXAM: 'fc_active_exam'
 };
-// [NEW v1.4] Nâng cấp cấu trúc Link mặc định thành Đa chiều (Từ vựng / Câu văn)
+// Nâng cấp cấu trúc Link mặc định thành Đa chiều (Từ vựng / Câu văn)
 window.DEFAULT_SHEETS = {
 en: { vocab: "https://docs.google.com/spreadsheets/d/1k9blJ9jo-GHmqYEHQ_DEYlC5nVuZ-Zce2ZY4o7kU5kw/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1LwzLSR27rvCrc7d6_uCuIXiVfnDlfTCkRN4mgxz_STY/edit?usp=drive_link" },
 zh: { vocab: "https://docs.google.com/spreadsheets/d/17lPYQ1mVWisPhHydugT6IEtl2bvcnmWmm367V_3dQHE/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1YMXhI2_aKdVDZp6hS5p4JqU3PJBDxI_JpVAUZdnDHiw/edit?usp=drive_link" },
@@ -91,11 +92,9 @@ window.DEFAULT_PROMPTS = {
 enrich_word: `Phân tích "{term}" ({lang}->Vi). QUY TẮC QUAN TRỌNG:Nếu là tiếng Trung, dịch sát nghĩa HSK3. Nếu là Tiếng Anh, CHỈ lấy nghĩa thông dụng nhất (A1-A2). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa/translate cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt: Danh từ, Động từ, Tính từ, Trạng từ, Giới từ, Đại từ, Liên từ), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals, Daily Life...), analysis(Giải thích ý nghĩa, cách dùng chi tiết), sinoViet(Hán Việt nếu là Trung/Việt, hoặc Dịch chi tiết/Giải thích thêm nếu là Anh), example(câu chứa từ + dịch), image_keyword(English).`,
 enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt)(Sát nghĩa nhất), partOfSpeech(Ghi là "Câu văn" hoặc "Thành ngữ"), topic(Phân loại chủ đề Tiếng Anh, VD: Weather, Work, Relationships...), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English).`,
 // --- 2. QUIZ (Trắc nghiệm - Agnostic & Tối ưu Token) ---
-// [UPDATE v1.13] Nâng cấp Ngữ cảnh Kép (Dual-Context) chống ảo giác đa ngôn ngữ
 quiz_word: `The original word is "{term}". Generate exactly 4 tricky distractors for its translation "{definition}". CRITICAL: The distractors MUST be in the SAME LANGUAGE as "{definition}". Distractors MUST belong to the SAME topic/semantic field. Do NOT use spelling errors or homophones. Make them plausible misconceptions.`,
 quiz_sentence: `The original sentence is "{term}". Generate exactly 4 tricky distractors for its translation "{definition}". CRITICAL: The distractors MUST be in the SAME LANGUAGE as "{definition}". Keep the sentence structure identical but change 1-2 crucial words subtly (e.g., opposite adjectives, wrong pronouns, incorrect tenses). The false options must sound completely natural but have a logically incorrect meaning.`,
 // --- 3. MATCH (Nối ô) ---
-// [UPDATE v1.11] Áp dụng Bẫy nhận thức (Cognitive Distractors) cho nghĩa Tiếng Việt
 match_word: `Tạo 1 nghĩa sai (Tiếng Việt) cho MỖI từ sau: {itemsText}. QUY TẮC: Nghĩa sai PHẢI thuộc cùng chủ đề/lĩnh vực với từ gốc nhưng khác nghĩa hoàn toàn. TUYỆT ĐỐI KHÔNG dùng từ sai chính tả tiếng Việt (Ví dụ: KHÔNG dùng 'đôi gáy' cho 'đôi giày'). Bẫy phải đánh lừa được tư duy logic.`,
 match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {itemsText}. QUY TẮC: Bản dịch sai phải đọc CỰC KỲ XUÔI TAI bằng tiếng Việt, nhưng bị sai lệch về: Chủ thể (Anh ấy/Cô ấy), Thời gian (Đã/Sẽ), hoặc tính từ bị đảo ngược. TUYỆT ĐỐI KHÔNG viết sai chính tả.`,
 // --- 4. GRAMMAR ---
@@ -103,7 +102,7 @@ grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, sú
 };
 // UI TEXT
 window.UI_TEXT = {
-vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Hoặc nhập link trực tiếp:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "Định nghĩa", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "Dừng", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
+vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Hoặc nhập link trực tiếp:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "定义", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "Dừng", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
@@ -209,14 +208,25 @@ const k = rawK.replace(/["'\s]/g, "");
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 if (schema) { body.generationConfig = { responseMimeType: "application/json", responseSchema: schema }; }
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+// [QA VÁ LỖI] Sử dụng Promise.race để bọc timeout 15s cho lệnh fetch
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(body)
+});
+const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("API Timeout (15s)")), 15000));
+const res = await Promise.race([fetchPromise, timeoutPromise]);
 const d = await res.json();
 if (d.error) throw new Error(d.error.message);
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
 resultText = d.candidates[0].content.parts[0].text;
 if (d.usageMetadata) tokenMetadata = d.usageMetadata;
-successKey = k; break;
-} catch (e) { console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message); lastError = e; }
+successKey = k;
+break; // Thoát vòng lặp KeyPool nếu gọi thành công
+} catch (e) {
+console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message);
+lastError = e;
+}
 }
 if (!resultText) throw new Error(`Tất cả ${keyPool.length} API Key đều lỗi. (Lỗi cuối: ${lastError?.message})`);
 if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) { localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey); console.log("Updated primary API Key to working key."); }
@@ -625,10 +635,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// [NEW v1.16] KHỞI TẠO ĐỘNG CƠ FcDB (Flashcard Database) SỬ DỤNG INDEXEDDB API
+// KHỞI TẠO ĐỘNG CƠ FcDB (Flashcard Database) SỬ DỤNG INDEXEDDB API
 window.FcDB = {
 dbName: 'FlashcardLiteDB',
-storeName: 'keyvaluepairs',
+defaultStore: 'keyvaluepairs',
+stores: ['keyvaluepairs', 'exam_sessions', 'mock_contexts'],
 db: null,
 init: function() {
 return new Promise((resolve, reject) => {
@@ -636,18 +647,18 @@ if (this.db) {
 resolve();
 return;
 }
-const request = indexedDB.open(this.dbName, 1);
+const request = indexedDB.open(this.dbName, 2);
 request.onupgradeneeded = (event) => {
 const db = event.target.result;
-if (!db.objectStoreNames.contains(this.storeName)) {
-db.createObjectStore(this.storeName);
+this.stores.forEach(storeName => {
+if (!db.objectStoreNames.contains(storeName)) {
+db.createObjectStore(storeName);
 }
+});
 };
 request.onsuccess = async (event) => {
 this.db = event.target.result;
-// THỰC THI CHIẾN DỊCH DI CƯ NGẦM (MIGRATION)
 try {
-// 1. Di cư Kho AI
 const oldHarvestPoolStr = localStorage.getItem('fc_ai_harvest_pool');
 if (oldHarvestPoolStr) {
 const oldPool = JSON.parse(oldHarvestPoolStr);
@@ -655,7 +666,6 @@ await this.set('fc_ai_harvest_pool', oldPool);
 localStorage.removeItem('fc_ai_harvest_pool');
 console.log('[FcDB] Migrated Harvest Pool to IndexedDB successfully.');
 }
-// 2. Di cư Túi Nháp Toàn cục
 const oldRetryBagStr = localStorage.getItem('fc_global_retry_bag');
 if (oldRetryBagStr) {
 const oldBag = JSON.parse(oldRetryBagStr);
@@ -663,7 +673,6 @@ await this.set('fc_global_retry_bag', oldBag);
 localStorage.removeItem('fc_global_retry_bag');
 console.log('[FcDB] Migrated Global Retry Bag to IndexedDB successfully.');
 }
-// 3. [NEW v1.16] Di cư Đa ngôn ngữ (Notebook, Mastered, Incorrect List)
 const keysToMigrate = [];
 for (let i = 0; i < localStorage.length; i++) {
 const key = localStorage.key(i);
@@ -695,43 +704,87 @@ reject(event.target.error);
 };
 });
 },
-get: function(key) {
+get: function(key, customStore = null) {
 return new Promise((resolve, reject) => {
 if (!this.db) { reject(new Error('DB not initialized')); return; }
-const transaction = this.db.transaction([this.storeName], 'readonly');
-const store = transaction.objectStore(this.storeName);
+const targetStore = customStore || this.defaultStore;
+const transaction = this.db.transaction([targetStore], 'readonly');
+const store = transaction.objectStore(targetStore);
 const request = store.get(key);
 request.onsuccess = () => resolve(request.result);
 request.onerror = (e) => reject(e.target.error);
 });
 },
-set: function(key, value) {
+set: function(key, value, customStore = null) {
 return new Promise((resolve, reject) => {
 if (!this.db) { reject(new Error('DB not initialized')); return; }
-const transaction = this.db.transaction([this.storeName], 'readwrite');
-const store = transaction.objectStore(this.storeName);
+const targetStore = customStore || this.defaultStore;
+const transaction = this.db.transaction([targetStore], 'readwrite');
+const store = transaction.objectStore(targetStore);
 const request = store.put(value, key);
 request.onsuccess = () => resolve();
 request.onerror = (e) => reject(e.target.error);
 });
 },
-remove: function(key) {
+remove: function(key, customStore = null) {
 return new Promise((resolve, reject) => {
 if (!this.db) { reject(new Error('DB not initialized')); return; }
-const transaction = this.db.transaction([this.storeName], 'readwrite');
-const store = transaction.objectStore(this.storeName);
+const targetStore = customStore || this.defaultStore;
+const transaction = this.db.transaction([targetStore], 'readwrite');
+const store = transaction.objectStore(targetStore);
 const request = store.delete(key);
 request.onsuccess = () => resolve();
 request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.30
-// Last Updated: 2026-04-12 21:30
+// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.03
+// Last Updated: 2026-04-15 15:30
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các Prompt cho AI.
-// Cập nhật: [QA DEBUG] Thanh trừng "Ảo giác ép buộc độ dài". Xóa bỏ mọi lệnh giới hạn số lượng từ vựng trong GRADE_CONTEXTS và getMicroTierDistortionRule. Bổ sung Lệnh Thép giữ nguyên câu gốc. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [ĐẠI TU NÃO BỘ TẦNG 2] Thêm Dạng bài Phát âm & Hình ảnh. Nâng cấp Trí tuệ Sư phạm (DistortionRule & ClozeRule) phân cấp độ khó tàn nhẫn hơn. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.IoeDataEngine = {
+// HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
+QUESTION_TYPES: {
+IOE_MULTIPLE_CHOICE: 'ioe_multiple_choice',
+IOE_MATCH: 'ioe_match',
+IOE_FILL_BLANK: 'ioe_fill_blank',
+IOE_SCRAMBLE: 'ioe_scramble',
+IOE_ODD_ONE_OUT: 'ioe_odd_one_out',
+IOE_SPOT_MISTAKE: 'ioe_spot_mistake',
+IOE_PRONUNCIATION: 'ioe_pronunciation', // [NEW] Phát âm / Trọng âm
+IOE_IMAGE_QUIZ: 'ioe_image_quiz',       // [NEW] Trắc nghiệm Hình ảnh
+IELTS_READING_MCQ: 'ielts_reading_mcq',
+IELTS_READING_TFNG: 'ielts_reading_tfng',
+IELTS_READING_MATCHING: 'ielts_reading_matching',
+IELTS_LISTENING_FILL: 'ielts_listening_fill',
+IELTS_WRITING_TASK1: 'ielts_writing_task1',
+IELTS_WRITING_TASK2: 'ielts_writing_task2'
+},
+// CẤU TRÚC KỲ THI TỔNG HỢP (LEVEL STRUCTURES BLUEPRINTS) BÁM SÁT MA TRẬN
+LEVEL_STRUCTURES: {
+track_ioe: {
+name: "IOE Standard",
+totalQuestions: 200,
+timeLimit: 1800,
+chapters: [
+{ id: 'chap_1', name: 'Kỹ năng Nghe & Hình ảnh', types: ['ioe_image_quiz', 'ioe_multiple_choice'], count: 20 },
+{ id: 'chap_2', name: 'Ngữ âm & Trọng âm', types: ['ioe_pronunciation'], count: 10 },
+{ id: 'chap_3', name: 'Từ vựng & Ngữ pháp', types: ['ioe_match', 'ioe_multiple_choice', 'ioe_odd_one_out', 'ioe_spot_mistake'], count: 90 },
+{ id: 'chap_4', name: 'Kỹ năng Đọc hiểu', types: ['ioe_multiple_choice'], count: 40 },
+{ id: 'chap_5', name: 'Kỹ năng Viết', types: ['ioe_fill_blank', 'ioe_scramble'], count: 40 }
+]
+},
+track_ielts: {
+name: "IELTS Academic",
+totalQuestions: 40,
+timeLimit: 3600,
+modules: [
+{ id: 'mod_reading', name: 'Reading', passages: 3, types: ['ielts_reading_mcq', 'ielts_reading_tfng', 'ielts_reading_matching'] },
+{ id: 'mod_listening', name: 'Listening', parts: 4, types: ['ielts_listening_fill', 'ioe_multiple_choice'] }
+]
+}
+},
 // 1. HỆ THỐNG CẤP ĐỘ ĐÀO TẠO NỀN TẢNG (GRADE CONTEXTS)
 GRADE_CONTEXTS: {
 en_level_1: "Level 1 (Kiddie - Pre-A1/Grade 1-2). Grammar: Singular/Plural (s/es), basic articles (a/an). Vocabulary: Extremely basic nouns.",
@@ -778,101 +831,45 @@ vi_default: ["Giao tiếp hàng ngày", "Công việc", "Xã hội", "Văn hóa"
 },
 // 3. CẤU TRÚC DỮ LIỆU (JSON SCHEMAS)
 SCHEMAS: {
-multiple_choice: {
+mock_ielts_reading_set: {
 type: "OBJECT",
 properties: {
+passage: { type: "STRING", description: "Đoạn văn đọc hiểu dài khoảng 700-800 từ mang tính học thuật (IELTS Academic)" },
 questions: {
 type: "ARRAY",
 items: {
 type: "OBJECT",
 properties: {
 id: { type: "STRING" },
-category: { type: "STRING", description: "phonetics, vocabulary, grammar, academic_usage" },
+type: { type: "STRING", description: "ielts_reading_mcq, ielts_reading_tfng, ielts_reading_matching" },
 questionText: { type: "STRING" },
-options: { type: "ARRAY", items: { type: "STRING" } },
+options: { type: "ARRAY", items: { type: "STRING" }, description: "Mảng các lựa chọn, bỏ trống nếu là dạng điền từ" },
 correctAnswer: { type: "STRING" },
-explanation: { type: "STRING", description: "Vietnamese explanation" }
+explanation: { type: "STRING", description: "Giải thích chi tiết tại sao đúng bằng tiếng Việt" }
 },
-required: ["id", "category", "questionText", "options", "correctAnswer", "explanation"]
-}
+required: ["id", "type", "questionText", "correctAnswer", "explanation"]
 }
 }
 },
-find_mistake: {
+required: ["passage", "questions"]
+},
+mock_ioe_mixed_batch: {
 type: "OBJECT",
 properties: {
-questions: {
+items: {
 type: "ARRAY",
 items: {
 type: "OBJECT",
 properties: {
 id: { type: "STRING" },
-sentence: { type: "STRING" },
-options: { type: "ARRAY", items: { type: "STRING" } },
-wrongWord: { type: "STRING" },
-correction: { type: "STRING" },
-explanation: { type: "STRING" }
+type: { type: "STRING", description: "ioe_multiple_choice, ioe_match, ioe_fill_blank, ioe_scramble, ioe_odd_one_out, ioe_spot_mistake" },
+questionData: { type: "STRING", description: "Chuỗi JSON stringify chứa dữ liệu chi tiết của câu hỏi tùy theo type" }
 },
-required: ["id", "sentence", "options", "wrongWord", "correction", "explanation"]
-}
+required: ["id", "type", "questionData"]
 }
 }
 },
-reorder: {
-type: "OBJECT",
-properties: {
-questions: {
-type: "ARRAY",
-items: {
-type: "OBJECT",
-properties: {
-id: { type: "STRING" },
-scrambledWords: { type: "ARRAY", items: { type: "STRING" } },
-correctSentence: { type: "STRING" },
-vietnameseMeaning: { type: "STRING" }
-},
-required: ["id", "scrambledWords", "correctSentence", "vietnameseMeaning"]
-}
-}
-}
-},
-reading: {
-type: "OBJECT",
-properties: {
-passage: { type: "STRING" },
-questions: {
-type: "ARRAY",
-items: {
-type: "OBJECT",
-properties: {
-id: { type: "STRING" },
-questionText: { type: "STRING" },
-options: { type: "ARRAY", items: { type: "STRING" } },
-correctAnswer: { type: "STRING" },
-explanation: { type: "STRING" }
-},
-required: ["id", "questionText", "options", "correctAnswer", "explanation"]
-}
-}
-}
-},
-odd_one_out: {
-type: "OBJECT",
-properties: {
-questions: {
-type: "ARRAY",
-items: {
-type: "OBJECT",
-properties: {
-id: { type: "STRING" },
-words: { type: "ARRAY", items: { type: "STRING" }, description: "Mảng 4 từ/câu, có 1 mục khác loại" },
-oddWord: { type: "STRING", description: "Mục khác loại" },
-explanation: { type: "STRING", description: "Giải thích ngắn gọn bằng tiếng Việt" }
-},
-required: ["id", "words", "oddWord", "explanation"]
-}
-}
-}
+required: ["items"]
 },
 pure_spot_mistake: {
 type: "OBJECT",
@@ -915,6 +912,24 @@ type: "OBJECT",
 properties: {
 term: { type: "STRING", description: "Từ vựng hoặc câu hoàn chỉnh phù hợp với trình độ" },
 definition: { type: "STRING", description: "Bản dịch tiếng Việt tương ứng" }
+},
+required: ["term", "definition"]
+},
+// [NEW] Lược đồ cho dạng bài Phát âm / Trọng âm
+pure_pronunciation: {
+type: "OBJECT",
+properties: {
+term: { type: "STRING", description: "Chuỗi chứa 4 từ vựng. Dùng ký tự * bọc lấy phần chữ cái cần kiểm tra phát âm. (VD: c*a*t, t*a*ll, b*a*t, m*a*p) hoặc nhấn trọng âm." },
+definition: { type: "STRING", description: "Chỉ rõ từ nào có phần gạch chân/trọng âm khác biệt, kèm giải thích IPA bằng tiếng Việt. (VD: Từ 'tall' phát âm là /ɔː/, còn lại là /æ/)" }
+},
+required: ["term", "definition"]
+},
+// [NEW] Lược đồ cho dạng bài Hình ảnh (Dành cho cấp Tiểu học)
+pure_image_quiz: {
+type: "OBJECT",
+properties: {
+term: { type: "STRING", description: "Từ vựng cụ thể mang tính hình ảnh cao (danh từ cụ thể, động từ hành động rõ ràng)." },
+definition: { type: "STRING", description: "Nghĩa tiếng Việt của từ đó." }
 },
 required: ["term", "definition"]
 },
@@ -1021,52 +1036,10 @@ required: ["wrongSentence", "wrongWord", "correction", "definition", "explanatio
 required: ["correctPairs", "trapPairs"]
 }
 },
-// 4. HÀM TẠO LỆNH (PROMPT GENERATOR CHO DỮ LIỆU CÓ SẴN)
-buildPrompt: function(levelKey, questionType, count = 5, topic = "") {
-const oldToNewMap = {
-level_1_kiddie: 'en_level_1',
-level_2_junior_basic: 'en_level_2',
-level_3_junior_advanced: 'en_level_3',
-level_4_discovery_basic: 'en_level_4',
-level_5_discovery_advanced: 'en_level_5',
-level_6_pre_ielts: 'en_level_6',
-level_7_breakthrough: 'en_level_7',
-level_8_academic: 'en_level_8',
-level_9_expert: 'en_level_9'
-};
-let mappedKey = oldToNewMap[levelKey] || levelKey;
-if (!this.GRADE_CONTEXTS[mappedKey]) mappedKey = "en_level_4";
-const context = this.GRADE_CONTEXTS[mappedKey];
-const targetLang = mappedKey.startsWith('zh_') ? 'Chinese' : (mappedKey.startsWith('vi_') ? 'Vietnamese' : 'English');
-const actualTopic = topic || "General";
-const isAcademic = mappedKey.includes('level_7') || mappedKey.includes('level_8') || mappedKey.includes('level_9');
-let typeInstruction = "";
-switch (questionType) {
-case "multiple_choice":
-typeInstruction = "Create " + count + " multiple choice questions. " + (isAcademic ? "Focus on academic vocabulary and advanced grammar collocations." : "Include a mix of Phonetics, Vocabulary, and Grammar.");
-break;
-case "find_mistake":
-typeInstruction = "Create " + count + " 'Find the mistake' questions. " + (isAcademic ? "Sentence must be complex/academic. Error should be subtle (e.g., word form, preposition, or logic)." : "Simple sentence with one clear grammatical error.");
-break;
-case "reorder":
-typeInstruction = "Create " + count + " 'Sentence Reorder' questions. " + (isAcademic ? "Use formal academic sentences with cohesive devices." : "Provide meaningful daily sentences.");
-break;
-case "reading":
-typeInstruction = "Write ONE short reading passage (" + (isAcademic ? "academic style, 180 words" : "120 words") + "). Then create " + count + " multiple choice questions.";
-break;
-case "odd_one_out":
-typeInstruction = "Create " + count + " 'Odd One Out' vocabulary questions. Provide an array of 4 " + targetLang + " words where 3 words share a common feature and 1 word is the odd one out.";
-break;
-default:
-typeInstruction = "Create " + count + " " + targetLang + " questions.";
-}
-const diversityRule = "\n4. CRITICAL (ANTI-LAZINESS): Ensure high diversity in vocabulary, grammar, and contexts across all questions. Flexibly use complex sentence structures (relative clauses, conditionals, passive voice, etc.) suitable for the level. ABSOLUTELY AVOID repeating simple S+V+O patterns or using overly generic words.";
-return "You are an expert Language Examiner.\nTARGET LEVEL: " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK:\n" + typeInstruction + "\nRULES:\n1. Difficulty MUST strictly match the defined context.\n2. Explanations MUST be in Vietnamese.\n3. No markdown formatting, raw JSON only." + diversityRule;
-},
 // ==================================================================================
-// HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
+// HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES) - [NÂNG CẤP BƯỚC 1]
 // ==================================================================================
-// HÀM 0 (ĐÃ ĐỔI TÊN THÀNH DISTORTION RULE): DÀNH CHO GAME NỐI Ô VÀ TÌM LỖI SAI
+// HÀM 0: DÀNH CHO GAME TÌM LỖI SAI (SPOT MISTAKE) VÀ NỐI Ô BẪY NHIỄU
 getMicroTierDistortionRule: function(targetLang, dataMode, mappedKey, topic) {
 let rule = "";
 const antiLengthRule = "CRITICAL: YOU MUST REWRITE THE EXACT SAME CONTEXT SENTENCE. DO NOT INVENT A NEW SENTENCE OR CHANGE ITS LENGTH. ONLY CHANGE ONE WORD TO MAKE IT INCORRECT. ";
@@ -1078,12 +1051,10 @@ else if (['en_level_6'].includes(mappedKey)) rule = "The traps MUST be single wo
 else if (['en_level_7', 'en_level_8'].includes(mappedKey)) rule = "The traps MUST be single words related to the TOPIC FOCUS. Make EXACTLY ONE advanced morphological error (e.g., using the wrong suffix or prefix like '-tion' instead of '-sion', 'un-' instead of 'in-'). DO NOT write full sentences.";
 else rule = "The traps MUST be single words related to the TOPIC FOCUS. Focus on highly plausible but incorrect academic word formations or false friends. The wrong word must look like a valid academic term. DO NOT write full sentences.";
 } else if (targetLang === 'English' && dataMode === 'sentence') {
-if (['en_level_1'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY wrong singular/plural nouns (s/es) or incorrect basic articles (a/an).";
-else if (['en_level_2', 'en_level_3'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY basic subject-verb agreement (is/are) or wrong subject/object pronouns.";
-else if (['en_level_4', 'en_level_5'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE intermediate grammar mistake: ONLY incorrect basic prepositions (in/on/at) or wrong comparative/superlative forms.";
-else if (['en_level_6'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammar mistake: ONLY misusing Present Perfect vs Past Simple, or wrong modal verbs.";
-else if (['en_level_7', 'en_level_8'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced mistake: ONLY incorrect passive voice, wrong gerund/infinitive, or conditional errors.";
-else rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced academic mistake: ONLY subtle errors in relative clauses, misuse of cohesive devices, or inversion errors. The sentence must look correct to a beginner.";
+// [NÂNG CẤP SƯ PHẠM]
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY wrong singular/plural nouns (s/es) or incorrect basic articles (a/an/the).";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE intermediate grammar mistake: ONLY incorrect prepositions (in/on/at) or wrong word form (e.g. using a Noun instead of an Adjective, 'careful' vs 'carefully').";
+else rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced academic mistake: ONLY incorrect passive voice structure, reduced relative clause errors, or logical conjunction errors (e.g., using 'although' instead of 'because'). The sentence must look correct to a beginner.";
 } else if (targetLang === 'Chinese' && dataMode === 'vocab') {
 if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = "The traps MUST be single vocabulary words (1-2 chars) related to the TOPIC FOCUS. Replace EXACTLY ONE character with a very basic Homophone (同音字) or Visually similar character (形近字). DO NOT write full sentences.";
 else if (['zh_level_3', 'zh_level_4'].includes(mappedKey)) rule = "The traps MUST be single vocabulary words (2-3 chars) related to the TOPIC FOCUS. Replace one character with a Homophone (同音字) or use a Near-synonym (近义词) that is incorrect for the context. DO NOT write full sentences.";
@@ -1100,10 +1071,6 @@ rule = "The traps MUST be single words related to the TOPIC FOCUS. Replace one w
 rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE grammatical or semantic mistake (e.g., wrong word order, misused common words).";
 }
 return rule;
-},
-// BẢO VỆ TẦNG 2.3 TRƯỚC KHI NÓ ĐƯỢC CẬP NHẬT Ở PHIÊN SAU
-getMicroTierTrapRule: function(targetLang, dataMode, mappedKey, topic) {
-return this.getMicroTierDistortionRule(targetLang, dataMode, mappedKey, topic);
 },
 // HÀM 1: DÀNH CHO GAME TRẮC NGHIỆM (QUIZ)
 getMicroTierOptionsRule: function(targetLang, dataMode, mappedKey, topic) {
@@ -1163,8 +1130,9 @@ return noiseRule;
 getMicroTierClozeRule: function(targetLang, dataMode, mappedKey, topic) {
 let clozeRule = "";
 if (targetLang === 'English') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) clozeRule = "Choose the main Subject Noun or a basic Action Verb to replace with '[__________]'. It must be an easy-to-guess word.";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) clozeRule = "Choose a crucial Preposition, a descriptive Adjective, or an Auxiliary verb to replace with '[__________]'. It should test intermediate grammar/vocab.";
+// [NÂNG CẤP SƯ PHẠM]
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) clozeRule = "Choose a basic Subject Noun or a simple Action Verb to replace with '[__________]'. It must be an easy-to-guess word.";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) clozeRule = "Choose a crucial Preposition (in/on/at), a descriptive Adjective, or an Auxiliary verb to replace with '[__________]'. It should test intermediate grammar/vocab.";
 else clozeRule = "Choose a complex Linking word (Conjunction), a part of an advanced Collocation, or a difficult Phrasal Verb to replace with '[__________]'. It must challenge academic reading skills.";
 } else if (targetLang === 'Chinese') {
 if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) clozeRule = "Choose a main Noun or a simple Action Verb to replace with '[__________]'.";
@@ -1205,7 +1173,7 @@ oddRule = "Categorize based on clear Semantic meaning or basic Parts of Speech (
 }
 return oddRule;
 },
-// 5. HÀM 5: QUY ĐỊNH HÌNH THÁI TỪ VỰNG THEO 5 CẤP ĐỘ (TIERED VOCABULARY RULE)
+// HÀM 5: QUY ĐỊNH HÌNH THÁI TỪ VỰNG THEO 5 CẤP ĐỘ
 getMicroTierVocabTypeRule: function(mappedKey) {
 if (['en_level_1', 'en_level_2', 'zh_level_1', 'zh_level_2'].includes(mappedKey)) {
 return "CRITICAL TIER RULE (Level 1-2): The vocabulary item(s) MUST be SINGLE BASIC WORDS (e.g., 'apple', 'run', 'happy'). DO NOT use phrases or compound words.";
@@ -1275,6 +1243,12 @@ taskInstruction = "Generate an array of 5 natural " + targetLang + " sentences s
 } else {
 taskInstruction = "Generate an array of 5 " + targetLang + " vocabulary items strictly matching the target level. For each item, provide its accurate, short Vietnamese translation. " + vocabTierRule + " Ensure the words are distinct in meaning.";
 }
+} else if (gameType === 'pronunciation') {
+// [NEW] Dạng bài Phát âm / Trọng âm
+taskInstruction = "Generate ONE English pronunciation or stress question. Return a string containing 4 English words in 'term', where 3 words share the same pronunciation for a specific underlined part (or stress pattern) and 1 word is different. Use asterisk (*) to mark the focused letter(s), e.g., 'c*a*t, b*a*t, t*a*ll, m*a*p'. In 'definition', return the odd word and a short Vietnamese explanation containing the IPA transcription.";
+} else if (gameType === 'image_quiz') {
+// [NEW] Dạng bài Hình ảnh cho mầm non
+taskInstruction = "Generate ONE simple " + targetLang + " vocabulary item strictly matching the target level (Young Learners). Focus on highly visual concrete nouns or obvious action verbs (e.g., animals, fruits, daily objects, jumping, running). Return the word in 'term' and a short Vietnamese meaning in 'definition'.";
 }
 const diversityRule = "\nCRITICAL (ANTI-LAZINESS): Use rich, vivid vocabulary and diverse contexts. Flexibly vary sentence structures (complex sentences, relative clauses, passive voice, inversions, questions, etc.) naturally and appropriately for the level. ABSOLUTELY AVOID repeating basic S+V+O structures. Do not use overly common, generic, or 'lazy' words (e.g., 'apple', 'cat', 'happy', 'good') unless it is specifically Level 1.";
 return "You are an expert Language Tutor creating interactive exercises.\nTARGET LEVEL: " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + pedagogyRule + "\nRULES:\n1. The vocabulary and grammar complexity MUST strictly match the LEVEL CONTEXT. Do not use overly complex words for lower levels.\n2. Ensure the sentence is culturally neutral and easy to understand.\n3. Your output MUST be ONLY a raw JSON object matching the requested schema. Do not include markdown tags like ```json.\n4. " + diversityRule;
@@ -2199,10 +2173,10 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.0
-// Last Updated: 2026-04-12 10:50
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.02
+// Last Updated: 2026-04-14 16:45
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật: [GIAI ĐOẠN 1] Khởi tạo Block 2.5 độc lập. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [MOCK TEST ERA - BƯỚC 4] Bổ sung createMockTestCoordinator áp dụng thuật toán "Xé nhỏ" (Chunking) & Pre-fetch. Chống tràn RAM khi tải 200 câu IOE. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Early Resolve: Trả Promise ngay khi có 1 đạn)
@@ -2412,15 +2386,61 @@ peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
 destroy: function() { this.isActive = false; this.queue = []; },
 length: function() { return this.queue.length; }
 };
+},
+// [NEW v1.02] ĐỘNG CƠ NẠP ĐỢT CHO BÀI THI TỔNG HỢP (MOCK TEST CHUNKING)
+createMockTestCoordinator: function(fetchChunkFn, chunkSize = 10, prefetchThreshold = 3) {
+return {
+queue: [],
+isFetching: false,
+isActive: true,
+_currentPromise: null,
+totalLoaded: 0,
+maintain: function() {
+if (!this.isActive) return Promise.resolve();
+// Ngưỡng Pre-fetch: Bắt đầu gọi API/DB khi số đạn trong băng <= prefetchThreshold
+if (this.queue.length > prefetchThreshold) return Promise.resolve();
+if (this.isFetching && this._currentPromise) return this._currentPromise;
+this.isFetching = true;
+this._currentPromise = new Promise((resolveOuter) => {
+const runBackground = async () => {
+try {
+const chunkData = await fetchChunkFn(chunkSize);
+if (chunkData && Array.isArray(chunkData) && this.isActive) {
+this.queue.push(...chunkData);
+this.totalLoaded += chunkData.length;
+}
+} catch (e) {
+console.warn("MockTestCoordinator fetch error:", e);
+} finally {
+this.isFetching = false;
+resolveOuter();
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.0
-// Last Updated: 2026-04-12 11:00
-// Nhiệm vụ: Tách biệt hệ thống giao tiếp mạng và gọi API Gemini (Pure Mode & Batch Enrich) ra khỏi GameAlgoEngine.
-// Cập nhật: [GIAI ĐOẠN 1] Khởi tạo Block 2.6 độc lập. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+runBackground();
+}).finally(() => {
+this._currentPromise = null;
+});
+return this._currentPromise;
+},
+pop: function() {
+const item = this.queue.shift();
+this.maintain(); // Ngầm kiểm tra và nạp đạn nếu dưới ngưỡng prefetchThreshold
+return item;
+},
+peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
+destroy: function() { this.isActive = false; this.queue = []; },
+length: function() { return this.queue.length; },
+getTotalLoaded: function() { return this.totalLoaded; }
+};
+}
+};
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.02
+// Last Updated: 2026-04-14 16:33
+// Nhiệm vụ: Tách biệt hệ thống giao tiếp mạng và gọi API Gemini (Pure Mode, Batch Enrich, Mock Test Batching).
+// Cập nhật: [MOCK TEST ERA - BƯỚC 3] Bơm thêm động cơ sinh đề thi tổng hợp (fetchMockIoeBatch & fetchMockIeltsReading) theo chuẩn Schema mới tại Tầng 2.2. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.AiFactoryEngine = {
-// --- 1. CÁC HÀM TIỆN ÍCH DỊCH NGẦM & TẠO PROMPT (Từ PreflightEngine cũ) ---
+// --- 1. CÁC HÀM TIỆN ÍCH DỊCH NGẦM & TẠO PROMPT ---
 batchEnrich: async function(cards, queueIndices, maxCount, lang, apiKey) {
 if (!apiKey || !window.Utils.callGeminiApi) return { updatedCards: cards, hasUpdates: false };
 let updatedCards = [...cards];
@@ -2469,7 +2489,7 @@ getHistoryPrompt: function(historyArray) {
 if (!historyArray || historyArray.length === 0) return "";
 return "\n\nCRITICAL ANTI-DUPLICATION RULE:\nABSOLUTELY DO NOT USE ANY OF THE FOLLOWING WORDS: [" + historyArray.join(', ') + "]. If you use them, you will fail.\n";
 },
-// --- 2. ĐỘNG CƠ SINH THẺ TỪ HƯ VÔ (Từ PureModeEngine cũ) ---
+// --- 2. ĐỘNG CƠ SINH THẺ TỪ HƯ VÔ (PURE MODE) ---
 fetchPureCard: async function(level, gameType, lang, apiKey, historyPrompt = "", dataMode = 'vocab', topic = "") {
 let prompt = window.IoeDataEngine.buildPureModePrompt(level, gameType, dataMode, topic);
 if (historyPrompt) prompt += historyPrompt;
@@ -2517,13 +2537,585 @@ _tokenUsage: res.tokenMetadata
 };
 }
 throw new Error("Invalid format from AI for Match Pure Mode (Hard)");
+},
+// --- 3. [NEW] ĐỘNG CƠ SINH ĐỀ THI TỔNG HỢP (MOCK TEST ERA BATCHING) ---
+fetchMockIoeBatch: async function(level, apiKey, count = 10) {
+const oldToNewMap = {
+level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2',
+level_3_junior_advanced: 'en_level_3', level_4_discovery_basic: 'en_level_4',
+level_5_discovery_advanced: 'en_level_5', level_6_pre_ielts: 'en_level_6',
+level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8',
+level_9_expert: 'en_level_9'
+};
+let mappedKey = oldToNewMap[level] || level;
+if (!window.IoeDataEngine.GRADE_CONTEXTS[mappedKey]) mappedKey = "en_level_4";
+const context = window.IoeDataEngine.GRADE_CONTEXTS[mappedKey];
+let prompt = "You are an expert English Examiner for the IOE (Internet Olympiads of English) in Vietnam.\n";
+prompt += "TARGET LEVEL: " + mappedKey + ".\n";
+prompt += "LEVEL CONTEXT: " + context + "\n\n";
+prompt += "TASK: Generate a mixed batch of EXACTLY " + count + " English questions suitable for this level.\n";
+prompt += "The batch MUST randomly mix these types: ioe_multiple_choice, ioe_match, ioe_fill_blank, ioe_scramble, ioe_odd_one_out, ioe_spot_mistake.\n";
+prompt += "CRITICAL RULES:\n";
+prompt += "1. 'questionData' MUST be a valid JSON stringified representation of the specific question type's required structure.\n";
+prompt += "2. All explanations MUST be in Vietnamese.\n";
+prompt += "3. Ensure high diversity in vocabulary and grammar. Do not repeat the same words or grammatical structures across questions in the same batch.";
+const schema = window.IoeDataEngine.SCHEMAS.mock_ioe_mixed_batch;
+const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
+const parsed = window.Utils.parseAiJson(res.text);
+// Tự động phân tích cứ pháp (Parse) JSON lồng nhau bên trong questionData
+if (parsed && parsed.items) {
+parsed.items = parsed.items.map(item => {
+try {
+item.parsedData = JSON.parse(item.questionData);
+} catch(e) {
+console.warn("Failed to parse questionData for item ID:", item.id);
+item.parsedData = null;
+}
+return item;
+});
+}
+return { ...parsed, _tokenUsage: res.tokenMetadata };
+},
+fetchMockIeltsReading: async function(level, apiKey) {
+let prompt = "You are an expert IELTS Academic Examiner.\n";
+prompt += "TASK: Generate ONE complete IELTS Academic Reading passage (approx 700-800 words) and a set of 5-7 questions based strictly on the passage.\n";
+prompt += "Topic: Random academic topic (e.g., biology, history, sociology, technology, psychology, economics).\n";
+prompt += "Question Types to mix: ielts_reading_mcq (Multiple Choice), ielts_reading_tfng (True/False/Not Given), ielts_reading_matching (Matching information/features).\n";
+prompt += "CRITICAL RULES:\n";
+prompt += "1. The passage MUST be highly academic, cohesive, and use advanced vocabulary/grammar (IELTS band 7.0 - 9.0 style).\n";
+prompt += "2. Questions MUST test detailed comprehension, inference, and identifying writer's claims. Do not make answers too obvious.\n";
+prompt += "3. Explanations MUST be detailed and 100% in VIETNAMESE, citing the specific paragraph/sentence from the passage that justifies the answer.";
+const schema = window.IoeDataEngine.SCHEMAS.mock_ielts_reading_set;
+const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
+const parsed = window.Utils.parseAiJson(res.text);
+return { ...parsed, _tokenUsage: res.tokenMetadata };
 }
 };
-// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.4
-// Last Updated: 2026-04-07 18:30
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.08
+// Last Updated: 2026-04-15 16:00
+// Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
+// Cập nhật: [ĐẠI TU NÃO BỘ TẦNG 2] Tích hợp đường ống sinh dữ liệu cho 2 dạng bài mới: Phát âm (ioe_pronunciation) và Trắc nghiệm Hình ảnh (ioe_image_quiz). Nhúng thuật toán Cào ảnh (Image Scraper) thời gian thực. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// ==================================================================================
+window.ExamEngine = {
+// ============================================================================
+// 0. HÀM CỨU HỘ KHẨN CẤP (GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC - KHÔNG DÙNG TRONG MOCK TEST NỮA)
+// ============================================================================
+_generateFallbackData: function(type, level, track) {
+const lang = track === 'hsk' ? 'zh' : 'en';
+// Lấy 5 thẻ dự phòng từ Kho Offline Tầng 2.4
+const fallbackCards = window.FallbackDataEngine?.getFallbackData(lang, 'vocab', level, 5) || [
+{term: "Apple", definition: "Quả táo"}, {term: "Banana", definition: "Quả chuối"},
+{term: "Cat", definition: "Con mèo"}, {term: "Dog", definition: "Con chó"}, {term: "Bird", definition: "Con chim"}
+];
+const baseCard = fallbackCards[0];
+switch(type) {
+case window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE:
+case 'ioe_multiple_choice':
+case window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH:
+case 'ioe_match':
+case 'ielts_reading_mcq':
+return {
+term: baseCard.term,
+definition: baseCard.definition,
+options: window.Utils.shuffleArray([
+{ text: baseCard.definition, isCorrect: true },
+{ text: fallbackCards[1]?.definition || "Nhiễu 1", isCorrect: false },
+{ text: fallbackCards[2]?.definition || "Nhiễu 2", isCorrect: false },
+{ text: fallbackCards[3]?.definition || "Nhiễu 3", isCorrect: false }
+]),
+isAiGenerated: false
+};
+case window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE:
+case 'ioe_spot_mistake':
+return {
+wrongSentence: baseCard.term + "s",
+wrongWord: baseCard.term + "s",
+correction: baseCard.term,
+explanation: "Lỗi hình thái từ (Hệ thống dự phòng tự động).",
+origin: baseCard,
+isAiGenerated: false
+};
+case window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK:
+case 'ioe_fill_blank':
+case 'ielts_listening_fill':
+return {
+displaySentence: "[__________]",
+targetWord: baseCard.term,
+hint: baseCard.definition,
+origin: baseCard,
+isAiGenerated: false
+};
+case window.IoeDataEngine.QUESTION_TYPES.IOE_SCRAMBLE:
+case 'ioe_scramble':
+return {
+term: baseCard.term,
+definition: baseCard.definition,
+isAiGenerated: false
+};
+case window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT:
+case 'ioe_odd_one_out':
+return {
+words: window.Utils.shuffleArray([baseCard.term, fallbackCards[1]?.term || 'A', fallbackCards[2]?.term || 'B', "Lạc loài"]),
+oddWord: "Lạc loài",
+explanation: "Từ khác loại do hệ thống dự phòng cung cấp.",
+originCards: [baseCard],
+isAiGenerated: false
+};
+case window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION:
+case 'ioe_pronunciation':
+return {
+term: "c*a*t, b*a*t, t*a*ll, m*a*p",
+definition: "Từ tall có âm khác",
+options: window.Utils.shuffleArray([
+{ text: "c*a*t", isCorrect: false },
+{ text: "b*a*t", isCorrect: false },
+{ text: "t*a*ll", isCorrect: true },
+{ text: "m*a*p", isCorrect: false }
+]),
+isAiGenerated: false
+};
+case window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ:
+case 'ioe_image_quiz':
+return {
+term: baseCard.term,
+definition: baseCard.definition,
+options: window.Utils.shuffleArray([
+{ text: baseCard.term, image: `https://tse4.mm.bing.net/th?q=${encodeURIComponent(baseCard.term + " clipart")}&w=300&h=300&c=7&rs=1&p=0`, isCorrect: true },
+{ text: fallbackCards[1]?.term || "A", image: `https://tse4.mm.bing.net/th?q=apple+clipart&w=300&h=300&c=7&rs=1&p=0`, isCorrect: false },
+{ text: fallbackCards[2]?.term || "B", image: `https://tse4.mm.bing.net/th?q=banana+clipart&w=300&h=300&c=7&rs=1&p=0`, isCorrect: false },
+{ text: fallbackCards[3]?.term || "C", image: `https://tse4.mm.bing.net/th?q=cat+clipart&w=300&h=300&c=7&rs=1&p=0`, isCorrect: false }
+]),
+isAiGenerated: false
+};
+default:
+return { term: "Lỗi mạng", definition: "Câu hỏi dự phòng", isAiGenerated: false };
+}
+},
+// ============================================================================
+// 1. HYDRATION LOGIC (BÙ ĐẮP CÂU HỎI MẤT TÍCH BẰNG AI - CÓ BỘ LỌC THÉP VÀ LỊCH SỬ)
+// ============================================================================
+hydrateQuestion: async function(metadata, apiKey, examHistory = []) {
+const { id, track, level, type, topic } = metadata;
+let questionData = null;
+// 1. Kiểm tra trong kho lưu trữ cục bộ IndexedDB
+if (window.FcDB) {
+try {
+questionData = await window.FcDB.get(id, 'fc_questions_bank');
+} catch(e) {
+console.warn("[ExamEngine] DB Get Error or Store missing:", e);
+}
+}
+// 2. Cache Hit: Đã có sẵn câu hỏi, trả về ngay lập tức
+if (questionData) {
+return questionData;
+}
+// 3. Cache Miss: Kích hoạt AiFactoryEngine đúc câu hỏi mới
+console.log(`[ExamEngine] Cache Miss for ${id}. Hydrating via AI...`);
+let generatedData = null;
+let attempt = 0;
+const MAX_ATTEMPTS = 3;
+let finalError = null;
+// Vòng lặp Ép Cung AI
+while (attempt < MAX_ATTEMPTS && !generatedData) {
+try {
+if (!apiKey) {
+throw new Error("Missing API Key for Exam Hydration.");
+}
+// Khởi tạo lệnh cấm lặp từ (historyPrompt)
+let baseHistoryPrompt = "";
+if (window.AiFactoryEngine && examHistory && examHistory.length > 0) {
+baseHistoryPrompt = window.AiFactoryEngine.getHistoryPrompt(examHistory);
+}
+// Bơm thêm lệnh Trừng phạt (Aggressive Prompt) nếu AI ngoan cố trả lại từ cũ
+let retryPrompt = "";
+if (attempt > 0) {
+retryPrompt = `\nCRITICAL WARNING: Your previous output was a DUPLICATE. You MUST generate completely different vocabulary/sentences. Focus on sub-topics or advanced words you haven't used yet. (Random Seed: ${Math.floor(Math.random() * 10000)})`;
+console.warn(`[ExamEngine] Retry Attempt ${attempt + 1}/${MAX_ATTEMPTS} for ${type}...`);
+}
+const finalHistoryPrompt = baseHistoryPrompt + retryPrompt;
+let tempGeneratedData = null;
+// RẼ NHÁNH TẠO DỮ LIỆU THEO TỪNG TYPE
+if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE || type === 'ioe_multiple_choice') {
+tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
+if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
+const dists = await window.GameAlgoEngine.OptionsEngine.ai_generateOptions(tempGeneratedData, 'vi', 'word', apiKey, 3, level, topic, false);
+tempGeneratedData.options = window.Utils.shuffleArray([
+...dists.map(d => ({ text: d, isCorrect: false })),
+{ text: tempGeneratedData.definition, isCorrect: true }
+]);
+} else { throw new Error("Missing OptionsEngine"); }
+}
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH || type === 'ioe_match') {
+tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
+if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
+const dists = await window.GameAlgoEngine.OptionsEngine.ai_generateOptions(tempGeneratedData, 'vi', 'word', apiKey, 3, level, topic, false);
+tempGeneratedData.options = window.Utils.shuffleArray([
+...dists.map(d => ({ text: d, isCorrect: false })),
+{ text: tempGeneratedData.definition, isCorrect: true }
+]);
+} else { throw new Error("Missing OptionsEngine"); }
+}
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || type === 'ioe_spot_mistake') {
+let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'spotmistake', 'sentence', topic);
+if (finalHistoryPrompt) prompt += finalHistoryPrompt;
+const schema = window.IoeDataEngine.SCHEMAS.pure_spot_mistake;
+const aiRes = await window.Utils.callGeminiApi(prompt, schema, apiKey);
+tempGeneratedData = window.Utils.parseAiJson(aiRes.text);
+}
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK || type === 'ioe_fill_blank') {
+let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'fillblank', 'sentence', topic);
+if (finalHistoryPrompt) prompt += finalHistoryPrompt;
+const schema = window.IoeDataEngine.SCHEMAS.pure_fill_blank;
+const aiRes = await window.Utils.callGeminiApi(prompt, schema, apiKey);
+tempGeneratedData = window.Utils.parseAiJson(aiRes.text);
+}
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_SCRAMBLE || type === 'ioe_scramble') {
+tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'scramble', 'en', apiKey, finalHistoryPrompt, 'sentence', topic);
+}
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT || type === 'ioe_odd_one_out') {
+tempGeneratedData = await window.GameAlgoEngine.OddOneOutEngine.ai_generate(level, 'en', apiKey, finalHistoryPrompt, topic, 'vocab');
+}
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || type === 'ioe_pronunciation') {
+tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'pronunciation', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
+// Tự động phân tách chuỗi 4 từ do AI trả về thành mảng Options
+let rawWords = tempGeneratedData.term.split(',').map(w => w.trim());
+if (rawWords.length < 4) rawWords = tempGeneratedData.term.split(' ').map(w => w.trim()).filter(w => w.length > 0);
+const defLower = tempGeneratedData.definition.toLowerCase();
+tempGeneratedData.options = window.Utils.shuffleArray(rawWords.map(w => {
+const cleanW = w.replace(/\*/g, '').toLowerCase();
+// Nhận diện đáp án đúng bằng cách so khớp với Definition của AI
+const isCorrect = defLower.includes(cleanW) || defLower.includes(`'${cleanW}'`) || defLower.includes(`"${cleanW}"`);
+return { text: w, isCorrect: isCorrect };
+}));
+// Bảo vệ Fallback: Nếu AI giải thích không rõ, mặc định từ đầu tiên là đúng
+if (!tempGeneratedData.options.some(o => o.isCorrect) && tempGeneratedData.options.length > 0) {
+tempGeneratedData.options[0].isCorrect = true;
+}
+}
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || type === 'ioe_image_quiz') {
+tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'image_quiz', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
+if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
+// [QUAN TRỌNG] Phải yêu cầu bẫy bằng tiếng Anh (distractorLang = 'en') để cào ảnh chính xác
+const dists = await window.GameAlgoEngine.OptionsEngine.ai_generateOptions(tempGeneratedData, 'en', 'word', apiKey, 3, level, topic, false);
+let allOptions = [
+{ text: tempGeneratedData.term, isCorrect: true },
+...dists.map(d => ({ text: d, isCorrect: false }))
+];
+// Thuật toán Image Scraper: Cào ảnh tĩnh (Clipart) phù hợp cho trẻ em
+allOptions = allOptions.map(opt => ({
+...opt,
+image: `https://tse4.mm.bing.net/th?q=${encodeURIComponent(opt.text + " clipart illustration kids")}&w=300&h=300&c=7&rs=1&p=0`
+}));
+tempGeneratedData.options = window.Utils.shuffleArray(allOptions);
+} else { throw new Error("Missing OptionsEngine"); }
+}
+else {
+tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
+}
+// --- BỘ LỌC THÉP 1: SCHEMA VALIDATOR ---
+if (!tempGeneratedData) {
+throw new Error(`AI returned empty data for type: ${type}`);
+}
+const isMatchOrQuiz = type === window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE || type === 'ioe_multiple_choice' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH || type === 'ioe_match' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || type === 'ioe_pronunciation' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || type === 'ioe_image_quiz';
+if (isMatchOrQuiz) {
+if (!tempGeneratedData.term || !tempGeneratedData.options || !Array.isArray(tempGeneratedData.options) || tempGeneratedData.options.length === 0) {
+throw new Error("Ảo giác AI: Thiếu trường 'term' hoặc mảng 'options' bị rỗng.");
+}
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || type === 'ioe_spot_mistake') {
+if (!tempGeneratedData.wrongSentence || !tempGeneratedData.wrongWord || !tempGeneratedData.correction) {
+throw new Error("Ảo giác AI: Thiếu trường 'wrongSentence', 'wrongWord' hoặc 'correction'.");
+}
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK || type === 'ioe_fill_blank') {
+if (!tempGeneratedData.displaySentence || !tempGeneratedData.targetWord) {
+throw new Error("Ảo giác AI: Thiếu trường 'displaySentence' hoặc 'targetWord'.");
+}
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT || type === 'ioe_odd_one_out') {
+if (!tempGeneratedData.words || !Array.isArray(tempGeneratedData.words) || !tempGeneratedData.oddWord) {
+throw new Error("Ảo giác AI: Thiếu trường 'words' hoặc 'oddWord'.");
+}
+}
+// --- BỘ LỌC THÉP 2: CLIENT-SIDE DUPLICATION CHECK (CHỐNG LẶP TUYỆT ĐỐI) ---
+let termsToCheck = [];
+if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || type === 'ioe_spot_mistake') {
+termsToCheck.push(tempGeneratedData.correction);
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK || type === 'ioe_fill_blank') {
+termsToCheck.push(tempGeneratedData.targetWord);
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT || type === 'ioe_odd_one_out') {
+if (Array.isArray(tempGeneratedData.words)) termsToCheck.push(...tempGeneratedData.words);
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || type === 'ioe_pronunciation') {
+if (Array.isArray(tempGeneratedData.options)) {
+tempGeneratedData.options.forEach(o => termsToCheck.push(o.text.replace(/\*/g, '')));
+}
+} else {
+termsToCheck.push(tempGeneratedData.term);
+}
+// So khớp chéo với Lịch sử RAM
+let isDuplicate = false;
+for (const t of termsToCheck) {
+if (!t || typeof t !== 'string') continue;
+const cleanCheck = t.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
+if (!cleanCheck) continue;
+const hasMatch = examHistory.some(histItem => {
+if (!histItem || typeof histItem !== 'string') return false;
+const cleanHist = histItem.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
+return cleanHist === cleanCheck || (cleanHist.length > 4 && cleanCheck.length > 4 && (cleanHist.includes(cleanCheck) || cleanCheck.includes(cleanHist)));
+});
+if (hasMatch) {
+isDuplicate = true;
+break;
+}
+}
+if (isDuplicate) {
+throw new Error(`[Duplicate Detected] AI generated an already used word: ${termsToCheck.join(', ')}`);
+}
+// Mọi kiểm tra đã vượt qua, chốt kết quả
+generatedData = tempGeneratedData;
+} catch (error) {
+finalError = error;
+attempt++;
+}
+} // End While Loop
+// NẾU 3 LẦN ĐỀU THẤT BẠI
+if (!generatedData) {
+console.error(`[ExamEngine] AI Hydration FATALLY failed after ${MAX_ATTEMPTS} attempts for ${id}:`, finalError?.message);
+throw new Error(`Sinh dữ liệu thất bại sau 3 lần thử: ${finalError?.message}`);
+}
+// CẬP NHẬT LỊCH SỬ TRÊN RAM ĐỂ CÁC CÂU SAU NHÌN THẤY NGAY (Ngăn chặn Race Condition)
+if (examHistory && Array.isArray(examHistory)) {
+let termsToSave = [];
+if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || type === 'ioe_spot_mistake') {
+termsToSave.push(generatedData.correction);
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK || type === 'ioe_fill_blank') {
+termsToSave.push(generatedData.targetWord);
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT || type === 'ioe_odd_one_out') {
+if (Array.isArray(generatedData.words)) termsToSave.push(...generatedData.words);
+} else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || type === 'ioe_pronunciation') {
+if (Array.isArray(generatedData.options)) {
+generatedData.options.forEach(opt => termsToSave.push(opt.text.replace(/\*/g, '')));
+}
+} else {
+termsToSave.push(generatedData.term);
+}
+termsToSave.forEach(t => {
+if (t && typeof t === 'string') {
+const cleanT = t.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
+if (cleanT && !examHistory.includes(cleanT)) {
+examHistory.push(cleanT);
+}
+}
+});
+while (examHistory.length > 300) {
+examHistory.shift();
+}
+}
+// 4. ĐÓNG GÓI THÀNH ATOMIC QUESTION
+const atomicQuestion = {
+id: id,
+content: generatedData,
+metadata: metadata,
+timestamp: Date.now()
+};
+// 5. LƯU TRỮ NGƯỢC LẠI VÀO DB ĐỂ TÁI SỬ DỤNG
+if (window.FcDB) {
+try {
+await window.FcDB.set(id, atomicQuestion, 'fc_questions_bank');
+console.log(`[ExamEngine] Saved ${id} to Question Bank.`);
+} catch(e) {
+console.warn("[ExamEngine] Auto-save to bank failed:", e);
+}
+}
+return atomicQuestion;
+},
+// ============================================================================
+// 2. BATCH HYDRATION (NẠP NHIỀU CÂU HỎI CÙNG LÚC - SEQUENTIAL WATERFALL)
+// ============================================================================
+hydrateBatch: async function(blueprintChunk, apiKey, examHistory = []) {
+const results = [];
+for (const meta of blueprintChunk) {
+try {
+const qData = await this.hydrateQuestion(meta, apiKey, examHistory);
+if (qData) {
+results.push(qData);
+}
+} catch(e) {
+console.error(`[ExamEngine] Hydration fatally failed for ${meta.id}:`, e);
+}
+}
+return results;
+}
+};
+// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.01
+// Last Updated: 2026-04-15 15:00
+// Nhiệm vụ: Chứa định nghĩa chi tiết (Blueprints) của 6 cấu trúc đề thi (IOE-Mini, IOE-Std, IELTS-Mini, IELTS-Std, HSK-Mini, HSK-Std).
+// Chức năng: Xuất ra mảng metadata nguyên tử để truyền vào Block 2.7 (Atomic Exam Engine).
+// Cập nhật: [BƯỚC 1 - ĐẠI TU NÃO BỘ] Tái cấu trúc Ma trận IOE (Mini & Std) tích hợp 2 dạng bài mới: ioe_pronunciation và ioe_image_quiz (Chỉ dùng Image cho Tiểu học). Bám sát 100% tỷ lệ thực tế. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// ==================================================================================
+window.ExamProfiles = {
+// 1. TỪ ĐIỂN CẤU HÌNH ĐỀ THI TỔNG QUAN
+PROFILES: {
+ioe_mini: {
+id: 'ioe_mini',
+name: 'IOE Mini-Mock',
+track: 'ioe',
+mode: 'mini',
+totalQuestions: 30,
+timeLimit: 900,
+description: 'Bài thi rút gọn đánh giá nhanh phản xạ Tiếng Anh.'
+},
+ioe_std: {
+id: 'ioe_std',
+name: 'IOE Standard Test',
+track: 'ioe',
+mode: 'std',
+totalQuestions: 200,
+timeLimit: 1800,
+description: 'Bài thi tiêu chuẩn 200 câu với cường độ cao.'
+},
+ielts_mini: {
+id: 'ielts_mini',
+name: 'IELTS Mini-Mock',
+track: 'ielts',
+mode: 'mini',
+totalQuestions: 15,
+timeLimit: 900,
+description: 'Khởi động với các dạng câu hỏi học thuật cốt lõi.'
+},
+ielts_std: {
+id: 'ielts_std',
+name: 'IELTS Academic',
+track: 'ielts',
+mode: 'std',
+totalQuestions: 40,
+timeLimit: 3600,
+description: 'Đề thi đọc hiểu IELTS Academic tiêu chuẩn.'
+},
+hsk_mini: {
+id: 'hsk_mini',
+name: 'HSK Mini-Mock',
+track: 'hsk',
+mode: 'mini',
+totalQuestions: 15,
+timeLimit: 900,
+description: 'Bài thi rút gọn đánh giá Hán ngữ.'
+},
+hsk_std: {
+id: 'hsk_std',
+name: 'HSK Standard',
+track: 'hsk',
+mode: 'std',
+totalQuestions: 45,
+timeLimit: 2700,
+description: 'Bài kiểm tra năng lực Hán ngữ toàn diện.'
+}
+},
+// 2. HÀM XUẤT BẢN VẼ CHI TIẾT (BLUEPRINT GENERATOR)
+// Đầu ra: Mảng chứa các object metadata nguyên tử (atomic metadata)
+generateBlueprint: function(profileId, targetLevel, targetTopic) {
+const config = this.PROFILES[profileId];
+if (!config) return [];
+const blueprint = [];
+let globalIndex = 1;
+const types = window.IoeDataEngine.QUESTION_TYPES;
+// Các type mới sẽ được cập nhật ở Block 2.2 sau, dùng string tạm thời để đảm bảo tính an toàn
+const TYPE_PRONUNCIATION = 'ioe_pronunciation';
+const TYPE_IMAGE_QUIZ = 'ioe_image_quiz';
+// Xác định cấp Tiểu học (Để gọi Game Hình ảnh)
+const isPrimary = ['en_level_1', 'en_level_2', 'en_level_3', 'level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced'].includes(targetLevel);
+// Hàm tiện ích: Bơm đạn vào băng (Thêm N câu hỏi cùng loại)
+const addQuestions = (qType, count, chapterName) => {
+for (let i = 0; i < count; i++) {
+blueprint.push({
+id: `${profileId}_${targetLevel}_${qType}_${globalIndex}_${Date.now()}`,
+index: globalIndex,
+chapter: chapterName,
+track: config.track,
+level: targetLevel,
+type: qType,
+topic: targetTopic
+});
+globalIndex++;
+}
+};
+// MA TRẬN PHÂN BỔ THEO TỪNG TRACK
+switch (profileId) {
+// ----------------------------------------------------
+// TRACK: IOE (Tiếng Anh Phổ Thông)
+// ----------------------------------------------------
+case 'ioe_mini':
+if (isPrimary) {
+addQuestions(TYPE_IMAGE_QUIZ, 3, 'Kỹ năng Nghe & Hình ảnh');
+} else {
+addQuestions(types.IOE_MULTIPLE_CHOICE, 3, 'Kỹ năng Nghe (Mô phỏng)');
+}
+addQuestions(TYPE_PRONUNCIATION, 2, 'Ngữ âm & Trọng âm');
+addQuestions(types.IOE_MATCH, 5, 'Nhận diện Từ vựng');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 'Ngữ pháp & Đọc hiểu');
+addQuestions(types.IOE_ODD_ONE_OUT, 3, 'Từ khác loại');
+addQuestions(types.IOE_SPOT_MISTAKE, 2, 'Săn lỗi sai Ngữ pháp');
+addQuestions(types.IOE_FILL_BLANK, 3, 'Điền từ khóa');
+addQuestions(types.IOE_SCRAMBLE, 2, 'Tái cấu trúc câu');
+break;
+case 'ioe_std':
+// Kỹ năng Nghe / Hình ảnh (20 câu)
+if (isPrimary) {
+addQuestions(TYPE_IMAGE_QUIZ, 20, 'Kỹ năng Nghe & Hình ảnh');
+} else {
+addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 'Kỹ năng Nghe (Mô phỏng)');
+}
+// Ngữ âm (10 câu)
+addQuestions(TYPE_PRONUNCIATION, 10, 'Ngữ âm & Trọng âm');
+// Từ vựng & Ngữ pháp (90 câu)
+addQuestions(types.IOE_MATCH, 30, 'Nhận diện Từ vựng');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 40, 'Trắc nghiệm Ngữ pháp & Từ vựng');
+addQuestions(types.IOE_ODD_ONE_OUT, 10, 'Phân nhóm Từ vựng');
+addQuestions(types.IOE_SPOT_MISTAKE, 10, 'Săn lỗi sai Ngữ pháp');
+// Đọc hiểu (40 câu)
+addQuestions(types.IOE_MULTIPLE_CHOICE, 40, 'Đọc hiểu (Mô phỏng)');
+// Kỹ năng Viết (40 câu)
+addQuestions(types.IOE_FILL_BLANK, 20, 'Điền từ khuyết');
+addQuestions(types.IOE_SCRAMBLE, 20, 'Tái cấu trúc câu');
+break;
+// ----------------------------------------------------
+// TRACK: IELTS (Tiếng Anh Học Thuật)
+// ----------------------------------------------------
+case 'ielts_mini':
+addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 'Vocabulary: Synonym Matching');
+addQuestions(types.IOE_SPOT_MISTAKE, 5, 'Grammar: Academic Error Correction');
+addQuestions(types.IOE_FILL_BLANK, 5, 'Reading: Sentence Completion');
+break;
+case 'ielts_std':
+// Tạm thời map 40 câu Reading sang các Atomic Question Types.
+// Khi UI SplitViewContainer ở Block 5.14 ra mắt, các câu này sẽ được nhóm theo Context (Tổ kén).
+addQuestions(types.IOE_MULTIPLE_CHOICE, 15, 'Reading: Multiple Choice');
+addQuestions(types.IOE_FILL_BLANK, 15, 'Reading: Summary Completion');
+addQuestions(types.IOE_SPOT_MISTAKE, 10, 'Reading: Identifying Writer Views (TFNG mock)');
+break;
+// ----------------------------------------------------
+// TRACK: HSK (Tiếng Trung)
+// ----------------------------------------------------
+case 'hsk_mini':
+addQuestions(types.IOE_MATCH, 5, 'Nhận diện Hán tự');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 'Trắc nghiệm Ngữ pháp');
+addQuestions(types.IOE_FILL_BLANK, 5, 'Điền Lượng từ');
+break;
+case 'hsk_std':
+addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 'Nghe hiểu (Mô phỏng)');
+addQuestions(types.IOE_MATCH, 10, 'Nối Pinyin & Hán tự');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 'Đọc hiểu & Ngữ pháp');
+addQuestions(types.IOE_FILL_BLANK, 10, 'Điền từ vào chỗ trống');
+addQuestions(types.IOE_SCRAMBLE, 5, 'Tái cấu trúc câu (Tập viết)');
+break;
+default:
+addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 'General Practice');
+}
+return blueprint;
+}
+};
+// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.02
+// Last Updated: 2026-04-14 21:55
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
 // Quy tắc: Tuyệt đối không nhúng logic nghiệp vụ vào Tầng này. Tuân thủ Hiến pháp Quy tắc 3.
-// Cập nhật: RESPONSIVE UI (Vấn đề 7). Loại bỏ width cứng. Chuyển LevelSelector và TopicSelector thành w-full để thích ứng hoàn hảo với Flex/Grid của khung chứa.
+// Cập nhật: [MOCK TEST ERA - HOTFIX #130] Bổ sung các Icon còn thiếu (Award, Target) phục vụ giao diện Khảo thí (Block 5.7, Block 5.15) để khắc phục lỗi trắng màn hình. Tuân thủ tuyệt đối Điều 3.
 // ==================================================================================
 // 1. Error Boundary
 class ErrorBoundary extends React.Component {
@@ -2603,7 +3195,9 @@ Brain: createIcon(<><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.4
 HelpCircle: createIcon(<><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></>),
 Keyboard: createIcon(<><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><path d="M6 8h.001"></path><path d="M10 8h.001"></path><path d="M14 8h.001"></path><path d="M18 8h.001"></path><path d="M6 12h.001"></path><path d="M10 12h.001"></path><path d="M14 12h.001"></path><path d="M18 12h.001"></path><path d="M7 16h10"></path></>),
 VolumeX: createIcon(<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></>),
-Brush: createIcon(<><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></>)
+Brush: createIcon(<><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></>),
+Target: createIcon(<><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></>),
+Award: createIcon(<><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></>)
 };
 // 3. Shared Components
 const AiModeSwitch = ({ isAiMode, setAiMode, t, onMissingKey, isLoading, className }) => (
@@ -2733,11 +3327,11 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.15
-// Last Updated: 2026-04-12 22:15
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.16
+// Last Updated: 2026-04-14 10:33
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
 // Quy tắc: Tuân thủ tuyệt đối quy tắc 3 chống SyntaxError. KHÔNG MINIFY CODE quá đà.
-// Cập nhật: [TÍNH NĂNG NHẢY THẺ] Tích hợp ô Input "tàng hình" (Quick Jump) vào góc thẻ Flashcard để nhảy nhanh. Khóa (disabled) khi đang Auto-play. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [NÂNG CẤP UI] Dịch chuyển Nút chọn Ngôn ngữ (Language Selector) lên hàng đầu tiên (Header) cạnh Logo Flashcard Lite. Tinh chỉnh kích thước nhỏ gọn hơn. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
@@ -2757,9 +3351,15 @@ return (
 <button onClick={onExitStudyMode} className="bg-white text-orange-600 px-2 py-1 rounded border border-orange-200 text-[10px] font-bold hover:bg-orange-50 flex items-center gap-1 transition-colors shadow-sm"><Icons.RotateCcw size={12} /> Thoát</button>
 </div>
 )}
-{/* Hàng 1: Tiêu đề & Công cụ */}
+{/* Hàng 1: Tiêu đề & Công cụ & Nút Ngôn ngữ */}
 <div className="w-full flex justify-between items-center">
+<div className="flex items-center gap-2 sm:gap-3">
 <h1 className={`text-lg sm:text-xl font-black truncate text-${mainColor}-700 flex items-center gap-1`}><Icons.Layers size={20} className="hidden sm:block"/> Flashcard Lite</h1>
+{/* [NÂNG CẤP UI] Nút Ngôn Ngữ được dời lên đây, thu gọn kích thước */}
+<button onClick={() => setLang(l => l === 'zh' ? 'en' : (l === 'en' ? 'vi' : 'zh'))} className={`h-[32px] px-3 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 shadow-sm text-${mainColor}-700 hover:bg-${mainColor}-50 transition-colors whitespace-nowrap`}>
+<Icons.Globe size={14} /> {lang === 'zh' ? 'CN' : (lang === 'vi' ? 'VN' : 'EN')}
+</button>
+</div>
 <div className="flex gap-1 sm:gap-1.5 flex-wrap justify-end">
 <button onClick={onOpenNotebook} className="relative p-1.5 sm:p-2 bg-white text-orange-500 rounded-full shadow border hover:bg-orange-50"><Icons.BookOpen size={16} />{notebookCount > 0 && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white text-[9px] flex items-center justify-center rounded-full font-bold">{notebookCount}</span>}</button>
 <button onClick={onOpenIncorrect} className="relative p-1.5 sm:p-2 bg-white text-red-500 rounded-full shadow border hover:bg-red-50"><Icons.Brain size={16} />{incorrectCount > 0 && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 text-white text-[9px] flex items-center justify-center rounded-full font-bold">{incorrectCount}</span>}</button>
@@ -2774,11 +3374,8 @@ return (
 {/* Hàng 2: Filter Bar - Seamless Floating Layout */}
 {!studySourceName && (
 <div className="w-full flex flex-wrap justify-center items-center gap-2 sm:gap-3 mt-1 animate-in slide-in-from-top-2">
-{/* Nhóm Ngôn ngữ & Chế độ Data */}
-<div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
-<button onClick={() => setLang(l => l === 'zh' ? 'en' : (l === 'en' ? 'vi' : 'zh'))} className={`h-[42px] px-4 flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold bg-white border border-gray-200 shadow-sm text-${mainColor}-700 hover:bg-${mainColor}-50 transition-colors whitespace-nowrap`}>
-<Icons.Globe size={16} /> {lang === 'zh' ? 'CN' : (lang === 'vi' ? 'VN' : 'EN')}
-</button>
+{/* Nhóm Chế độ Data */}
+<div className="flex items-center justify-center sm:justify-start w-full sm:w-auto">
 {lang !== 'vi' && setDataMode && (
 <div className="h-[42px] flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm shrink-0">
 <button onClick={() => setDataMode('vocab')} className={`h-full px-4 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${safeDataMode === 'vocab' ? `bg-${mainColor}-100 text-${mainColor}-700 shadow-sm` : 'text-gray-500 hover:text-gray-700'}`}>Từ Vựng</button>
@@ -5268,10 +5865,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.32
-// Last Updated: 2026-04-14 12:00
+// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.33
+// Last Updated: 2026-04-14 14:20
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: [QA DEBUG] Vá 4 Điểm Mù: (1) Ép EndGame khi kẹt Loop, (2) Khử Memory Leak với aiTimerRef, (3) Chuẩn hóa logMistake, (4) Thêm topic vào ai_distort. Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [DEEP DEBUG V2 - PRIORITY 2] Vá lỗi Zombie Auto-save. Thêm cờ isGameActiveRef.current vào triggerAutoSave để chặn ghi đè rác DB khi Component unmount. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
@@ -5355,7 +5952,8 @@ throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
 return () => clearTimeout(throttleTimer);
 }, [aiWaitTime, isPaused]);
 const triggerAutoSave = React.useCallback(() => {
-if (onAutoSave && latestStateRef.current) {
+// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current) {
 onAutoSave({
 matchState: latestStateRef.current.matchState,
 difficulty: latestStateRef.current.difficulty,
@@ -5677,14 +6275,21 @@ const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRe
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
 const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
-if (fbItems && fbItems.length >= neededCards) validCards = fbItems;
+if (fbItems && fbItems.length > 0) {
+const existingTerms = new Set(validCards.map(c => c.term));
+const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...newFbs]; // [VÁ ĐIỂM MÙ SỐ 3] Append
+}
 }
 if (validCards.length < neededCards) {
-validCards = [
+const defaults = [
 { term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" },
 { term: "Cat", definition: "Con mèo" }, { term: "Dog", definition: "Con chó" },
 { term: "Bird", definition: "Con chim" }
 ];
+const existingTerms = new Set(validCards.map(c => c.term));
+const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
+validCards = [...validCards, ...neededDefaults];
 }
 }
 deckRef.current = window.Utils.shuffleArray(validCards);
@@ -6330,10 +6935,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.13
-// Last Updated: 2026-04-14 12:15
+// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.14
+// Last Updated: 2026-04-14 15:00
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật: [QA DEBUG] Vá 4 Điểm Mù: (1) Ép EndGame khi kẹt Loop nạp đạn, (2) Khử Memory Leak Timer đếm ngược AI, (3) Chặn Race Condition ở Auto-next, (4) Chuẩn hóa hàm logMistake. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [DEEP DEBUG V2 - PRIORITY 2 & 3] Vá lỗi Zombie Auto-save (Thêm cờ isGameActiveRef.current). Vá lỗi Double Mount (Thêm hasStartedRef) chống gọi AI 2 lần trong Strict Mode. Tuân thủ Điều 3.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 const safeShowToast = React.useCallback((msg, type = 'success') => {
@@ -6398,7 +7003,8 @@ React.useEffect(() => {
 latestStateRef.current = { gameState, difficulty, stats, timeLeft, deck: deckRef.current };
 }, [gameState, difficulty, stats, timeLeft]);
 const triggerAutoSave = React.useCallback(() => {
-if (onAutoSave && latestStateRef.current) {
+// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
 const currentData = latestStateRef.current;
 onAutoSave({
 gameState: currentData.gameState,
@@ -6686,7 +7292,11 @@ setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 onEndGame(stats);
 }
 };
+// PHỤC HỒI DỮ LIỆU TỪ SESSION
+const hasStartedRef = React.useRef(false);
 React.useEffect(() => {
+if (hasStartedRef.current) return;
+hasStartedRef.current = true;
 isGameActiveRef.current = true;
 if (savedState && savedState.gameState) {
 setGameState(JSON.parse(JSON.stringify(savedState.gameState)));
@@ -7510,10 +8120,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.27
-// Last Updated: 2026-04-14 12:35
+// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.28
+// Last Updated: 2026-04-14 15:10
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: [QA DEBUG] Áp dụng Lộ trình chuẩn hóa Tầng 5. Vá 4 Điểm mù: (1) Ép EndGame khi kẹt Loop nạp đạn, (2) Khử Memory Leak Timer đếm ngược AI, (3) Chặn Race Condition ở Auto-next, (4) Cắm cáp Topic cho Tầng 2. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [DEEP DEBUG V2 - PRIORITY 2 & 3] Vá lỗi Zombie Auto-save (Thêm cờ isGameActiveRef.current). Vá lỗi Double Mount (Thêm hasStartedRef) chống gọi AI 2 lần trong Strict Mode. Tuân thủ Điều 3.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -7572,7 +8182,8 @@ React.useEffect(() => {
 stateRef.current = { gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, deck: deckRef.current, isAiMode, listenPlayCount };
 }, [gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, listenPlayCount]);
 const triggerAutoSave = React.useCallback(() => {
-if (onAutoSave && stateRef.current) {
+// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
+if (isGameActiveRef.current && onAutoSave && stateRef.current && stateRef.current.currentQuestionData?.question) {
 const currentData = stateRef.current;
 onAutoSave({
 quizState: { currentCard: currentData.currentQuestionData?.question || null, options: currentData.currentQuestionData?.options || [], userAnswer: null, isCorrect: null, listenPlayCount: currentData.listenPlayCount },
@@ -7886,7 +8497,11 @@ onEndGame({ correct: score, wrong: wrongCount });
 }
 }
 };
+// [DEEP DEBUG V2] - VÁ LỖI DOUBLE MOUNT RACE CONDITION BẰNG CỜ HASSTARTEDREF
+const hasStartedRef = React.useRef(false);
 React.useEffect(() => {
+if (hasStartedRef.current) return;
+hasStartedRef.current = true;
 isGameActiveRef.current = true;
 if (savedState && savedState.currentQuestionData) {
 setGameMode(savedState.gameMode || (listenMode ? 'listen' : 'read'));
@@ -8093,165 +8708,273 @@ queueLength={queueLength}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.22
-// Last Updated: 2026-04-12 17:53
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.07
+// Last Updated: 2026-04-15 19:45
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [QA DEBUG] Vá lỗi Phản ứng phụ (Regression). Phục hồi lệnh gán cứng isAiMode={true} cho Game Điền Từ và Tìm Lỗi Sai vì AI là linh hồn của 2 game này (Mặc định luôn chạy AI). Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Kéo cáp onLogWrong và onOpenIncorrect truyền thẳng vào ExamUIShell (Bài thi Tổng hợp). Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
-const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions }) => {
+const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions, onStartMockTest }) => {
 const [matchAiMode, setMatchAiMode] = React.useState(false);
+// State quản lý Hộp thoại Tiếp tục
+const [pendingResumeGame, setPendingResumeGame] = React.useState(null);
 const ResumeBadge = ({ type }) => {
 if (!gameSessions || !gameSessions[type]) return null;
 return (
 <button
 onClick={(e) => { e.stopPropagation(); onResume(type); }}
-className="absolute -top-3 -right-2 bg-yellow-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white font-bold text-xs flex items-center gap-1 hover:bg-yellow-600 hover:scale-110 transition-all animate-bounce z-20"
-title={`Tiếp tục ${type}`}
+className="absolute -top-3 -right-2 bg-yellow-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white font-bold text-[10px] flex items-center gap-1 hover:bg-yellow-600 hover:scale-110 transition-all animate-bounce z-20"
+title={`Vào thẳng ván đang chơi`}
 >
-<window.Icons.Play size={12} fill="currentColor" /> Tiếp tục
+<window.Icons.Play size={10} fill="currentColor" /> Tiếp tục
 </button>
 );
 };
 // Cảm biến dự phòng: Nếu Tầng 7 chưa truyền dataMode, tự động nội suy từ thẻ đầu tiên
 const inferredIsSentence = cards && cards.length > 0 && window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(cards[0].term) : false;
 const activeDataMode = dataMode || (inferredIsSentence ? 'sentence' : 'vocab');
-// Handlers thông minh: Ưu tiên Resume nếu có Session
+// Handlers thông minh: Hiển thị Prompt nếu có Session, thay vì ép vào thẳng
 const handleQuizClick = () => {
-if (gameSessions?.['quiz']) onResume('quiz');
+if (gameSessions?.['quiz']) setPendingResumeGame('quiz');
 else onSelectQuiz();
 };
 const handleMatchClick = () => {
-if (gameSessions?.['match']) onResume('match');
+if (gameSessions?.['match']) setPendingResumeGame('match');
 else onStartMatch(matchAiMode);
 };
 const handleScrambleClick = () => {
-if (gameSessions?.['scramble']) onResume('scramble');
+if (gameSessions?.['scramble']) setPendingResumeGame('scramble');
 else onStartScramble();
 };
 const handleFillBlankClick = () => {
-if (gameSessions?.['fillblank']) onResume('fillblank');
+if (gameSessions?.['fillblank']) setPendingResumeGame('fillblank');
 else onStartFillBlank();
 };
 const handleSpotMistakeClick = () => {
-if (gameSessions?.['spotmistake']) onResume('spotmistake');
+if (gameSessions?.['spotmistake']) setPendingResumeGame('spotmistake');
 else onStartSpotMistake();
 };
 const handleOddOneOutClick = () => {
-if (gameSessions?.['oddoneout']) onResume('oddoneout');
+if (gameSessions?.['oddoneout']) setPendingResumeGame('oddoneout');
 else onStartOddOneOut();
 };
 return (
-<div className="flex flex-col items-center w-full max-w-sm text-center animate-in fade-in z-10 relative">
-<div className={`w-24 h-24 bg-${mainColor}-50 rounded-full flex items-center justify-center mb-6 shadow-inner`}>
-<window.Icons.Gamepad2 size={48} className={`text-${mainColor}-600`} />
+<div className="flex flex-col items-center w-full max-w-5xl mx-auto text-center animate-in fade-in z-10 relative px-2 sm:px-6">
+{/* Header */}
+<div className={`w-14 h-14 sm:w-16 sm:h-16 bg-${mainColor}-50 rounded-full flex items-center justify-center mb-3 sm:mb-4 shadow-inner`}>
+<window.Icons.Gamepad2 size={28} className={`text-${mainColor}-600`} />
 </div>
-<h2 className={`text-2xl font-black text-${mainColor}-800 mb-2 uppercase tracking-wide`}>{t('gameTitle') || 'Trò chơi'}</h2>
-<p className="text-gray-500 text-sm mb-8">Chọn chế độ luyện tập để bắt đầu</p>
-<div className="w-full space-y-4 pb-10">
-{/* 1. Nút Game Quiz (Luôn hiện) */}
-<div className="relative group">
-<button onClick={handleQuizClick} className={`w-full p-4 bg-white border-2 border-${mainColor}-100 rounded-2xl hover:border-${mainColor}-400 hover:bg-${mainColor}-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
-<div className={`p-3 bg-${mainColor}-100 text-${mainColor}-600 rounded-xl group-hover:bg-${mainColor}-600 group-hover:text-white transition-colors`}>
-<window.Icons.Layers size={28} />
+<h2 className={`text-lg sm:text-xl font-black text-${mainColor}-800 mb-1 uppercase tracking-wide`}>{t('gameTitle') || 'Trò chơi'}</h2>
+<p className="text-gray-500 text-[11px] sm:text-xs mb-6 sm:mb-8">Chọn chế độ luyện tập để bắt đầu</p>
+{/* BỐ CỤC SPLIT VIEW (RESPONSIVE DASHBOARD) */}
+<div className="flex flex-col md:flex-row w-full gap-5 lg:gap-8 pb-10 text-left items-start">
+{/* CỘT TRÁI: LUYỆN TẬP HÀNG NGÀY (DAILY PRACTICE) */}
+<div className="flex-1 flex flex-col gap-3 w-full">
+<div className="flex items-center gap-2 mb-1 px-2">
+<window.Icons.Sparkles size={16} className={`text-${mainColor}-500`} />
+<h3 className="text-sm sm:text-base font-bold text-gray-700 uppercase tracking-wider">Luyện tập hàng ngày</h3>
+</div>
+{/* 1. Nút Game Quiz (Luôn hiện - Kích thước lớn) */}
+<div className="relative group w-full">
+<button onClick={handleQuizClick} className={`w-full p-3 sm:p-4 bg-white border-2 border-${mainColor}-100 rounded-2xl hover:border-${mainColor}-400 hover:bg-${mainColor}-50 transition-all flex items-center gap-3 shadow-sm group active:scale-95`}>
+<div className={`p-2.5 sm:p-3 bg-${mainColor}-100 text-${mainColor}-600 rounded-xl group-hover:bg-${mainColor}-600 group-hover:text-white transition-colors`}>
+<window.Icons.Layers size={22} />
 </div>
 <div className="text-left flex-1">
-<div className="font-bold text-lg text-gray-800">Trắc Nghiệm</div>
-<div className="text-xs text-gray-500 font-medium">4-5 đáp án, Hẹn giờ, Luyện nghe...</div>
+<div className="font-bold text-base sm:text-lg text-gray-800 leading-tight mb-0.5">Trắc Nghiệm</div>
+<div className="text-[10px] sm:text-xs text-gray-500 font-medium">4-5 đáp án, Hẹn giờ, Luyện nghe...</div>
 </div>
-<window.Icons.ChevronRight size={20} className="text-gray-300" />
+<window.Icons.ChevronRight size={18} className="text-gray-300 hidden sm:block" />
 </button>
 <ResumeBadge type="quiz" />
 </div>
-<div className="grid grid-cols-2 gap-4">
-{/* 2. Nút Game Match (Luôn hiện) */}
-<div className="relative group">
-<button onClick={handleMatchClick} className="w-full h-full p-4 bg-white border-2 border-purple-100 rounded-2xl hover:border-purple-400 hover:bg-purple-50 transition-all flex flex-col items-center gap-3 shadow-sm active:scale-95 z-10 relative">
-<div className="p-3 bg-purple-100 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
-<window.Icons.Link size={24} />
+{/* LƯỚI GRID CHO CÁC MINI-GAME KHÁC */}
+<div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
+{/* 2. Nút Game Match */}
+<div className="relative group h-full">
+<button onClick={handleMatchClick} className="w-full h-full min-h-[90px] sm:min-h-[105px] p-3 sm:p-4 bg-white border-2 border-purple-100 rounded-xl sm:rounded-2xl hover:border-purple-400 hover:bg-purple-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 z-10 relative group">
+<div className="p-2 bg-purple-100 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
+<window.Icons.Link size={20} />
 </div>
-<div className="text-center">
-<div className="font-bold text-gray-800">{t('modeMatch') || 'Nối Ô'}</div>
-<div className="text-[10px] text-gray-400 font-medium mt-1">Nối từ & nghĩa</div>
+<div className="text-center mt-0.5">
+<div className="font-bold text-gray-800 text-xs sm:text-sm">{t('modeMatch') || 'Nối Ô'}</div>
+<div className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">Nối từ & nghĩa</div>
 </div>
 </button>
 <div
-className={`absolute top-2 right-2 p-1.5 rounded-full cursor-pointer transition-all z-20 ${matchAiMode ? 'bg-purple-100 text-purple-600 ring-2 ring-purple-200' : 'bg-gray-100 text-gray-300 hover:bg-gray-200'}`}
+className={`absolute top-2 right-2 p-1 rounded-full cursor-pointer transition-all z-20 ${matchAiMode ? 'bg-purple-100 text-purple-600 ring-1 ring-purple-200' : 'bg-gray-100 text-gray-300 hover:bg-gray-200'}`}
 onClick={(e) => { e.stopPropagation(); setMatchAiMode(!matchAiMode); }}
 title="Bật/Tắt AI tạo nhiễu khó"
 >
-<window.Icons.Sparkles size={14} fill={matchAiMode ? "currentColor" : "none"} />
+<window.Icons.Sparkles size={12} fill={matchAiMode ? "currentColor" : "none"} />
 </div>
 <ResumeBadge type="match" />
 </div>
-{/* 3. Nút Game Scramble (Luôn hiện - Hỗ trợ cả Từ và Câu) */}
-<div className="relative group">
-<button onClick={handleScrambleClick} className="p-4 w-full h-full bg-white border-2 border-orange-100 rounded-2xl hover:border-orange-400 hover:bg-orange-50 transition-all flex flex-col items-center gap-3 shadow-sm group active:scale-95">
-<div className="p-3 bg-orange-100 text-orange-600 rounded-xl group-hover:bg-orange-600 group-hover:text-white transition-colors">
-<window.Icons.Shuffle size={24} />
+{/* 3. Nút Game Scramble */}
+<div className="relative group h-full">
+<button onClick={handleScrambleClick} className="w-full h-full min-h-[90px] sm:min-h-[105px] p-3 sm:p-4 bg-white border-2 border-orange-100 rounded-xl sm:rounded-2xl hover:border-orange-400 hover:bg-orange-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm group active:scale-95">
+<div className="p-2 bg-orange-100 text-orange-600 rounded-lg group-hover:bg-orange-600 group-hover:text-white transition-colors">
+<window.Icons.Shuffle size={20} />
 </div>
-<div className="text-center">
-<div className="font-bold text-gray-800">{t('modeScramble') || 'Ghép Câu'}</div>
-<div className="text-[10px] text-gray-400 font-medium mt-1">Xếp từ / chữ cái</div>
+<div className="text-center mt-0.5">
+<div className="font-bold text-gray-800 text-xs sm:text-sm">{t('modeScramble') || 'Ghép Câu'}</div>
+<div className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">Xếp từ / chữ cái</div>
 </div>
 </button>
 <ResumeBadge type="scramble" />
 </div>
-</div>
-{/* 4. Nút Game Odd One Out (CHỈ HIỆN KHI DATA LÀ TỪ VỰNG VÀ KHÔNG PHẢI TIẾNG VIỆT) */}
+{/* 4. Nút Game Odd One Out */}
 {lang !== 'vi' && activeDataMode === 'vocab' && (
-<div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
-<button onClick={handleOddOneOutClick} className={`w-full p-4 bg-white border-2 border-pink-100 rounded-2xl hover:border-pink-400 hover:bg-pink-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
-<div className={`p-3 bg-pink-100 text-pink-600 rounded-xl group-hover:bg-pink-600 group-hover:text-white transition-colors`}>
-<window.Icons.Eye size={28} />
+<div className="relative group h-full animate-in zoom-in">
+<button onClick={handleOddOneOutClick} className="w-full h-full min-h-[90px] sm:min-h-[105px] p-3 sm:p-4 bg-white border-2 border-pink-100 rounded-xl sm:rounded-2xl hover:border-pink-400 hover:bg-pink-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm group active:scale-95">
+<div className={`p-2 bg-pink-100 text-pink-600 rounded-lg group-hover:bg-pink-600 group-hover:text-white transition-colors`}>
+<window.Icons.Eye size={20} />
 </div>
-<div className="text-left flex-1">
-<div className="font-bold text-lg text-gray-800">Từ Khác Loại</div>
-<div className="text-xs text-gray-500 font-medium">Tìm từ lạc loài trong nhóm ({lang === 'zh' ? 'HSK' : 'IOE'})</div>
+<div className="text-center mt-0.5">
+<div className="font-bold text-gray-800 text-xs sm:text-sm">Từ Khác Loại</div>
+<div className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">Lạc loài trong nhóm</div>
 </div>
-<window.Icons.ChevronRight size={20} className="text-gray-300" />
 </button>
 <ResumeBadge type="oddoneout" />
 </div>
 )}
-{/* 5. Nút Game FillBlank (CHỈ HIỆN KHI KHÔNG PHẢI TIẾNG VIỆT & LÀ CÂU VĂN) */}
+{/* 5. Nút Game FillBlank */}
 {lang !== 'vi' && activeDataMode === 'sentence' && (
-<div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
-<button onClick={handleFillBlankClick} className={`w-full p-4 bg-white border-2 border-blue-100 rounded-2xl hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
-<div className={`p-3 bg-blue-100 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors`}>
-<window.Icons.Keyboard size={28} />
+<div className="relative group h-full animate-in zoom-in">
+<button onClick={handleFillBlankClick} className="w-full h-full min-h-[90px] sm:min-h-[105px] p-3 sm:p-4 bg-white border-2 border-blue-100 rounded-xl sm:rounded-2xl hover:border-blue-400 hover:bg-blue-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm group active:scale-95">
+<div className={`p-2 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors`}>
+<window.Icons.Keyboard size={20} />
 </div>
-<div className="text-left flex-1">
-<div className="font-bold text-lg text-gray-800">Điền Từ ({lang === 'zh' ? 'HSK' : 'IELTS'})</div>
-<div className="text-xs text-gray-500 font-medium">Luyện gõ chính xác từ khóa</div>
+<div className="text-center mt-0.5">
+<div className="font-bold text-gray-800 text-xs sm:text-sm">Điền Từ</div>
+<div className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">Luyện gõ chính xác</div>
 </div>
-<window.Icons.ChevronRight size={20} className="text-gray-300" />
 </button>
 <ResumeBadge type="fillblank" />
 </div>
 )}
-{/* 6. Nút Game SpotMistake (CHỈ HIỆN KHI KHÔNG PHẢI TIẾNG VIỆT & LÀ CÂU VĂN) */}
+{/* 6. Nút Game SpotMistake */}
 {lang !== 'vi' && activeDataMode === 'sentence' && (
-<div className="relative group w-full mt-4 animate-in slide-in-from-bottom-2">
-<button onClick={handleSpotMistakeClick} className={`w-full p-4 bg-white border-2 border-red-100 rounded-2xl hover:border-red-400 hover:bg-red-50 transition-all flex items-center gap-4 shadow-sm group active:scale-95`}>
-<div className={`p-3 bg-red-100 text-red-600 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-colors`}>
-<window.Icons.Brain size={28} />
+<div className="relative group h-full animate-in zoom-in">
+<button onClick={handleSpotMistakeClick} className="w-full h-full min-h-[90px] sm:min-h-[105px] p-3 sm:p-4 bg-white border-2 border-red-100 rounded-xl sm:rounded-2xl hover:border-red-400 hover:bg-red-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm group active:scale-95">
+<div className={`p-2 bg-red-100 text-red-600 rounded-lg group-hover:bg-red-600 group-hover:text-white transition-colors`}>
+<window.Icons.Brain size={20} />
 </div>
-<div className="text-left flex-1">
-<div className="font-bold text-lg text-gray-800">Tìm Lỗi Sai ({lang === 'zh' ? 'HSK' : 'IOE'})</div>
-<div className="text-xs text-gray-500 font-medium">Săn lỗi ngữ pháp & Sửa từ</div>
+<div className="text-center mt-0.5">
+<div className="font-bold text-gray-800 text-xs sm:text-sm">Tìm Lỗi Sai</div>
+<div className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">Săn lỗi ngữ pháp</div>
 </div>
-<window.Icons.ChevronRight size={20} className="text-gray-300" />
 </button>
 <ResumeBadge type="spotmistake" />
 </div>
 )}
 </div>
 </div>
+{/* CỘT PHẢI: KỶ NGUYÊN KHẢO THÍ (MOCK TEST ERA) - COMBO CARDS */}
+{lang !== 'vi' && (
+<div className="w-full md:w-[280px] lg:w-[320px] shrink-0 flex flex-col gap-3 mt-4 md:mt-0 animate-in slide-in-from-right-8">
+<div className="flex items-center gap-2 mb-1 px-2">
+<window.Icons.Award size={16} className="text-red-500" />
+<h3 className="text-sm sm:text-base font-bold text-gray-700 uppercase tracking-wider">Đánh giá năng lực</h3>
+</div>
+<div className="bg-gradient-to-b from-blue-50 to-indigo-50/50 p-3 sm:p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col gap-3 w-full">
+{/* Thẻ 1: IOE hoặc HSK */}
+<div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md flex flex-col items-start gap-2.5 text-left border border-white/20 relative overflow-hidden group">
+<div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-150 transition-transform duration-500"><window.Icons.Award size={60} /></div>
+<div className="flex justify-between w-full items-center relative z-10">
+<div className="p-1.5 bg-white/20 backdrop-blur-sm rounded-lg"><window.Icons.Award size={16} /></div>
+<div className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm tracking-widest border border-white/30">PRO</div>
+</div>
+<div className="relative z-10 mt-1 w-full">
+<div className="font-black text-lg leading-tight mb-1">{lang === 'zh' ? 'Thi Thử HSK' : 'Khảo thí IOE'}</div>
+<div className="flex gap-2 w-full mt-2">
+<button onClick={() => onStartMockTest(lang === 'zh' ? 'hsk_std' : 'ioe_std')} className="flex-1 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-xs font-bold transition-colors border border-white/30 active:scale-95 flex flex-col items-center">
+<span>Tiêu chuẩn</span>
+<span className="text-[9px] font-normal opacity-90">{lang === 'zh' ? '(45 câu)' : '(200 câu)'}</span>
+</button>
+<button onClick={() => onStartMockTest(lang === 'zh' ? 'hsk_mini' : 'ioe_mini')} className="flex-1 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-xs font-bold transition-colors border border-white/30 active:scale-95 flex flex-col items-center">
+<span>Mini Test</span>
+<span className="text-[9px] font-normal opacity-90">{lang === 'zh' ? '(15 câu)' : '(30 câu)'}</span>
+</button>
+</div>
+</div>
+</div>
+{/* Thẻ 2: IELTS (Chỉ hiện cho Tiếng Anh) */}
+{lang === 'en' && (
+<div className="p-4 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-xl shadow-md flex flex-col items-start gap-2.5 text-left border border-white/20 relative overflow-hidden group">
+<div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-150 transition-transform duration-500"><window.Icons.BookOpen size={60} /></div>
+<div className="flex justify-between w-full items-center relative z-10">
+<div className="p-1.5 bg-white/20 backdrop-blur-sm rounded-lg"><window.Icons.BookOpen size={16} /></div>
+<div className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm tracking-widest border border-white/30">PRO</div>
+</div>
+<div className="relative z-10 mt-1 w-full">
+<div className="font-black text-lg leading-tight mb-1">IELTS Reading</div>
+<div className="flex gap-2 w-full mt-2">
+<button onClick={() => onStartMockTest('ielts_std')} className="flex-1 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-xs font-bold transition-colors border border-white/30 active:scale-95 flex flex-col items-center">
+<span>Full Test</span>
+<span className="text-[9px] font-normal opacity-90">(60 phút)</span>
+</button>
+<button onClick={() => onStartMockTest('ielts_mini')} className="flex-1 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-xs font-bold transition-colors border border-white/30 active:scale-95 flex flex-col items-center">
+<span>Mini Test</span>
+<span className="text-[9px] font-normal opacity-90">(15 phút)</span>
+</button>
+</div>
+</div>
+</div>
+)}
+<div className="mt-1 p-2.5 bg-white/60 backdrop-blur-md rounded-lg border border-white text-center text-[9px] sm:text-[10px] text-gray-500 font-medium leading-relaxed">
+<p className="flex items-center justify-center gap-1 mb-0.5"><window.Icons.AlertCircle size={12} className="text-orange-400" /> Bài thi bám sát cấu trúc chuẩn.</p>
+<p>Yêu cầu kết nối mạng ổn định & API Key.</p>
+</div>
+</div>
+</div>
+)}
+</div>
+{/* HỘP THOẠI TIẾP TỤC TRÒ CHƠI (RESUME PROMPT MODAL) */}
+{pendingResumeGame && (
+<div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setPendingResumeGame(null)}>
+<div className="bg-white p-5 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-gray-100 flex flex-col items-center" onClick={e => e.stopPropagation()}>
+<div className={`w-14 h-14 bg-${mainColor}-100 text-${mainColor}-600 rounded-full flex items-center justify-center mb-4 shadow-inner`}>
+<window.Icons.Play size={24} fill="currentColor" />
+</div>
+<h3 className="text-lg sm:text-xl font-black text-gray-800 mb-2">Tiếp tục trò chơi?</h3>
+<p className="text-gray-600 text-xs sm:text-sm mb-6">Bạn đang có một ván chơi chưa hoàn thành. Bạn muốn tiếp tục hay bắt đầu ván mới?</p>
+<div className="flex flex-col w-full gap-2.5">
+<button
+onClick={() => { onResume(pendingResumeGame); setPendingResumeGame(null); }}
+className={`w-full py-2.5 sm:py-3 bg-${mainColor}-600 text-white font-bold rounded-xl hover:bg-${mainColor}-700 transition-colors shadow-md flex items-center justify-center gap-2 text-sm sm:text-base`}
+>
+<window.Icons.Play size={18} fill="currentColor" /> Tiếp tục chơi
+</button>
+<button
+onClick={() => {
+if (pendingResumeGame === 'quiz') onSelectQuiz();
+else if (pendingResumeGame === 'match') onStartMatch(matchAiMode);
+else if (pendingResumeGame === 'scramble') onStartScramble();
+else if (pendingResumeGame === 'fillblank') onStartFillBlank();
+else if (pendingResumeGame === 'spotmistake') onStartSpotMistake();
+else if (pendingResumeGame === 'oddoneout') onStartOddOneOut();
+setPendingResumeGame(null);
+}}
+className="w-full py-2.5 sm:py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+>
+<window.Icons.RefreshCw size={16} /> Bắt đầu ván mới
+</button>
+<button
+onClick={() => setPendingResumeGame(null)}
+className="w-full py-2 text-gray-400 hover:text-gray-600 font-bold text-xs sm:text-sm mt-1 transition-colors"
+>
+Hủy bỏ
+</button>
+</div>
+</div>
+</div>
+)}
+</div>
 );
 };
 // 2. GAME VIEW (Controller chính - Clean Router)
-const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings, onUpdateCards, onSaveToHarvest, dataMode, currentLevel, currentTopic }) => {
+const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings, onUpdateCards, onSaveToHarvest, dataMode, currentLevel, currentTopic, globalRetryBag, addToRetryBag, removeFromRetryBag, onOpenIncorrect }) => {
 const [gameState, setGameState] = React.useState('menu');
 const [gameType, setGameType] = React.useState(null);
 const [gameConfig, setGameConfig] = React.useState({});
@@ -8259,6 +8982,10 @@ const [gameSessionId, setGameSessionId] = React.useState(Date.now());
 const [finalStats, setFinalStats] = React.useState({ score: 0, wrong: 0, total: 0 });
 const activeSessionIdRef = React.useRef(null);
 const gameTypeRef = React.useRef(null);
+// Khởi tạo Hook Điều phối bài thi tổng hợp (Mock Test)
+const apiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
+// Bắt buộc gọi hook vô điều kiện ở cấp độ cao nhất. Nếu window.useExamLogic chưa tải kịp, truyền {} giả lập để không lỗi Hook
+const examLogic = window.useExamLogic ? window.useExamLogic(apiKey) : { examState: { status: 'idle' }, startExam: () => {}, resumeExam: () => {}, submitAnswer: () => {}, quitExam: () => {} };
 const SafeMatchGame = window.Block5_1_MatchGame || window.MatchGame || (() => <div className="text-red-500 p-4">Lỗi: MatchGame chưa tải</div>);
 const SafeScrambleGame = window.Block5_3_ScrambleGame || window.ScrambleGame || (() => <div className="text-red-500 p-4">Lỗi: ScrambleGame chưa tải</div>);
 const SafeQuizGame = window.Block5_6_QuizGame || window.QuizGame || (() => <div className="text-red-500 p-4">Lỗi: QuizGame chưa tải</div>);
@@ -8272,13 +8999,14 @@ const SafeFillBlankSetup = window.Block5_8_FillBlankSetup || window.FillBlankSet
 const SafeSpotMistakeSetup = window.Block5_10_SpotMistakeSetup || window.SpotMistakeSetup || (() => <div className="text-red-500 p-4">Lỗi: SpotMistakeSetup chưa tải</div>);
 const SafeOddOneOutGame = window.Block5_13_OddOneOutGame || window.OddOneOutGame || (() => <div className="text-red-500 p-4">Lỗi: OddOneOutGame chưa tải</div>);
 const SafeOddOneOutSetup = window.Block5_12_OddOneOutSetup || window.OddOneOutSetup || (() => <div className="text-red-500 p-4">Lỗi: OddOneOutSetup chưa tải</div>);
+const SafeExamUIShell = window.Block5_14_ExamUIShell || window.ExamUIShell || (() => <div className="text-red-500 p-4">Lỗi: ExamUIShell chưa tải</div>);
 React.useEffect(() => {
 const originalToast = window.globalShowToast;
 window.globalShowToast = (msg, type = 'success') => {
 if (typeof msg === 'object' && msg !== null) {
-showToast({ text: msg.text || msg.message || '', type: msg.type || type, id: Date.now() });
+if (showToast) showToast({ text: msg.text || msg.message || '', type: msg.type || type, id: Date.now() });
 } else {
-showToast({ text: String(msg), type: type, id: Date.now() });
+if (showToast) showToast({ text: String(msg), type: type, id: Date.now() });
 }
 };
 return () => {
@@ -8289,14 +9017,20 @@ React.useEffect(() => {
 if(gameType) gameTypeRef.current = gameType;
 }, [gameType]);
 React.useEffect(() => {
-if (setIsGamePlaying) setIsGamePlaying(gameState === 'playing');
+if (setIsGamePlaying) setIsGamePlaying(gameState === 'playing' || gameState === 'mock_test');
 return () => { if (setIsGamePlaying) setIsGamePlaying(false); };
 }, [gameState, setIsGamePlaying]);
 React.useEffect(() => {
-if (gameState !== 'playing') {
+if (gameState !== 'playing' && gameState !== 'mock_test') {
 activeSessionIdRef.current = null;
 }
 }, [gameState]);
+// Kiểm tra phiên Mock Test đang dang dở khi mount
+React.useEffect(() => {
+const activeExamId = localStorage.getItem(window.STORAGE_KEYS.ACTIVE_EXAM);
+// Tạm thời ẩn tính năng Resume tự động ngay khi mount để tránh gián đoạn flow,
+// nhưng để dành logic ở đây để xử lý bằng nút Resume.
+}, []);
 // --- NAVIGATION HANDLERS ---
 const handleSelectQuiz = () => setGameState('quiz_setup');
 const handleStartMatch = (aiMode = false) => setGameState('match_setup');
@@ -8304,13 +9038,32 @@ const handleStartScramble = () => setGameState('scramble_setup');
 const handleStartFillBlank = () => setGameState('fillblank_setup');
 const handleStartSpotMistake = () => setGameState('spotmistake_setup');
 const handleStartOddOneOut = () => setGameState('oddoneout_setup');
+// Kích hoạt bài thi tổng hợp
+const handleStartMockTest = (profileId) => {
+if (!apiKey) {
+onMissingKey();
+return;
+}
+if (examLogic && examLogic.startExam) {
+examLogic.startExam(profileId, currentLevel, currentTopic);
+setGameState('mock_test');
+} else {
+if (showToast) showToast("Hệ thống thi chưa sẵn sàng!", "error");
+}
+};
 const handleStartGame = async (type, config = {}) => {
-// Bỏ qua rào cản thẻ nếu đang ở chế độ AI Pure
+if (window.speechSynthesis) {
+const u = new SpeechSynthesisUtterance('');
+u.volume = 0; window.speechSynthesis.speak(u);
+}
+if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
+window.fc_audioCtx.resume();
+}
 const isPureMode = config.sourceMode === 'ai_pure';
 if (!isPureMode) {
 if (!cards || (cards.length < 2 && type !== 'fillblank' && type !== 'spotmistake' && type !== 'oddoneout') || (cards.length < 4 && type === 'oddoneout' && config.sourceMode === 'card')) {
 const msg = type === 'oddoneout' ? 'Cần ít nhất 4 thẻ để chơi Tìm Từ Khác Loại' : (t('needMoreCards', { n: 2 }) || 'Cần ít nhất 2 thẻ để chơi');
-showToast ? showToast({ text: msg, type: 'error', id: Date.now() }) : alert(msg);
+if (showToast) showToast({ text: msg, type: 'error', id: Date.now() }); else alert(msg);
 return;
 }
 }
@@ -8318,14 +9071,11 @@ if (config.isAiMode && !localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 onMissingKey();
 return;
 }
-// 1. Cấp ID phiên chơi mới
 activeSessionIdRef.current = `sess_${Date.now()}`;
 setGameType(type);
 gameTypeRef.current = type;
-// [HOTFIX] SNAPSHOT STATE: Phong ấn Level, DataMode VÀ Topic hiện tại vào Config của ván đấu
 const snapshotConfig = { ...config, level: config.level || currentLevel, dataMode: config.dataMode || dataMode, topic: config.topic || currentTopic };
 setGameConfig(snapshotConfig);
-// 2. Xóa session cũ nếu có (Chơi mới)
 if(setGameSessions) {
 setGameSessions(prev => {
 const next = { ...prev };
@@ -8333,7 +9083,6 @@ if (next[type]) delete next[type];
 return next;
 });
 }
-// 3. Chuyển màn hình
 setGameSessionId(Date.now());
 setGameState('playing');
 };
@@ -8404,12 +9153,10 @@ gameTypeRef.current = null;
 setGameState('result');
 };
 return (
-<div className="relative w-full h-full flex-1 flex flex-col">
+<div className="relative w-full h-full flex-1 flex flex-col bg-gray-50">
 {/* 1. MENU CHỌN GAME */}
 {gameState === 'menu' && (
-<div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">
-<div className={`absolute top-[-50px] right-[-50px] w-32 h-32 bg-${mainColor}-100 rounded-full opacity-50`}></div>
-<div className={`absolute bottom-[-20px] left-[-20px] w-24 h-24 bg-${mainColor}-100 rounded-full opacity-50`}></div>
+<div className="w-full h-full flex flex-col items-center p-4 sm:p-6 overflow-y-auto custom-scrollbar z-50">
 <GameMenu
 t={t}
 mainColor={mainColor}
@@ -8424,6 +9171,22 @@ onStartSpotMistake={handleStartSpotMistake}
 onStartOddOneOut={handleStartOddOneOut}
 onResume={handleResumeSession}
 gameSessions={gameSessions}
+onStartMockTest={handleStartMockTest}
+/>
+</div>
+)}
+{/* --- [NEW] MÀN HÌNH BÀI THI TỔNG HỢP --- */}
+{gameState === 'mock_test' && SafeExamUIShell && examLogic && (
+<div className="absolute inset-0 z-[100] bg-white">
+<SafeExamUIShell
+examLogic={examLogic}
+mainColor={mainColor}
+onExit={() => {
+if (examLogic.quitExam) examLogic.quitExam();
+setGameState('menu');
+}}
+onLogWrong={onLogWrong}
+onOpenIncorrect={onOpenIncorrect}
 />
 </div>
 )}
@@ -8536,6 +9299,10 @@ onAutoSave={handleAutoSave}
 onUpdateCards={onUpdateCards}
 savedState={gameSessions?.['match']}
 settings={settings}
+onSaveToHarvest={onSaveToHarvest}
+globalRetryBag={globalRetryBag}
+addToRetryBag={addToRetryBag}
+removeFromRetryBag={removeFromRetryBag}
 />
 }
 {gameType === 'scramble' && SafeScrambleGame &&
@@ -8561,6 +9328,11 @@ onEndGame={handleEndGame}
 onAutoSave={handleAutoSave}
 savedState={gameSessions?.['scramble']}
 settings={settings}
+onUpdateCards={onUpdateCards}
+onSaveToHarvest={onSaveToHarvest}
+globalRetryBag={globalRetryBag}
+addToRetryBag={addToRetryBag}
+removeFromRetryBag={removeFromRetryBag}
 />
 }
 {gameType === 'quiz' && SafeQuizGame &&
@@ -8590,6 +9362,11 @@ onEndGame={handleEndGame}
 onAutoSave={handleAutoSave}
 savedState={gameSessions?.['quiz']}
 settings={settings}
+onUpdateCards={onUpdateCards}
+onSaveToHarvest={onSaveToHarvest}
+globalRetryBag={globalRetryBag}
+addToRetryBag={addToRetryBag}
+removeFromRetryBag={removeFromRetryBag}
 />
 }
 {gameType === 'fillblank' && SafeFillBlankGame &&
@@ -8599,7 +9376,7 @@ cards={cards}
 t={t}
 mainColor={mainColor}
 lang={lang}
-isAiMode={true}
+isAiMode={gameConfig.aiMode || false}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
 onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
 onQuit={() => handleBack(null)}
@@ -8612,6 +9389,9 @@ onUpdateCards={onUpdateCards}
 onSaveToHarvest={onSaveToHarvest}
 onAutoSave={handleAutoSave}
 savedState={gameSessions?.['fillblank']}
+globalRetryBag={globalRetryBag}
+addToRetryBag={addToRetryBag}
+removeFromRetryBag={removeFromRetryBag}
 />
 }
 {gameType === 'spotmistake' && SafeSpotMistakeGame &&
@@ -8621,7 +9401,7 @@ cards={cards}
 t={t}
 mainColor={mainColor}
 lang={lang}
-isAiMode={true}
+isAiMode={gameConfig.aiMode || false}
 apiKey={localStorage.getItem(window.STORAGE_KEYS.API_KEY)}
 onFinish={(score, time, wrongCount) => handleEndGame({ correct: score, wrong: wrongCount || 0 })}
 onQuit={() => handleBack(null)}
@@ -8634,6 +9414,9 @@ onUpdateCards={onUpdateCards}
 onSaveToHarvest={onSaveToHarvest}
 onAutoSave={handleAutoSave}
 savedState={gameSessions?.['spotmistake']}
+globalRetryBag={globalRetryBag}
+addToRetryBag={addToRetryBag}
+removeFromRetryBag={removeFromRetryBag}
 />
 }
 {gameType === 'oddoneout' && SafeOddOneOutGame &&
@@ -8657,6 +9440,9 @@ onSaveToHarvest={onSaveToHarvest}
 onAutoSave={handleAutoSave}
 savedState={gameSessions?.['oddoneout']}
 onPlay={onPlay}
+globalRetryBag={globalRetryBag}
+addToRetryBag={addToRetryBag}
+removeFromRetryBag={removeFromRetryBag}
 />
 }
 </div>
@@ -9102,10 +9888,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 3.4
-// Last Updated: 2026-04-14 12:45
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 3.5
+// Last Updated: 2026-04-14 14:30
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank).
-// Cập nhật: [QA DEBUG] Áp dụng Lộ trình chuẩn hóa Tầng 5. Vá 4 Điểm mù: (1) Ép EndGame khi kẹt Loop nạp đạn, (2) Khử Memory Leak Timer đếm ngược AI, (3) Chặn Race Condition ở Auto-next. Tuân thủ Điều 3.
+// Cập nhật: [DEEP DEBUG V2 - PRIORITY 2] Vá lỗi Zombie Auto-save. Thêm cờ isGameActiveRef.current vào triggerAutoSave để chặn ghi đè rác DB khi Component unmount. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -9158,7 +9944,8 @@ deck: deckRef.current, timeLeft
 };
 }, [currentQuestion, inputBuffer, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft]);
 const triggerAutoSave = React.useCallback(() => {
-if (onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
+// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 onAutoSave({ fillBlankState: latestStateRef.current });
 }
 }, [onAutoSave]);
@@ -9169,7 +9956,7 @@ return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 // ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER)
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
-if (coordinatorRef.current) {
+if (coordinatorRef.current && typeof coordinatorRef.current.length === 'function') {
 setQueueLength(coordinatorRef.current.length());
 }
 }, 500);
@@ -10047,10 +10834,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 3.2
-// Last Updated: 2026-04-14 12:55
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 3.3
+// Last Updated: 2026-04-14 14:40
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
-// Cập nhật: [QA DEBUG] Áp dụng Lộ trình chuẩn hóa Tầng 5. Vá 4 Điểm mù: (1) Ép EndGame khi kẹt Loop nạp đạn, (2) Khử Memory Leak Timer đếm ngược AI, (3) Chặn Race Condition ở Auto-next. Tuân thủ Điều 3.
+// Cập nhật: [DEEP DEBUG V2 - PRIORITY 2] Vá lỗi Zombie Auto-save. Thêm cờ isGameActiveRef.current vào triggerAutoSave để chặn ghi đè rác DB khi Component unmount. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -10107,7 +10894,8 @@ timeLeft
 };
 }, [currentQuestion, chunks, stage, selectedIndex, inputBuffer, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft]);
 const triggerAutoSave = React.useCallback(() => {
-if (onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
+// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 onAutoSave({ spotMistakeState: latestStateRef.current });
 }
 }, [onAutoSave]);
@@ -10951,10 +11739,10 @@ window.OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 2.0
-// Last Updated: 2026-04-14 13:10
+// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 2.1
+// Last Updated: 2026-04-14 14:50
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [QA DEBUG] Áp dụng Lộ trình chuẩn hóa Tầng 5. Vá 4 Điểm mù: (1) Ép EndGame khi kẹt Loop nạp đạn, (2) Khử Memory Leak Timer đếm ngược AI, (3) Chặn Race Condition ở Auto-next. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [DEEP DEBUG V2 - PRIORITY 2] Vá lỗi Zombie Auto-save. Thêm cờ isGameActiveRef.current vào triggerAutoSave để chặn ghi đè rác DB khi Component unmount. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -11005,7 +11793,8 @@ score, combo, playedCount, time, correctCount, wrongCount, timeLeft, deck: deckR
 };
 }, [currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft]);
 const triggerAutoSave = React.useCallback(() => {
-if (onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
+// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 onAutoSave({ oddOneOutState: latestStateRef.current });
 }
 }, [onAutoSave]);
@@ -11468,6 +12257,972 @@ window.Block5_13_useOddOneOutLogic = useOddOneOutLogic;
 window.useOddOneOutLogic = useOddOneOutLogic;
 window.Block5_13_OddOneOutGame = OddOneOutGame;
 window.OddOneOutGame = OddOneOutGame;
+// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.09
+// Last Updated: 2026-04-15 20:00
+// Nhiệm vụ: Khung giao diện bài thi tổng hợp. Bao gồm Header (Progress, Timer), SplitView cho IELTS, và các Renderers tối giản cho câu hỏi nguyên tử.
+// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Xây dựng Trạm biến áp (Data Adapter) handleAnswerSubmit để tự động nhào nặn lỗi sai và ném vào onLogWrong. Truyền onOpenIncorrect cho Báo cáo. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// ==================================================================================
+// --- 1. CÁC ATOMIC RENDERERS (GIAO DIỆN TỐI GIẢN CHO TỪNG DẠNG BÀI) ---
+const MultipleChoiceRenderer = ({ content, onAnswer }) => {
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const handleSelect = (opt) => {
+if (isSubmitted) return;
+setIsSubmitted(true);
+onAnswer(opt, opt.isCorrect);
+};
+return (
+<div className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
+<div className="text-2xl md:text-3xl font-bold text-gray-800 text-center leading-relaxed">
+{content.term}
+</div>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+{content.options?.map((opt, i) => (
+<button
+key={i}
+onClick={() => handleSelect(opt)}
+disabled={isSubmitted}
+className={`p-5 border-2 border-gray-200 rounded-2xl text-lg font-medium transition-all bg-white text-gray-700 shadow-sm ${isSubmitted ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-50 hover:border-blue-400 active:scale-95'}`}
+>
+{opt.text}
+</button>
+))}
+</div>
+</div>
+);
+};
+// Pronunciation Renderer (Giao diện Phát âm / Trọng âm)
+const PronunciationRenderer = ({ content, onAnswer }) => {
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const handleSelect = (opt) => {
+if (isSubmitted) return;
+setIsSubmitted(true);
+onAnswer(opt, opt.isCorrect);
+};
+const renderHighlighted = (text) => {
+if (!text) return text;
+const parts = text.split('*');
+if (parts.length === 3) {
+return <>{parts[0]}<span className="text-red-500 font-black underline decoration-2 underline-offset-4">{parts[1]}</span>{parts[2]}</>;
+}
+return text;
+};
+return (
+<div className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
+<div className="text-sm font-bold text-indigo-500 uppercase tracking-widest bg-indigo-50 px-4 py-1.5 rounded-full border border-indigo-200 flex items-center gap-2">
+<window.Icons.Volume2 size={16}/> Chọn từ có phần phát âm khác
+</div>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-2">
+{content.options?.map((opt, i) => (
+<button
+key={i}
+onClick={() => handleSelect(opt)}
+disabled={isSubmitted}
+className={`p-6 border-2 border-gray-200 rounded-2xl text-2xl font-bold transition-all bg-white text-gray-700 shadow-sm tracking-wide ${isSubmitted ? 'opacity-60 cursor-not-allowed' : 'hover:bg-indigo-50 hover:border-indigo-400 active:scale-95'}`}
+>
+{renderHighlighted(opt.text)}
+</button>
+))}
+</div>
+</div>
+);
+};
+// Image Choice Renderer (Ép khuôn ảnh, xử lý lỗi bằng State, thêm Loading Skeleton)
+const ImageChoiceRenderer = ({ content, onAnswer }) => {
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const [imageErrors, setImageErrors] = React.useState({});
+const [imageLoaded, setImageLoaded] = React.useState({});
+const handleSelect = (opt) => {
+if (isSubmitted) return;
+setIsSubmitted(true);
+onAnswer(opt, opt.isCorrect);
+};
+return (
+<div className="flex flex-col items-center gap-6 w-full max-w-3xl mx-auto animate-in zoom-in duration-300">
+<div className="text-sm font-bold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200 flex items-center gap-2">
+<window.Icons.Eye size={16}/> Chọn hình ảnh tương ứng
+</div>
+<div className="text-3xl md:text-4xl font-black text-gray-800 text-center leading-relaxed py-4 border-b-2 border-gray-100 w-full capitalize">
+{content.term}
+</div>
+<div className="grid grid-cols-2 gap-3 md:gap-6 w-full mt-2 max-w-2xl">
+{content.options?.map((opt, i) => {
+const isError = imageErrors[i];
+const isLoaded = imageLoaded[i];
+const hasImage = opt.image && opt.image.trim() !== "";
+return (
+<button
+key={i}
+onClick={() => handleSelect(opt)}
+disabled={isSubmitted}
+className={`relative flex flex-col items-center justify-center p-2 border-4 border-gray-100 rounded-3xl overflow-hidden transition-all bg-white group ${isSubmitted ? 'opacity-70 cursor-not-allowed' : 'hover:border-emerald-400 hover:shadow-xl active:scale-95'}`}
+style={{ aspectRatio: '1/1', maxHeight: '28vh' }}
+>
+{hasImage && !isError ? (
+<>
+{!isLoaded && (
+<div className="absolute inset-0 bg-gray-50 flex items-center justify-center z-0">
+<div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
+</div>
+)}
+<img
+src={opt.image}
+alt="Option"
+className={`w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-500 z-10 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+onLoad={() => setImageLoaded(prev => ({...prev, [i]: true}))}
+onError={() => setImageErrors(prev => ({...prev, [i]: true}))}
+/>
+</>
+) : (
+<div className="absolute inset-0 flex items-center justify-center text-gray-400 font-bold text-lg md:text-xl uppercase bg-gray-50 p-4 text-center break-words z-20">
+{opt.text}
+</div>
+)}
+</button>
+);
+})}
+</div>
+</div>
+);
+};
+const MiniMatchRenderer = ({ content, onAnswer }) => {
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const safeTerm = content.term || (content.pairs && content.pairs.length > 0 ? content.pairs[0].term : "Đang đồng bộ dữ liệu...");
+let safeOptions = content.options;
+if (!safeOptions && content.pairs) {
+safeOptions = window.Utils.shuffleArray(content.pairs.map((p, i) => ({
+text: p.definition,
+isCorrect: p.term === safeTerm
+})));
+}
+const handleSelect = (opt) => {
+if (isSubmitted) return;
+setIsSubmitted(true);
+onAnswer(opt, opt.isCorrect);
+};
+return (
+<div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
+<div className="text-sm font-bold text-purple-500 uppercase tracking-widest bg-purple-50 px-4 py-1.5 rounded-full border border-purple-200 flex items-center gap-2 shadow-sm">
+<window.Icons.Link size={16} /> Nối với nghĩa đúng
+</div>
+<div className="text-3xl md:text-4xl font-black text-gray-800 text-center leading-relaxed py-4 border-b-2 border-purple-100 w-full">
+{safeTerm}
+</div>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-2">
+{safeOptions?.map((opt, i) => (
+<button
+key={i}
+onClick={() => handleSelect(opt)}
+disabled={isSubmitted}
+className={`p-5 border-2 border-purple-100 rounded-2xl text-lg font-bold transition-all bg-white text-gray-600 shadow-sm ${isSubmitted ? 'opacity-60 cursor-not-allowed' : 'hover:bg-purple-50 hover:border-purple-400 hover:text-purple-700 active:scale-95'}`}
+>
+{opt.text}
+</button>
+))}
+</div>
+</div>
+);
+};
+const FillBlankRenderer = ({ content, onAnswer }) => {
+const [val, setVal] = React.useState('');
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const inputRef = React.useRef(null);
+React.useEffect(() => {
+const timer = setTimeout(() => {
+if (inputRef.current && !isSubmitted) inputRef.current.focus();
+}, 100);
+return () => clearTimeout(timer);
+}, [isSubmitted]);
+const handleSubmit = () => {
+if (!val.trim() || isSubmitted) return;
+setIsSubmitted(true);
+const isCorrect = val.trim().toLowerCase() === content.targetWord.toLowerCase();
+onAnswer(val, isCorrect);
+};
+return (
+<div className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
+<div className="text-2xl md:text-3xl font-bold text-gray-800 text-center leading-relaxed bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full">
+{content.displaySentence.split('[__________]').map((part, i, arr) => (
+<React.Fragment key={i}>
+{part}
+{i < arr.length - 1 && <span className="inline-block w-24 border-b-4 border-gray-300 mx-2 mb-1"></span>}
+</React.Fragment>
+))}
+</div>
+<div className="text-sm md:text-base text-gray-500 italic font-medium">"{content.hint}"</div>
+<div className="flex gap-3 w-full max-w-md">
+<input
+ref={inputRef}
+type="text"
+value={val}
+onChange={e => setVal(e.target.value)}
+onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+disabled={isSubmitted}
+className={`flex-1 p-4 text-center text-xl font-bold border-4 rounded-2xl outline-none shadow-inner transition-colors ${isSubmitted ? 'border-gray-200 bg-gray-50 text-gray-400' : 'border-blue-200 focus:border-blue-500 text-gray-800'}`}
+placeholder="Nhập từ còn thiếu..."
+autoComplete="off" spellCheck="false"
+/>
+<button
+onClick={handleSubmit}
+disabled={!val.trim() || isSubmitted}
+className="px-6 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-transform"
+>
+<window.Icons.Check size={28} />
+</button>
+</div>
+</div>
+);
+};
+const SpotMistakeRenderer = ({ content, onAnswer }) => {
+const [step, setStep] = React.useState(1);
+const [selectedWord, setSelectedWord] = React.useState('');
+const [correction, setCorrection] = React.useState('');
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const inputRef = React.useRef(null);
+const isChinese = /[\u4e00-\u9fa5]/.test(content.wrongSentence);
+const separator = isChinese ? '' : ' ';
+const words = content.wrongSentence.split(separator).filter(w => w.trim().length > 0 || isChinese);
+React.useEffect(() => {
+let timer;
+if (step === 2 && !isSubmitted) {
+timer = setTimeout(() => {
+if (inputRef.current) inputRef.current.focus();
+}, 100);
+}
+return () => { if (timer) clearTimeout(timer); };
+}, [step, isSubmitted]);
+const handleSubmit = () => {
+if (!correction.trim() || isSubmitted) return;
+setIsSubmitted(true);
+const isCorrectWord = selectedWord.replace(/[.,?!]/g, '').toLowerCase() === content.wrongWord.toLowerCase();
+const isCorrectFix = correction.trim().toLowerCase() === content.correction.toLowerCase();
+onAnswer({ selectedWord, correction }, isCorrectWord && isCorrectFix);
+};
+return (
+<div className="flex flex-col items-center gap-8 w-full max-w-3xl mx-auto animate-in zoom-in duration-300">
+<div className="text-sm font-bold text-red-500 uppercase tracking-widest bg-red-50 px-4 py-1.5 rounded-full border border-red-200">
+{step === 1 ? 'Bước 1: Chọn từ bị sai' : 'Bước 2: Gõ lại cho đúng'}
+</div>
+<div className="flex flex-wrap justify-center gap-3 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+{words.map((w, i) => (
+<button
+key={i}
+onClick={() => { setSelectedWord(w); setStep(2); }}
+disabled={step === 2 || isSubmitted}
+className={`px-4 py-3 text-xl md:text-2xl font-bold rounded-xl border-2 transition-colors ${step === 1 && !isSubmitted ? 'bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 border-gray-200 text-gray-700' : (w === selectedWord ? 'bg-red-100 border-red-500 text-red-700 shadow-md scale-105' : 'bg-gray-100 text-gray-300 border-gray-100 opacity-50')}`}
+>
+{w}
+</button>
+))}
+</div>
+{step === 2 && (
+<div className="flex gap-3 w-full max-w-md animate-in slide-in-from-bottom-4">
+<input
+ref={inputRef}
+type="text"
+value={correction}
+onChange={e => setCorrection(e.target.value)}
+onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+disabled={isSubmitted}
+className={`flex-1 p-4 text-center text-xl font-bold border-4 rounded-2xl outline-none shadow-inner transition-colors ${isSubmitted ? 'border-gray-200 bg-gray-50 text-gray-400' : 'border-red-200 focus:border-red-500 text-gray-800'}`}
+placeholder={`Sửa "${selectedWord}" thành...`}
+autoComplete="off" spellCheck="false"
+/>
+<button
+onClick={handleSubmit}
+disabled={!correction.trim() || isSubmitted}
+className="px-6 bg-red-600 text-white rounded-2xl font-bold shadow-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-transform"
+>
+<window.Icons.Check size={28} />
+</button>
+</div>
+)}
+</div>
+);
+};
+const ScrambleRenderer = ({ content, onAnswer }) => {
+const [parts, setParts] = React.useState([]);
+const [userAnswer, setUserAnswer] = React.useState([]);
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+React.useEffect(() => {
+const isChinese = /[\u4e00-\u9fa5]/.test(content.term);
+const separator = isChinese ? '' : ' ';
+let words = content.term.split(separator).filter(w => w.trim().length > 0 || isChinese);
+words = window.Utils.shuffleArray(words).map((w, i) => ({ id: i, text: w }));
+setParts(words);
+setUserAnswer([]);
+setIsSubmitted(false);
+}, [content]);
+const handleSelect = (part) => {
+if (isSubmitted) return;
+setUserAnswer([...userAnswer, part]);
+setParts(parts.filter(p => p.id !== part.id));
+};
+const handleDeselect = (part) => {
+if (isSubmitted) return;
+setParts([...parts, part]);
+setUserAnswer(userAnswer.filter(p => p.id !== part.id));
+};
+const handleSubmit = () => {
+if (userAnswer.length === 0 || isSubmitted) return;
+setIsSubmitted(true);
+const ansStr = userAnswer.map(p => p.text).join(separator);
+onAnswer(ansStr, window.Utils.advancedNormalize(ansStr, 'en') === window.Utils.advancedNormalize(content.term, 'en'));
+};
+const isChinese = /[\u4e00-\u9fa5]/.test(content.term);
+const separator = isChinese ? '' : ' ';
+return (
+<div className="flex flex-col items-center gap-8 w-full max-w-3xl mx-auto animate-in zoom-in duration-300">
+<div className="text-lg text-gray-500 font-medium italic text-center px-4 bg-gray-50 p-4 rounded-xl border border-gray-200 w-full">
+{content.definition}
+</div>
+<div className="min-h-[120px] w-full border-4 border-dashed border-orange-200 rounded-2xl p-4 flex flex-wrap items-center justify-center gap-3 bg-orange-50/30">
+{userAnswer.map(p => (
+<button key={p.id} onClick={() => handleDeselect(p)} disabled={isSubmitted} className={`px-5 py-3 text-white text-xl font-bold rounded-xl shadow-md transition-transform animate-in zoom-in ${isSubmitted ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-500 active:scale-95 hover:bg-orange-600'}`}>
+{p.text}
+</button>
+))}
+{userAnswer.length === 0 && <span className="text-gray-400 text-lg font-bold mb-3 uppercase tracking-widest opacity-50">Khu vực ghép câu</span>}
+</div>
+<div className="w-full flex flex-col items-center border-t-2 border-gray-100 pt-6">
+{parts.length > 0 && <span className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-4 block text-center w-full flex items-center justify-center gap-1"><window.Icons.Layers size={14}/> Các từ để chọn (Lưu ý: Có thể chứa từ nhiễu)</span>}
+<div className="flex flex-wrap justify-center gap-3 min-h-[60px] p-4 bg-gray-50 rounded-2xl w-full border border-gray-100 shadow-inner">
+{parts.map(p => (
+<button key={p.id} onClick={() => handleSelect(p)} disabled={isSubmitted} className={`px-5 py-3 text-gray-700 border-2 text-xl font-bold rounded-xl shadow-sm transition-all ${isSubmitted ? 'bg-gray-100 border-gray-100 opacity-50 cursor-not-allowed' : 'bg-white border-gray-200 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700 active:scale-95'}`}>
+{p.text}
+</button>
+))}
+{parts.length === 0 && <span className="text-gray-300 text-sm font-medium italic">Đã lấy hết từ</span>}
+</div>
+</div>
+<button
+onClick={handleSubmit}
+disabled={userAnswer.length === 0 || isSubmitted}
+className="mt-2 px-10 py-4 bg-green-500 text-white text-xl font-bold rounded-2xl shadow-lg shadow-green-200 hover:bg-green-600 animate-in zoom-in active:scale-95 transition-transform flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+<window.Icons.CheckCircle size={24} /> Nộp câu trả lời
+</button>
+</div>
+);
+};
+const OddOneOutRenderer = ({ content, onAnswer }) => {
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const handleSelect = (w) => {
+if (isSubmitted) return;
+setIsSubmitted(true);
+onAnswer(w, w === content.oddWord);
+};
+return (
+<div className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
+<div className="text-sm font-bold text-pink-500 uppercase tracking-widest bg-pink-50 px-4 py-1.5 rounded-full border border-pink-200">
+Chọn từ khác loại
+</div>
+<div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+{content.words?.map((w, i) => (
+<button
+key={i}
+onClick={() => handleSelect(w)}
+disabled={isSubmitted}
+className={`p-6 md:p-8 border-2 rounded-2xl text-xl sm:text-2xl font-bold transition-all shadow-sm break-words flex items-center justify-center text-center ${isSubmitted ? 'bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-gray-200 hover:bg-pink-50 hover:border-pink-400 hover:text-pink-700 text-gray-700 active:scale-95'}`}
+>
+{w}
+</button>
+))}
+</div>
+</div>
+);
+};
+// --- 2. SPLIT VIEW CONTAINER (Cho IELTS Reading) ---
+const SplitViewContainer = ({ passage, children }) => {
+return (
+<div className="flex flex-col lg:flex-row w-full h-full gap-4 p-4 lg:p-6 bg-gray-50">
+<div className="flex-1 bg-white rounded-3xl shadow-sm border border-gray-200 p-6 overflow-y-auto custom-scrollbar">
+<h2 className="text-xl font-black mb-4 font-serif text-gray-800 border-b pb-2 flex items-center gap-2">
+<window.Icons.BookOpen size={24} className="text-blue-600" /> Reading Passage
+</h2>
+<div className="text-gray-700 leading-loose text-justify font-serif text-base md:text-lg" dangerouslySetInnerHTML={{ __html: passage.replace(/\n/g, '<br/>') }} />
+</div>
+<div className="flex-1 bg-white rounded-3xl shadow-sm border border-gray-200 p-6 flex flex-col justify-center overflow-y-auto custom-scrollbar relative">
+{children}
+</div>
+</div>
+);
+};
+// --- 3. EXAM UI SHELL (VỎ BỌC CHÍNH ĐIỀU PHỐI) ---
+const ExamUIShell = ({ examLogic, mainColor = 'blue', onExit, onLogWrong, onOpenIncorrect }) => {
+// Trích xuất cachedCount từ examLogic
+const { examState, currentQuestion, isHydrating, submitAnswer, quitExam, forceSubmitExam, setTransitionState, cachedCount } = examLogic;
+const Icons = window.Icons;
+// Màn hình chuyển chặng (Transition Overlay)
+const [chapterOverlay, setChapterOverlay] = React.useState(null);
+const prevChapterRef = React.useRef(null);
+React.useEffect(() => {
+let timeoutId;
+if (currentQuestion && currentQuestion.metadata) {
+const currentChap = currentQuestion.metadata.chapter;
+if (currentChap && currentChap !== prevChapterRef.current) {
+setChapterOverlay(currentChap);
+if (setTransitionState) setTransitionState(true);
+timeoutId = setTimeout(() => {
+setChapterOverlay(null);
+if (setTransitionState) setTransitionState(false);
+}, 2500);
+prevChapterRef.current = currentChap;
+}
+}
+// Dọn dẹp Timeout tránh rò rỉ bộ nhớ
+return () => { if (timeoutId) clearTimeout(timeoutId); };
+}, [currentQuestion, setTransitionState]);
+// [VÁ LỖI DỮ LIỆU MA] Trạm biến áp Data Adapter để nhào nặn lỗi sai và bắn vào onLogWrong
+const handleAnswerSubmit = (ans, isCorrect) => {
+if (!isCorrect && onLogWrong && currentQuestion) {
+const type = currentQuestion.metadata.type;
+const content = currentQuestion.content;
+let term = content.term || "";
+let definition = content.definition || "";
+let example = content.example || "";
+let analysis = content.explanation || content.analysis || "";
+if (type.includes('fill_blank')) {
+const underlinedTarget = content.targetWord.split('').map(char => char + '\u0332').join('');
+term = content.displaySentence.replace('[__________]', underlinedTarget);
+definition = content.hint || content.targetWord;
+example = content.displaySentence.replace('[__________]', content.targetWord);
+} else if (type.includes('spot_mistake')) {
+const underlinedCorrection = content.correction.split('').map(char => char + '\u0332').join('');
+term = content.wrongSentence.replace(content.wrongWord, underlinedCorrection);
+definition = `Sửa: ${content.wrongWord} -> ${content.correction}`;
+analysis = content.explanation;
+example = content.wrongSentence;
+} else if (type.includes('odd_one_out')) {
+term = Array.isArray(content.words) ? content.words.join(' • ') : content.words;
+definition = `Từ khác loại: ${content.oddWord}`;
+analysis = content.explanation;
+} else if (type.includes('pronunciation')) {
+term = content.term;
+definition = content.definition;
+} else {
+term = content.term;
+definition = content.definition;
+}
+const mistakeCard = {
+id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+type: 'mistake',
+term: term,
+definition: definition,
+example: example,
+analysis: analysis,
+tags: ['mock_test', currentQuestion.metadata.level, type],
+timestamp: Date.now()
+};
+onLogWrong(mistakeCard);
+}
+submitAnswer(ans, isCorrect);
+};
+if (examState.status === 'loading') {
+return (
+<div className="flex flex-col items-center justify-center h-full bg-gray-50 z-[999] absolute inset-0">
+<div className={`w-16 h-16 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-4`}></div>
+<h2 className="text-xl font-black text-gray-700 uppercase tracking-widest animate-pulse">Đang thiết lập đề thi...</h2>
+</div>
+);
+}
+if (examState.status === 'error' || (examState.status === 'playing' && !currentQuestion && !isHydrating)) {
+const handleSkipError = () => {
+if (submitAnswer) {
+submitAnswer({ error: "Lỗi hệ thống/mạng" }, false);
+}
+};
+return (
+<div className="flex flex-col items-center justify-center h-full bg-gray-50 z-[999] absolute inset-0 animate-in zoom-in p-6 text-center">
+<div className="w-20 h-20 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+<Icons.AlertCircle size={40} />
+</div>
+<h2 className="text-2xl font-black text-gray-800 mb-2">Gián đoạn nạp dữ liệu!</h2>
+<p className="text-gray-500 mb-8 max-w-sm leading-relaxed">
+Hệ thống không thể kết nối đến Máy chủ AI hoặc Kho lưu trữ để nạp câu hỏi này. Bạn muốn xử lý thế nào?
+</p>
+<div className="flex gap-3 w-full max-w-sm">
+<button
+onClick={handleSkipError}
+className={`flex-1 py-3 bg-${mainColor}-100 text-${mainColor}-700 font-bold rounded-xl shadow-sm hover:bg-${mainColor}-200 transition-colors flex items-center justify-center gap-2`}
+>
+<Icons.SkipForward size={18}/> Bỏ qua câu này
+</button>
+<button
+onClick={onExit}
+className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+>
+<Icons.X size={18}/> Thoát bài thi
+</button>
+</div>
+</div>
+);
+}
+if (examState.status === 'completed') {
+const SafeExamReportUI = window.Block5_15_ExamReportUI || window.ExamReportUI;
+if (SafeExamReportUI) {
+return <SafeExamReportUI examState={examState} onExit={onExit} mainColor={mainColor} onOpenIncorrect={onOpenIncorrect} />;
+}
+return (
+<div className="flex flex-col items-center justify-center h-full bg-gray-50 z-[999] absolute inset-0 animate-in zoom-in">
+<div className={`w-24 h-24 bg-${mainColor}-100 text-${mainColor}-600 rounded-full flex items-center justify-center mb-6`}>
+<Icons.CheckCircle size={48} />
+</div>
+<h2 className="text-3xl font-black text-gray-800 mb-2">Đã nộp bài!</h2>
+<div className="flex gap-4">
+<button onClick={onExit} className={`px-8 py-3 bg-${mainColor}-600 text-white font-bold rounded-xl shadow-lg hover:bg-${mainColor}-700`}>Quay về Menu</button>
+<button onClick={() => { onExit(); if (onOpenIncorrect) onOpenIncorrect(); }} className={`px-8 py-3 bg-white text-red-500 border border-red-200 font-bold rounded-xl shadow-sm hover:bg-red-50`}>Xem lại lỗi sai</button>
+</div>
+</div>
+);
+}
+const totalQ = examState.blueprint.length;
+const currentQ = examState.currentIndex;
+const progressPct = totalQ > 0 ? (currentQ / totalQ) * 100 : 0;
+const formatTime = (sec) => {
+const m = Math.floor(sec / 60);
+const s = sec % 60;
+return `${m}:${s.toString().padStart(2, '0')}`;
+};
+const isUrgent = examState.timeRemaining < 300 && examState.timeRemaining > 0;
+const timerClass = isUrgent ? 'text-red-600 animate-pulse font-black' : `text-${mainColor}-700 font-bold`;
+// CHỌN RENDERER
+let Renderer = null;
+if (currentQuestion) {
+const type = currentQuestion.metadata.type;
+if (type.includes('multiple_choice') || type.includes('mcq')) Renderer = MultipleChoiceRenderer;
+else if (type.includes('fill_blank')) Renderer = FillBlankRenderer;
+else if (type.includes('spot_mistake')) Renderer = SpotMistakeRenderer;
+else if (type.includes('scramble')) Renderer = ScrambleRenderer;
+else if (type.includes('odd_one_out')) Renderer = OddOneOutRenderer;
+else if (type.includes('match')) Renderer = MiniMatchRenderer;
+else if (type.includes('pronunciation')) Renderer = PronunciationRenderer;
+else if (type.includes('image_quiz')) Renderer = ImageChoiceRenderer;
+else Renderer = MultipleChoiceRenderer;
+}
+const questionContent = (
+<div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar relative bg-gray-50/30">
+<div className="min-h-full w-full flex flex-col items-center justify-center p-4 sm:p-6 pb-12">
+{isHydrating ? (
+<div className="flex flex-col items-center gap-4 animate-in fade-in my-auto">
+<div className={`w-12 h-12 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin`}></div>
+<div className={`text-${mainColor}-600 font-bold animate-pulse uppercase tracking-widest text-sm`}>Đang tải câu hỏi...</div>
+</div>
+) : currentQuestion && Renderer ? (
+<Renderer
+key={currentQuestion.id}
+content={currentQuestion.content}
+onAnswer={handleAnswerSubmit}
+/>
+) : null}
+</div>
+</div>
+);
+const hasPassage = currentQuestion?.content?.passage;
+return (
+<div className="fixed inset-0 z-[1000] bg-gray-50 flex flex-col overflow-hidden">
+{/* OVERLAY CHUYỂN CHẶNG */}
+{chapterOverlay && (
+<div className={`absolute inset-0 z-[1050] bg-${mainColor}-600 text-white flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300`}>
+<Icons.Layers size={64} className="mb-6 opacity-80" />
+<h2 className="text-xl md:text-2xl font-bold mb-2 uppercase tracking-widest opacity-80">Chặng tiếp theo</h2>
+<p className="text-3xl md:text-5xl font-black text-center px-4 leading-tight">{chapterOverlay}</p>
+</div>
+)}
+{/* HEADER */}
+<div className="w-full bg-white border-b border-gray-200 shadow-sm shrink-0 z-50">
+<div className="w-full h-1.5 bg-gray-100 flex">
+<div className={`h-full bg-${mainColor}-500 transition-all duration-500 ease-out`} style={{ width: `${progressPct}%` }}></div>
+</div>
+<div className="flex justify-between items-center p-3 md:p-4">
+<div className="flex flex-col">
+<div className="flex items-center gap-3">
+<div className={`w-10 h-10 rounded-full bg-${mainColor}-100 text-${mainColor}-600 flex items-center justify-center font-black text-sm border-2 border-${mainColor}-200 shrink-0`}>
+{currentQ + 1}
+</div>
+<div className="hidden sm:block">
+<div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tiến trình</div>
+<div className="text-sm font-bold text-gray-700">{currentQ} / {totalQ} câu</div>
+</div>
+</div>
+{currentQuestion?.content && (
+<div className="mt-1.5 sm:ml-[52px] flex items-center animate-in fade-in">
+{currentQuestion.content._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.Layers size={10} className="text-orange-500" /> Dự phòng
+{cachedCount > 0 && <span className="bg-orange-500 text-white px-1.5 rounded-[4px] font-mono text-[9px] ml-0.5">+{cachedCount}</span>}
+</span>
+) : currentQuestion.content.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={10} className="animate-pulse text-indigo-500" /> AI
+{cachedCount > 0 && <span className="bg-indigo-500 text-white px-1.5 rounded-[4px] font-mono text-[9px] ml-0.5">+{cachedCount}</span>}
+</span>
+) : (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={10} className="text-slate-400" /> Thẻ gốc
+{cachedCount > 0 && <span className="bg-slate-400 text-white px-1.5 rounded-[4px] font-mono text-[9px] ml-0.5">+{cachedCount}</span>}
+</span>
+)}
+</div>
+)}
+</div>
+<div className="flex flex-col items-center">
+<div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Thời gian còn lại</div>
+<div className={`text-xl sm:text-2xl font-mono flex items-center gap-2 bg-gray-50 px-4 py-1 rounded-xl border border-gray-100 shadow-inner ${timerClass}`}>
+<Icons.Clock size={20} /> {formatTime(examState.timeRemaining)}
+</div>
+</div>
+<div className="flex items-center gap-2">
+<button
+onClick={() => { if(confirm('Bạn có chắc chắn muốn nộp bài sớm? Tiến trình hiện tại sẽ được tổng hợp.')) forceSubmitExam(); }}
+className="text-xs font-bold text-red-500 bg-red-50 px-3 py-2 rounded-xl border border-red-200 hover:bg-red-100 transition-colors flex items-center gap-1"
+>
+<Icons.CheckCircle size={16} /> <span className="hidden sm:inline">Nộp bài</span>
+</button>
+</div>
+</div>
+</div>
+{/* MAIN CONTENT AREA */}
+<div className="flex-1 w-full h-full relative">
+{hasPassage ? (
+<SplitViewContainer passage={currentQuestion.content.passage}>
+{questionContent}
+</SplitViewContainer>
+) : (
+questionContent
+)}
+</div>
+</div>
+);
+};
+// EXPORT TO GLOBAL WINDOW
+window.ExamUIShell = ExamUIShell;
+window.Block5_14_ExamUIShell = ExamUIShell;
+// Block5.15: TẦNG 5: TRÒ CHƠI HÓA (Grand Exam Report UI) - Version 1.01
+// Last Updated: 2026-04-15 20:15
+// Nhiệm vụ: Hiển thị Báo cáo Tổng kết bài thi (Mock Test) với Biểu đồ Radar phân tích kỹ năng, Cảnh báo điểm yếu và Thống kê chi tiết.
+// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Bổ sung prop onOpenIncorrect. Khơi thông nút "Xem lại lỗi sai" để bung Sổ tay thực sự. Tuân thủ Điều 3 Hiến Pháp.
+// ==================================================================================
+// --- COMPONENT BIỂU ĐỒ RADAR (PURE SVG) ---
+const SkillRadarChart = ({ data, mainColor = 'blue' }) => {
+if (!data || data.length < 3) {
+return (
+<div className="w-full h-48 flex items-center justify-center text-gray-400 italic text-sm bg-gray-50 rounded-xl border border-gray-100">
+Cần ít nhất 3 kỹ năng để vẽ biểu đồ Radar.
+</div>
+);
+}
+const size = 300;
+const cx = size / 2;
+const cy = size / 2;
+const radius = 100;
+const numPoints = data.length;
+// Helper tính tọa độ
+const getPoint = (val, index, customRadius = radius) => {
+// Trừ đi PI/2 để đỉnh đầu tiên luôn hướng thẳng lên góc 12 giờ
+const angle = (Math.PI * 2 * index) / numPoints - Math.PI / 2;
+const x = cx + customRadius * val * Math.cos(angle);
+const y = cy + customRadius * val * Math.sin(angle);
+return { x, y };
+};
+// 1. Tạo các đường lưới mạng nhện (Spider Web Grid)
+const gridLevels = [0.2, 0.4, 0.6, 0.8, 1];
+const grids = gridLevels.map(level => {
+const points = data.map((_, i) => {
+const p = getPoint(level, i);
+return `${p.x},${p.y}`;
+}).join(' ');
+return <polygon key={level} points={points} fill="none" stroke="#e5e7eb" strokeWidth="1" />;
+});
+// 2. Tạo các trục tỏa ra từ tâm
+const axes = data.map((_, i) => {
+const p = getPoint(1, i);
+return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#e5e7eb" strokeWidth="1" />;
+});
+// 3. Tạo Đa giác Dữ liệu thực tế của học sinh (Data Polygon)
+const dataPoints = data.map((d, i) => {
+const p = getPoint(d.score / 100, i);
+return `${p.x},${p.y}`;
+}).join(' ');
+// 4. Lấy màu sắc theo mainColor
+const colorMap = {
+blue: { stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', dot: '#2563eb' },
+sky: { stroke: '#0ea5e9', fill: 'rgba(14, 165, 233, 0.2)', dot: '#0284c7' },
+green: { stroke: '#22c55e', fill: 'rgba(34, 197, 94, 0.2)', dot: '#16a34a' },
+red: { stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.2)', dot: '#dc2626' },
+purple: { stroke: '#a855f7', fill: 'rgba(168, 85, 247, 0.2)', dot: '#9333ea' },
+orange: { stroke: '#f97316', fill: 'rgba(249, 115, 22, 0.2)', dot: '#ea580c' },
+};
+const theme = colorMap[mainColor] || colorMap.blue;
+return (
+<div className="w-full flex justify-center relative select-none">
+<svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[340px] h-auto drop-shadow-sm overflow-visible">
+{grids}
+{axes}
+{/* Vùng Polygon chứa Data */}
+<polygon
+points={dataPoints}
+fill={theme.fill}
+stroke={theme.stroke}
+strokeWidth="3"
+strokeLinejoin="round"
+className="animate-in fade-in zoom-in duration-700 delay-300"
+/>
+{/* Các điểm Dot trên Data Polygon */}
+{data.map((d, i) => {
+const p = getPoint(d.score / 100, i);
+return <circle key={`dot-${i}`} cx={p.x} cy={p.y} r="4" fill={theme.dot} className="animate-in zoom-in delay-500" />;
+})}
+{/* Nhãn Kỹ năng (Labels) */}
+{data.map((d, i) => {
+// Đẩy nhãn ra xa hơn một chút so với bán kính tối đa
+const p = getPoint(1, i, radius + 35);
+// Điều chỉnh text-anchor dựa trên tọa độ X để chữ không bị cắt
+let anchor = "middle";
+if (p.x < cx - 10) anchor = "end";
+if (p.x > cx + 10) anchor = "start";
+// Chặt tên Chapter dài thành 2 dòng nếu cần
+const words = d.label.split(' ');
+const line1 = words.slice(0, Math.ceil(words.length/2)).join(' ');
+const line2 = words.slice(Math.ceil(words.length/2)).join(' ');
+return (
+<text key={`label-${i}`} x={p.x} y={p.y} textAnchor={anchor} dominantBaseline="middle" className="text-[10px] sm:text-xs font-bold fill-gray-600">
+{words.length > 3 ? (
+<>
+<tspan x={p.x} dy="-0.6em">{line1}</tspan>
+<tspan x={p.x} dy="1.2em">{line2}</tspan>
+</>
+) : (
+d.label
+)}
+</text>
+);
+})}
+</svg>
+</div>
+);
+};
+// --- COMPONENT CHÍNH (GRAND REPORT UI) ---
+const ExamReportUI = ({ examState, onExit, mainColor = 'blue', onOpenIncorrect }) => {
+const Icons = window.Icons;
+// 1. XỬ LÝ DỮ LIỆU TỔNG QUAN
+const profile = examState.profile || {};
+const blueprint = examState.blueprint || [];
+const answers = examState.answers || [];
+const totalQuestions = blueprint.length;
+const answeredCount = answers.length;
+const correctAnswers = answers.filter(a => a.isCorrect).length;
+const wrongAnswers = answeredCount - correctAnswers;
+const skippedAnswers = totalQuestions - answeredCount;
+const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+const timeTaken = profile.timeLimit ? (profile.timeLimit - examState.timeRemaining) : 0;
+const formatTime = (sec) => {
+const m = Math.floor(sec / 60);
+const s = sec % 60;
+return `${m} phút ${s.toString().padStart(2, '0')} giây`;
+};
+// 2. PHÂN TÍCH THEO CHẶNG (CHAPTER / SKILL)
+// Gom nhóm kết quả dựa trên thuộc tính `chapter` hoặc `type` trong Blueprint
+const chapterStatsMap = {};
+blueprint.forEach((item, idx) => {
+const chapterName = item.chapter || item.type || "Kỹ năng Khác";
+if (!chapterStatsMap[chapterName]) {
+chapterStatsMap[chapterName] = { total: 0, correct: 0 };
+}
+chapterStatsMap[chapterName].total += 1;
+// Tìm xem user có trả lời câu này chưa
+const userAnswer = answers.find(a => a.index === idx);
+if (userAnswer && userAnswer.isCorrect) {
+chapterStatsMap[chapterName].correct += 1;
+}
+});
+// Biến đổi Map thành Array để vẽ Chart
+const radarData = Object.keys(chapterStatsMap).map(key => {
+const stat = chapterStatsMap[key];
+const score = stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0;
+return { label: key, score: score, rawCorrect: stat.correct, rawTotal: stat.total };
+});
+// 3. TÌM ĐIỂM YẾU NHẤT (WEAKNESS ALERT)
+let weakestSkill = null;
+if (radarData.length > 0) {
+// Tìm kỹ năng có score thấp nhất, nhưng phải có ít nhất 2 câu để làm mẫu thử
+const validSkills = radarData.filter(d => d.rawTotal >= 2);
+if (validSkills.length > 0) {
+weakestSkill = validSkills.reduce((prev, curr) => prev.score < curr.score ? prev : curr);
+}
+}
+// 4. ĐÁNH GIÁ CHUNG (VERDICT)
+let verdictTitle = "Cần nỗ lực hơn!";
+let verdictSub = "Đừng nản chí, hãy ôn tập lại các lỗi sai nhé.";
+let headerGradient = "from-orange-500 to-red-500";
+let icon = <Icons.AlertCircle size={48} className="text-white opacity-80" />;
+if (accuracy >= 90) {
+verdictTitle = "Xuất sắc!";
+verdictSub = "Kết quả tuyệt vời! Bạn đã nắm rất vững kiến thức.";
+headerGradient = "from-emerald-400 to-green-600";
+icon = <Icons.Award size={48} className="text-white opacity-80" />;
+} else if (accuracy >= 70) {
+verdictTitle = "Khá Tốt!";
+verdictSub = "Bạn có nền tảng vững vàng. Chỉ cần tỉ mỉ thêm chút nữa.";
+headerGradient = `from-${mainColor}-400 to-${mainColor}-600`;
+icon = <Icons.CheckCircle size={48} className="text-white opacity-80" />;
+} else if (accuracy >= 50) {
+verdictTitle = "Đạt yêu cầu";
+verdictSub = "Bạn đã qua mức trung bình, nhưng vẫn còn nhiều khoảng trống cần bù đắp.";
+headerGradient = "from-yellow-400 to-orange-500";
+icon = <Icons.Check size={48} className="text-white opacity-80" />;
+}
+return (
+<div className="fixed inset-0 z-[1100] bg-gray-50 flex flex-col overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom-8 duration-500">
+{/* HEADER KHỔNG LỒ (HERO BANNER) */}
+<div className={`w-full bg-gradient-to-br ${headerGradient} pt-12 pb-16 px-6 text-center text-white relative shadow-md shrink-0`}>
+{/* Trang trí nền */}
+<div className="absolute top-[-50px] right-[-20px] w-48 h-48 bg-white opacity-10 rounded-full blur-2xl"></div>
+<div className="absolute bottom-[-30px] left-[-30px] w-32 h-32 bg-black opacity-10 rounded-full blur-xl"></div>
+<div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-500 delay-100">
+<div className="mb-4">
+{icon}
+</div>
+<div className="text-sm font-bold tracking-widest uppercase mb-1 opacity-80">
+{profile.name || "Báo cáo Bài thi"}
+</div>
+<h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2 drop-shadow-md">
+{verdictTitle}
+</h1>
+<p className="text-sm md:text-base font-medium opacity-90 max-w-md mx-auto">
+{verdictSub}
+</p>
+</div>
+</div>
+{/* PHẦN NỘI DUNG BÁO CÁO (NẰM ĐÈ LÊN HEADER MỘT CHÚT) */}
+<div className="w-full max-w-4xl mx-auto px-4 sm:px-6 -mt-8 relative z-20 pb-16">
+{/* 1. THẺ ĐIỂM SỐ TỔNG QUAN (SCORECARD) */}
+<div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 border border-gray-100 mb-6 animate-in slide-in-from-bottom-4 duration-500 delay-200">
+<div className="flex items-center gap-6">
+{/* Vòng tròn Điểm */}
+<div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+<svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+<circle cx="50" cy="50" r="40" fill="transparent" stroke="#f3f4f6" strokeWidth="8" />
+<circle
+cx="50" cy="50" r="40" fill="transparent"
+stroke="currentColor" strokeWidth="8"
+strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * accuracy) / 100}
+strokeLinecap="round"
+className={`text-${mainColor}-500 transition-all duration-1000 ease-out`}
+/>
+</svg>
+<div className="absolute inset-0 flex flex-col items-center justify-center">
+<span className="text-2xl font-black text-gray-800">{accuracy}%</span>
+<span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Độ chính xác</span>
+</div>
+</div>
+{/* Chỉ số nhanh */}
+<div className="grid grid-cols-2 gap-x-6 gap-y-3">
+<div className="flex flex-col">
+<span className="text-xs font-bold text-gray-400 uppercase">Hoàn thành</span>
+<span className="text-lg font-bold text-gray-800">{answeredCount} / {totalQuestions}</span>
+</div>
+<div className="flex flex-col">
+<span className="text-xs font-bold text-gray-400 uppercase">Thời gian</span>
+<span className="text-lg font-bold text-gray-800">{formatTime(timeTaken)}</span>
+</div>
+<div className="flex flex-col">
+<span className="text-xs font-bold text-green-500 uppercase flex items-center gap-1"><Icons.Check size={12}/> Đúng</span>
+<span className="text-lg font-black text-green-600">{correctAnswers}</span>
+</div>
+<div className="flex flex-col">
+<span className="text-xs font-bold text-red-400 uppercase flex items-center gap-1"><Icons.X size={12}/> Sai / Bỏ qua</span>
+<span className="text-lg font-black text-red-500">{wrongAnswers + skippedAnswers}</span>
+</div>
+</div>
+</div>
+</div>
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+{/* 2. BIỂU ĐỒ RADAR (SKILL ANALYSIS) */}
+<div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center animate-in slide-in-from-bottom-4 duration-500 delay-300">
+<div className="w-full flex items-center gap-2 mb-6 border-b border-gray-100 pb-3">
+<div className={`p-2 bg-${mainColor}-50 text-${mainColor}-600 rounded-lg`}><Icons.Target size={20} /></div>
+<h2 className="font-bold text-gray-800 text-lg">Phân tích Kỹ năng</h2>
+</div>
+<SkillRadarChart data={radarData} mainColor={mainColor} />
+</div>
+{/* 3. CHI TIẾT & CẢNH BÁO (DETAILS & ALERTS) */}
+<div className="flex flex-col gap-6">
+{/* Thẻ Cảnh báo Điểm yếu */}
+{weakestSkill && weakestSkill.score < 80 && (
+<div className="bg-red-50 rounded-2xl shadow-sm border border-red-100 p-5 animate-in slide-in-from-bottom-4 duration-500 delay-400">
+<div className="flex gap-3 items-start">
+<div className="p-2 bg-red-100 text-red-600 rounded-full mt-1 shrink-0">
+<Icons.AlertCircle size={20} />
+</div>
+<div>
+<h3 className="font-bold text-red-800 text-base mb-1">Cảnh báo Điểm yếu</h3>
+<p className="text-sm text-red-700 mb-2 leading-relaxed">
+Kỹ năng <strong>{weakestSkill.label}</strong> của bạn đang ở mức thấp (<span className="font-black">{weakestSkill.score}%</span>).
+</p>
+<p className="text-xs text-red-600/80 italic">
+Lời khuyên: Hãy tập trung ôn luyện thêm các dạng bài thuộc chủ đề này ở chế độ Học hoặc Game đơn lẻ.
+</p>
+</div>
+</div>
+</div>
+)}
+{/* Danh sách Chi tiết */}
+<div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 animate-in slide-in-from-bottom-4 duration-500 delay-500">
+<div className="w-full flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
+<div className={`p-2 bg-gray-50 text-gray-600 rounded-lg`}><Icons.Layers size={20} /></div>
+<h2 className="font-bold text-gray-800 text-lg">Chi tiết từng Chặng</h2>
+</div>
+<div className="space-y-4">
+{radarData.map((d, i) => (
+<div key={i} className="flex flex-col gap-1.5">
+<div className="flex justify-between items-center text-sm">
+<span className="font-bold text-gray-700 line-clamp-1 flex-1 pr-2" title={d.label}>{d.label}</span>
+<span className="font-mono font-bold text-gray-500 text-xs shrink-0">
+{d.rawCorrect}/{d.rawTotal} (<span className={d.score >= 80 ? 'text-green-600' : d.score >= 50 ? 'text-orange-500' : 'text-red-500'}>{d.score}%</span>)
+</span>
+</div>
+<div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+<div
+className={`h-full rounded-full transition-all duration-1000 ease-out ${d.score >= 80 ? 'bg-green-500' : d.score >= 50 ? 'bg-orange-400' : 'bg-red-500'}`}
+style={{ width: `${d.score}%` }}
+></div>
+</div>
+</div>
+))}
+</div>
+</div>
+</div>
+</div>
+{/* 4. KHU VỰC HÀNH ĐỘNG (ACTION BUTTONS) */}
+<div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-4 animate-in slide-in-from-bottom-8 duration-500 delay-700">
+<button
+onClick={onExit}
+className={`w-full sm:w-auto px-8 py-4 bg-${mainColor}-600 text-white font-bold text-lg rounded-2xl shadow-xl shadow-${mainColor}-500/20 hover:bg-${mainColor}-700 active:scale-95 transition-all flex items-center justify-center gap-2`}
+>
+<Icons.CheckCircle size={24} /> Hoàn tất & Về Menu
+</button>
+<button
+onClick={() => {
+onExit();
+if (onOpenIncorrect) {
+// Mở modal sau một độ trễ nhỏ để tránh giật lag khi chuyển đổi giao diện
+setTimeout(() => onOpenIncorrect(), 100);
+} else if (window.globalShowToast) {
+window.globalShowToast("Các câu sai đã được lưu tự động vào Sổ tay. Hãy vào Sổ tay để ôn lại nhé!", "info");
+}
+}}
+className={`w-full sm:w-auto px-8 py-4 bg-white text-gray-700 border-2 border-gray-200 font-bold text-lg rounded-2xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all flex items-center justify-center gap-2`}
+>
+<Icons.BookOpen size={24} className="text-red-500" /> Xem lại lỗi sai
+</button>
+</div>
+</div>
+</div>
+);
+};
+// EXPORT TO WINDOW
+window.Block5_15_ExamReportUI = ExamReportUI;
+window.ExamReportUI = ExamReportUI;
 // Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.9
 // Last Updated: 2026-04-13 15:45
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
@@ -12664,10 +14419,10 @@ secureCopy
 window.Block6_3_useDataIO = useDataIO;
 window.Block15_useDataLogic = useDataIO; // Fallback
 window.useDataLogic = useDataIO;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.10
-// Last Updated: 2026-04-14 00:45
-// Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5) và AI Curator (6.6).
-// Cập nhật: [QA DEBUG V2 - PRIORITY 1] Vá lỗi Tối khẩn (Điểm mù 1). Triển khai Singleton AudioContext cho playTing() để chống sập Web Audio API (DOMException). Tuân thủ Điều 3.
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.02
+// Last Updated: 2026-04-14 18:45
+// Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5), AI Curator (6.6) và Mock Test Logic (6.7).
+// Cập nhật: [MOCK TEST ERA - BƯỚC 10] Khởi tạo useExamLogic tại Main Controller để bảo toàn State bài thi khi người dùng chuyển tab. Tuân thủ Điều 3.
 // ==================================================================================
 const useAppLogic = (core) => {
 // 1. LẤY CORE STATE
@@ -12680,19 +14435,22 @@ globalRetryBag, aiHarvestPool
 // Derived State
 const mainColor = lang === 'zh' ? 'red' : (lang === 'vi' ? 'green' : 'sky');
 const isCurrentCardInNotebookDerived = cards[currentCardIndex] && notebook.some(n => n.term === cards[currentCardIndex].term);
+// [NEW v1.02 - MOCK TEST ERA] Khởi tạo ExamLogic tại cấp cao nhất để giữ State khi chuyển Tab
+// Hook này sẽ quản lý toàn bộ luồng bài thi, timer và tự động nạp đạn
+const examLogic = window.useExamLogic ? window.useExamLogic(apiKey) : { examState: { status: 'idle' }, startExam: () => {}, resumeExam: () => {}, submitAnswer: () => {}, quitExam: () => {} };
 // Ref Isolation Pattern: Phong ấn State để dùng trong các hàm Async
-const latestStateRef = useRef({
+const latestStateRef = React.useRef({
 cards, currentCardIndex, isFlipped, settings, isAutoPlaying, isFlipLocked, isAutoMode, notebook, incorrectList: core.incorrectList,
 mastered: core.mastered, isStudyingNotebook: core.isStudyingNotebook, isMuted: core.isMuted, isShuffle: core.isShuffle, aiHarvestPool, globalRetryBag, lang
 });
-useEffect(() => {
+React.useEffect(() => {
 latestStateRef.current = {
 cards, currentCardIndex, isFlipped, settings, isAutoPlaying, isFlipLocked, isAutoMode, notebook, incorrectList: core.incorrectList,
 mastered: core.mastered, isStudyingNotebook: core.isStudyingNotebook, isMuted: core.isMuted, isShuffle: core.isShuffle, aiHarvestPool, globalRetryBag, lang
 };
 }, [cards, currentCardIndex, isFlipped, settings, isAutoPlaying, isFlipLocked, isAutoMode, notebook, core.mastered, core.isStudyingNotebook, core.incorrectList, core.isMuted, core.isShuffle, aiHarvestPool, globalRetryBag, lang]);
 // 2. UTILITY FUNCTIONS
-const t = useCallback((key, params = {}) => {
+const t = React.useCallback((key, params = {}) => {
 if (!window.UI_TEXT) return key;
 const dict = window.UI_TEXT[uiLang] || window.UI_TEXT['vi'] || {};
 let text = dict[key] || key;
@@ -12745,7 +14503,7 @@ console.warn("Audio Context Error:", e);
 }
 };
 // Hàm speak tối ưu cho nền tảng di động
-const speak = useCallback((text, rate = null, voice = null, onEnd = null) => {
+const speak = React.useCallback((text, rate = null, voice = null, onEnd = null) => {
 const safeOnEnd = () => { if (onEnd) onEnd(); };
 if (core.audioTimeoutRef.current) clearTimeout(core.audioTimeoutRef.current);
 if (!text || text.trim() === '') { safeOnEnd(); return; }
@@ -12793,14 +14551,14 @@ window.speechSynthesis.speak(u);
 };
 core.audioTimeoutRef.current = setTimeout(createAndSpeak, 300);
 }, [voices, settings, lang, core.isMuted]);
-const stopSpeaking = useCallback(() => {
+const stopSpeaking = React.useCallback(() => {
 window.speechSynthesis.cancel();
 window.fc_currentUtterance = null;
 if (core.audioTimeoutRef.current) clearTimeout(core.audioTimeoutRef.current);
 if (core.autoPlayTimeoutRef.current) clearTimeout(core.autoPlayTimeoutRef.current);
 }, []);
 // 3. NAVIGATION (ĐIỀU HƯỚNG THẺ)
-const handleNext = useCallback(() => {
+const handleNext = React.useCallback(() => {
 const { cards, isShuffle, currentCardIndex } = latestStateRef.current;
 core.setIsFlipped(false);
 core.setIsContentHidden(false);
@@ -12820,14 +14578,14 @@ core.setCurrentCardIndex(prev => (prev + 1) % cards.length);
 }
 }, 150);
 }, [stopSpeaking]);
-const handlePrev = useCallback(() => {
+const handlePrev = React.useCallback(() => {
 const { cards } = latestStateRef.current;
 core.setIsFlipped(false);
 core.setIsContentHidden(false);
 stopSpeaking();
 setTimeout(() => core.setCurrentCardIndex(prev => (prev - 1 + cards.length) % cards.length), 150);
 }, [stopSpeaking]);
-const handleJumpToCard = useCallback((inputNumber) => {
+const handleJumpToCard = React.useCallback((inputNumber) => {
 const { cards } = latestStateRef.current;
 const targetIndex = parseInt(inputNumber, 10) - 1;
 if (!isNaN(targetIndex) && targetIndex >= 0 && targetIndex < cards.length) {
@@ -12837,7 +14595,7 @@ core.setIsContentHidden(false);
 stopSpeaking();
 }
 }, [stopSpeaking]);
-const toggleAutoPlay = useCallback(() => {
+const toggleAutoPlay = React.useCallback(() => {
 if (latestStateRef.current.isAutoPlaying) {
 core.setIsAutoPlaying(false);
 core.setIsContentHidden(false);
@@ -12850,7 +14608,7 @@ core.setIsContentHidden(false);
 showToast("Bắt đầu tự động phát", "success");
 }
 }, [stopSpeaking, speak]);
-const handleStopAutoPlay = useCallback(() => {
+const handleStopAutoPlay = React.useCallback(() => {
 core.setIsAutoPlaying(false);
 core.setIsAutoMode(false);
 core.setIsContentHidden(false);
@@ -12858,7 +14616,7 @@ stopSpeaking();
 core.setCurrentCardIndex(0);
 showToast("Đã dừng và quay về đầu!", "info");
 }, [stopSpeaking]);
-const toggleBatterySaver = useCallback(async () => {
+const toggleBatterySaver = React.useCallback(async () => {
 if (!core.isBatterySaverMode) {
 await window.Utils.requestWakeLock();
 core.setIsBatterySaverMode(true);
@@ -12868,7 +14626,7 @@ await window.Utils.releaseWakeLock();
 core.setIsBatterySaverMode(false);
 }
 }, [core.isBatterySaverMode]);
-const handleToggleMute = useCallback(() => {
+const handleToggleMute = React.useCallback(() => {
 core.setIsMuted(prev => {
 const newState = !prev;
 showToast(newState ? "Đã tắt tiếng (Giả lập thời gian đọc)" : "Đã bật tiếng", "info");
@@ -12876,7 +14634,7 @@ if (newState) window.speechSynthesis.cancel();
 return newState;
 });
 }, []);
-const handleToggleShuffle = useCallback(() => {
+const handleToggleShuffle = React.useCallback(() => {
 const nextState = !core.isShuffle;
 core.setIsShuffle(nextState);
 if (nextState) {
@@ -12898,7 +14656,7 @@ showToast("Đã tắt trộn bài (Về thứ tự gốc)", "info");
 // ==================================================================================
 // 4. RETRY BAG APIS (QUẢN LÝ TÚI NHÁP TOÀN CỤC)
 // ==================================================================================
-const addToRetryBag = useCallback((gameType, questionData) => {
+const addToRetryBag = React.useCallback((gameType, questionData) => {
 if (!gameType || !questionData) return;
 core.setGlobalRetryBag(prev => {
 const currentBag = prev[gameType] || [];
@@ -12917,7 +14675,7 @@ if (window.FcDB && core.isDbReady) window.FcDB.set('fc_global_retry_bag', nextBa
 return nextBag;
 });
 }, [core.setGlobalRetryBag, core.isDbReady]);
-const removeFromRetryBag = useCallback((gameType, termToRemove, extraData = null) => {
+const removeFromRetryBag = React.useCallback((gameType, termToRemove, extraData = null) => {
 if (!gameType || !termToRemove) return;
 core.setGlobalRetryBag(prev => {
 const currentBag = prev[gameType] || [];
@@ -13043,9 +14801,9 @@ const handleCloseHanziSelector = () => core.setShowHanziSelector(false);
 const handleStartWriting = (char) => { core.setCurrentHanziChar(char); core.setShowHanziSelector(false); core.setShowHanziWriter(true); };
 const handleCloseHanziWriter = () => core.setShowHanziWriter(false);
 // 7. KEYBOARD SHORTCUTS
-useEffect(() => {
+React.useEffect(() => {
 const handleKeyDown = (e) => {
-if (viewMode !== 'learn') return;
+if (viewMode !== 'learn') return; // Chặn phím tắt tác động vào Exam Mode (Chỉ chạy ở Learn Mode)
 if (core.showSettings || core.showApiKeyModal || core.showNotebook || core.showManual || core.showLinkManager || core.showWordSelect || core.showMastered || core.showIncorrectModal || core.showHelp || core.showHanziSelector || core.showHanziWriter || core.showSaveLoadModal || core.showAiChat) return;
 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 switch (e.key) {
@@ -13073,7 +14831,8 @@ return () => window.removeEventListener('keydown', handleKeyDown);
 }, [viewMode, core.showSettings, core.showApiKeyModal, core.showNotebook, core.showManual, core.showLinkManager, core.showWordSelect, core.showMastered, core.showIncorrectModal, core.showHelp, core.showHanziSelector, core.showHanziWriter, core.showSaveLoadModal, core.showAiChat, handleNext, handlePrev, cards, currentCardIndex, speak, toggleAutoPlay, handleStopAutoPlay, handleToggleMute, handleToggleShuffle]);
 // 8. RETURN MERGED ACTIONS (Lắp ráp API cho Tầng 7)
 return {
-state: { ...core, mainColor, isCurrentCardInNotebook: isCurrentCardInNotebookDerived, incorrectCount: core.incorrectList.length },
+// [MOCK TEST ERA] Bơm examLogic ra ngoài state tổng để GameView truy cập được
+state: { ...core, mainColor, isCurrentCardInNotebook: isCurrentCardInNotebookDerived, incorrectCount: core.incorrectList.length, examLogic },
 setters: { ...core, setIsShuffle: handleToggleShuffle },
 actions: {
 t, showToast, getCardStyle, speak, stopSpeaking,
@@ -13528,10 +15287,308 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.12
-// Last Updated: 2026-04-13 11:40
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.07
+// Last Updated: 2026-04-15 19:15
+// Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, và tự động lưu Snapshot (Resilience).
+// Cập nhật: [MOCK TEST ERA] Tăng mức trần nạp đạn (CHUNK_SIZE) lên 4 viên để tối ưu trải nghiệm mượt mà, kết hợp cơ chế thu hoạch AI (Harvest Pool). Tuân thủ tuyệt đối Điều 3.
+// ==================================================================================
+window.useExamLogic = function(apiKey) {
+const [examState, setExamState] = React.useState({
+status: 'idle', // Các trạng thái: idle, loading, playing, completed, error
+sessionId: null,
+profile: null,
+blueprint: [],
+currentIndex: 0,
+answers: [],
+timeRemaining: 0,
+score: 0,
+isTransitioning: false // Cờ đóng băng Timer khi múa UI chuyển chặng
+});
+const [currentQuestion, setCurrentQuestion] = React.useState(null);
+const [isHydrating, setIsHydrating] = React.useState(false);
+const [cachedCount, setCachedCount] = React.useState(0); // Biến đếm đạn
+// Bộ nhớ đệm (Cache) và Cờ quản lý bất đồng bộ
+const hydratedCacheRef = React.useRef({});
+const hydrationPromisesRef = React.useRef({}); // Chặn Race Condition khi gọi API
+const timerRef = React.useRef(null);
+// BỘ NÃO LƯU TRỮ LỊCH SỬ KỲ THI (Chống lặp từ)
+const globalExamHistoryRef = React.useRef([]);
+// ------------------------------------------------------------------------
+// 1. HỆ THỐNG ĐẾM NGƯỢC (COUNTDOWN TIMER) - [TRIPLE-LOCK OPTIMIZED]
+// ------------------------------------------------------------------------
+React.useEffect(() => {
+// Đóng băng đồng hồ khi: Đang tải AI (isHydrating) HOẶC Đang chuyển chặng (isTransitioning) HOẶC Trắng câu hỏi
+const isTimerAllowedToRun = examState.status === 'playing' && !isHydrating && currentQuestion !== null && !examState.isTransitioning;
+if (isTimerAllowedToRun) {
+timerRef.current = setInterval(() => {
+setExamState(prev => {
+if (prev.timeRemaining <= 1) {
+clearInterval(timerRef.current);
+return { ...prev, timeRemaining: 0, status: 'completed' };
+}
+return { ...prev, timeRemaining: prev.timeRemaining - 1 };
+});
+}, 1000);
+} else {
+if (timerRef.current) clearInterval(timerRef.current);
+}
+return () => {
+if (timerRef.current) clearInterval(timerRef.current);
+};
+}, [examState.status, isHydrating, currentQuestion, examState.isTransitioning]);
+// ------------------------------------------------------------------------
+// 1.5. ĐỒNG HỒ QUÉT ĐẠN NGẦM (AMMO SCANNER 500ms)
+// ------------------------------------------------------------------------
+React.useEffect(() => {
+const queueScanner = setInterval(() => {
+if (examState.blueprint && examState.blueprint.length > 0) {
+let readyCount = 0;
+// Chỉ đếm những viên đạn (câu hỏi) TƯƠNG LAI đã được nạp sẵn vào nòng
+for (let i = examState.currentIndex + 1; i < examState.blueprint.length; i++) {
+const meta = examState.blueprint[i];
+if (hydratedCacheRef.current[meta.id]) {
+readyCount++;
+}
+}
+setCachedCount(readyCount);
+} else {
+setCachedCount(0);
+}
+}, 500);
+return () => clearInterval(queueScanner);
+}, [examState.blueprint, examState.currentIndex]);
+// ------------------------------------------------------------------------
+// 2. THUẬT TOÁN NẠP ĐẠN TRƯỚC (PRE-FETCH SLIDING WINDOW) - [SEQUENTIAL UPDATE]
+// ------------------------------------------------------------------------
+const prefetchQuestions = async (blueprint, startIndex) => {
+// Nạp trước 4 câu tiếp theo vào Cache để mượt mà trải nghiệm (Đã nâng lên 4 viên)
+const CHUNK_SIZE = 4;
+const itemsToFetch = blueprint.slice(startIndex, startIndex + CHUNK_SIZE);
+// Ép AI chạy Tuần tự (Waterfall) thay vì Song song (Parallel)
+// để Lịch sử từ vựng được cập nhật kịp thời, chống sập Hạt giống (Seed Collapse).
+for (const meta of itemsToFetch) {
+if (!hydratedCacheRef.current[meta.id] && !hydrationPromisesRef.current[meta.id] && apiKey) {
+try {
+// Tạo một Promise "giữ chỗ" để hàm loadQuestion biết là đang nạp ngầm
+let resolveBackground;
+hydrationPromisesRef.current[meta.id] = new Promise(r => resolveBackground = r);
+// Gọi AI và CẮM CÁP LỊCH SỬ
+const qData = await window.ExamEngine.hydrateQuestion(meta, apiKey, globalExamHistoryRef.current);
+if (qData) {
+hydratedCacheRef.current[meta.id] = qData;
+}
+resolveBackground(qData);
+} catch (e) {
+console.warn(`[useExamLogic] Background prefetch failed for ${meta.id}:`, e);
+} finally {
+delete hydrationPromisesRef.current[meta.id];
+}
+}
+}
+};
+// ------------------------------------------------------------------------
+// 3. LOGIC NẠP CÂU HỎI HIỆN TẠI VÀO UI
+// ------------------------------------------------------------------------
+const loadQuestion = async (index, currentState) => {
+const targetState = currentState || examState;
+if (!targetState.blueprint || index >= targetState.blueprint.length) {
+setExamState(prev => ({ ...prev, status: 'completed' }));
+return false;
+}
+const meta = targetState.blueprint[index];
+// Kích hoạt nạp ngầm các câu tiếp theo TRƯỚC TIÊN (Nó sẽ chạy không đồng bộ phía sau)
+prefetchQuestions(targetState.blueprint, index + 1);
+let qData = hydratedCacheRef.current[meta.id];
+// Nếu câu hỏi chưa có trong Cache (Cache Miss), phải xử lý an toàn
+if (!qData) {
+setIsHydrating(true);
+try {
+// Kiểm tra xem có Promise prefetch nào đang giữ chỗ cho ID này không
+if (hydrationPromisesRef.current[meta.id]) {
+// Chờ luồng ngầm chạy xong
+qData = await hydrationPromisesRef.current[meta.id];
+} else {
+// Gọi trực tiếp (CẮM CÁP LỊCH SỬ)
+hydrationPromisesRef.current[meta.id] = window.ExamEngine.hydrateQuestion(meta, apiKey, globalExamHistoryRef.current);
+qData = await hydrationPromisesRef.current[meta.id];
+if (qData) hydratedCacheRef.current[meta.id] = qData;
+delete hydrationPromisesRef.current[meta.id];
+}
+if (!qData) throw new Error("Hydration returned null data.");
+} catch (e) {
+console.error("[useExamLogic] Fatal Hydration Error:", e);
+if (window.globalShowToast) {
+window.globalShowToast("Lỗi tải câu hỏi từ hệ thống. Vui lòng kiểm tra lại kết nối mạng.", "error");
+}
+setExamState(prev => ({ ...prev, status: 'error' }));
+setIsHydrating(false);
+return false;
+} finally {
+setIsHydrating(false);
+}
+}
+if (qData) {
+setCurrentQuestion(qData);
+return true;
+}
+return false;
+};
+// ------------------------------------------------------------------------
+// 4. CÁC HÀM ĐIỀU KHIỂN VÒNG ĐỜI BÀI THI (START, RESUME, SUBMIT, TRANSITION)
+// ------------------------------------------------------------------------
+// API Cho Tầng 5 mượn quyền đóng băng đồng hồ
+const setTransitionState = React.useCallback((isTrans) => {
+setExamState(prev => ({ ...prev, isTransitioning: isTrans }));
+}, []);
+// Bắt đầu một bài thi hoàn toàn mới
+const startExam = async (profileId, level, topic) => {
+// PRE-FLIGHT CHECK
+if (!navigator.onLine) {
+if (window.globalShowToast) window.globalShowToast("Không có kết nối mạng. Vui lòng kiểm tra Internet.", "error");
+setExamState(prev => ({ ...prev, status: 'error' }));
+return;
+}
+if (!apiKey) {
+if (window.globalShowToast) window.globalShowToast("Thiếu API Key. Vui lòng cấu hình trong Cài đặt.", "error");
+setExamState(prev => ({ ...prev, status: 'error' }));
+return;
+}
+setExamState(prev => ({ ...prev, status: 'loading' }));
+setCurrentQuestion(null);
+hydratedCacheRef.current = {}; // Xóa cache cũ
+hydrationPromisesRef.current = {};
+setCachedCount(0);
+// Reset toàn bộ Lịch sử khi bắt đầu thi mới
+globalExamHistoryRef.current = [];
+const profile = window.ExamProfiles.PROFILES[profileId];
+if (!profile) {
+console.error(`[useExamLogic] Profile ${profileId} không tồn tại.`);
+if (window.globalShowToast) window.globalShowToast("Lỗi dữ liệu: Cấu hình bài thi không tồn tại.", "error");
+setExamState(prev => ({ ...prev, status: 'error' }));
+return;
+}
+const blueprint = window.ExamProfiles.generateBlueprint(profileId, level, topic);
+const sessionId = `exam_${profileId}_${Date.now()}`;
+// Trạng thái chờ khởi tạo (loading)
+const loadingState = {
+status: 'loading',
+sessionId: sessionId,
+profile: profile,
+blueprint: blueprint,
+currentIndex: 0,
+answers: [],
+timeRemaining: profile.timeLimit,
+score: 0,
+isTransitioning: false
+};
+setExamState(loadingState);
+// Nạp đạn câu số 0 (Đợi đến khi có đạn thực sự mới cho chơi)
+const isLoaded = await loadQuestion(0, loadingState);
+if (isLoaded) {
+// CHỈ KHI NÀO LOAD THÀNH CÔNG MỚI BẬT CỜ PLAYING VÀ BẮT ĐẦU ĐẾM GIỜ
+const playingState = { ...loadingState, status: 'playing' };
+setExamState(playingState);
+localStorage.setItem(window.STORAGE_KEYS.ACTIVE_EXAM, sessionId);
+// Lưu Snapshot đầu tiên vào DB
+if (window.FcDB) {
+await window.FcDB.set(sessionId, playingState, 'exam_sessions');
+}
+}
+};
+// Ghi nhận câu trả lời và tự động chuyển câu / lưu Snapshot
+const submitAnswer = async (answerObj, isCorrect) => {
+setExamState(prev => {
+const newAnswers = [...prev.answers, { index: prev.currentIndex, answer: answerObj, isCorrect: isCorrect }];
+const newScore = isCorrect ? prev.score + 1 : prev.score;
+const nextIndex = prev.currentIndex + 1;
+const isFinished = nextIndex >= prev.blueprint.length;
+const updatedState = {
+...prev,
+answers: newAnswers,
+score: newScore,
+currentIndex: nextIndex,
+status: isFinished ? 'completed' : prev.status
+};
+// Thực hiện Auto-save bất đồng bộ (Fire-and-forget)
+if (window.FcDB) {
+window.FcDB.set(prev.sessionId, updatedState, 'exam_sessions')
+.catch(e => console.warn("[useExamLogic] Autosave failed:", e));
+}
+if (isFinished) {
+localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
+} else {
+loadQuestion(nextIndex, updatedState);
+}
+return updatedState;
+});
+};
+// NỘP BÀI ÉP BUỘC (Khi người dùng bấm Nộp bài sớm)
+const forceSubmitExam = () => {
+setExamState(prev => {
+const updatedState = { ...prev, status: 'completed' };
+// Chốt Snapshot cuối cùng để lưu lịch sử
+if (window.FcDB && prev.sessionId) {
+window.FcDB.set(prev.sessionId, updatedState, 'exam_sessions')
+.catch(e => console.warn("[useExamLogic] Final autosave failed:", e));
+}
+return updatedState;
+});
+// Hủy bỏ quyền Resume
+localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
+};
+// Phục hồi lại bài thi đang làm dở (Cứu hộ)
+const resumeExam = async (sessionId) => {
+setExamState(prev => ({ ...prev, status: 'loading' }));
+setCurrentQuestion(null);
+try {
+if (window.FcDB) {
+const savedState = await window.FcDB.get(sessionId, 'exam_sessions');
+if (savedState && savedState.status !== 'completed') {
+// Ép về loading để khóa Timer
+const loadingState = { ...savedState, status: 'loading', isTransitioning: false };
+setExamState(loadingState);
+const isLoaded = await loadQuestion(savedState.currentIndex, loadingState);
+if (isLoaded) {
+setExamState({ ...loadingState, status: 'playing' });
+localStorage.setItem(window.STORAGE_KEYS.ACTIVE_EXAM, sessionId);
+}
+return isLoaded;
+}
+}
+} catch (e) {
+console.error("[useExamLogic] Resume Exam failed:", e);
+}
+if (window.globalShowToast) window.globalShowToast("Không thể khôi phục phiên thi. Phiên đã bị lỗi hoặc hết hạn.", "error");
+setExamState(prev => ({ ...prev, status: 'error' }));
+return false;
+};
+// Bỏ thi / Thoát ngang (Phá hủy hoàn toàn Session)
+const quitExam = () => {
+setExamState({ status: 'idle', sessionId: null, profile: null, blueprint: [], currentIndex: 0, answers: [], timeRemaining: 0, score: 0, isTransitioning: false });
+setCurrentQuestion(null);
+localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
+globalExamHistoryRef.current = [];
+hydratedCacheRef.current = {};
+hydrationPromisesRef.current = {};
+setCachedCount(0);
+};
+return {
+examState,
+currentQuestion,
+isHydrating,
+cachedCount, // Xuất biến đếm đạn cho Tầng 5.14
+startExam,
+resumeExam,
+submitAnswer,
+forceSubmitExam,
+quitExam,
+setTransitionState
+};
+};
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.02
+// Last Updated: 2026-04-15 19:40
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [FIX REACT ERROR #310] Di dời chốt chặn isDbReady (Early Return) xuống bên dưới toàn bộ khai báo Hooks để tuân thủ tuyệt đối Rules of Hooks. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Kéo cáp onOpenIncorrect và hệ thống Túi nháp (RetryBag) xuống GameView để phục vụ Bài thi Tổng hợp và Mini-game. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -13636,6 +15693,10 @@ onBookmark: handleSmartBookmark,
 notebook: coreState.notebook,
 showToast: coreState.setToast,
 onLogWrong: dataLogic?.handleLogWrong,
+onOpenIncorrect: logic.actions?.handleOpenIncorrect,
+globalRetryBag: coreState.globalRetryBag,
+addToRetryBag: logic.actions?.addToRetryBag,
+removeFromRetryBag: logic.actions?.removeFromRetryBag,
 gameSessions: coreState.gameSessions,
 setGameSessions: coreState.setGameSessions,
 setIsGamePlaying: coreState.setIsGamePlaying,
