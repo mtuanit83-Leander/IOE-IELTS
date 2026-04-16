@@ -738,10 +738,10 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.03
-// Last Updated: 2026-04-15 15:30
+// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.06
+// Last Updated: 2026-04-16 19:30
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các Prompt cho AI.
-// Cập nhật: [ĐẠI TU NÃO BỘ TẦNG 2] Thêm Dạng bài Phát âm & Hình ảnh. Nâng cấp Trí tuệ Sư phạm (DistortionRule & ClozeRule) phân cấp độ khó tàn nhẫn hơn. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [CHIẾN DỊCH NGHE] Bổ sung hàm getMicroTierListeningRule kiểm soát nghiêm ngặt số lượng câu và độ khó từ vựng cho Kịch bản nghe theo từng cấp độ. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -752,8 +752,9 @@ IOE_FILL_BLANK: 'ioe_fill_blank',
 IOE_SCRAMBLE: 'ioe_scramble',
 IOE_ODD_ONE_OUT: 'ioe_odd_one_out',
 IOE_SPOT_MISTAKE: 'ioe_spot_mistake',
-IOE_PRONUNCIATION: 'ioe_pronunciation', // [NEW] Phát âm / Trọng âm
-IOE_IMAGE_QUIZ: 'ioe_image_quiz',       // [NEW] Trắc nghiệm Hình ảnh
+IOE_PRONUNCIATION: 'ioe_pronunciation',
+IOE_IMAGE_QUIZ: 'ioe_image_quiz',
+IOE_LISTENING: 'ioe_listening',
 IELTS_READING_MCQ: 'ielts_reading_mcq',
 IELTS_READING_TFNG: 'ielts_reading_tfng',
 IELTS_READING_MATCHING: 'ielts_reading_matching',
@@ -915,16 +916,14 @@ definition: { type: "STRING", description: "Bản dịch tiếng Việt tương 
 },
 required: ["term", "definition"]
 },
-// [NEW] Lược đồ cho dạng bài Phát âm / Trọng âm
 pure_pronunciation: {
 type: "OBJECT",
 properties: {
-term: { type: "STRING", description: "Chuỗi chứa 4 từ vựng. Dùng ký tự * bọc lấy phần chữ cái cần kiểm tra phát âm. (VD: c*a*t, t*a*ll, b*a*t, m*a*p) hoặc nhấn trọng âm." },
+term: { type: "STRING", description: "Chuỗi chứa 4 từ vựng. CRITICAL: BẮT BUỘC dùng đúng 2 ký tự * bọc lấy phần chữ cái cần kiểm tra phát âm. (VD CHUẨN: c*a*t, t*a*ll, b*a*t, m*a*p. SAI LẦM CẦN TRÁNH: c*at). Nếu vi phạm sẽ bị lỗi." },
 definition: { type: "STRING", description: "Chỉ rõ từ nào có phần gạch chân/trọng âm khác biệt, kèm giải thích IPA bằng tiếng Việt. (VD: Từ 'tall' phát âm là /ɔː/, còn lại là /æ/)" }
 },
 required: ["term", "definition"]
 },
-// [NEW] Lược đồ cho dạng bài Hình ảnh (Dành cho cấp Tiểu học)
 pure_image_quiz: {
 type: "OBJECT",
 properties: {
@@ -1034,12 +1033,54 @@ required: ["wrongSentence", "wrongWord", "correction", "definition", "explanatio
 }
 },
 required: ["correctPairs", "trapPairs"]
+},
+pure_listening: {
+type: "OBJECT",
+properties: {
+audioScript: { type: "STRING", description: "Kịch bản hội thoại hoặc độc thoại ngắn tiếng Anh để máy đọc (Text-to-Speech). TUYỆT ĐỐI KHÔNG chứa tiếng Việt." },
+question: { type: "STRING", description: "Câu hỏi trắc nghiệm tiếng Anh dựa trên audioScript." },
+options: {
+type: "ARRAY",
+items: {
+type: "OBJECT",
+properties: {
+text: { type: "STRING", description: "Nội dung đáp án (tiếng Anh)" },
+isCorrect: { type: "BOOLEAN", description: "Đúng hay sai (chỉ 1 đáp án là true)" }
+},
+required: ["text", "isCorrect"]
+},
+description: "Mảng đúng 4 đáp án"
+},
+explanation: { type: "STRING", description: "Giải thích đáp án bằng tiếng Việt, có trích dẫn từ audioScript" }
+},
+required: ["audioScript", "question", "options", "explanation"]
+},
+pure_reading_passage: {
+type: "OBJECT",
+properties: {
+passage: { type: "STRING", description: "Đoạn văn đọc hiểu tiếng Anh học thuật hoặc đời sống, phù hợp với level. Dài khoảng 150-300 từ." },
+questions: {
+type: "ARRAY",
+description: "Mảng gồm 3 đến 5 câu hỏi liên quan chặt chẽ đến đoạn văn.",
+items: {
+type: "OBJECT",
+properties: {
+type: { type: "STRING", description: "Loại câu: 'mcq' (Trắc nghiệm), 'fill_blank' (Điền từ), 'tfng' (True/False/Not Given)" },
+questionText: { type: "STRING", description: "Nội dung câu hỏi tiếng Anh." },
+options: { type: "ARRAY", items: { type: "STRING" }, description: "Mảng 4 đáp án (chỉ dùng nếu type là 'mcq'). Các type khác để mảng rỗng." },
+correctAnswer: { type: "STRING", description: "Đáp án đúng (chuỗi text). Với tfng thì ghi rõ 'True', 'False', hoặc 'Not Given'." },
+explanation: { type: "STRING", description: "Giải thích chi tiết bằng tiếng Việt, chỉ rõ thông tin nằm ở đâu trong đoạn văn." }
+},
+required: ["type", "questionText", "correctAnswer", "explanation"]
+}
+}
+},
+required: ["passage", "questions"]
 }
 },
 // ==================================================================================
-// HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES) - [NÂNG CẤP BƯỚC 1]
+// HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
 // ==================================================================================
-// HÀM 0: DÀNH CHO GAME TÌM LỖI SAI (SPOT MISTAKE) VÀ NỐI Ô BẪY NHIỄU
 getMicroTierDistortionRule: function(targetLang, dataMode, mappedKey, topic) {
 let rule = "";
 const antiLengthRule = "CRITICAL: YOU MUST REWRITE THE EXACT SAME CONTEXT SENTENCE. DO NOT INVENT A NEW SENTENCE OR CHANGE ITS LENGTH. ONLY CHANGE ONE WORD TO MAKE IT INCORRECT. ";
@@ -1051,7 +1092,6 @@ else if (['en_level_6'].includes(mappedKey)) rule = "The traps MUST be single wo
 else if (['en_level_7', 'en_level_8'].includes(mappedKey)) rule = "The traps MUST be single words related to the TOPIC FOCUS. Make EXACTLY ONE advanced morphological error (e.g., using the wrong suffix or prefix like '-tion' instead of '-sion', 'un-' instead of 'in-'). DO NOT write full sentences.";
 else rule = "The traps MUST be single words related to the TOPIC FOCUS. Focus on highly plausible but incorrect academic word formations or false friends. The wrong word must look like a valid academic term. DO NOT write full sentences.";
 } else if (targetLang === 'English' && dataMode === 'sentence') {
-// [NÂNG CẤP SƯ PHẠM]
 if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE basic grammar mistake: ONLY wrong singular/plural nouns (s/es) or incorrect basic articles (a/an/the).";
 else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE intermediate grammar mistake: ONLY incorrect prepositions (in/on/at) or wrong word form (e.g. using a Noun instead of an Adjective, 'careful' vs 'carefully').";
 else rule = antiLengthRule + "The traps MUST be full sentences strictly revolving around the TOPIC FOCUS. Make EXACTLY ONE advanced academic mistake: ONLY incorrect passive voice structure, reduced relative clause errors, or logical conjunction errors (e.g., using 'although' instead of 'because'). The sentence must look correct to a beginner.";
@@ -1072,7 +1112,6 @@ rule = antiLengthRule + "The traps MUST be full sentences strictly revolving aro
 }
 return rule;
 },
-// HÀM 1: DÀNH CHO GAME TRẮC NGHIỆM (QUIZ)
 getMicroTierOptionsRule: function(targetLang, dataMode, mappedKey, topic) {
 let optionsRule = "";
 if (targetLang === 'English' && dataMode === 'vocab') {
@@ -1098,7 +1137,6 @@ optionsRule = "The 3 distractors MUST be highly natural Vietnamese sentences but
 }
 return optionsRule;
 },
-// HÀM 2: DÀNH CHO GAME GHÉP CÂU (SCRAMBLE NOISE)
 getMicroTierNoiseRule: function(targetLang, dataMode, mappedKey, topic) {
 let noiseRule = "";
 if (targetLang === 'English') {
@@ -1126,11 +1164,9 @@ noiseRule = "Generate distractor words that are common Vietnamese particles (đ�
 }
 return noiseRule;
 },
-// HÀM 3: DÀNH CHO GAME ĐIỀN TỪ (FILL BLANK)
 getMicroTierClozeRule: function(targetLang, dataMode, mappedKey, topic) {
 let clozeRule = "";
 if (targetLang === 'English') {
-// [NÂNG CẤP SƯ PHẠM]
 if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) clozeRule = "Choose a basic Subject Noun or a simple Action Verb to replace with '[__________]'. It must be an easy-to-guess word.";
 else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) clozeRule = "Choose a crucial Preposition (in/on/at), a descriptive Adjective, or an Auxiliary verb to replace with '[__________]'. It should test intermediate grammar/vocab.";
 else clozeRule = "Choose a complex Linking word (Conjunction), a part of an advanced Collocation, or a difficult Phrasal Verb to replace with '[__________]'. It must challenge academic reading skills.";
@@ -1143,7 +1179,6 @@ clozeRule = "Choose an important Subject Noun, a key Action Verb, or a descripti
 }
 return clozeRule;
 },
-// HÀM 4: DÀNH CHO GAME TỪ KHÁC LOẠI (ODD ONE OUT)
 getMicroTierOddRule: function(targetLang, dataMode, mappedKey, topic) {
 let oddRule = "";
 if (dataMode === 'sentence') {
@@ -1173,7 +1208,6 @@ oddRule = "Categorize based on clear Semantic meaning or basic Parts of Speech (
 }
 return oddRule;
 },
-// HÀM 5: QUY ĐỊNH HÌNH THÁI TỪ VỰNG THEO 5 CẤP ĐỘ
 getMicroTierVocabTypeRule: function(mappedKey) {
 if (['en_level_1', 'en_level_2', 'zh_level_1', 'zh_level_2'].includes(mappedKey)) {
 return "CRITICAL TIER RULE (Level 1-2): The vocabulary item(s) MUST be SINGLE BASIC WORDS (e.g., 'apple', 'run', 'happy'). DO NOT use phrases or compound words.";
@@ -1188,7 +1222,21 @@ return "CRITICAL TIER RULE (Level 9): The vocabulary item(s) MUST be IDIOMS, LIT
 }
 return "CRITICAL TIER RULE: The vocabulary item(s) must be suitable for the level. It can be a single word or a short phrase (max 4 words).";
 },
-// 6. HÀM TẠO LỆNH CHO AI PURE MODE (TỰ SINH CÂU HỎI KHÔNG CẦN THẺ)
+// [NEW] HÀM KONTROL KỊCH BẢN NGHE (LISTENING MATRIX)
+getMicroTierListeningRule: function(mappedKey) {
+if (['en_level_1', 'zh_level_1', 'level_1_kiddie'].includes(mappedKey)) {
+return "CRITICAL SCRIPT RULE: The 'audioScript' MUST BE EXTREMELY SIMPLE. Exactly 1 or 2 short simple sentences. DO NOT use compound sentences. DO NOT use complex adjectives (e.g. use 'The dog is black', NOT 'the quick brown dog'). Use ONLY basic Level A1 vocabulary (colors, numbers, basic animals).";
+} else if (['en_level_2', 'en_level_3', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) {
+return "CRITICAL SCRIPT RULE: The 'audioScript' MUST BE EXACTLY 2 to 3 simple sentences. Use basic action verbs and simple adjectives. DO NOT use complex grammar.";
+} else if (['en_level_4', 'en_level_5', 'zh_level_4', 'zh_level_5'].includes(mappedKey)) {
+return "CRITICAL SCRIPT RULE: The 'audioScript' MUST BE EXACTLY 3 to 4 sentences. Can be a short dialogue or monologue. Use past simple or basic prepositions.";
+} else if (['en_level_6', 'en_level_7', 'zh_level_6', 'zh_level_7'].includes(mappedKey)) {
+return "CRITICAL SCRIPT RULE: The 'audioScript' is a short cohesive paragraph or dialogue. Include minor distractor information to test listening comprehension.";
+} else {
+return "CRITICAL SCRIPT RULE: The 'audioScript' is an advanced academic monologue or news report (approx 50-80 words). Use complex sentence structures and high-level vocabulary.";
+}
+},
+// 6. HÀM TẠO LỆNH CHO AI PURE MODE
 buildPureModePrompt: function(levelKey, gameType, dataMode = 'vocab', topic = "") {
 const oldToNewMap = {
 level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2',
@@ -1202,15 +1250,15 @@ if (!this.GRADE_CONTEXTS[mappedKey]) mappedKey = "en_level_4";
 const context = this.GRADE_CONTEXTS[mappedKey];
 const targetLang = mappedKey.startsWith('zh_') ? 'Chinese' : (mappedKey.startsWith('vi_') ? 'Vietnamese' : 'English');
 const actualTopic = topic || "General";
-if (gameType === 'match_hard') {
-const modeName = dataMode === 'sentence' ? 'sentences' : 'vocabulary words';
-let taskInstruction = "Return a JSON object with two arrays:\n1. 'correctPairs': Exactly 4 grammatically correct " + modeName + " strictly matching the LEVEL and the TOPIC FOCUS, with short Vietnamese definitions.\n2. 'trapPairs': Exactly 2 INCORRECT " + modeName + " acting as traps.\nTRAP CREATION RULE: ";
-let trapRule = this.getMicroTierDistortionRule(targetLang, dataMode, mappedKey, actualTopic);
-return "You are an expert Language Examiner creating a matching game for " + targetLang + " learners at " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + trapRule + "\n\nRULES:\n1. Your output MUST be ONLY a raw JSON object matching the requested schema.\n2. The 'definition' field inside 'trapPairs' MUST be a highly natural, realistic Vietnamese translation to trick the user into thinking it's a correct option.\n3. The 'explanation' field MUST BE 100% IN VIETNAMESE.";
-}
 let taskInstruction = "";
 let pedagogyRule = "";
 const vocabTierRule = dataMode === 'vocab' ? this.getMicroTierVocabTypeRule(mappedKey) : "";
+if (gameType === 'match_hard') {
+const modeName = dataMode === 'sentence' ? 'sentences' : 'vocabulary words';
+taskInstruction = "Return a JSON object with two arrays:\n1. 'correctPairs': Exactly 4 grammatically correct " + modeName + " strictly matching the LEVEL and the TOPIC FOCUS, with short Vietnamese definitions.\n2. 'trapPairs': Exactly 2 INCORRECT " + modeName + " acting as traps.\nTRAP CREATION RULE: ";
+let trapRule = this.getMicroTierDistortionRule(targetLang, dataMode, mappedKey, actualTopic);
+return "You are an expert Language Examiner creating a matching game for " + targetLang + " learners at " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + trapRule + "\n\nRULES:\n1. Your output MUST be ONLY a raw JSON object matching the requested schema.\n2. The 'definition' field inside 'trapPairs' MUST be a highly natural, realistic Vietnamese translation to trick the user into thinking it's a correct option.\n3. The 'explanation' field MUST BE 100% IN VIETNAMESE.";
+}
 if (gameType === 'spotmistake') {
 taskInstruction = "Generate ONE natural " + targetLang + " sentence. Then, intentionally create EXACTLY ONE grammatical, vocabulary, or preposition mistake in that sentence. Return the wrong sentence, the wrong word, the correction, and a short Vietnamese explanation.";
 const rule = this.getMicroTierDistortionRule(targetLang, 'sentence', mappedKey, actualTopic);
@@ -1244,11 +1292,15 @@ taskInstruction = "Generate an array of 5 natural " + targetLang + " sentences s
 taskInstruction = "Generate an array of 5 " + targetLang + " vocabulary items strictly matching the target level. For each item, provide its accurate, short Vietnamese translation. " + vocabTierRule + " Ensure the words are distinct in meaning.";
 }
 } else if (gameType === 'pronunciation') {
-// [NEW] Dạng bài Phát âm / Trọng âm
-taskInstruction = "Generate ONE English pronunciation or stress question. Return a string containing 4 English words in 'term', where 3 words share the same pronunciation for a specific underlined part (or stress pattern) and 1 word is different. Use asterisk (*) to mark the focused letter(s), e.g., 'c*a*t, b*a*t, t*a*ll, m*a*p'. In 'definition', return the odd word and a short Vietnamese explanation containing the IPA transcription.";
+taskInstruction = "Generate ONE English pronunciation or stress question. Return a string containing 4 English words in 'term'. CRITICAL RULES: 1. 3 words must share the same pronunciation for a specific underlined part, and 1 word is different. 2. You MUST use EXACTLY TWO asterisks (*) to mark the focused letter(s) in EVERY word. 3. CORRECT Example: 'c*a*t, b*a*t, t*a*ll, m*a*p'. 4. WRONG Example: 'c*at, ba*t' (DO NOT use single asterisk). In 'definition', return the odd word and a short Vietnamese explanation containing the IPA transcription.";
 } else if (gameType === 'image_quiz') {
-// [NEW] Dạng bài Hình ảnh cho mầm non
 taskInstruction = "Generate ONE simple " + targetLang + " vocabulary item strictly matching the target level (Young Learners). Focus on highly visual concrete nouns or obvious action verbs (e.g., animals, fruits, daily objects, jumping, running). Return the word in 'term' and a short Vietnamese meaning in 'definition'.";
+} else if (gameType === 'listening') {
+taskInstruction = "Generate ONE Listening comprehension task. CRITICAL RULES: 1. Create an 'audioScript' (a short monologue or dialogue strictly matching the level). 2. Create ONE 'question' asking about a specific detail or main idea from the script. 3. Provide 4 'options', where exactly ONE 'isCorrect' is true. 4. Provide a short Vietnamese 'explanation' referencing the script.";
+const rule = this.getMicroTierListeningRule(mappedKey);
+if (rule) pedagogyRule = "\n" + rule;
+} else if (gameType === 'reading_passage') {
+taskInstruction = "Generate ONE Reading Comprehension Passage (Tổ kén). CRITICAL RULES: 1. Create a 'passage' (around 150-300 words depending on level) strictly matching the topic and level context. 2. Create an array of 'questions' (3 to 5 questions). 3. Question types can be 'mcq' (Multiple Choice - provide 4 options), 'fill_blank' (Summary completion - answer must be exact words from text), or 'tfng' (True/False/Not Given - ask if a statement agrees with the text). 4. Each question MUST have a clear Vietnamese 'explanation' quoting the exact sentence in the passage.";
 }
 const diversityRule = "\nCRITICAL (ANTI-LAZINESS): Use rich, vivid vocabulary and diverse contexts. Flexibly vary sentence structures (complex sentences, relative clauses, passive voice, inversions, questions, etc.) naturally and appropriately for the level. ABSOLUTELY AVOID repeating basic S+V+O structures. Do not use overly common, generic, or 'lazy' words (e.g., 'apple', 'cat', 'happy', 'good') unless it is specifically Level 1.";
 return "You are an expert Language Tutor creating interactive exercises.\nTARGET LEVEL: " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + pedagogyRule + "\nRULES:\n1. The vocabulary and grammar complexity MUST strictly match the LEVEL CONTEXT. Do not use overly complex words for lower levels.\n2. Ensure the sentence is culturally neutral and easy to understand.\n3. Your output MUST be ONLY a raw JSON object matching the requested schema. Do not include markdown tags like ```json.\n4. " + diversityRule;
@@ -2591,12 +2643,14 @@ const parsed = window.Utils.parseAiJson(res.text);
 return { ...parsed, _tokenUsage: res.tokenMetadata };
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.08
-// Last Updated: 2026-04-15 16:00
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.10
+// Last Updated: 2026-04-16 18:00
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [ĐẠI TU NÃO BỘ TẦNG 2] Tích hợp đường ống sinh dữ liệu cho 2 dạng bài mới: Phát âm (ioe_pronunciation) và Trắc nghiệm Hình ảnh (ioe_image_quiz). Nhúng thuật toán Cào ảnh (Image Scraper) thời gian thực. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [CHIẾN DỊCH NÂNG CẤP KÉP] Tích hợp "Tổ kén" Đọc hiểu (Passage Group Promise Lock) để gọi AI 1 lần nạp 5 đạn. Bổ sung luồng xử lý Kỹ năng Nghe (Hidden Script). Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
+// Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
+_passageLocks: {},
 // ============================================================================
 // 0. HÀM CỨU HỘ KHẨN CẤP (GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC - KHÔNG DÙNG TRONG MOCK TEST NỮA)
 // ============================================================================
@@ -2687,6 +2741,33 @@ options: window.Utils.shuffleArray([
 ]),
 isAiGenerated: false
 };
+case window.IoeDataEngine.QUESTION_TYPES.IOE_LISTENING:
+case 'ioe_listening':
+return {
+audioScript: "The weather is very sunny today. I want to go to the beach.",
+term: "What is the weather like today?",
+options: window.Utils.shuffleArray([
+{ text: "Sunny", isCorrect: true },
+{ text: "Rainy", isCorrect: false },
+{ text: "Cloudy", isCorrect: false },
+{ text: "Snowy", isCorrect: false }
+]),
+explanation: "The speaker said: 'The weather is very sunny today'.",
+isAiGenerated: false
+};
+case 'ielts_reading_passage':
+return {
+passage: "Education is crucial for the development of society. It equips individuals with the skills needed to succeed.",
+term: "What does education equip individuals with?",
+options: window.Utils.shuffleArray([
+{ text: "Skills needed to succeed", isCorrect: true },
+{ text: "Money", isCorrect: false },
+{ text: "Free time", isCorrect: false },
+{ text: "Nothing", isCorrect: false }
+]),
+explanation: "The text states that education equips individuals with skills.",
+isAiGenerated: false
+};
 default:
 return { term: "Lỗi mạng", definition: "Câu hỏi dự phòng", isAiGenerated: false };
 }
@@ -2695,7 +2776,7 @@ return { term: "Lỗi mạng", definition: "Câu hỏi dự phòng", isAiGenerat
 // 1. HYDRATION LOGIC (BÙ ĐẮP CÂU HỎI MẤT TÍCH BẰNG AI - CÓ BỘ LỌC THÉP VÀ LỊCH SỬ)
 // ============================================================================
 hydrateQuestion: async function(metadata, apiKey, examHistory = []) {
-const { id, track, level, type, topic } = metadata;
+const { id, track, level, type, topic, passageGroup, questionIndexInPassage } = metadata;
 let questionData = null;
 // 1. Kiểm tra trong kho lưu trữ cục bộ IndexedDB
 if (window.FcDB) {
@@ -2712,9 +2793,76 @@ return questionData;
 // 3. Cache Miss: Kích hoạt AiFactoryEngine đúc câu hỏi mới
 console.log(`[ExamEngine] Cache Miss for ${id}. Hydrating via AI...`);
 let generatedData = null;
+let finalError = null;
+// --- CHIẾN DỊCH ĐỌC HIỂU: THUẬT TOÁN "BẺ KÉN" (PASSAGE GROUPING) ---
+if (passageGroup) {
+const groupId = passageGroup;
+const qIndex = questionIndexInPassage || 0;
+// Nếu chưa có khóa Promise cho kén này, tạo mới và gọi AI 1 lần duy nhất
+if (!this._passageLocks[groupId]) {
+this._passageLocks[groupId] = (async () => {
+let pAttempt = 0;
+let pLastErr = null;
+while(pAttempt < 3) {
+try {
+if (!apiKey) throw new Error("Missing API Key");
+let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'reading_passage', 'sentence', topic);
+const schema = window.IoeDataEngine.SCHEMAS.pure_reading_passage;
+const aiRes = await window.Utils.callGeminiApi(prompt, schema, apiKey);
+const parsed = window.Utils.parseAiJson(aiRes.text);
+if (!parsed || !parsed.passage || !parsed.questions || parsed.questions.length === 0) {
+throw new Error("Ảo giác AI: Tổ kén bị rỗng.");
+}
+return parsed;
+} catch(e) { pLastErr = e; pAttempt++; }
+}
+throw pLastErr;
+})();
+}
+try {
+// Đợi cho đến khi Kén được tạo xong (Các câu hỏi con cùng gọi sẽ cùng đợi 1 Promise này)
+const passageSet = await this._passageLocks[groupId];
+const qData = passageSet.questions[qIndex] || passageSet.questions[0];
+let tempGeneratedData = {
+passage: passageSet.passage,
+explanation: qData.explanation,
+isAiGenerated: true
+};
+// Ánh xạ format câu hỏi con về đúng chuẩn Renderer UI
+if (qData.type === 'fill_blank') {
+tempGeneratedData.displaySentence = qData.questionText;
+tempGeneratedData.targetWord = qData.correctAnswer;
+metadata.type = 'ioe_fill_blank'; // Ghi đè lại Type để UI Shell biết đường vẽ
+} else if (qData.type === 'tfng') {
+tempGeneratedData.term = qData.questionText;
+tempGeneratedData.options = [
+{text: "True", isCorrect: String(qData.correctAnswer).toLowerCase() === 'true'},
+{text: "False", isCorrect: String(qData.correctAnswer).toLowerCase() === 'false'},
+{text: "Not Given", isCorrect: String(qData.correctAnswer).toLowerCase() === 'not given'}
+];
+if (!tempGeneratedData.options.some(o=>o.isCorrect)) tempGeneratedData.options[0].isCorrect = true;
+metadata.type = 'ioe_multiple_choice';
+} else {
+tempGeneratedData.term = qData.questionText;
+tempGeneratedData.options = (qData.options && qData.options.length > 0 ? qData.options : ["A","B","C","D"]).map(o => ({
+text: o,
+isCorrect: String(o).toLowerCase().trim() === String(qData.correctAnswer).toLowerCase().trim() || String(o).includes(String(qData.correctAnswer))
+}));
+if (!tempGeneratedData.options.some(o => o.isCorrect) && tempGeneratedData.options.length > 0) {
+tempGeneratedData.options[0].isCorrect = true;
+}
+metadata.type = 'ioe_multiple_choice';
+}
+generatedData = tempGeneratedData;
+} catch (e) {
+console.error(`[ExamEngine] Passage Cocoon break failed for ${groupId}:`, e);
+finalError = e;
+}
+}
+else {
+// --- CÁC CÂU HỎI ĐƠN LẺ NGUYÊN TỬ (VÒNG LẶP MAX_ATTEMPTS) ---
 let attempt = 0;
 const MAX_ATTEMPTS = 3;
-let finalError = null;
 // Vòng lặp Ép Cung AI
 while (attempt < MAX_ATTEMPTS && !generatedData) {
 try {
@@ -2777,17 +2925,14 @@ tempGeneratedData = await window.GameAlgoEngine.OddOneOutEngine.ai_generate(leve
 }
 else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || type === 'ioe_pronunciation') {
 tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'pronunciation', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
-// Tự động phân tách chuỗi 4 từ do AI trả về thành mảng Options
 let rawWords = tempGeneratedData.term.split(',').map(w => w.trim());
 if (rawWords.length < 4) rawWords = tempGeneratedData.term.split(' ').map(w => w.trim()).filter(w => w.length > 0);
 const defLower = tempGeneratedData.definition.toLowerCase();
 tempGeneratedData.options = window.Utils.shuffleArray(rawWords.map(w => {
 const cleanW = w.replace(/\*/g, '').toLowerCase();
-// Nhận diện đáp án đúng bằng cách so khớp với Definition của AI
 const isCorrect = defLower.includes(cleanW) || defLower.includes(`'${cleanW}'`) || defLower.includes(`"${cleanW}"`);
 return { text: w, isCorrect: isCorrect };
 }));
-// Bảo vệ Fallback: Nếu AI giải thích không rõ, mặc định từ đầu tiên là đúng
 if (!tempGeneratedData.options.some(o => o.isCorrect) && tempGeneratedData.options.length > 0) {
 tempGeneratedData.options[0].isCorrect = true;
 }
@@ -2795,19 +2940,32 @@ tempGeneratedData.options[0].isCorrect = true;
 else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || type === 'ioe_image_quiz') {
 tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'image_quiz', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
 if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
-// [QUAN TRỌNG] Phải yêu cầu bẫy bằng tiếng Anh (distractorLang = 'en') để cào ảnh chính xác
 const dists = await window.GameAlgoEngine.OptionsEngine.ai_generateOptions(tempGeneratedData, 'en', 'word', apiKey, 3, level, topic, false);
 let allOptions = [
 { text: tempGeneratedData.term, isCorrect: true },
 ...dists.map(d => ({ text: d, isCorrect: false }))
 ];
-// Thuật toán Image Scraper: Cào ảnh tĩnh (Clipart) phù hợp cho trẻ em
 allOptions = allOptions.map(opt => ({
 ...opt,
 image: `https://tse4.mm.bing.net/th?q=${encodeURIComponent(opt.text + " clipart illustration kids")}&w=300&h=300&c=7&rs=1&p=0`
 }));
 tempGeneratedData.options = window.Utils.shuffleArray(allOptions);
 } else { throw new Error("Missing OptionsEngine"); }
+}
+// [CHIẾN DỊCH NGHE] Nhánh xử lý bài Nghe
+else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_LISTENING || type === 'ioe_listening') {
+let prompt = window.IoeDataEngine.buildPureModePrompt(level, 'listening', 'vocab', topic);
+if (finalHistoryPrompt) prompt += finalHistoryPrompt;
+const schema = window.IoeDataEngine.SCHEMAS.pure_listening;
+const aiRes = await window.Utils.callGeminiApi(prompt, schema, apiKey);
+const parsed = window.Utils.parseAiJson(aiRes.text);
+tempGeneratedData = {
+audioScript: parsed.audioScript,
+term: parsed.question, // Đẩy câu hỏi lên UI Trắc nghiệm
+options: parsed.options,
+explanation: parsed.explanation,
+isAiGenerated: true
+};
 }
 else {
 tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'en', apiKey, finalHistoryPrompt, 'vocab', topic);
@@ -2816,10 +2974,13 @@ tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'e
 if (!tempGeneratedData) {
 throw new Error(`AI returned empty data for type: ${type}`);
 }
-const isMatchOrQuiz = type === window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE || type === 'ioe_multiple_choice' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH || type === 'ioe_match' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || type === 'ioe_pronunciation' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || type === 'ioe_image_quiz';
+const isMatchOrQuiz = type === window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE || type === 'ioe_multiple_choice' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH || type === 'ioe_match' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || type === 'ioe_pronunciation' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || type === 'ioe_image_quiz' || type === window.IoeDataEngine.QUESTION_TYPES.IOE_LISTENING || type === 'ioe_listening';
 if (isMatchOrQuiz) {
 if (!tempGeneratedData.term || !tempGeneratedData.options || !Array.isArray(tempGeneratedData.options) || tempGeneratedData.options.length === 0) {
 throw new Error("Ảo giác AI: Thiếu trường 'term' hoặc mảng 'options' bị rỗng.");
+}
+if (type === 'ioe_listening' && !tempGeneratedData.audioScript) {
+throw new Error("Ảo giác AI: Thiếu kịch bản âm thanh 'audioScript'.");
 }
 } else if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || type === 'ioe_spot_mistake') {
 if (!tempGeneratedData.wrongSentence || !tempGeneratedData.wrongWord || !tempGeneratedData.correction) {
@@ -2868,19 +3029,45 @@ break;
 if (isDuplicate) {
 throw new Error(`[Duplicate Detected] AI generated an already used word: ${termsToCheck.join(', ')}`);
 }
-// Mọi kiểm tra đã vượt qua, chốt kết quả
 generatedData = tempGeneratedData;
 } catch (error) {
 finalError = error;
 attempt++;
 }
 } // End While Loop
-// NẾU 3 LẦN ĐỀU THẤT BẠI
+} // End Else (Single Question)
+// NẾU 3 LẦN ĐỀU THẤT BẠI HOẶC TỔ KÉN SẬP -> KÍCH HOẠT CỨU HỘ (FALLBACK)
 if (!generatedData) {
-console.error(`[ExamEngine] AI Hydration FATALLY failed after ${MAX_ATTEMPTS} attempts for ${id}:`, finalError?.message);
-throw new Error(`Sinh dữ liệu thất bại sau 3 lần thử: ${finalError?.message}`);
+console.warn(`[ExamEngine] AI Hydration FATALLY failed for ${id}. KÍCH HOẠT QUY TRÌNH CỨU HỘ...`);
+try {
+let rescuedData = null;
+// [TIỀN TRẠM TƯƠNG LAI] 1. Tìm trong Kho AI tự sinh (Harvest Pool)
+if (window.FcDB) {
+try {
+const harvestPool = await window.FcDB.get('fc_ai_harvest_pool');
+if (harvestPool && harvestPool[level] && harvestPool[level].length > 0) {
+// Tương lai
 }
-// CẬP NHẬT LỊCH SỬ TRÊN RAM ĐỂ CÁC CÂU SAU NHÌN THẤY NGAY (Ngăn chặn Race Condition)
+} catch (e) {}
+}
+// 2. Rút thẻ từ FallbackDataEngine
+if (!rescuedData) {
+console.log(`[ExamEngine] Kéo cáp cứu hộ từ FallbackDataEngine cho dạng bài: ${metadata.type || type}`);
+rescuedData = this._generateFallbackData(metadata.type || type, level, track);
+}
+if (rescuedData) {
+generatedData = rescuedData;
+generatedData.isAiGenerated = false; // Đánh dấu là thẻ offline
+generatedData._isRescued = true;     // Đánh dấu là thẻ đã được cứu hộ
+} else {
+throw new Error("Không có dữ liệu cứu hộ.");
+}
+} catch (rescueError) {
+console.error(`[ExamEngine] Cứu hộ thất bại:`, rescueError);
+throw new Error(`Sinh dữ liệu và cứu hộ đều thất bại: ${finalError?.message}`);
+}
+}
+// CẬP NHẬT LỊCH SỬ TRÊN RAM ĐỂ CÁC CÂU SAU NHÌN THẤY NGAY
 if (examHistory && Array.isArray(examHistory)) {
 let termsToSave = [];
 if (type === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || type === 'ioe_spot_mistake') {
@@ -2944,11 +3131,11 @@ console.error(`[ExamEngine] Hydration fatally failed for ${meta.id}:`, e);
 return results;
 }
 };
-// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.01
-// Last Updated: 2026-04-15 15:00
+// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.04
+// Last Updated: 2026-04-16 19:00
 // Nhiệm vụ: Chứa định nghĩa chi tiết (Blueprints) của 6 cấu trúc đề thi (IOE-Mini, IOE-Std, IELTS-Mini, IELTS-Std, HSK-Mini, HSK-Std).
 // Chức năng: Xuất ra mảng metadata nguyên tử để truyền vào Block 2.7 (Atomic Exam Engine).
-// Cập nhật: [BƯỚC 1 - ĐẠI TU NÃO BỘ] Tái cấu trúc Ma trận IOE (Mini & Std) tích hợp 2 dạng bài mới: ioe_pronunciation và ioe_image_quiz (Chỉ dùng Image cho Tiểu học). Bám sát 100% tỷ lệ thực tế. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [ĐIỀU CHỈNH MA TRẬN] Kích hoạt Kỹ năng Nghe (Listening) thực thụ cho cả khối Tiểu học (Level 1-3) với tỉ lệ phân bổ hợp lý, kết hợp cùng Game Hình ảnh. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.ExamProfiles = {
 // 1. TỪ ĐIỂN CẤU HÌNH ĐỀ THI TỔNG QUAN
@@ -2982,7 +3169,7 @@ description: 'Khởi động với các dạng câu hỏi học thuật cốt l�
 },
 ielts_std: {
 id: 'ielts_std',
-name: 'IELTS Academic',
+name: 'IELTS Academic Reading',
 track: 'ielts',
 mode: 'std',
 totalQuestions: 40,
@@ -3016,13 +3203,15 @@ if (!config) return [];
 const blueprint = [];
 let globalIndex = 1;
 const types = window.IoeDataEngine.QUESTION_TYPES;
-// Các type mới sẽ được cập nhật ở Block 2.2 sau, dùng string tạm thời để đảm bảo tính an toàn
-const TYPE_PRONUNCIATION = 'ioe_pronunciation';
-const TYPE_IMAGE_QUIZ = 'ioe_image_quiz';
-// Xác định cấp Tiểu học (Để gọi Game Hình ảnh)
+// Cập nhật các dạng bài mới từ Tầng 2.2
+const TYPE_PRONUNCIATION = types.IOE_PRONUNCIATION || 'ioe_pronunciation';
+const TYPE_IMAGE_QUIZ = types.IOE_IMAGE_QUIZ || 'ioe_image_quiz';
+const TYPE_LISTENING = types.IOE_LISTENING || 'ioe_listening';
+const TYPE_READING_PASSAGE = types.IELTS_READING_PASSAGE || 'ielts_reading_passage'; // Tái sử dụng Component Tổ Kén cho IOE
+// Xác định cấp Tiểu học (Để điều phối kết hợp Game Hình ảnh và Game Nghe)
 const isPrimary = ['en_level_1', 'en_level_2', 'en_level_3', 'level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced'].includes(targetLevel);
 // Hàm tiện ích: Bơm đạn vào băng (Thêm N câu hỏi cùng loại)
-const addQuestions = (qType, count, chapterName) => {
+const addQuestions = (qType, count, chapterName, passageGroup = null) => {
 for (let i = 0; i < count; i++) {
 blueprint.push({
 id: `${profileId}_${targetLevel}_${qType}_${globalIndex}_${Date.now()}`,
@@ -3031,7 +3220,9 @@ chapter: chapterName,
 track: config.track,
 level: targetLevel,
 type: qType,
-topic: targetTopic
+topic: targetTopic,
+passageGroup: passageGroup, // Gom nhóm các câu hỏi trong cùng 1 Passage
+questionIndexInPassage: passageGroup ? i : null // Dấu vết thứ tự câu trong Tổ kén
 });
 globalIndex++;
 }
@@ -3042,14 +3233,21 @@ switch (profileId) {
 // TRACK: IOE (Tiếng Anh Phổ Thông)
 // ----------------------------------------------------
 case 'ioe_mini':
+// 1. Kỹ năng Nghe (3 câu)
 if (isPrimary) {
-addQuestions(TYPE_IMAGE_QUIZ, 3, 'Kỹ năng Nghe & Hình ảnh');
+addQuestions(TYPE_LISTENING, 2, 'Kỹ năng Nghe (Listening)');
+addQuestions(TYPE_IMAGE_QUIZ, 1, 'Kỹ năng Hình ảnh');
 } else {
-addQuestions(types.IOE_MULTIPLE_CHOICE, 3, 'Kỹ năng Nghe (Mô phỏng)');
+addQuestions(TYPE_LISTENING, 3, 'Kỹ năng Nghe (Listening)');
 }
+// 2. Ngữ âm (2 câu)
 addQuestions(TYPE_PRONUNCIATION, 2, 'Ngữ âm & Trọng âm');
+// 3. Từ vựng & Ngữ pháp
 addQuestions(types.IOE_MATCH, 5, 'Nhận diện Từ vựng');
-addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 'Ngữ pháp & Đọc hiểu');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 'Ngữ pháp Tổng hợp');
+// 4. Đọc hiểu đoạn văn - Bơm Tổ kén vào IOE (5 câu)
+addQuestions(TYPE_READING_PASSAGE, 5, 'Đọc hiểu Đoạn văn', `ioe_passage_mini_${Date.now()}`);
+// 5. Kỹ năng nâng cao
 addQuestions(types.IOE_ODD_ONE_OUT, 3, 'Từ khác loại');
 addQuestions(types.IOE_SPOT_MISTAKE, 2, 'Săn lỗi sai Ngữ pháp');
 addQuestions(types.IOE_FILL_BLANK, 3, 'Điền từ khóa');
@@ -3058,9 +3256,10 @@ break;
 case 'ioe_std':
 // Kỹ năng Nghe / Hình ảnh (20 câu)
 if (isPrimary) {
-addQuestions(TYPE_IMAGE_QUIZ, 20, 'Kỹ năng Nghe & Hình ảnh');
+addQuestions(TYPE_LISTENING, 10, 'Kỹ năng Nghe (Listening)');
+addQuestions(TYPE_IMAGE_QUIZ, 10, 'Kỹ năng Hình ảnh');
 } else {
-addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 'Kỹ năng Nghe (Mô phỏng)');
+addQuestions(TYPE_LISTENING, 20, 'Kỹ năng Nghe (Listening)');
 }
 // Ngữ âm (10 câu)
 addQuestions(TYPE_PRONUNCIATION, 10, 'Ngữ âm & Trọng âm');
@@ -3069,8 +3268,10 @@ addQuestions(types.IOE_MATCH, 30, 'Nhận diện Từ vựng');
 addQuestions(types.IOE_MULTIPLE_CHOICE, 40, 'Trắc nghiệm Ngữ pháp & Từ vựng');
 addQuestions(types.IOE_ODD_ONE_OUT, 10, 'Phân nhóm Từ vựng');
 addQuestions(types.IOE_SPOT_MISTAKE, 10, 'Săn lỗi sai Ngữ pháp');
-// Đọc hiểu (40 câu)
-addQuestions(types.IOE_MULTIPLE_CHOICE, 40, 'Đọc hiểu (Mô phỏng)');
+// Kỹ năng Đọc hiểu đoạn văn - Đập vỡ 40 câu thành 8 Tổ kén, mỗi tổ 5 câu
+for (let p = 1; p <= 8; p++) {
+addQuestions(TYPE_READING_PASSAGE, 5, `Đọc hiểu: Đoạn văn ${p}`, `ioe_passage_std_${p}_${Date.now()}`);
+}
 // Kỹ năng Viết (40 câu)
 addQuestions(types.IOE_FILL_BLANK, 20, 'Điền từ khuyết');
 addQuestions(types.IOE_SCRAMBLE, 20, 'Tái cấu trúc câu');
@@ -3079,16 +3280,14 @@ break;
 // TRACK: IELTS (Tiếng Anh Học Thuật)
 // ----------------------------------------------------
 case 'ielts_mini':
-addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 'Vocabulary: Synonym Matching');
-addQuestions(types.IOE_SPOT_MISTAKE, 5, 'Grammar: Academic Error Correction');
-addQuestions(types.IOE_FILL_BLANK, 5, 'Reading: Sentence Completion');
+addQuestions(TYPE_READING_PASSAGE, 5, 'Reading: Academic Passage', `passage_mini_${Date.now()}`);
+addQuestions(TYPE_LISTENING, 5, 'Listening: Academic Monologue');
+addQuestions(types.IOE_SPOT_MISTAKE, 5, 'Grammar: Error Correction');
 break;
 case 'ielts_std':
-// Tạm thời map 40 câu Reading sang các Atomic Question Types.
-// Khi UI SplitViewContainer ở Block 5.14 ra mắt, các câu này sẽ được nhóm theo Context (Tổ kén).
-addQuestions(types.IOE_MULTIPLE_CHOICE, 15, 'Reading: Multiple Choice');
-addQuestions(types.IOE_FILL_BLANK, 15, 'Reading: Summary Completion');
-addQuestions(types.IOE_SPOT_MISTAKE, 10, 'Reading: Identifying Writer Views (TFNG mock)');
+for (let p = 1; p <= 8; p++) {
+addQuestions(TYPE_READING_PASSAGE, 5, `Reading: Passage ${p}`, `passage_std_${p}_${Date.now()}`);
+}
 break;
 // ----------------------------------------------------
 // TRACK: HSK (Tiếng Trung)
@@ -8708,10 +8907,10 @@ queueLength={queueLength}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.07
-// Last Updated: 2026-04-15 19:45
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.08
+// Last Updated: 2026-04-16 15:40
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Kéo cáp onLogWrong và onOpenIncorrect truyền thẳng vào ExamUIShell (Bài thi Tổng hợp). Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [MOCK TEST REVIEW - HORIZONTAL UPDATE] Kéo cáp onBookmark và notebook truyền thẳng vào ExamUIShell phục vụ tính năng lưu từ vựng tại màn hình xem lại lỗi sai (Review Modal). Tuân thủ tuyệt đối Điều 3 và 4 Hiến Pháp.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions, onStartMockTest }) => {
@@ -9187,6 +9386,8 @@ setGameState('menu');
 }}
 onLogWrong={onLogWrong}
 onOpenIncorrect={onOpenIncorrect}
+onBookmark={onBookmark}
+notebook={notebook}
 />
 </div>
 )}
@@ -12257,10 +12458,10 @@ window.Block5_13_useOddOneOutLogic = useOddOneOutLogic;
 window.useOddOneOutLogic = useOddOneOutLogic;
 window.Block5_13_OddOneOutGame = OddOneOutGame;
 window.OddOneOutGame = OddOneOutGame;
-// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.09
-// Last Updated: 2026-04-15 20:00
-// Nhiệm vụ: Khung giao diện bài thi tổng hợp. Bao gồm Header (Progress, Timer), SplitView cho IELTS, và các Renderers tối giản cho câu hỏi nguyên tử.
-// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Xây dựng Trạm biến áp (Data Adapter) handleAnswerSubmit để tự động nhào nặn lỗi sai và ném vào onLogWrong. Truyền onOpenIncorrect cho Báo cáo. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.13
+// Last Updated: 2026-04-16 18:15
+// Nhiệm vụ: Khung giao diện bài thi tổng hợp. Bao gồm Header, Timer, SplitView và các Renderers nguyên tử.
+// Cập nhật: [CHIẾN DỊCH NÂNG CẤP KÉP] Bổ sung ListeningRenderer (Nút loa ẩn Script, giới hạn 3 lượt nghe). Kích hoạt SplitViewContainer chẻ đôi màn hình khi nhận diện Tổ kén Đọc hiểu (Passage). Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. CÁC ATOMIC RENDERERS (GIAO DIỆN TỐI GIẢN CHO TỪNG DẠNG BÀI) ---
 const MultipleChoiceRenderer = ({ content, onAnswer }) => {
@@ -12290,7 +12491,81 @@ className={`p-5 border-2 border-gray-200 rounded-2xl text-lg font-medium transit
 </div>
 );
 };
-// Pronunciation Renderer (Giao diện Phát âm / Trọng âm)
+// [NEW] LISTENING RENDERER (Giao diện Kỹ năng Nghe - Hidden Script)
+const ListeningRenderer = ({ content, onAnswer }) => {
+const [isSubmitted, setIsSubmitted] = React.useState(false);
+const [isPlaying, setIsPlaying] = React.useState(false);
+const [playCount, setPlayCount] = React.useState(0);
+const maxPlays = 3;
+React.useEffect(() => {
+return () => {
+if (window.speechSynthesis) window.speechSynthesis.cancel();
+};
+}, []);
+const handlePlay = () => {
+if (isPlaying || playCount >= maxPlays) return;
+setIsPlaying(true);
+setPlayCount(p => p + 1);
+if (window.speechSynthesis) {
+window.speechSynthesis.cancel();
+const u = new SpeechSynthesisUtterance(content.audioScript);
+u.lang = 'en-US'; // Bài thi IOE/IELTS mặc định dùng tiếng Anh cho Listening
+u.rate = 0.9;
+u.onend = () => setIsPlaying(false);
+u.onerror = () => setIsPlaying(false);
+window.speechSynthesis.speak(u);
+} else {
+setIsPlaying(false);
+}
+};
+const handleSelect = (opt) => {
+if (isSubmitted) return;
+setIsSubmitted(true);
+if (window.speechSynthesis) window.speechSynthesis.cancel();
+onAnswer(opt, opt.isCorrect);
+};
+return (
+<div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
+<div className="text-sm font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-full border border-blue-200 flex items-center gap-2">
+<window.Icons.Headphones size={16}/> Kỹ năng Nghe
+</div>
+<div className="w-full bg-blue-50/50 border-2 border-blue-100 rounded-3xl p-8 flex flex-col items-center justify-center relative overflow-hidden">
+{isPlaying && (
+<div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+<div className="w-24 h-24 bg-blue-500 rounded-full animate-ping absolute"></div>
+<div className="w-32 h-32 bg-blue-400 rounded-full animate-ping absolute" style={{ animationDelay: '0.2s' }}></div>
+</div>
+)}
+<button
+onClick={handlePlay}
+disabled={isPlaying || playCount >= maxPlays}
+className={`relative z-10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl transition-transform ${isPlaying ? 'bg-blue-400 text-white scale-110' : (playCount >= maxPlays ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 active:scale-95')}`}
+>
+<window.Icons.Volume2 size={40} className={isPlaying ? 'animate-pulse' : ''} />
+</button>
+<div className="mt-4 text-sm font-bold text-blue-800">
+{isPlaying ? 'Đang phát âm thanh...' : (playCount >= maxPlays ? 'Đã hết lượt nghe' : `Bấm để nghe (Lượt: ${playCount}/${maxPlays})`)}
+</div>
+</div>
+<div className="text-xl md:text-2xl font-bold text-gray-800 text-center leading-relaxed mt-2">
+{content.term}
+</div>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+{content.options?.map((opt, i) => (
+<button
+key={i}
+onClick={() => handleSelect(opt)}
+disabled={isSubmitted}
+className={`p-5 border-2 border-gray-200 rounded-2xl text-lg font-medium transition-all bg-white text-gray-700 shadow-sm ${isSubmitted ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-50 hover:border-blue-400 active:scale-95'}`}
+>
+{opt.text}
+</button>
+))}
+</div>
+</div>
+);
+};
+// Pronunciation Renderer
 const PronunciationRenderer = ({ content, onAnswer }) => {
 const [isSubmitted, setIsSubmitted] = React.useState(false);
 const handleSelect = (opt) => {
@@ -12300,11 +12575,21 @@ onAnswer(opt, opt.isCorrect);
 };
 const renderHighlighted = (text) => {
 if (!text) return text;
+const astCount = (text.match(/\*/g) || []).length;
+if (astCount === 2) {
 const parts = text.split('*');
-if (parts.length === 3) {
 return <>{parts[0]}<span className="text-red-500 font-black underline decoration-2 underline-offset-4">{parts[1]}</span>{parts[2]}</>;
 }
-return text;
+else if (astCount === 1) {
+const idx = text.indexOf('*');
+if (idx > 0) {
+const before = text.substring(0, idx - 1);
+const target = text.substring(idx - 1, idx);
+const after = text.substring(idx + 1);
+return <>{before}<span className="text-red-500 font-black underline decoration-2 underline-offset-4">{target}</span>{after}</>;
+}
+}
+return text.replace(/\*/g, '');
 };
 return (
 <div className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
@@ -12326,7 +12611,7 @@ className={`p-6 border-2 border-gray-200 rounded-2xl text-2xl font-bold transiti
 </div>
 );
 };
-// Image Choice Renderer (Ép khuôn ảnh, xử lý lỗi bằng State, thêm Loading Skeleton)
+// Image Choice Renderer
 const ImageChoiceRenderer = ({ content, onAnswer }) => {
 const [isSubmitted, setIsSubmitted] = React.useState(false);
 const [imageErrors, setImageErrors] = React.useState({});
@@ -12435,6 +12720,7 @@ return () => clearTimeout(timer);
 const handleSubmit = () => {
 if (!val.trim() || isSubmitted) return;
 setIsSubmitted(true);
+if (inputRef.current) inputRef.current.blur();
 const isCorrect = val.trim().toLowerCase() === content.targetWord.toLowerCase();
 onAnswer(val, isCorrect);
 };
@@ -12448,7 +12734,7 @@ return (
 </React.Fragment>
 ))}
 </div>
-<div className="text-sm md:text-base text-gray-500 italic font-medium">"{content.hint}"</div>
+{content.hint && <div className="text-sm md:text-base text-gray-500 italic font-medium">"{content.hint}"</div>}
 <div className="flex gap-3 w-full max-w-md">
 <input
 ref={inputRef}
@@ -12493,6 +12779,7 @@ return () => { if (timer) clearTimeout(timer); };
 const handleSubmit = () => {
 if (!correction.trim() || isSubmitted) return;
 setIsSubmitted(true);
+if (inputRef.current) inputRef.current.blur();
 const isCorrectWord = selectedWord.replace(/[.,?!]/g, '').toLowerCase() === content.wrongWord.toLowerCase();
 const isCorrectFix = correction.trim().toLowerCase() === content.correction.toLowerCase();
 onAnswer({ selectedWord, correction }, isCorrectWord && isCorrectFix);
@@ -12648,8 +12935,7 @@ return (
 );
 };
 // --- 3. EXAM UI SHELL (VỎ BỌC CHÍNH ĐIỀU PHỐI) ---
-const ExamUIShell = ({ examLogic, mainColor = 'blue', onExit, onLogWrong, onOpenIncorrect }) => {
-// Trích xuất cachedCount từ examLogic
+const ExamUIShell = ({ examLogic, mainColor = 'blue', onExit, onOpenIncorrect, onBookmark, notebook }) => {
 const { examState, currentQuestion, isHydrating, submitAnswer, quitExam, forceSubmitExam, setTransitionState, cachedCount } = examLogic;
 const Icons = window.Icons;
 // Màn hình chuyển chặng (Transition Overlay)
@@ -12669,54 +12955,8 @@ if (setTransitionState) setTransitionState(false);
 prevChapterRef.current = currentChap;
 }
 }
-// Dọn dẹp Timeout tránh rò rỉ bộ nhớ
 return () => { if (timeoutId) clearTimeout(timeoutId); };
 }, [currentQuestion, setTransitionState]);
-// [VÁ LỖI DỮ LIỆU MA] Trạm biến áp Data Adapter để nhào nặn lỗi sai và bắn vào onLogWrong
-const handleAnswerSubmit = (ans, isCorrect) => {
-if (!isCorrect && onLogWrong && currentQuestion) {
-const type = currentQuestion.metadata.type;
-const content = currentQuestion.content;
-let term = content.term || "";
-let definition = content.definition || "";
-let example = content.example || "";
-let analysis = content.explanation || content.analysis || "";
-if (type.includes('fill_blank')) {
-const underlinedTarget = content.targetWord.split('').map(char => char + '\u0332').join('');
-term = content.displaySentence.replace('[__________]', underlinedTarget);
-definition = content.hint || content.targetWord;
-example = content.displaySentence.replace('[__________]', content.targetWord);
-} else if (type.includes('spot_mistake')) {
-const underlinedCorrection = content.correction.split('').map(char => char + '\u0332').join('');
-term = content.wrongSentence.replace(content.wrongWord, underlinedCorrection);
-definition = `Sửa: ${content.wrongWord} -> ${content.correction}`;
-analysis = content.explanation;
-example = content.wrongSentence;
-} else if (type.includes('odd_one_out')) {
-term = Array.isArray(content.words) ? content.words.join(' • ') : content.words;
-definition = `Từ khác loại: ${content.oddWord}`;
-analysis = content.explanation;
-} else if (type.includes('pronunciation')) {
-term = content.term;
-definition = content.definition;
-} else {
-term = content.term;
-definition = content.definition;
-}
-const mistakeCard = {
-id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-type: 'mistake',
-term: term,
-definition: definition,
-example: example,
-analysis: analysis,
-tags: ['mock_test', currentQuestion.metadata.level, type],
-timestamp: Date.now()
-};
-onLogWrong(mistakeCard);
-}
-submitAnswer(ans, isCorrect);
-};
 if (examState.status === 'loading') {
 return (
 <div className="flex flex-col items-center justify-center h-full bg-gray-50 z-[999] absolute inset-0">
@@ -12760,7 +13000,7 @@ className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg hove
 if (examState.status === 'completed') {
 const SafeExamReportUI = window.Block5_15_ExamReportUI || window.ExamReportUI;
 if (SafeExamReportUI) {
-return <SafeExamReportUI examState={examState} onExit={onExit} mainColor={mainColor} onOpenIncorrect={onOpenIncorrect} />;
+return <SafeExamReportUI examState={examState} onExit={onExit} mainColor={mainColor} onBookmark={onBookmark} notebook={notebook} />;
 }
 return (
 <div className="flex flex-col items-center justify-center h-full bg-gray-50 z-[999] absolute inset-0 animate-in zoom-in">
@@ -12789,8 +13029,9 @@ const timerClass = isUrgent ? 'text-red-600 animate-pulse font-black' : `text-${
 let Renderer = null;
 if (currentQuestion) {
 const type = currentQuestion.metadata.type;
-if (type.includes('multiple_choice') || type.includes('mcq')) Renderer = MultipleChoiceRenderer;
-else if (type.includes('fill_blank')) Renderer = FillBlankRenderer;
+if (type.includes('listening')) Renderer = ListeningRenderer;
+else if (type.includes('multiple_choice') || type.includes('mcq')) Renderer = MultipleChoiceRenderer;
+else if (type.includes('fill_blank') || type.includes('tfng')) Renderer = FillBlankRenderer;
 else if (type.includes('spot_mistake')) Renderer = SpotMistakeRenderer;
 else if (type.includes('scramble')) Renderer = ScrambleRenderer;
 else if (type.includes('odd_one_out')) Renderer = OddOneOutRenderer;
@@ -12811,7 +13052,7 @@ const questionContent = (
 <Renderer
 key={currentQuestion.id}
 content={currentQuestion.content}
-onAnswer={handleAnswerSubmit}
+onAnswer={(ans, isCorrect) => submitAnswer(ans, isCorrect)}
 />
 ) : null}
 </div>
@@ -12897,10 +13138,10 @@ questionContent
 // EXPORT TO GLOBAL WINDOW
 window.ExamUIShell = ExamUIShell;
 window.Block5_14_ExamUIShell = ExamUIShell;
-// Block5.15: TẦNG 5: TRÒ CHƠI HÓA (Grand Exam Report UI) - Version 1.01
-// Last Updated: 2026-04-15 20:15
+// Block5.15: TẦNG 5: TRÒ CHƠI HÓA (Grand Exam Report UI) - Version 1.02
+// Last Updated: 2026-04-16 15:20
 // Nhiệm vụ: Hiển thị Báo cáo Tổng kết bài thi (Mock Test) với Biểu đồ Radar phân tích kỹ năng, Cảnh báo điểm yếu và Thống kê chi tiết.
-// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Bổ sung prop onOpenIncorrect. Khơi thông nút "Xem lại lỗi sai" để bung Sổ tay thực sự. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [MOCK TEST REVIEW - BƯỚC 3] Chuyển mạch nút "Xem lại lỗi sai" để kích hoạt bật popup ExamReviewModal (Block 5.16) đè lên báo cáo thay vì gọi Sổ tay chung. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 // --- COMPONENT BIỂU ĐỒ RADAR (PURE SVG) ---
 const SkillRadarChart = ({ data, mainColor = 'blue' }) => {
@@ -13002,8 +13243,11 @@ d.label
 );
 };
 // --- COMPONENT CHÍNH (GRAND REPORT UI) ---
-const ExamReportUI = ({ examState, onExit, mainColor = 'blue', onOpenIncorrect }) => {
+const ExamReportUI = ({ examState, onExit, mainColor = 'blue', onBookmark, notebook }) => {
 const Icons = window.Icons;
+// [VÁ LỖI MOCK TEST REVIEW] State quản lý Màn hình Review
+const [isReviewModalOpen, setIsReviewModalOpen] = React.useState(false);
+const SafeExamReviewModal = window.Block5_16_ExamReviewModal || window.ExamReviewModal;
 // 1. XỬ LÝ DỮ LIỆU TỔNG QUAN
 const profile = examState.profile || {};
 const blueprint = examState.blueprint || [];
@@ -13072,6 +13316,7 @@ headerGradient = "from-yellow-400 to-orange-500";
 icon = <Icons.Check size={48} className="text-white opacity-80" />;
 }
 return (
+<React.Fragment>
 <div className="fixed inset-0 z-[1100] bg-gray-50 flex flex-col overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom-8 duration-500">
 {/* HEADER KHỔNG LỒ (HERO BANNER) */}
 <div className={`w-full bg-gradient-to-br ${headerGradient} pt-12 pb-16 px-6 text-center text-white relative shadow-md shrink-0`}>
@@ -13160,7 +13405,7 @@ className={`text-${mainColor}-500 transition-all duration-1000 ease-out`}
 Kỹ năng <strong>{weakestSkill.label}</strong> của bạn đang ở mức thấp (<span className="font-black">{weakestSkill.score}%</span>).
 </p>
 <p className="text-xs text-red-600/80 italic">
-Lời khuyên: Hãy tập trung ôn luyện thêm các dạng bài thuộc chủ đề này ở chế độ Học hoặc Game đơn lẻ.
+Lời khuyên: Hãy xem lại chi tiết lỗi sai và tập trung ôn luyện thêm các dạng bài thuộc chủ đề này.
 </p>
 </div>
 </div>
@@ -13202,15 +13447,7 @@ className={`w-full sm:w-auto px-8 py-4 bg-${mainColor}-600 text-white font-bold 
 <Icons.CheckCircle size={24} /> Hoàn tất & Về Menu
 </button>
 <button
-onClick={() => {
-onExit();
-if (onOpenIncorrect) {
-// Mở modal sau một độ trễ nhỏ để tránh giật lag khi chuyển đổi giao diện
-setTimeout(() => onOpenIncorrect(), 100);
-} else if (window.globalShowToast) {
-window.globalShowToast("Các câu sai đã được lưu tự động vào Sổ tay. Hãy vào Sổ tay để ôn lại nhé!", "info");
-}
-}}
+onClick={() => setIsReviewModalOpen(true)}
 className={`w-full sm:w-auto px-8 py-4 bg-white text-gray-700 border-2 border-gray-200 font-bold text-lg rounded-2xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all flex items-center justify-center gap-2`}
 >
 <Icons.BookOpen size={24} className="text-red-500" /> Xem lại lỗi sai
@@ -13218,11 +13455,250 @@ className={`w-full sm:w-auto px-8 py-4 bg-white text-gray-700 border-2 border-gr
 </div>
 </div>
 </div>
+{/* MÀN HÌNH REVIEW ĐỘC LẬP (NẰM ĐÈ LÊN CÙNG) */}
+{SafeExamReviewModal && (
+<SafeExamReviewModal
+isOpen={isReviewModalOpen}
+onClose={() => setIsReviewModalOpen(false)}
+examState={examState}
+mainColor={mainColor}
+onBookmark={onBookmark}
+notebook={notebook}
+/>
+)}
+</React.Fragment>
 );
 };
 // EXPORT TO WINDOW
 window.Block5_15_ExamReportUI = ExamReportUI;
 window.ExamReportUI = ExamReportUI;
+// Block5.16: TẦNG 5: TRÒ CHƠI HÓA (Mock Test Review UI) - Version 1.03
+// Last Updated: 2026-04-16 18:30
+// Nhiệm vụ: Màn hình Xem lại chi tiết bài thi (Exam Review Modal). Hiển thị ngữ cảnh câu hỏi, đáp án, giải thích AI và Smart Bookmark.
+// Cập nhật: [CHIẾN DỊCH NÂNG CẤP KÉP] Bổ sung hiển thị Transcript (Kịch bản nghe) cho dạng ioe_listening và Trích đoạn Passage cho dạng Đọc hiểu. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// ==================================================================================
+const ExamReviewModal = ({ isOpen, onClose, examState, mainColor = 'blue', onBookmark, notebook }) => {
+if (!isOpen || !examState) return null;
+const Icons = window.Icons;
+// Helper: Trích xuất và định dạng dữ liệu từ answerItem
+const parseQuestionData = (ansItem) => {
+const type = ansItem.questionMetadata?.type || 'unknown';
+const content = ansItem.questionContent || {};
+const userAns = ansItem.answer;
+const isCorrect = ansItem.isCorrect;
+let questionText = "Dữ liệu câu hỏi không khả dụng.";
+let correctText = "";
+let userText = "";
+let explanation = content.explanation || content.analysis || "";
+let bookmarkPayload = null;
+// [CHIẾN DỊCH NGHE] Thêm type.includes('listening') vào nhóm trắc nghiệm cơ bản
+if (type.includes('multiple_choice') || type.includes('pronunciation') || type.includes('image_quiz') || type.includes('match') || type.includes('listening')) {
+// [VÁ LỖI RÁC SỔ TAY] Lọc sạch dấu sao (*) nếu là câu phát âm
+questionText = (content.term || "Câu hỏi trắc nghiệm / Nối ô").replace(/\*/g, '');
+const correctOpt = content.options?.find(o => o.isCorrect);
+correctText = correctOpt ? correctOpt.text.replace(/\*/g, '') : (content.definition || "Không rõ đáp án");
+if (userAns) {
+userText = typeof userAns === 'object' ? (userAns.text?.replace(/\*/g, '') || "Đã chọn") : String(userAns).replace(/\*/g, '');
+} else {
+userText = "Bỏ qua";
+}
+bookmarkPayload = {
+isSmartTarget: true,
+display: questionText,
+save: correctText,
+analysis: explanation
+};
+} else if (type.includes('fill_blank') || type.includes('tfng')) {
+const underlinedTarget = content.targetWord ? content.targetWord.split('').map(c => c + '\u0332').join('') : '';
+questionText = content.displaySentence ? content.displaySentence.replace('[__________]', ' [___] ') : (content.term || "Câu điền từ");
+correctText = content.targetWord || content.correctAnswer || "Không rõ đáp án";
+userText = (typeof userAns === 'string' && userAns.trim() !== '') ? userAns : "Bỏ qua";
+explanation = content.hint || explanation;
+bookmarkPayload = {
+isSmartTarget: true,
+display: content.displaySentence || questionText,
+save: content.displaySentence ? content.displaySentence.replace('[__________]', underlinedTarget) : correctText,
+analysis: explanation
+};
+} else if (type.includes('spot_mistake')) {
+questionText = content.wrongSentence || "Câu tìm lỗi sai";
+correctText = content.correction ? `Sửa: ${content.wrongWord} ➔ ${content.correction}` : "Không rõ đáp án";
+if (userAns && userAns.correction) {
+userText = `Sửa thành: ${userAns.correction}`;
+} else if (userAns && userAns.selectedWord) {
+userText = `Chọn sai ở: ${userAns.selectedWord}`;
+} else {
+userText = "Bỏ qua";
+}
+const underlinedCorrection = content.correction ? content.correction.split('').map(c => c + '\u0332').join('') : '';
+const correctSentence = content.wrongSentence ? content.wrongSentence.replace(content.wrongWord, underlinedCorrection) : "";
+bookmarkPayload = {
+isSmartTarget: true,
+display: questionText,
+save: correctSentence,
+analysis: explanation
+};
+} else if (type.includes('scramble')) {
+questionText = content.definition ? `Ý nghĩa: ${content.definition}` : "Câu ghép từ";
+correctText = content.term || "Không rõ đáp án";
+userText = (typeof userAns === 'string' && userAns.trim() !== '') ? userAns : "Bỏ qua";
+bookmarkPayload = {
+isSmartTarget: true,
+display: questionText,
+save: correctText,
+analysis: explanation
+};
+} else if (type.includes('odd_one_out')) {
+questionText = Array.isArray(content.words) ? content.words.join(' • ') : (content.words || "Nhóm từ khác loại");
+correctText = content.oddWord || "Không rõ đáp án";
+userText = (typeof userAns === 'string' && userAns.trim() !== '') ? userAns : "Bỏ qua";
+bookmarkPayload = {
+isSmartTarget: true,
+display: questionText,
+save: correctText,
+analysis: explanation
+};
+}
+// Truyền kèm `content` gốc ra ngoài để UI lấy `audioScript` và `passage`
+return { questionText, correctText, userText, explanation, bookmarkPayload, isCorrect, content };
+};
+// Helper: Kiểm tra từ đã có trong sổ tay chưa
+const checkIsBookmarked = (payload) => {
+if (!notebook || !Array.isArray(notebook) || !payload) return false;
+const target = payload.save || payload.display;
+return notebook.some(n => n.term === target || (n.term && n.term.includes(target)));
+};
+const answersList = examState.answers || [];
+const totalQuestions = examState.blueprint?.length || answersList.length;
+return (
+<div className="fixed inset-0 z-[1200] flex items-center justify-center bg-gray-50/95 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-300">
+<div className="w-full h-full max-w-4xl bg-white shadow-2xl flex flex-col relative md:rounded-2xl md:h-[90vh] md:my-6 overflow-hidden border border-gray-200">
+{/* Header Tĩnh */}
+<div className={`w-full p-4 border-b bg-${mainColor}-50 flex justify-between items-center shrink-0 z-10 shadow-sm`}>
+<div className="flex items-center gap-3">
+<div className={`w-10 h-10 rounded-full bg-${mainColor}-100 text-${mainColor}-600 flex items-center justify-center font-black`}>
+<Icons.BookOpen size={20} />
+</div>
+<div>
+<h2 className={`font-bold text-lg text-${mainColor}-800 leading-tight`}>Chi tiết Bài thi</h2>
+<p className="text-xs font-bold text-gray-500">Xem lại {answersList.length} câu đã trả lời</p>
+</div>
+</div>
+<button
+onClick={onClose}
+className={`p-2 bg-white text-gray-500 rounded-full shadow-sm border border-gray-200 hover:text-red-500 hover:bg-red-50 transition-colors active:scale-95`}
+>
+<Icons.X size={24} />
+</button>
+</div>
+{/* Danh sách Câu hỏi Cuộn */}
+<div className="flex-1 w-full overflow-y-auto custom-scrollbar p-4 md:p-6 bg-gray-50/50 space-y-6">
+{answersList.length === 0 ? (
+<div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-4">
+<Icons.Layers size={48} className="opacity-20" />
+<p className="font-bold">Chưa có dữ liệu câu trả lời nào được ghi nhận.</p>
+</div>
+) : (
+answersList.map((ans, idx) => {
+const { questionText, correctText, userText, explanation, bookmarkPayload, isCorrect, content } = parseQuestionData(ans);
+const isBookmarked = checkIsBookmarked(bookmarkPayload);
+return (
+<div key={idx} className={`w-full bg-white rounded-2xl shadow-sm border-2 transition-all ${isCorrect ? 'border-green-100 hover:border-green-300' : 'border-red-100 hover:border-red-300'} overflow-hidden flex flex-col`}>
+{/* Dải phân cách Header Thẻ */}
+<div className={`w-full px-4 py-2 border-b flex justify-between items-center ${isCorrect ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+<span className="font-black text-gray-700 text-sm">Câu {ans.index !== undefined ? ans.index + 1 : idx + 1}</span>
+{isCorrect ? (
+<span className="flex items-center gap-1 text-xs font-bold text-green-600 uppercase tracking-wider bg-white px-2 py-1 rounded-full shadow-sm border border-green-200">
+<Icons.CheckCircle size={14} /> Chính xác
+</span>
+) : (
+<span className="flex items-center gap-1 text-xs font-bold text-red-600 uppercase tracking-wider bg-white px-2 py-1 rounded-full shadow-sm border border-red-200">
+<Icons.X size={14} /> Chưa đúng
+</span>
+)}
+</div>
+{/* Nội dung Câu hỏi */}
+<div className="p-4 md:p-6 flex flex-col gap-4">
+<div className="text-base md:text-lg font-bold text-gray-800 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
+{questionText}
+</div>
+{/* Bảng so sánh Đáp án */}
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div className="flex flex-col gap-1 p-3 rounded-xl border border-gray-100 bg-white">
+<span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Đáp án của bạn</span>
+<span className={`text-base font-bold ${isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+{userText}
+</span>
+</div>
+<div className="flex flex-col gap-1 p-3 rounded-xl border border-green-200 bg-green-50 shadow-inner">
+<span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Đáp án đúng</span>
+<span className="text-base font-bold text-green-800">
+{correctText}
+</span>
+</div>
+</div>
+{/* Transcript cho Kỹ năng Nghe */}
+{content?.audioScript && (
+<div className="mt-2 bg-purple-50 p-4 rounded-xl border border-purple-100 text-left animate-in slide-in-from-bottom-2">
+<span className="text-xs font-bold text-purple-600 uppercase tracking-wider block mb-2 flex items-center gap-1">
+<Icons.Headphones size={14}/> Transcript (Kịch bản Nghe)
+</span>
+<p className="text-purple-900 text-sm leading-relaxed font-medium whitespace-pre-wrap">
+{content.audioScript}
+</p>
+</div>
+)}
+{/* Trích đoạn Passage cho Đọc hiểu */}
+{content?.passage && (
+<div className="mt-2 bg-slate-50 p-4 rounded-xl border border-slate-200 text-left animate-in slide-in-from-bottom-2">
+<span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2 flex items-center gap-1">
+<Icons.BookOpen size={14}/> Đoạn văn tham chiếu (Passage)
+</span>
+<div className="text-slate-700 text-sm leading-relaxed font-serif max-h-32 overflow-y-auto custom-scrollbar pr-2 whitespace-pre-wrap">
+{content.passage}
+</div>
+</div>
+)}
+{/* Khung Giải thích AI */}
+{explanation && explanation.trim() !== "" && (
+<div className="mt-2 bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-left">
+<span className="text-xs font-bold text-blue-600 uppercase tracking-wider block mb-2 flex items-center gap-1">
+<Icons.Sparkles size={14}/> Phân tích chi tiết
+</span>
+<p className="text-blue-900 text-sm leading-relaxed font-medium whitespace-pre-wrap">
+{explanation}
+</p>
+</div>
+)}
+</div>
+{/* Thanh Công cụ (Bookmark) */}
+<div className="w-full p-3 border-t bg-gray-50 flex justify-end">
+<button
+onClick={(e) => {
+e.stopPropagation();
+if (bookmarkPayload && onBookmark) {
+onBookmark(bookmarkPayload);
+}
+}}
+className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${isBookmarked ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100 hover:text-gray-800'}`}
+>
+<Icons.Bookmark size={16} fill={isBookmarked ? "currentColor" : "none"} />
+{isBookmarked ? 'Đã lưu trong Sổ tay' : 'Lưu vào Sổ tay'}
+</button>
+</div>
+</div>
+);
+})
+)}
+<div className="w-full h-8 shrink-0"></div> {/* Spacer bottom */}
+</div>
+</div>
+</div>
+);
+};
+// EXPORT TO GLOBAL WINDOW
+window.Block5_16_ExamReviewModal = ExamReviewModal;
+window.ExamReviewModal = ExamReviewModal;
 // Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.9
 // Last Updated: 2026-04-13 15:45
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
@@ -15287,10 +15763,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.07
-// Last Updated: 2026-04-15 19:15
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.08
+// Last Updated: 2026-04-16 16:00
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, và tự động lưu Snapshot (Resilience).
-// Cập nhật: [MOCK TEST ERA] Tăng mức trần nạp đạn (CHUNK_SIZE) lên 4 viên để tối ưu trải nghiệm mượt mà, kết hợp cơ chế thu hoạch AI (Harvest Pool). Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [HORIZONTAL UPDATE] Cập nhật hàm submitAnswer. Ép hệ thống đóng gói questionMetadata và questionContent vào mảng answers để Màn hình Review có đạn dược để báo cáo. Tuân thủ Điều 3.
 // ==================================================================================
 window.useExamLogic = function(apiKey) {
 const [examState, setExamState] = React.useState({
@@ -15497,8 +15973,18 @@ await window.FcDB.set(sessionId, playingState, 'exam_sessions');
 };
 // Ghi nhận câu trả lời và tự động chuyển câu / lưu Snapshot
 const submitAnswer = async (answerObj, isCorrect) => {
+// [VÁ LỖI TRẮNG REVIEW] Lấy dữ liệu nguyên tử của câu hỏi đang hiển thị
+const activeMeta = currentQuestion?.metadata;
+const activeContent = currentQuestion?.content;
 setExamState(prev => {
-const newAnswers = [...prev.answers, { index: prev.currentIndex, answer: answerObj, isCorrect: isCorrect }];
+// Đóng gói toàn bộ bối cảnh vào lịch sử trả lời để Review Modal có "Đạn"
+const newAnswers = [...prev.answers, {
+index: prev.currentIndex,
+answer: answerObj,
+isCorrect: isCorrect,
+questionMetadata: activeMeta,
+questionContent: activeContent
+}];
 const newScore = isCorrect ? prev.score + 1 : prev.score;
 const nextIndex = prev.currentIndex + 1;
 const isFinished = nextIndex >= prev.blueprint.length;
