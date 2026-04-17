@@ -738,10 +738,10 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.06
-// Last Updated: 2026-04-16 19:30
+// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.08
+// Last Updated: 2026-04-17 11:35
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các Prompt cho AI.
-// Cập nhật: [CHIẾN DỊCH NGHE] Bổ sung hàm getMicroTierListeningRule kiểm soát nghiêm ngặt số lượng câu và độ khó từ vựng cho Kịch bản nghe theo từng cấp độ. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [LỘ TRÌNH LẦN 3] Bơm lệnh "Bàn Tay Sắt" (Negative Prompting) vào getMicroTierReadingRule để cấm AI ảo giác từ vựng sinh học phức tạp (caterpillar, cocoon) ở Level Tiểu học. Tuân thủ tuyệt đối Điều 3.
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -822,7 +822,7 @@ en_level_9: ["Philosophy", "Ethics & Morality", "Abstract Sciences", "Societal S
 zh_level_1: ["Chào hỏi cơ bản (你好)", "Con số & Thời gian (几点)", "Gia đình (我家)", "Mua sắm cơ bản (多少钱)", "Đồ ăn (吃苹果)"],
 zh_level_2: ["Thời tiết & Mùa (天气)", "Phương hướng & Hỏi đường (怎么走)", "Thể thao (打篮球)", "Khám bệnh (我生病了)", "Công việc hàng ngày (上班)"],
 zh_level_3: ["Sở thích & Kế hoạch (打算)", "Trường học & Thi cử (考试)", "Lễ hội (中秋节)", "Cảm xúc (越来越胖)", "Ký极忆 (没去过)"],
-zh_level_4: ["Tình bạn & Tình yêu (真正的朋友)", "Phỏng vấn & Việc làm (面试)", "Tiêu dùng thông minh (一分钱一分货)", "Thành công & Thất bại (成功)", "Bảo vệ môi trường (保护地球)"],
+zh_level_4: ["Tình bạn & Tình yêu (真正的朋友)", "Phỏng vấn & Việc làm (面试)", "Tiêu dùng thông minh (一分钱一分货)", "Thành心 & Thất bại (成功)", "Bảo vệ môi trường (保护地球)"],
 zh_level_5: ["Triết lý nhân sinh (人生哲理)", "Hiện tượng xã hội (社会现象)", "Câu chuyện lịch sử (历史故事)", "Thói quen sức khỏe (健康生活)", "Giao thương kinh tế (经济贸易)"],
 zh_level_6: ["Khám phá khoa học (科学探索)", "Điển cố & Thành ngữ (成语故事)", "Thẩm mỹ & Nghệ thuật (艺术欣赏)", "Vấn đề toàn cầu (全球化)", "Tranh luận đa chiều (学术辩论)"],
 zh_level_7: ["Nghiên cứu giáo dục (教育研究)", "Chính sách & Pháp luật (法律政策)", "Quan hệ quốc tế (外交关系)", "Đột phá công nghệ (技术突破)", "Di sản văn hóa (文化遗产)"],
@@ -1058,10 +1058,10 @@ required: ["audioScript", "question", "options", "explanation"]
 pure_reading_passage: {
 type: "OBJECT",
 properties: {
-passage: { type: "STRING", description: "Đoạn văn đọc hiểu tiếng Anh học thuật hoặc đời sống, phù hợp với level. Dài khoảng 150-300 từ." },
+passage: { type: "STRING", description: "Đoạn văn đọc hiểu tiếng Anh học thuật hoặc đời sống, ĐỘ DÀI VÀ ĐỘ KHÓ PHỤ THUỘC TUYỆT ĐỐI VÀO LEVEL." },
 questions: {
 type: "ARRAY",
-description: "Mảng gồm 3 đến 5 câu hỏi liên quan chặt chẽ đến đoạn văn.",
+description: "Mảng gồm 2 đến 5 câu hỏi liên quan chặt chẽ đến đoạn văn (Tùy cấp độ).",
 items: {
 type: "OBJECT",
 properties: {
@@ -1236,6 +1236,18 @@ return "CRITICAL SCRIPT RULE: The 'audioScript' is a short cohesive paragraph or
 return "CRITICAL SCRIPT RULE: The 'audioScript' is an advanced academic monologue or news report (approx 50-80 words). Use complex sentence structures and high-level vocabulary.";
 }
 },
+// [NEW] HÀM KIỂM SOÁT ĐOẠN VĂN ĐỌC HIỂU (READING MATRIX)
+getMicroTierReadingRule: function(mappedKey) {
+if (['en_level_1', 'zh_level_1', 'level_1_kiddie'].includes(mappedKey)) {
+return "CRITICAL READING RULE (LEVEL 1): The 'passage' MUST BE EXTREMELY SHORT, exactly 3 to 4 simple sentences (maximum 20-30 words). Use ONLY 1-syllable basic nouns (e.g., cat, dog, sun, pen). ABSOLUTELY DO NOT use words like 'caterpillar', 'cocoon', 'butterfly', or describe lifecycles. Focus on simple objects in a house or school. DO NOT use compound sentences or relative clauses. Generate exactly 2-3 extremely simple questions.";
+} else if (['en_level_2', 'en_level_3', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) {
+return "CRITICAL READING RULE (LEVEL 2-3): The 'passage' MUST BE SHORT, exactly 5 to 7 sentences (around 40-70 words). Use simple descriptive language and basic action verbs. AVOID complex scientific terms (DO NOT use 'caterpillar', 'cocoon'). Focus on daily routines, friends, or simple hobbies. Generate exactly 3-4 simple questions.";
+} else if (['en_level_4', 'en_level_5', 'zh_level_4', 'zh_level_5'].includes(mappedKey)) {
+return "CRITICAL READING RULE (LEVEL 4-5): The 'passage' should be a medium-length text (around 80-120 words). Introduce basic compound sentences and intermediate vocabulary. Generate exactly 4-5 questions.";
+} else {
+return "CRITICAL READING RULE (LEVEL 6+): The 'passage' should be an academic or detailed text (150-300 words). Use advanced vocabulary, complex sentence structures, and academic tone. Generate exactly 5 questions.";
+}
+},
 // 6. HÀM TẠO LỆNH CHO AI PURE MODE
 buildPureModePrompt: function(levelKey, gameType, dataMode = 'vocab', topic = "") {
 const oldToNewMap = {
@@ -1300,7 +1312,9 @@ taskInstruction = "Generate ONE Listening comprehension task. CRITICAL RULES: 1.
 const rule = this.getMicroTierListeningRule(mappedKey);
 if (rule) pedagogyRule = "\n" + rule;
 } else if (gameType === 'reading_passage') {
-taskInstruction = "Generate ONE Reading Comprehension Passage (Tổ kén). CRITICAL RULES: 1. Create a 'passage' (around 150-300 words depending on level) strictly matching the topic and level context. 2. Create an array of 'questions' (3 to 5 questions). 3. Question types can be 'mcq' (Multiple Choice - provide 4 options), 'fill_blank' (Summary completion - answer must be exact words from text), or 'tfng' (True/False/Not Given - ask if a statement agrees with the text). 4. Each question MUST have a clear Vietnamese 'explanation' quoting the exact sentence in the passage.";
+taskInstruction = "Generate ONE Reading Comprehension Passage (Tổ kén). CRITICAL RULES: 1. Create a 'passage' strictly matching the topic, length, and level context requested. 2. Create an array of 'questions'. 3. Question types can be 'mcq' (Multiple Choice - provide 4 options), 'fill_blank' (Summary completion - answer must be exact words from text), or 'tfng' (True/False/Not Given). 4. Each question MUST have a clear Vietnamese 'explanation' quoting the exact sentence in the passage.";
+const rule = this.getMicroTierReadingRule(mappedKey);
+if (rule) pedagogyRule = "\n" + rule;
 }
 const diversityRule = "\nCRITICAL (ANTI-LAZINESS): Use rich, vivid vocabulary and diverse contexts. Flexibly vary sentence structures (complex sentences, relative clauses, passive voice, inversions, questions, etc.) naturally and appropriately for the level. ABSOLUTELY AVOID repeating basic S+V+O structures. Do not use overly common, generic, or 'lazy' words (e.g., 'apple', 'cat', 'happy', 'good') unless it is specifically Level 1.";
 return "You are an expert Language Tutor creating interactive exercises.\nTARGET LEVEL: " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + pedagogyRule + "\nRULES:\n1. The vocabulary and grammar complexity MUST strictly match the LEVEL CONTEXT. Do not use overly complex words for lower levels.\n2. Ensure the sentence is culturally neutral and easy to understand.\n3. Your output MUST be ONLY a raw JSON object matching the requested schema. Do not include markdown tags like ```json.\n4. " + diversityRule;
@@ -3131,11 +3145,11 @@ console.error(`[ExamEngine] Hydration fatally failed for ${meta.id}:`, e);
 return results;
 }
 };
-// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.04
-// Last Updated: 2026-04-16 19:00
+// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.05
+// Last Updated: 2026-04-17 11:45
 // Nhiệm vụ: Chứa định nghĩa chi tiết (Blueprints) của 6 cấu trúc đề thi (IOE-Mini, IOE-Std, IELTS-Mini, IELTS-Std, HSK-Mini, HSK-Std).
 // Chức năng: Xuất ra mảng metadata nguyên tử để truyền vào Block 2.7 (Atomic Exam Engine).
-// Cập nhật: [ĐIỀU CHỈNH MA TRẬN] Kích hoạt Kỹ năng Nghe (Listening) thực thụ cho cả khối Tiểu học (Level 1-3) với tỉ lệ phân bổ hợp lý, kết hợp cùng Game Hình ảnh. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [LỘ TRÌNH LẦN 3] Nâng cấp IOE-Mini lên 50 câu (25 phút). Phân bổ lại Ma trận chuẩn 5 kỹ năng theo cấp độ Tiểu học/Trung học. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 window.ExamProfiles = {
 // 1. TỪ ĐIỂN CẤU HÌNH ĐỀ THI TỔNG QUAN
@@ -3145,9 +3159,9 @@ id: 'ioe_mini',
 name: 'IOE Mini-Mock',
 track: 'ioe',
 mode: 'mini',
-totalQuestions: 30,
-timeLimit: 900,
-description: 'Bài thi rút gọn đánh giá nhanh phản xạ Tiếng Anh.'
+totalQuestions: 50,
+timeLimit: 1500,
+description: 'Bài thi rút gọn đánh giá nhanh phản xạ Tiếng Anh (50 câu).'
 },
 ioe_std: {
 id: 'ioe_std',
@@ -3233,25 +3247,29 @@ switch (profileId) {
 // TRACK: IOE (Tiếng Anh Phổ Thông)
 // ----------------------------------------------------
 case 'ioe_mini':
-// 1. Kỹ năng Nghe (3 câu)
+// [CHIẾN DỊCH NÂNG CẤP LẦN 3] - Ma trận 50 Câu
 if (isPrimary) {
-addQuestions(TYPE_LISTENING, 2, 'Kỹ năng Nghe (Listening)');
-addQuestions(TYPE_IMAGE_QUIZ, 1, 'Kỹ năng Hình ảnh');
-} else {
-addQuestions(TYPE_LISTENING, 3, 'Kỹ năng Nghe (Listening)');
-}
-// 2. Ngữ âm (2 câu)
-addQuestions(TYPE_PRONUNCIATION, 2, 'Ngữ âm & Trọng âm');
-// 3. Từ vựng & Ngữ pháp
+// CẤP TIỂU HỌC
+addQuestions(TYPE_LISTENING, 5, 'Kỹ năng Nghe (Listening)');
+addQuestions(TYPE_IMAGE_QUIZ, 5, 'Kỹ năng Hình ảnh');
+addQuestions(TYPE_PRONUNCIATION, 5, 'Ngữ âm & Trọng âm');
 addQuestions(types.IOE_MATCH, 5, 'Nhận diện Từ vựng');
-addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 'Ngữ pháp Tổng hợp');
-// 4. Đọc hiểu đoạn văn - Bơm Tổ kén vào IOE (5 câu)
+addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 'Ngữ pháp Tổng hợp');
+addQuestions(types.IOE_ODD_ONE_OUT, 5, 'Từ khác loại');
 addQuestions(TYPE_READING_PASSAGE, 5, 'Đọc hiểu Đoạn văn', `ioe_passage_mini_${Date.now()}`);
-// 5. Kỹ năng nâng cao
-addQuestions(types.IOE_ODD_ONE_OUT, 3, 'Từ khác loại');
-addQuestions(types.IOE_SPOT_MISTAKE, 2, 'Săn lỗi sai Ngữ pháp');
-addQuestions(types.IOE_FILL_BLANK, 3, 'Điền từ khóa');
-addQuestions(types.IOE_SCRAMBLE, 2, 'Tái cấu trúc câu');
+addQuestions(types.IOE_FILL_BLANK, 5, 'Điền từ khóa');
+addQuestions(types.IOE_SCRAMBLE, 5, 'Tái cấu trúc câu');
+} else {
+// CẤP TRUNG HỌC
+addQuestions(TYPE_LISTENING, 10, 'Kỹ năng Nghe (Listening)');
+addQuestions(TYPE_PRONUNCIATION, 5, 'Ngữ âm & Trọng âm');
+addQuestions(types.IOE_MATCH, 5, 'Nhận diện Từ vựng');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 'Ngữ pháp Tổng hợp');
+addQuestions(types.IOE_SPOT_MISTAKE, 5, 'Săn lỗi sai Ngữ pháp');
+addQuestions(TYPE_READING_PASSAGE, 5, 'Đọc hiểu Đoạn văn', `ioe_passage_mini_${Date.now()}`);
+addQuestions(types.IOE_FILL_BLANK, 5, 'Điền từ khóa');
+addQuestions(types.IOE_SCRAMBLE, 5, 'Tái cấu trúc câu');
+}
 break;
 case 'ioe_std':
 // Kỹ năng Nghe / Hình ảnh (20 câu)
@@ -5500,15 +5518,17 @@ return (
 window.ApiKeyModal = ApiKeyModal;
 window.LinkManagerModal = LinkManagerModal;
 window.ManualInputModal = ManualInputModal;
-// Block4.7: TẦNG 4: CÁC TÍNH NĂNG & MODALS (In-game Helper Modals) - Version 1.1
-// Last Updated: 2026-04-04 13:55
+// Block4.7: TẦNG 4: CÁC TÍNH NĂNG & MODALS (In-game Helper Modals) - Version 1.02
+// Last Updated: 2026-04-17 11:35
 // Nhiệm vụ: Chuyên trách các công cụ phụ trợ bật lên trong quá trình học.
 // Gồm: WordSelectorModal, HanziSelectorModal
+// Cập nhật: [CUSTOM BOOKMARK] Thêm ô nhập liệu Custom Bookmark. Tích hợp Auto-capture bôi đen văn bản (Highlight) để tự điền từ. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
-// [UPDATED] Hỗ trợ Dual-Payload: Nhận vào chuỗi hoặc Object có {isSmartTarget: true}
+// [UPDATED v1.02] Hỗ trợ Custom Input và Auto-capture Highlight
 const WordSelectorModal = ({ isOpen, onClose, onSave, text, currentLang, t, mainColor }) => {
 const [selectedIndices, setSelectedIndices] = React.useState(new Set());
 const [words, setWords] = React.useState([]);
+const [customInput, setCustomInput] = React.useState(''); // [NEW v1.02] State cho Custom Bookmark
 // Xử lý Dual-Payload
 const isSmartObject = typeof text === 'object' && text !== null && text.isSmartTarget;
 const displayText = isSmartObject ? text.display : (text || "");
@@ -5518,11 +5538,30 @@ if (!displayText) { setWords([]); return; }
 if (currentLang === 'zh') { setWords([...displayText].filter(c => c.trim().length > 0)); }
 else { setWords(displayText.split(' ').filter(w => w.length > 0)); }
 setSelectedIndices(new Set());
+// [NEW v1.02] Auto-capture Highlighted Text (Chộp lấy đoạn text đang bôi đen trên trình duyệt)
+if (isOpen) {
+try {
+const highlighted = window.getSelection().toString().trim();
+if (highlighted) {
+setCustomInput(highlighted);
+} else {
+setCustomInput('');
+}
+} catch (e) {
+setCustomInput('');
+}
+}
 }, [displayText, currentLang, isOpen]);
 const toggleWord = (index) => {
 const newSet = new Set(selectedIndices);
 newSet.has(index) ? newSet.delete(index) : newSet.add(index);
 setSelectedIndices(newSet);
+};
+// [NEW v1.02] Xử lý lưu từ tùy chọn
+const handleCustomSave = () => {
+if (!customInput.trim()) return;
+onSave([customInput.trim()], false);
+setCustomInput('');
 };
 if (!isOpen) return null;
 const selectedWordsList = words.filter((_, i) => selectedIndices.has(i));
@@ -5530,11 +5569,14 @@ const Icons = window.Icons;
 return (
 <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
 <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
-<div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-<h3 className="font-bold text-gray-700">{t('selectWordsToSave')}</h3>
-<button onClick={onClose} data-tooltip={t('ttClose')}><Icons.X size={20} /></button>
+<div className="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
+<h3 className="font-bold text-gray-700">{t('selectWordsToSave') || 'Lưu Sổ Tay'}</h3>
+<button onClick={onClose} data-tooltip={t('ttClose')} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.X size={20} /></button>
 </div>
-<div className="p-6 overflow-y-auto max-h-[60vh]">
+<div className="p-5 overflow-y-auto max-h-[60vh] custom-scrollbar flex flex-col gap-6">
+{/* Phần 1: Các từ có sẵn từ Câu hỏi */}
+<div>
+<p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">Chọn từ trong câu</p>
 <div className="flex flex-wrap gap-2 justify-center">
 {words.map((word, idx) => (
 <button key={idx} onClick={() => toggleWord(idx)} className={`px-3 py-2 rounded-lg border transition-all text-base sm:text-lg font-medium ${selectedIndices.has(idx) ? `bg-orange-100 border-${mainColor}-500 text-${mainColor}-700 shadow-md` : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
@@ -5543,9 +5585,33 @@ return (
 ))}
 </div>
 </div>
-<div className="p-4 border-t bg-gray-50 flex flex-col gap-2">
+{/* Phần 2: [NEW v1.02] Nhập từ tùy chọn (Custom Input) */}
+<div className="border-t border-gray-100 pt-5">
+<p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">Hoặc lưu từ tùy chọn</p>
 <div className="flex gap-2">
-<button onClick={() => onSave(selectedWordsList, false)} disabled={selectedIndices.size === 0} className={`flex-1 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-${mainColor}-700 shadow-md transition-all active:scale-95`}>
+<input
+type="text"
+value={customInput}
+onChange={(e) => setCustomInput(e.target.value)}
+onKeyDown={(e) => e.key === 'Enter' && handleCustomSave()}
+placeholder="Gõ hoặc bôi đen từ..."
+className={`flex-1 p-3 border-2 border-gray-200 rounded-xl outline-none focus:border-${mainColor}-500 focus:ring-2 focus:ring-${mainColor}-100 transition-all font-bold text-gray-700 shadow-inner`}
+/>
+<button
+onClick={handleCustomSave}
+disabled={!customInput.trim()}
+className={`px-4 bg-${mainColor}-600 text-white rounded-xl font-bold shadow-md hover:bg-${mainColor}-700 disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center`}
+title="Lưu từ này"
+>
+<Icons.Save size={20} />
+</button>
+</div>
+{customInput && <p className="text-[10px] text-blue-500 mt-2 font-bold italic text-center animate-in fade-in">Hệ thống AI sẽ tự động tra nghĩa cho từ này!</p>}
+</div>
+</div>
+<div className="p-4 border-t bg-gray-50 flex flex-col gap-2 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative z-10">
+<div className="flex gap-2">
+<button onClick={() => onSave(selectedWordsList, false)} disabled={selectedIndices.size === 0} className={`flex-1 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-orange-600 shadow-md transition-all active:scale-95`}>
 {t('saveSelected')} ({selectedIndices.size})
 </button>
 <button onClick={() => onSave(selectedWordsList, true)} disabled={selectedIndices.size < 2} className={`flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-purple-700 shadow-md transition-all active:scale-95 flex items-center justify-center gap-1`} title="Ghép các từ đã chọn thành 1 từ vựng mới">
@@ -5582,7 +5648,7 @@ return (
 <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
 <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
 <h3 className="font-bold text-gray-700">Chọn chữ để tập viết</h3>
-<button onClick={onClose}><Icons.X size={20} /></button>
+<button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.X size={20} /></button>
 </div>
 <div className="p-6">
 {chars.length === 0 ? (
@@ -5602,7 +5668,7 @@ className="w-16 h-16 text-3xl font-serif border-2 border-gray-200 rounded-xl hov
 )}
 </div>
 <div className="p-4 border-t bg-gray-50 text-center">
-<button onClick={onClose} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-200 rounded-lg">Đóng</button>
+<button onClick={onClose} className="w-full py-3 bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 rounded-xl transition-colors">Đóng</button>
 </div>
 </div>
 </div>
@@ -16071,32 +16137,82 @@ quitExam,
 setTransitionState
 };
 };
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.02
-// Last Updated: 2026-04-15 19:40
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.05
+// Last Updated: 2026-04-16 23:30
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [VÁ LỖI DỮ LIỆU MA] Kéo cáp onOpenIncorrect và hệ thống Túi nháp (RetryBag) xuống GameView để phục vụ Bài thi Tổng hợp và Mini-game. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [QA DEBUG V3] Thay đổi UI Lỗi mạng thành "Thoát" và đưa về trạng thái Idle. Tiêu diệt bóng ma dataLogic gây khởi tạo Hook kép (Memory Leak/State Sync Issue). Chuyển toàn bộ cáp dataLogic?. sang logic.actions?. Tuân thủ Điều 3.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
 const [isReady, setIsReady] = React.useState(false);
+const [loadError, setLoadError] = React.useState(false);
+const [isIdle, setIsIdle] = React.useState(false); // [NEW v1.05] Trạng thái chờ mạng an toàn
 React.useEffect(() => {
+let attempts = 0;
+const maxAttempts = 100; // Giới hạn 10 giây (100 * 100ms)
+let timeoutId;
 const checkDependencies = () => {
-// Sử dụng tên định danh mới của Tầng 6 & Tầng 2
-const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB'];
+if (isIdle) return; // Dừng check nếu đang ở trạng thái chờ
+const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB', 'useAppLogic', 'useAiLogic', 'useDataLogic', 'useExamLogic', 'ExamUIShell'];
 const missing = required.filter(dep => !window[dep]);
 if (missing.length === 0) {
 setIsReady(true);
+setLoadError(false);
 } else {
-console.log("Waiting for blocks:", missing);
-setTimeout(checkDependencies, 100); // Polling
+attempts++;
+if (attempts >= maxAttempts) {
+console.error("[App] Failed to load dependencies after 10s:", missing);
+setLoadError(true);
+} else {
+console.log(`[App] Waiting for blocks (attempt ${attempts}):`, missing);
+timeoutId = setTimeout(checkDependencies, 100); // Polling
+}
 }
 };
 checkDependencies();
-}, []);
+return () => {
+if (timeoutId) clearTimeout(timeoutId);
+};
+}, [isIdle]); // Chạy lại hiệu ứng nếu isIdle thay đổi từ true -> false
+// [NEW v1.05] Màn hình Lỗi Mạng chuẩn UX mới
+if (loadError && !isIdle) {
+return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center animate-in fade-in" },
+React.createElement('div', { className: "w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-inner" },
+React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: "32", height: "32", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" },
+React.createElement('circle', { cx: "12", cy: "12", r: "10" }),
+React.createElement('line', { x1: "12", y1: "8", x2: "12", y2: "12" }),
+React.createElement('line', { x1: "12", y1: "16", x2: "12.01", y2: "16" })
+)
+),
+React.createElement('h2', { className: "text-2xl font-black text-gray-800 mb-2" }, "Lỗi kết nối mạng!"),
+React.createElement('p', { className: "text-gray-500 mb-8 max-w-sm leading-relaxed text-sm" }, "Không thể kết nối đến máy chủ để tải tài nguyên trò chơi. Vui lòng kiểm tra lại Wifi/3G."),
+React.createElement('button', {
+onClick: () => setIsIdle(true),
+className: "px-8 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl shadow-sm hover:bg-gray-300 transition-transform active:scale-95"
+}, "Thoát")
+);
+}
+// [NEW v1.05] Trạng thái Idle chờ kết nối
+if (isIdle) {
+return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center animate-in fade-in" },
+React.createElement('div', { className: "w-16 h-16 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center mb-6 shadow-inner" },
+React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: "32", height: "32", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" },
+React.createElement('polyline', { points: "23 4 23 10 17 10" }),
+React.createElement('polyline', { points: "1 20 1 14 7 14" }),
+React.createElement('path', { d: "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" })
+)
+),
+React.createElement('h2', { className: "text-xl font-bold text-gray-600 mb-6" }, "Đang chờ kết nối..."),
+React.createElement('button', {
+onClick: () => { setIsIdle(false); setLoadError(false); },
+className: "px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-transform active:scale-95"
+}, "Thử kết nối lại")
+);
+}
 if (!isReady) {
-return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50" },
-React.createElement('div', { className: "w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" }),
-React.createElement('p', { className: "text-gray-500 font-bold animate-pulse" }, "Đang khởi động ứng dụng...")
+return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50 animate-in fade-in" },
+React.createElement('div', { className: "w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4 shadow-sm" }),
+React.createElement('p', { className: "text-indigo-600 font-bold animate-pulse tracking-widest uppercase text-sm" }, "Đang khởi động...")
 );
 }
 return React.createElement(MainAppContent);
@@ -16107,16 +16223,15 @@ const MainAppContent = () => {
 // ============================================================================
 const useAppLogic = window.Block6_4_useAppLogic || window.useAppLogic;
 const useAiLogic = window.Block6_2_useAiLogic || window.useAiLogic;
-const useDataLogic = window.Block6_3_useDataLogic || window.useDataLogic;
 const coreState = window.Block6_1_useCoreState();
 const coreStateRef = React.useRef(coreState);
 React.useEffect(() => {
 coreStateRef.current = coreState;
 }, [coreState]);
 // Khởi tạo các Custom Hooks logic (luôn luôn được gọi, dù isDbReady là false)
+// [VÁ LỖI V1.05] Đã gỡ bỏ dòng const dataLogic = ... để chống khởi tạo kép (Memory Leak)
 const logic = useAppLogic ? useAppLogic(coreState) : {};
 const ai = (useAiLogic && logic.actions) ? useAiLogic(coreState, coreStateRef, logic.actions) : {};
-const dataLogic = (useDataLogic && logic.actions) ? useDataLogic(coreState, coreStateRef, logic.actions) : {};
 // Gán Global Toast
 React.useEffect(() => {
 window.globalShowToast = coreState.setToast;
@@ -16147,7 +16262,7 @@ logic.actions.handleNotebookSave(data);
 if (!coreState.isDbReady) {
 return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50" },
 React.createElement('div', { className: "w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" }),
-React.createElement('p', { className: "text-blue-600 font-bold animate-pulse" }, "Đang nạp dữ liệu từ Database...")
+React.createElement('p', { className: "text-blue-600 font-bold animate-pulse tracking-widest uppercase text-sm" }, "Nạp CSDL IndexedDB...")
 );
 }
 // ============================================================================
@@ -16178,7 +16293,7 @@ onPlay: logic.actions?.speak,
 onBookmark: handleSmartBookmark,
 notebook: coreState.notebook,
 showToast: coreState.setToast,
-onLogWrong: dataLogic?.handleLogWrong,
+onLogWrong: logic.actions?.handleLogWrong,
 onOpenIncorrect: logic.actions?.handleOpenIncorrect,
 globalRetryBag: coreState.globalRetryBag,
 addToRetryBag: logic.actions?.addToRetryBag,
@@ -16193,8 +16308,9 @@ if (window.CONFIG_SAMPLES && window.CONFIG_SAMPLES[coreState.lang]) {
 window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[coreState.lang].dataKey, newCards);
 }
 },
-onSaveToHarvest: dataLogic?.handleSaveToHarvest,
+onSaveToHarvest: logic.actions?.handleSaveToHarvest,
 currentLevel: coreState.currentLevel,
+currentTopic: coreState.currentTopic, // Cắm cáp Topic cho AI
 dataMode: coreState.dataMode
 });
 } else {
@@ -16213,7 +16329,7 @@ onOpenIncorrect: logic.actions?.handleOpenIncorrect,
 onOpenLinkManager: () => coreState.setShowLinkManager(true),
 onOpenManual: () => coreState.setShowManual(true),
 onOpenHelp: logic.actions?.handleOpenHelp,
-onReload: dataLogic?.handleReloadDefault,
+onReload: logic.actions?.handleReloadDefault,
 t: logic.actions?.t,
 studySourceName: coreState.studySourceName,
 onExitStudyMode: logic.actions?.handleExitStudyMode,
@@ -16247,8 +16363,8 @@ onEnrichCard: ai?.handleAiEnrichCard,
 onNext: logic.actions?.handleNext,
 onPrev: logic.actions?.handlePrev,
 onExplainGrammar: () => ai?.handleExplainGrammar(coreState.currentCardIndex),
-onSrsGrade: dataLogic?.handleSrsGrade,
-onResetSrs: dataLogic?.handleResetSrs,
+onSrsGrade: logic.actions?.handleSrsGrade,
+onResetSrs: logic.actions?.handleResetSrs,
 isContentHidden: coreState.isContentHidden,
 isMuted: coreState.isMuted,
 onToggleMute: logic.actions?.handleToggleMute,
@@ -16274,7 +16390,7 @@ handleStopAutoPlay: logic.actions?.handleStopAutoPlay,
 isFlipLocked: coreState.isFlipLocked,
 setIsFlipLocked: coreState.setIsFlipLocked,
 handleOpenWordSelector: logic.actions?.handleOpenWordSelector,
-handleMarkMastered: dataLogic?.handleMarkMastered,
+handleMarkMastered: logic.actions?.handleMarkMastered,
 t: logic.actions?.t,
 mainColor: appMainColor,
 isCurrentCardInNotebook: coreState.state?.isCurrentCardInNotebook,
@@ -16306,7 +16422,7 @@ onClose: () => coreState.setShowSettings(false),
 onApply: () => coreState.setShowSettings(false),
 initialSettings: coreState.settings,
 onUpdate: coreState.setSettings,
-onResetData: dataLogic?.handleResetSettings,
+onResetData: logic.actions?.handleResetSettings,
 currentLang: coreState.lang,
 t: logic.actions?.t,
 uiLang: coreState.uiLang,
@@ -16328,7 +16444,7 @@ coreState.showNotebook && renderComponent('NotebookModal', {
 isOpen: true,
 onClose: () => coreState.setShowNotebook(false),
 data: coreState.notebook,
-onSave: dataLogic?.handleNotebookSave,
+onSave: logic.actions?.handleNotebookSave,
 onPlay: logic.actions?.speak,
 t: logic.actions?.t,
 mainColor: appMainColor,
@@ -16336,7 +16452,7 @@ onStudy: logic.actions?.handleStudyNotebook,
 onDelete: (idx) => { },
 apiKey: coreState.apiKey,
 lang: coreState.lang,
-onCopy: dataLogic?.handleCopyForSheet,
+onCopy: logic.actions?.handleCopyForSheet,
 sourceData: coreState.cards,
 onQuiz: logic.actions?.handleQuizNotebook,
 onScramble: logic.actions?.handleScrambleNotebook,
@@ -16354,24 +16470,24 @@ importUrl: coreState.importUrl,
 setImportUrl: coreState.setImportUrl,
 apiKeySheetUrl: coreState.apiKeySheetUrl,
 setApiKeySheetUrl: coreState.setApiKeySheetUrl,
-onImport: dataLogic?.handleImport,
-onImportToNotebook: dataLogic?.handleImportToNotebook,
-onExportLink: dataLogic?.handleExportLink,
-onExportExcel: dataLogic?.handleExportExcel,
-onFileImport: dataLogic?.handleFileImport,
+onImport: logic.actions?.handleImport,
+onImportToNotebook: logic.actions?.handleImportToNotebook,
+onExportLink: logic.actions?.handleExportLink,
+onExportExcel: logic.actions?.handleExportExcel,
+onFileImport: logic.actions?.handleFileImport,
 onSaveSettings: (k, v) => localStorage.setItem(k, v),
-onFetchKey: dataLogic?.handleFetchApiKey,
-onDownloadTemplate: dataLogic?.handleDownloadTemplate,
+onFetchKey: logic.actions?.handleFetchApiKey,
+onDownloadTemplate: logic.actions?.handleDownloadTemplate,
 lang: coreState.lang,
 aiHarvestPool: coreState.aiHarvestPool,
-onExportHarvestToExcel: dataLogic?.handleExportHarvestToExcel,
-onClearHarvestPool: dataLogic?.handleClearHarvestPool
+onExportHarvestToExcel: logic.actions?.handleExportHarvestToExcel,
+onClearHarvestPool: logic.actions?.handleClearHarvestPool
 }),
 coreState.showManual && renderComponent('ManualInputModal', {
 isOpen: true,
 onClose: () => coreState.setShowManual(false),
-onImport: dataLogic?.handleManualImport,
-onAddCard: dataLogic?.handleAddCard,
+onImport: logic.actions?.handleManualImport,
+onAddCard: logic.actions?.handleAddCard,
 onAutoFill: ai?.handleManualAiFill,
 t: logic.actions?.t,
 mainColor: appMainColor
@@ -16380,7 +16496,7 @@ coreState.showIncorrectModal && renderComponent('IncorrectModal', {
 isOpen: true,
 onClose: logic.actions?.handleCloseIncorrect,
 data: coreState.incorrectList,
-onRemove: dataLogic?.handleRemoveWrong,
+onRemove: logic.actions?.handleRemoveWrong,
 onRemoveAll: logic.actions?.handleRemoveAllIncorrect,
 onStudy: logic.actions?.handleStudyIncorrect,
 onQuiz: logic.actions?.handleQuizIncorrect,
@@ -16393,8 +16509,8 @@ coreState.showMastered && renderComponent('MasteredModal', {
 isOpen: true,
 onClose: () => coreState.setShowMastered(false),
 data: coreState.mastered,
-onRestore: dataLogic?.handleRestoreMastered,
-onRestoreAll: dataLogic?.handleRestoreAllMastered,
+onRestore: logic.actions?.handleRestoreMastered,
+onRestoreAll: logic.actions?.handleRestoreAllMastered,
 t: logic.actions?.t,
 mainColor: appMainColor
 }),
@@ -16403,7 +16519,7 @@ isOpen: true,
 onClose: () => coreState.setShowWordSelect(false),
 text: coreState.wordSelectTarget,
 currentLang: coreState.lang,
-onSave: dataLogic?.handleSaveWords,
+onSave: logic.actions?.handleSaveWords,
 t: logic.actions?.t,
 mainColor: appMainColor
 }),
@@ -16438,8 +16554,8 @@ mainColor: appMainColor
 coreState.showSaveLoadModal && renderComponent('SaveLoadModal', {
 isOpen: true,
 onClose: logic.actions?.handleCloseSaveLoad,
-onExport: dataLogic?.handleExportSaveFile,
-onImport: dataLogic?.handleImportSaveFile,
+onExport: logic.actions?.handleExportSaveFile,
+onImport: logic.actions?.handleImportSaveFile,
 t: logic.actions?.t,
 mainColor: appMainColor
 }),
