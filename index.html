@@ -8973,10 +8973,10 @@ queueLength={queueLength}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.08
-// Last Updated: 2026-04-16 15:40
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.10
+// Last Updated: 2026-04-17 16:15
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [MOCK TEST REVIEW - HORIZONTAL UPDATE] Kéo cáp onBookmark và notebook truyền thẳng vào ExamUIShell phục vụ tính năng lưu từ vựng tại màn hình xem lại lỗi sai (Review Modal). Tuân thủ tuyệt đối Điều 3 và 4 Hiến Pháp.
+// Cập nhật: [QA DEBUG V4] Vá lỗi iOS Listening: Cắm cáp onPlay và lang cho ExamUIShell để truyền sức mạnh xử lý giọng nói xuống Tầng 5.14. Tuân thủ tuyệt đối Điều 3.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
 const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions, onStartMockTest }) => {
@@ -9159,7 +9159,7 @@ title="Bật/Tắt AI tạo nhiễu khó"
 </button>
 <button onClick={() => onStartMockTest(lang === 'zh' ? 'hsk_mini' : 'ioe_mini')} className="flex-1 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-xs font-bold transition-colors border border-white/30 active:scale-95 flex flex-col items-center">
 <span>Mini Test</span>
-<span className="text-[9px] font-normal opacity-90">{lang === 'zh' ? '(15 câu)' : '(30 câu)'}</span>
+<span className="text-[9px] font-normal opacity-90">{lang === 'zh' ? '(15 câu)' : '(50 câu)'}</span>
 </button>
 </div>
 </div>
@@ -9454,6 +9454,8 @@ onLogWrong={onLogWrong}
 onOpenIncorrect={onOpenIncorrect}
 onBookmark={onBookmark}
 notebook={notebook}
+onPlay={onPlay}
+lang={lang}
 />
 </div>
 )}
@@ -12524,10 +12526,10 @@ window.Block5_13_useOddOneOutLogic = useOddOneOutLogic;
 window.useOddOneOutLogic = useOddOneOutLogic;
 window.Block5_13_OddOneOutGame = OddOneOutGame;
 window.OddOneOutGame = OddOneOutGame;
-// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.13
-// Last Updated: 2026-04-16 18:15
+// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.17
+// Last Updated: 2026-04-17 16:45
 // Nhiệm vụ: Khung giao diện bài thi tổng hợp. Bao gồm Header, Timer, SplitView và các Renderers nguyên tử.
-// Cập nhật: [CHIẾN DỊCH NÂNG CẤP KÉP] Bổ sung ListeningRenderer (Nút loa ẩn Script, giới hạn 3 lượt nghe). Kích hoạt SplitViewContainer chẻ đôi màn hình khi nhận diện Tổ kén Đọc hiểu (Passage). Tuân thủ Điều 3.
+// Cập nhật: [QA DEBUG V6] Vá lỗi Ghost Audio trên iOS bằng tín hiệu đè onPlay(''). Đồng bộ thuật toán advancedNormalize cho OddOneOut. Gỡ bỏ dangerouslySetInnerHTML ở SplitView để chống sập DOM. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. CÁC ATOMIC RENDERERS (GIAO DIỆN TỐI GIẢN CHO TỪNG DẠNG BÀI) ---
 const MultipleChoiceRenderer = ({ content, onAnswer }) => {
@@ -12557,31 +12559,59 @@ className={`p-5 border-2 border-gray-200 rounded-2xl text-lg font-medium transit
 </div>
 );
 };
-// [NEW] LISTENING RENDERER (Giao diện Kỹ năng Nghe - Hidden Script)
-const ListeningRenderer = ({ content, onAnswer }) => {
+// LISTENING RENDERER (Chống kẹt UI iOS và Bắt Voice chuẩn)
+const ListeningRenderer = ({ content, onAnswer, onPlay, lang }) => {
 const [isSubmitted, setIsSubmitted] = React.useState(false);
 const [isPlaying, setIsPlaying] = React.useState(false);
 const [playCount, setPlayCount] = React.useState(0);
 const maxPlays = 3;
+const timeoutRef = React.useRef(null);
 React.useEffect(() => {
+if (window.speechSynthesis) {
+window.speechSynthesis.getVoices();
+}
 return () => {
 if (window.speechSynthesis) window.speechSynthesis.cancel();
+if (timeoutRef.current) clearTimeout(timeoutRef.current);
+// [QA VÁ LỖI MŨI NHỌN 1] Chặn Ghost Audio rò rỉ từ Tầng 6
+if (onPlay) onPlay('');
 };
-}, []);
+}, [onPlay]);
 const handlePlay = () => {
 if (isPlaying || playCount >= maxPlays) return;
 setIsPlaying(true);
 setPlayCount(p => p + 1);
+let isDone = false;
+const finishPlay = () => {
+if (!isDone) {
+isDone = true;
+setIsPlaying(false);
+if (timeoutRef.current) clearTimeout(timeoutRef.current);
+}
+};
+const durationMs = Math.max(10000, (content.audioScript?.length || 0) * 150);
+timeoutRef.current = setTimeout(() => {
+if (window.speechSynthesis) window.speechSynthesis.cancel();
+finishPlay();
+}, durationMs);
+if (onPlay) {
+onPlay(content.audioScript, 0.9, null, finishPlay);
+} else {
 if (window.speechSynthesis) {
 window.speechSynthesis.cancel();
 const u = new SpeechSynthesisUtterance(content.audioScript);
-u.lang = 'en-US'; // Bài thi IOE/IELTS mặc định dùng tiếng Anh cho Listening
+const detectedLang = lang === 'zh' ? 'zh-CN' : (lang === 'vi' ? 'vi-VN' : 'en-US');
+u.lang = detectedLang;
+const voices = window.speechSynthesis.getVoices();
+const voice = voices.find(v => v.lang === detectedLang) || voices.find(v => v.lang.startsWith(detectedLang.split('-')[0]));
+if (voice) u.voice = voice;
 u.rate = 0.9;
-u.onend = () => setIsPlaying(false);
-u.onerror = () => setIsPlaying(false);
+u.onend = finishPlay;
+u.onerror = finishPlay;
 window.speechSynthesis.speak(u);
 } else {
-setIsPlaying(false);
+finishPlay();
+}
 }
 };
 const handleSelect = (opt) => {
@@ -12773,21 +12803,16 @@ className={`p-5 border-2 border-purple-100 rounded-2xl text-lg font-bold transit
 </div>
 );
 };
-const FillBlankRenderer = ({ content, onAnswer }) => {
+// FillBlank Renderer - Chuẩn hóa thuật toán chấm điểm và Gỡ bỏ autoFocus
+const FillBlankRenderer = ({ content, onAnswer, lang }) => {
 const [val, setVal] = React.useState('');
 const [isSubmitted, setIsSubmitted] = React.useState(false);
 const inputRef = React.useRef(null);
-React.useEffect(() => {
-const timer = setTimeout(() => {
-if (inputRef.current && !isSubmitted) inputRef.current.focus();
-}, 100);
-return () => clearTimeout(timer);
-}, [isSubmitted]);
 const handleSubmit = () => {
 if (!val.trim() || isSubmitted) return;
 setIsSubmitted(true);
 if (inputRef.current) inputRef.current.blur();
-const isCorrect = val.trim().toLowerCase() === content.targetWord.toLowerCase();
+const isCorrect = window.Utils.advancedNormalize(val, lang) === window.Utils.advancedNormalize(content.targetWord, lang);
 onAnswer(val, isCorrect);
 };
 return (
@@ -12824,7 +12849,8 @@ className="px-6 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-
 </div>
 );
 };
-const SpotMistakeRenderer = ({ content, onAnswer }) => {
+// SpotMistake Renderer - Chuẩn hóa thuật toán chấm điểm và Gỡ bỏ autoFocus
+const SpotMistakeRenderer = ({ content, onAnswer, lang }) => {
 const [step, setStep] = React.useState(1);
 const [selectedWord, setSelectedWord] = React.useState('');
 const [correction, setCorrection] = React.useState('');
@@ -12833,21 +12859,12 @@ const inputRef = React.useRef(null);
 const isChinese = /[\u4e00-\u9fa5]/.test(content.wrongSentence);
 const separator = isChinese ? '' : ' ';
 const words = content.wrongSentence.split(separator).filter(w => w.trim().length > 0 || isChinese);
-React.useEffect(() => {
-let timer;
-if (step === 2 && !isSubmitted) {
-timer = setTimeout(() => {
-if (inputRef.current) inputRef.current.focus();
-}, 100);
-}
-return () => { if (timer) clearTimeout(timer); };
-}, [step, isSubmitted]);
 const handleSubmit = () => {
 if (!correction.trim() || isSubmitted) return;
 setIsSubmitted(true);
 if (inputRef.current) inputRef.current.blur();
-const isCorrectWord = selectedWord.replace(/[.,?!]/g, '').toLowerCase() === content.wrongWord.toLowerCase();
-const isCorrectFix = correction.trim().toLowerCase() === content.correction.toLowerCase();
+const isCorrectWord = window.Utils.advancedNormalize(selectedWord, lang) === window.Utils.advancedNormalize(content.wrongWord, lang);
+const isCorrectFix = window.Utils.advancedNormalize(correction, lang) === window.Utils.advancedNormalize(content.correction, lang);
 onAnswer({ selectedWord, correction }, isCorrectWord && isCorrectFix);
 };
 return (
@@ -12892,7 +12909,7 @@ className="px-6 bg-red-600 text-white rounded-2xl font-bold shadow-lg hover:bg-r
 </div>
 );
 };
-const ScrambleRenderer = ({ content, onAnswer }) => {
+const ScrambleRenderer = ({ content, onAnswer, lang }) => {
 const [parts, setParts] = React.useState([]);
 const [userAnswer, setUserAnswer] = React.useState([]);
 const [isSubmitted, setIsSubmitted] = React.useState(false);
@@ -12919,7 +12936,7 @@ const handleSubmit = () => {
 if (userAnswer.length === 0 || isSubmitted) return;
 setIsSubmitted(true);
 const ansStr = userAnswer.map(p => p.text).join(separator);
-onAnswer(ansStr, window.Utils.advancedNormalize(ansStr, 'en') === window.Utils.advancedNormalize(content.term, 'en'));
+onAnswer(ansStr, window.Utils.advancedNormalize(ansStr, lang) === window.Utils.advancedNormalize(content.term, lang));
 };
 const isChinese = /[\u4e00-\u9fa5]/.test(content.term);
 const separator = isChinese ? '' : ' ';
@@ -12957,12 +12974,14 @@ className="mt-2 px-10 py-4 bg-green-500 text-white text-xl font-bold rounded-2xl
 </div>
 );
 };
-const OddOneOutRenderer = ({ content, onAnswer }) => {
+// [QA VÁ LỖI MŨI NHỌN 2] Thêm prop lang và dùng advancedNormalize
+const OddOneOutRenderer = ({ content, onAnswer, lang }) => {
 const [isSubmitted, setIsSubmitted] = React.useState(false);
 const handleSelect = (w) => {
 if (isSubmitted) return;
 setIsSubmitted(true);
-onAnswer(w, w === content.oddWord);
+const isCorrect = window.Utils.advancedNormalize(w, lang || 'en') === window.Utils.advancedNormalize(content.oddWord, lang || 'en');
+onAnswer(w, isCorrect);
 };
 return (
 <div className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto animate-in zoom-in duration-300">
@@ -12985,6 +13004,7 @@ className={`p-6 md:p-8 border-2 rounded-2xl text-xl sm:text-2xl font-bold transi
 );
 };
 // --- 2. SPLIT VIEW CONTAINER (Cho IELTS Reading) ---
+// [QA VÁ LỖI MŨI NHỌN 3] Gỡ bỏ dangerouslySetInnerHTML, dùng render an toàn
 const SplitViewContainer = ({ passage, children }) => {
 return (
 <div className="flex flex-col lg:flex-row w-full h-full gap-4 p-4 lg:p-6 bg-gray-50">
@@ -12992,7 +13012,14 @@ return (
 <h2 className="text-xl font-black mb-4 font-serif text-gray-800 border-b pb-2 flex items-center gap-2">
 <window.Icons.BookOpen size={24} className="text-blue-600" /> Reading Passage
 </h2>
-<div className="text-gray-700 leading-loose text-justify font-serif text-base md:text-lg" dangerouslySetInnerHTML={{ __html: passage.replace(/\n/g, '<br/>') }} />
+<div className="text-gray-700 leading-loose text-justify font-serif text-base md:text-lg">
+{passage ? passage.split('\n').map((line, i) => (
+<React.Fragment key={i}>
+{line}
+<br/>
+</React.Fragment>
+)) : "Không có dữ liệu bài đọc."}
+</div>
 </div>
 <div className="flex-1 bg-white rounded-3xl shadow-sm border border-gray-200 p-6 flex flex-col justify-center overflow-y-auto custom-scrollbar relative">
 {children}
@@ -13001,9 +13028,10 @@ return (
 );
 };
 // --- 3. EXAM UI SHELL (VỎ BỌC CHÍNH ĐIỀU PHỐI) ---
-const ExamUIShell = ({ examLogic, mainColor = 'blue', onExit, onOpenIncorrect, onBookmark, notebook }) => {
+const ExamUIShell = ({ examLogic, mainColor = 'blue', onExit, onOpenIncorrect, onBookmark, notebook, onPlay, lang }) => {
 const { examState, currentQuestion, isHydrating, submitAnswer, quitExam, forceSubmitExam, setTransitionState, cachedCount } = examLogic;
 const Icons = window.Icons;
+const derivedLang = lang || (examState.blueprint?.[0]?.level?.startsWith('zh') ? 'zh' : (examState.blueprint?.[0]?.level?.startsWith('vi') ? 'vi' : 'en'));
 // Màn hình chuyển chặng (Transition Overlay)
 const [chapterOverlay, setChapterOverlay] = React.useState(null);
 const prevChapterRef = React.useRef(null);
@@ -13021,7 +13049,10 @@ if (setTransitionState) setTransitionState(false);
 prevChapterRef.current = currentChap;
 }
 }
-return () => { if (timeoutId) clearTimeout(timeoutId); };
+return () => {
+if (timeoutId) clearTimeout(timeoutId);
+if (setTransitionState) setTransitionState(false);
+};
 }, [currentQuestion, setTransitionState]);
 if (examState.status === 'loading') {
 return (
@@ -13119,6 +13150,8 @@ const questionContent = (
 key={currentQuestion.id}
 content={currentQuestion.content}
 onAnswer={(ans, isCorrect) => submitAnswer(ans, isCorrect)}
+onPlay={onPlay}
+lang={derivedLang}
 />
 ) : null}
 </div>
