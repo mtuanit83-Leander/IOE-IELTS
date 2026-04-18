@@ -2620,14 +2620,16 @@ _tokenUsage: res.tokenMetadata
 throw new Error("Invalid format from AI for Match Pure Mode (Hard)");
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.22
-// Last Updated: 2026-04-18 16:55
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.23
+// Last Updated: 2026-04-18 20:45
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [ROLLBACK V1.33] Khai tử hoàn toàn kiến trúc Batching (xóa hydrateBatch và _fetchHomogeneousGroup). Quay về kiến trúc Atomic Fetch nguyên thủy với hàm hydrateQuestion độc tôn để phục vụ thuật toán Cửa sổ trượt (Sliding Window). Tuân thủ Điều 3.
+// Cập nhật: [QA FIX V1.36] 1. Cấy _volatileMemory chống lặp từ song song (Amnesia). 2. Cập nhật _sanitizeAiItem kiểm tra tính toàn vẹn cấu trúc (Structural Integrity) chống ảo giác thiếu đáp án. 3. Viết lại _generateFallbackData bốc thẻ tuyến tính (Linear Pick) chống lặp rác offline. Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
 _passageLocks: {},
+// [NEW V1.23] Bộ nhớ RAM siêu tốc: Đồng bộ hóa ngay lập tức các từ vừa được AI sinh ra trong cùng 1 Batch/Sliding Window trước khi ghi xuống IndexedDB.
+_volatileMemory: [],
 // ============================================================================
 // [INTERNAL UTILS] CÁC HÀM TIỆN ÍCH NỘI BỘ
 // ============================================================================
@@ -2640,10 +2642,19 @@ else if (type.includes('odd_one_out') && Array.isArray(content.words)) termToSav
 else termToSave = content.term;
 if (termToSave && typeof termToSave === 'string') {
 const cleanTerm = termToSave.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
-if (cleanTerm && !examHistory.includes(cleanTerm)) {
+if (cleanTerm) {
+// 1. Lưu vào Lịch sử tổng (DB)
+if (!examHistory.includes(cleanTerm)) {
 examHistory.push(cleanTerm);
 while (examHistory.length > 400) examHistory.shift();
 try { localStorage.setItem('fc_ai_memory', JSON.stringify(examHistory)); } catch(e) {}
+}
+// 2. [NEW V1.23] Lưu ngay lập tức vào Volatile Memory để chống lặp song song
+if (!this._volatileMemory) this._volatileMemory = [];
+if (!this._volatileMemory.includes(cleanTerm)) {
+this._volatileMemory.push(cleanTerm);
+if (this._volatileMemory.length > 50) this._volatileMemory.shift();
+}
 }
 }
 },
@@ -2661,12 +2672,15 @@ terms.push(data.term);
 return terms;
 },
 _isDuplicate: function(termsToCheck, history) {
-if (!history || history.length === 0) return false;
+// [NEW V1.23] Trộn Lịch sử tổng (DB) với Bộ nhớ chớp nhoáng (RAM)
+const volatile = this._volatileMemory || [];
+const combinedHistory = [...(history || []), ...volatile];
+if (combinedHistory.length === 0) return false;
 for (const t of termsToCheck) {
 if (!t || typeof t !== 'string') continue;
 const cleanCheck = t.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
 if (!cleanCheck) continue;
-const hasMatch = history.some(histItem => {
+const hasMatch = combinedHistory.some(histItem => {
 if (!histItem || typeof histItem !== 'string') return false;
 const cleanHist = histItem.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
 if (cleanHist === cleanCheck) return true;
@@ -2705,7 +2719,7 @@ if (expectedType.includes('fill_blank') && viChars.test(parsedData.displaySenten
 if (expectedType.includes('odd_one_out') && Array.isArray(parsedData.words) && parsedData.words.some(w => viChars.test(w || ''))) return false;
 if ((expectedType.includes('multiple_choice') || expectedType.includes('match')) && viChars.test(parsedData.term || '')) return false;
 }
-// 2. [QA FIX V1.28] Lọc độ dài đáp án (Ám sát sư phạm)
+// 2. Lọc độ dài đáp án (Ám sát sư phạm)
 const isBasicLevel = ['level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced', 'level_4_discovery_basic', 'level_5_discovery_advanced', 'en_level_1', 'en_level_2', 'en_level_3', 'en_level_4', 'en_level_5'].includes(level);
 if (isBasicLevel) {
 const maxWords = 5;
@@ -2720,6 +2734,21 @@ if (w && typeof w === 'string' && w.split(' ').length > maxWords) return false;
 }
 }
 }
+// 3. [NEW V1.23] Lưới lọc thép Cấu trúc (Structural Integrity)
+const isOptionsType = expectedType.includes('multiple_choice') || expectedType.includes('match') || expectedType.includes('listening') || expectedType.includes('image_quiz') || expectedType.includes('pronunciation');
+if (isOptionsType) {
+// Cấm mảng options bị rỗng hoặc thiếu
+if (!parsedData.options || !Array.isArray(parsedData.options) || parsedData.options.length < 3) {
+console.warn("[Sanitizer] Blocked: Options array is missing or too short.");
+return false;
+}
+// Cấm tình trạng toàn bộ options đều sai (Không có đáp án đúng)
+const hasCorrect = parsedData.options.some(opt => opt.isCorrect === true || String(opt.isCorrect).toLowerCase() === 'true');
+if (!hasCorrect) {
+console.warn("[Sanitizer] Blocked: No correct option provided by AI.");
+return false;
+}
+}
 return true; // Dữ liệu sạch
 },
 // ============================================================================
@@ -2727,27 +2756,39 @@ return true; // Dữ liệu sạch
 // ============================================================================
 _generateFallbackData: function(type, level, track, index = 0) {
 const lang = track === 'hsk' ? 'zh' : 'en';
-// Nâng cấp kho cứu hộ học thuật cho IELTS
 let fallbackCards = [];
+// Nâng cấp kho cứu hộ học thuật cho IELTS
 if (track === 'ielts') {
 fallbackCards = [
 {term: "Hypothesis", definition: "Giả thuyết"}, {term: "Paradigm", definition: "Hệ chuẩn"},
-{term: "Empirical", definition: "Dựa trên kinh nghiệm/thực nghiệm"}, {term: "Qualitative", definition: "Định tính"}, {term: "Quantitative", definition: "Định lượng"},
-{term: "Correlation", definition: "Sự tương quan"}, {term: "Subsequent", definition: "Xảy ra sau đó"}, {term: "Intrinsic", definition: "Thuộc về bản chất"}
+{term: "Empirical", definition: "Dựa trên thực nghiệm"}, {term: "Qualitative", definition: "Định tính"},
+{term: "Quantitative", definition: "Định lượng"}, {term: "Correlation", definition: "Sự tương quan"},
+{term: "Subsequent", definition: "Xảy ra sau đó"}, {term: "Intrinsic", definition: "Thuộc về bản chất"}
 ];
 } else {
-fallbackCards = window.FallbackDataEngine?.getFallbackData(lang, 'vocab', level, 20) || [];
-if (fallbackCards.length < 5) {
+// [NEW V1.23] Trích xuất trực tiếp mảng gốc, bỏ qua hàm trộn ngẫu nhiên của FallbackDataEngine
+const mode = (type.includes('sentence') || type.includes('spot_mistake') || type.includes('fill_blank') || type.includes('scramble') || type.includes('reading')) ? 'sentence' : 'vocab';
+try {
+if (window.FallbackDataEngine && window.FallbackDataEngine[lang] && window.FallbackDataEngine[lang][mode] && window.FallbackDataEngine[lang][mode][level]) {
+const rawData = window.FallbackDataEngine[lang][mode][level];
+if (Array.isArray(rawData) && rawData.length > 0) {
+fallbackCards = rawData;
+}
+}
+} catch (e) { console.warn("Linear extraction failed", e); }
+// Nếu vẫn rỗng, rút thẻ cứu hộ cuối cùng
+if (fallbackCards.length < 4) {
 fallbackCards = [
 {term: "Apple", definition: "Quả táo"}, {term: "Banana", definition: "Quả chuối"},
-{term: "Cat", definition: "Con mèo"}, {term: "Dog", definition: "Con chó"}, {term: "Bird", definition: "Con chim"}
+{term: "Cat", definition: "Con mèo"}, {term: "Dog", definition: "Con chó"},
+{term: "Bird", definition: "Con chim"}, {term: "Fish", definition: "Con cá"}
 ];
 }
 }
-// Bốc xoay vòng theo index để đảm bảo các câu lỗi trong 1 chặng không bị trùng 100%
+// [NEW V1.23] Bốc xoay vòng TUYẾN TÍNH (Linear Pick) theo index
 const safeIndex = index % fallbackCards.length;
 const baseCard = fallbackCards[safeIndex] || {term: "Error", definition: "Lỗi"};
-// Trích xuất 3 nhiễu ngẫu nhiên an toàn
+// Trích xuất 3 nhiễu tịnh tiến an toàn
 const opt1 = fallbackCards[(safeIndex + 1) % fallbackCards.length]?.definition || "Nhiễu 1";
 const opt2 = fallbackCards[(safeIndex + 2) % fallbackCards.length]?.definition || "Nhiễu 2";
 const opt3 = fallbackCards[(safeIndex + 3) % fallbackCards.length]?.definition || "Nhiễu 3";
@@ -2865,7 +2906,7 @@ return { term: "Lỗi mạng", definition: "Câu hỏi dự phòng", isAiGenerat
 // 1. HYDRATION LOGIC (CỖ MÁY NẠP ĐẠN NGUYÊN TỬ ĐỘC TÔN)
 // ============================================================================
 hydrateQuestion: async function(metadata, apiKey, examHistory = []) {
-const { id, track, level, type, topic, passageGroup, questionIndexInPassage } = metadata;
+const { id, track, level, type, topic, passageGroup, questionIndexInPassage, index } = metadata;
 let questionData = null;
 // 1. Kiểm tra trong kho lưu trữ cục bộ IndexedDB
 if (window.FcDB) {
@@ -2975,7 +3016,7 @@ metadata.type = 'ioe_multiple_choice';
 }
 // Sanitize cho câu hỏi từ kén (Chặn rác)
 if (!isRescuedPassageChild && !this._sanitizeAiItem(tempGeneratedData, metadata.type, track, level)) {
-throw new Error("Dữ liệu câu hỏi con vi phạm quy tắc (Ám sát sư phạm).");
+throw new Error("Dữ liệu câu hỏi con vi phạm quy tắc (Ám sát sư phạm hoặc thiếu đáp án).");
 }
 generatedData = tempGeneratedData;
 } catch (e) {
@@ -3096,9 +3137,9 @@ tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'e
 if (!tempGeneratedData) {
 throw new Error(`AI returned empty data for type: ${type}`);
 }
-// Lọc rác đáp án dài từ Atomic Fetch
+// Lọc rác đáp án dài hoặc thiếu options từ Atomic Fetch
 if (!this._sanitizeAiItem(tempGeneratedData, type, track, level)) {
-throw new Error(`Dữ liệu vi phạm quy tắc Sư phạm (Ám sát sư phạm).`);
+throw new Error(`Dữ liệu vi phạm quy tắc Sư phạm (Ám sát sư phạm hoặc Thiếu đáp án).`);
 }
 // Thu thuế Token cho Atomic Fetch
 if (tempGeneratedData._tokenUsage) {
@@ -3151,7 +3192,7 @@ let rescuedData = null;
 if (!rescuedData) {
 console.log(`[ExamEngine] Kéo cáp cứu hộ từ FallbackDataEngine cho dạng bài: ${metadata.type || type}`);
 // Dùng index từ vòng lặp metadata để bốc thẻ xoay vòng
-const rescueIndex = metadata.index || 0;
+const rescueIndex = index || 0;
 rescuedData = this._generateFallbackData(metadata.type || type, level, track, rescueIndex);
 }
 if (rescuedData) {
@@ -15875,10 +15916,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.18
-// Last Updated: 2026-04-18 18:00
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.19
+// Last Updated: 2026-04-18 21:00
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, và tự động lưu Snapshot (Resilience).
-// Cập nhật: [QA FIX V1.35 - VISUAL TIMER] 1. Cấy ghép State preloadCountdown (nhịp tim đếm ngược 30s) vào startExam. 2. Thay thế setTimeout tĩnh bằng setInterval để truyền số giây ra ngoài cho Tầng 7 hiển thị. 3. Gia cố Zero-ammo Abort. Tuân thủ Điều 3.
+// Cập nhật: [QA FIX V1.36 - NHÁT DAO 1] Vá lỗi "Màn hình trắng" khi Zero-Ammo Timeout. Thay vì dùng quitExam(), hệ thống sẽ chuyển sang trạng thái 'error' để kích hoạt màn hình Báo Lỗi Cứng tại Block 5.14, cho phép người dùng thoát ra an toàn. Tuân thủ Điều 3.
 // ==================================================================================
 window.useExamLogic = function(apiKey) {
 const [examState, setExamState] = React.useState({
@@ -15891,7 +15932,7 @@ answers: [],
 timeRemaining: 0,
 score: 0,
 isTransitioning: false, // Cờ đóng băng Timer khi múa UI chuyển chặng
-preloadCountdown: 30 // [NEW V1.18] Nhịp tim đếm ngược lúc khởi tạo
+preloadCountdown: 30 // Nhịp tim đếm ngược lúc khởi tạo
 });
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [isHydrating, setIsHydrating] = React.useState(false);
@@ -16097,7 +16138,7 @@ return;
 }
 const blueprint = window.ExamProfiles.generateBlueprint(profileId, level, topic);
 const sessionId = `exam_${profileId}_${Date.now()}`;
-// Trạng thái chờ khởi tạo (loading) - [NEW V1.18] Khởi động đếm ngược 30s
+// Trạng thái chờ khởi tạo (loading) - Khởi động đếm ngược 30s
 const loadingState = {
 status: 'loading',
 sessionId: sessionId,
@@ -16134,7 +16175,7 @@ delete hydrationPromisesRef.current[meta.id];
 resolveBg();
 });
 });
-// [NEW V1.18] Động cơ đếm lùi từng giây cập nhật lên UI
+// Động cơ đếm lùi từng giây cập nhật lên UI
 const timeoutPromise = new Promise(resolve => {
 let secondsLeft = 30;
 countdownInterval = setInterval(() => {
@@ -16160,9 +16201,10 @@ if (raceResult === 'TIMEOUT') {
 console.warn("[useExamLogic] 30s timeout reached for initial load.");
 const loadedCount = initialItems.filter(meta => hydratedCacheRef.current[meta.id]).length;
 if (loadedCount === 0) {
-// CHỐT CHẶN: ZERO-AMMO ABORT (HỦY DIỆT PHIÊN THI NẾU RỖNG)
-if (window.globalShowToast) window.globalShowToast("Lỗi Mạng hoặc API Key không phản hồi. Phiên thi đã bị hủy.", "error");
-quitExam();
+// [QA FIX V1.36] ZERO-AMMO ABORT: Ép về trạng thái error để bật Màn hình Báo lỗi cứng
+if (window.globalShowToast) window.globalShowToast("Lỗi Mạng hoặc API Key không phản hồi.", "error");
+setExamState(prev => ({ ...prev, status: 'error' }));
+isExamActiveRef.current = false; // Ngừng mọi luồng ngầm
 return; // Dừng luồng hoàn toàn
 } else {
 // Đã có đạn (1 hoặc 2 viên). Ép vào game bằng cách cứu hộ nóng câu số 0 nếu nó đang bị khuyết
