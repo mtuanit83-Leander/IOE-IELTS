@@ -12484,10 +12484,10 @@ window.Block5_13_useOddOneOutLogic = useOddOneOutLogic;
 window.useOddOneOutLogic = useOddOneOutLogic;
 window.Block5_13_OddOneOutGame = OddOneOutGame;
 window.OddOneOutGame = OddOneOutGame;
-// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.18
-// Last Updated: 2026-04-18 09:26
+// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.19
+// Last Updated: 2026-04-18 18:15
 // Nhiệm vụ: Khung giao diện bài thi tổng hợp. Bao gồm Header, Timer, SplitView và các Renderers nguyên tử.
-// Cập nhật: [QA FIX V1.16 - MŨI NHỌN 1] Bọc thép giao diện (UI Shield). Tiêm toán tử Optional Chaining (?.) và Fallback (|| "") vào TẤT CẢ các hàm xử lý chuỗi (split, replace) trong các Renderers. Triệt tiêu hoàn toàn lỗi White Screen of Death (Crash app) khi AI bị ảo giác khuyết thiếu trường dữ liệu. Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [QA FIX V1.35 - VISUAL TIMER] 1. Bắt lấy nhịp tim preloadCountdown từ Tầng 6.7 để hiển thị trực quan lên màn hình Loading. 2. Thay thế giao diện Loading tĩnh bằng thiết kế đồng hồ đếm ngược sinh động, giúp người dùng nắm rõ thời gian chờ khởi tạo. Tuân thủ tuyệt đối Điều 3.
 // ==================================================================================
 // --- 1. CÁC ATOMIC RENDERERS (GIAO DIỆN TỐI GIẢN CHO TỪNG DẠNG BÀI) ---
 const MultipleChoiceRenderer = ({ content, onAnswer }) => {
@@ -13026,10 +13026,18 @@ if (setTransitionState) setTransitionState(false);
 };
 }, [currentQuestion, setTransitionState]);
 if (examState.status === 'loading') {
+const timeLeft = examState.preloadCountdown !== undefined ? examState.preloadCountdown : 30;
 return (
-<div className="flex flex-col items-center justify-center h-full bg-gray-50 z-[999] absolute inset-0">
-<div className={`w-16 h-16 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-4`}></div>
-<h2 className="text-xl font-black text-gray-700 uppercase tracking-widest animate-pulse">Đang thiết lập đề thi...</h2>
+<div className="flex flex-col items-center justify-center h-full bg-gray-50 z-[999] absolute inset-0 animate-in fade-in duration-300">
+<div className="relative mb-6 flex items-center justify-center">
+<div className={`absolute w-24 h-24 border-4 border-${mainColor}-100 rounded-full`}></div>
+<div className={`absolute w-24 h-24 border-4 border-${mainColor}-500 border-t-transparent rounded-full animate-spin`}></div>
+<div className={`relative z-10 font-black text-3xl text-${mainColor}-600 drop-shadow-sm`}>
+{timeLeft}
+</div>
+</div>
+<h2 className="text-xl font-black text-gray-800 mb-2 tracking-wide uppercase">Đang thiết lập đề thi</h2>
+<p className={`text-${mainColor}-600 text-sm font-bold animate-pulse`}>Khởi tạo dữ liệu vòng 1...</p>
 </div>
 );
 }
@@ -15867,10 +15875,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.17
-// Last Updated: 2026-04-18 17:30
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.18
+// Last Updated: 2026-04-18 18:00
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, và tự động lưu Snapshot (Resilience).
-// Cập nhật: [ROLLBACK V1.33] Khai tử Batching. Tái cấu trúc thành Hybrid Pre-load (Nạp 3 câu đầu song song, ép Timeout 30s). Cấy ghép Zero-ammo Abort: Tự động hủy phiên thi nếu mạng sập sau 30s. Áp dụng Cửa sổ trượt (Sliding Window) nạp đạn tuần tự từng viên (Max 5). Tuân thủ Điều 3.
+// Cập nhật: [QA FIX V1.35 - VISUAL TIMER] 1. Cấy ghép State preloadCountdown (nhịp tim đếm ngược 30s) vào startExam. 2. Thay thế setTimeout tĩnh bằng setInterval để truyền số giây ra ngoài cho Tầng 7 hiển thị. 3. Gia cố Zero-ammo Abort. Tuân thủ Điều 3.
 // ==================================================================================
 window.useExamLogic = function(apiKey) {
 const [examState, setExamState] = React.useState({
@@ -15882,7 +15890,8 @@ currentIndex: 0,
 answers: [],
 timeRemaining: 0,
 score: 0,
-isTransitioning: false // Cờ đóng băng Timer khi múa UI chuyển chặng
+isTransitioning: false, // Cờ đóng băng Timer khi múa UI chuyển chặng
+preloadCountdown: 30 // [NEW V1.18] Nhịp tim đếm ngược lúc khởi tạo
 });
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [isHydrating, setIsHydrating] = React.useState(false);
@@ -15959,7 +15968,7 @@ return () => clearInterval(queueScanner);
 // ------------------------------------------------------------------------
 const prefetchQuestions = async (blueprint, currentIndex) => {
 if (!isExamActiveRef.current) return;
-// [ROLLBACK V1.33] Ngưỡng nạp đạn Cửa sổ trượt (Magazine Size = 5)
+// Ngưỡng nạp đạn Cửa sổ trượt (Magazine Size = 5)
 let readyCount = 0;
 for (let i = currentIndex + 1; i < blueprint.length; i++) {
 if (hydratedCacheRef.current[blueprint[i].id]) readyCount++;
@@ -15977,7 +15986,7 @@ unhydratedItems.push(meta);
 }
 }
 if (unhydratedItems.length === 0) return;
-// [QA FIX] Nạp đạn âm thầm từng viên một (Tuần tự) để tránh Rate Limit API
+// Nạp đạn âm thầm từng viên một (Tuần tự) để tránh Rate Limit API
 for (const meta of unhydratedItems) {
 if (!isExamActiveRef.current) break;
 let resolveBg;
@@ -15986,7 +15995,7 @@ hydrationPromisesRef.current[meta.id] = p;
 try {
 // Rút Lịch sử RAM mới nhất
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
-// Gọi thẳng Atomic Fetch (Khai tử hydrateBatch)
+// Gọi thẳng Atomic Fetch
 const qData = await window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory);
 if (!isExamActiveRef.current) break;
 if (qData) hydratedCacheRef.current[meta.id] = qData;
@@ -16075,7 +16084,6 @@ return;
 }
 isExamActiveRef.current = true; // Khởi động sinh tồn
 isTransitioningRef.current = false;
-setExamState(prev => ({ ...prev, status: 'loading' }));
 setCurrentQuestion(null);
 hydratedCacheRef.current = {}; // Xóa cache cũ
 hydrationPromisesRef.current = {};
@@ -16089,7 +16097,7 @@ return;
 }
 const blueprint = window.ExamProfiles.generateBlueprint(profileId, level, topic);
 const sessionId = `exam_${profileId}_${Date.now()}`;
-// Trạng thái chờ khởi tạo (loading)
+// Trạng thái chờ khởi tạo (loading) - [NEW V1.18] Khởi động đếm ngược 30s
 const loadingState = {
 status: 'loading',
 sessionId: sessionId,
@@ -16099,13 +16107,15 @@ currentIndex: 0,
 answers: [],
 timeRemaining: profile.timeLimit,
 score: 0,
-isTransitioning: false
+isTransitioning: false,
+preloadCountdown: 30
 };
 setExamState(loadingState);
-// [ROLLBACK V1.33] HYBRID PRE-LOAD VỚI TIMEOUT 30s & ZERO-AMMO ABORT
+// HYBRID PRE-LOAD VỚI TIMEOUT 30s & VISUAL TIMER
 const INITIAL_COUNT = Math.min(3, blueprint.length); // Cố gắng tải 3 câu
 const initialItems = blueprint.slice(0, INITIAL_COUNT);
 let raceResult;
+let countdownInterval;
 try {
 const fetchPromises = initialItems.map(meta => {
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
@@ -16124,12 +16134,25 @@ delete hydrationPromisesRef.current[meta.id];
 resolveBg();
 });
 });
-// Đồng hồ đếm ngược 30 giây
-const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 30000));
+// [NEW V1.18] Động cơ đếm lùi từng giây cập nhật lên UI
+const timeoutPromise = new Promise(resolve => {
+let secondsLeft = 30;
+countdownInterval = setInterval(() => {
+secondsLeft--;
+setExamState(prev => ({ ...prev, preloadCountdown: secondsLeft }));
+if (secondsLeft <= 0) {
+clearInterval(countdownInterval);
+resolve('TIMEOUT');
+}
+}, 1000);
+});
 // Thi gan!
 raceResult = await Promise.race([Promise.all(fetchPromises), timeoutPromise]);
 } catch (e) {
 console.error("Initial preload failed:", e);
+} finally {
+// Luôn dọn dẹp nhịp tim khi cuộc đua kết thúc
+if (countdownInterval) clearInterval(countdownInterval);
 }
 if (!isExamActiveRef.current) return;
 // Xử lý khi Timeout xảy ra
@@ -16242,14 +16265,14 @@ localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 const resumeExam = async (sessionId) => {
 isExamActiveRef.current = true;
 isTransitioningRef.current = false; // Gỡ khóa an toàn
-setExamState(prev => ({ ...prev, status: 'loading' }));
+setExamState(prev => ({ ...prev, status: 'loading', preloadCountdown: 30 }));
 setCurrentQuestion(null);
 try {
 if (window.FcDB) {
 const savedState = await window.FcDB.get(sessionId, 'exam_sessions');
 if (savedState && savedState.status !== 'completed') {
 // Ép về loading để khóa Timer
-const loadingState = { ...savedState, status: 'loading', isTransitioning: false };
+const loadingState = { ...savedState, status: 'loading', isTransitioning: false, preloadCountdown: 30 };
 setExamState(loadingState);
 const isLoaded = await loadQuestion(savedState.currentIndex, loadingState);
 if (!isExamActiveRef.current) return false; // Trừ tà "Bóng ma phục sinh"
@@ -16272,7 +16295,7 @@ return false;
 const quitExam = () => {
 isExamActiveRef.current = false; // Kích hoạt khai tử luồng
 isTransitioningRef.current = false; // Gỡ khóa an toàn
-setExamState({ status: 'idle', sessionId: null, profile: null, blueprint: [], currentIndex: 0, answers: [], timeRemaining: 0, score: 0, isTransitioning: false });
+setExamState({ status: 'idle', sessionId: null, profile: null, blueprint: [], currentIndex: 0, answers: [], timeRemaining: 0, score: 0, isTransitioning: false, preloadCountdown: 30 });
 setCurrentQuestion(null);
 localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 hydratedCacheRef.current = {};
