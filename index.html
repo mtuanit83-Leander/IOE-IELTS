@@ -2514,10 +2514,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.04
-// Last Updated: 2026-04-18 12:30
-// Nhiệm vụ: Tách biệt hệ thống giao tiếp mạng và gọi API Gemini (Pure Mode, Batch Enrich, Mock Test Batching).
-// Cập nhật: [QA FIX V1.23 - CHẶNG 1] Bọc thép Prompt Batching. Bơm lệnh Field-Level Constraint (Ép ngôn ngữ cho từng trường dữ liệu) và Internal Uniqueness (Cấm lặp nội bộ trong cùng 1 Batch) vào hàm fetchMockIoeBatch để trị bệnh AI lười biếng và nhầm ngôn ngữ. Tuân thủ Điều 3.
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.05
+// Last Updated: 2026-04-18 17:05
+// Nhiệm vụ: Tách biệt hệ thống giao tiếp mạng và gọi API Gemini (Pure Mode, Batch Enrich).
+// Cập nhật: [ROLLBACK V1.33] Dọn dẹp rác kiến trúc Batching. Khai tử hoàn toàn hàm fetchMockIoeBatch và fetchMockIeltsReading. Trả Tầng 2.6 về đúng bản chất là xưởng đúc vũ khí nguyên tử (Atomic Fetch) phục vụ cho Cửa sổ trượt. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // --- 1. CÁC HÀM TIỆN ÍCH DỊCH NGẦM & TẠO PROMPT ---
@@ -2567,7 +2567,7 @@ return { updatedCards, hasUpdates };
 },
 getHistoryPrompt: function(historyArray) {
 if (!historyArray || historyArray.length === 0) return "";
-// [QA FIX V1.9] Van giảm áp Token: Chỉ lấy 40 từ gần nhất thay vì tống toàn bộ 400 từ lên Prompt
+// Van giảm áp Token: Chỉ lấy 40 từ gần nhất thay vì tống toàn bộ lên Prompt
 return "\n\nCRITICAL ANTI-DUPLICATION RULE:\nABSOLUTELY DO NOT USE ANY OF THE FOLLOWING WORDS: [" + historyArray.slice(-40).join(', ') + "]. If you use them, you will fail.\n";
 },
 // --- 2. ĐỘNG CƠ SINH THẺ TỪ HƯ VÔ (PURE MODE) ---
@@ -2618,67 +2618,12 @@ _tokenUsage: res.tokenMetadata
 };
 }
 throw new Error("Invalid format from AI for Match Pure Mode (Hard)");
-},
-// --- 3. [NEW] ĐỘNG CƠ SINH ĐỀ THI TỔNG HỢP (MOCK TEST ERA BATCHING) ---
-fetchMockIoeBatch: async function(level, apiKey, count = 10) {
-const oldToNewMap = {
-level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2',
-level_3_junior_advanced: 'en_level_3', level_4_discovery_basic: 'en_level_4',
-level_5_discovery_advanced: 'en_level_5', level_6_pre_ielts: 'en_level_6',
-level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8',
-level_9_expert: 'en_level_9'
-};
-let mappedKey = oldToNewMap[level] || level;
-if (!window.IoeDataEngine.GRADE_CONTEXTS[mappedKey]) mappedKey = "en_level_4";
-const context = window.IoeDataEngine.GRADE_CONTEXTS[mappedKey];
-const targetLang = mappedKey.startsWith('zh_') ? 'Chinese' : (mappedKey.startsWith('vi_') ? 'Vietnamese' : 'English');
-const examName = targetLang === 'Chinese' ? 'HSK' : 'IOE';
-let prompt = "You are an expert " + targetLang + " Examiner for the " + examName + " in Vietnam.\n";
-prompt += "TARGET LEVEL: " + mappedKey + ".\n";
-prompt += "LEVEL CONTEXT: " + context + "\n\n";
-prompt += "TASK: Generate a mixed batch of EXACTLY " + count + " " + targetLang + " questions suitable for this level.\n";
-prompt += "The batch MUST randomly mix these types: ioe_multiple_choice, ioe_match, ioe_fill_blank, ioe_scramble, ioe_odd_one_out, ioe_spot_mistake.\n";
-prompt += "CRITICAL RULES (FIELD-LEVEL CONSTRAINTS & INTERNAL UNIQUENESS):\n";
-prompt += "1. 'questionData' MUST be a valid JSON stringified representation of the specific question type's required structure.\n";
-prompt += "2. LANGUAGE ISOLATION: The 'term', 'wrongSentence', 'displaySentence', 'words' and 'options' fields MUST BE 100% IN " + targetLang.toUpperCase() + " (NO Vietnamese translations mixed inside them).\n";
-prompt += "3. The 'definition', 'hint', and 'explanation' fields MUST BE 100% IN VIETNAMESE.\n";
-prompt += "4. INTERNAL BATCH UNIQUENESS: Ensure all " + count + " items in this batch are strictly different from each other. DO NOT repeat the same target words, grammar points, or contexts within this array.\n";
-const schema = window.IoeDataEngine.SCHEMAS.mock_ioe_mixed_batch;
-const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
-const parsed = window.Utils.parseAiJson(res.text);
-// Tự động phân tích cứ pháp (Parse) JSON lồng nhau bên trong questionData
-if (parsed && parsed.items) {
-parsed.items = parsed.items.map(item => {
-try {
-item.parsedData = JSON.parse(item.questionData);
-} catch(e) {
-console.warn("Failed to parse questionData for item ID:", item.id);
-item.parsedData = null;
-}
-return item;
-});
-}
-return { ...parsed, _tokenUsage: res.tokenMetadata };
-},
-fetchMockIeltsReading: async function(level, apiKey) {
-let prompt = "You are an expert IELTS Academic Examiner.\n";
-prompt += "TASK: Generate ONE complete IELTS Academic Reading passage (approx 700-800 words) and a set of 5-7 questions based strictly on the passage.\n";
-prompt += "Topic: Random academic topic (e.g., biology, history, sociology, technology, psychology, economics).\n";
-prompt += "Question Types to mix: ielts_reading_mcq (Multiple Choice), ielts_reading_tfng (True/False/Not Given), ielts_reading_matching (Matching information/features).\n";
-prompt += "CRITICAL RULES:\n";
-prompt += "1. The passage MUST be highly academic, cohesive, and use advanced vocabulary/grammar (IELTS band 7.0 - 9.0 style).\n";
-prompt += "2. Questions MUST test detailed comprehension, inference, and identifying writer's claims. Do not make answers too obvious.\n";
-prompt += "3. Explanations MUST be detailed and 100% in VIETNAMESE, citing the specific paragraph/sentence from the passage that justifies the answer.";
-const schema = window.IoeDataEngine.SCHEMAS.mock_ielts_reading_set;
-const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
-const parsed = window.Utils.parseAiJson(res.text);
-return { ...parsed, _tokenUsage: res.tokenMetadata };
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.21
-// Last Updated: 2026-04-18 16:45
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.22
+// Last Updated: 2026-04-18 16:55
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [QA FIX V1.29 - TỐI ƯU SONG SONG] 1. Gỡ bỏ nút thắt cổ chai 3 phút bằng cách chạy song song (Promise.all) cho tất cả Passage và Specific Items. 2. Thêm Exponential Backoff chặn lỗi 429. 3. Áp dụng Sanitize chung cho cả Atomic Fetch chặn rác đáp án dài. Tuân thủ Điều 3.
+// Cập nhật: [ROLLBACK V1.33] Khai tử hoàn toàn kiến trúc Batching (xóa hydrateBatch và _fetchHomogeneousGroup). Quay về kiến trúc Atomic Fetch nguyên thủy với hàm hydrateQuestion độc tôn để phục vụ thuật toán Cửa sổ trượt (Sliding Window). Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
@@ -2799,7 +2744,7 @@ fallbackCards = [
 ];
 }
 }
-// Bốc xoay vòng theo index để đảm bảo 5 câu lỗi trong 1 batch không bị trùng 100%
+// Bốc xoay vòng theo index để đảm bảo các câu lỗi trong 1 chặng không bị trùng 100%
 const safeIndex = index % fallbackCards.length;
 const baseCard = fallbackCards[safeIndex] || {term: "Error", definition: "Lỗi"};
 // Trích xuất 3 nhiễu ngẫu nhiên an toàn
@@ -2917,78 +2862,7 @@ return { term: "Lỗi mạng", definition: "Câu hỏi dự phòng", isAiGenerat
 }
 },
 // ============================================================================
-// [HOMOGENEOUS BATCHING ENGINE]
-// ============================================================================
-_fetchHomogeneousGroup: async function(type, items, apiKey, examHistory) {
-const count = items.length;
-const meta = items[0];
-const level = meta.level;
-const topic = meta.topic || "";
-const track = meta.track || "ioe";
-const targetLang = track === 'hsk' ? 'Chinese' : (track === 'vi' ? 'Vietnamese' : 'English');
-let prompt = `You are an expert ${targetLang} language examiner.\n`;
-prompt += `TARGET LEVEL: ${level}. TOPIC FOCUS: ${topic || 'General'}.\n`;
-prompt += `TASK: Generate EXACTLY ${count} completely distinct items for a '${type}' test.\n`;
-if (examHistory && examHistory.length > 0) {
-prompt += `\nCRITICAL ANTI-DUPLICATION RULE: DO NOT use these words/phrases: ${examHistory.slice(-40).join(', ')}.\n`;
-}
-prompt += `\nEnsure all ${count} items are different from each other in vocabulary and meaning.\n`;
-prompt += `The fields like 'explanation', 'definition', 'hint' MUST BE IN VIETNAMESE.\n`;
-let baseSchema;
-let isQuiz = false;
-if (type.includes('spot_mistake')) baseSchema = window.IoeDataEngine.SCHEMAS.pure_spot_mistake;
-else if (type.includes('fill_blank')) baseSchema = window.IoeDataEngine.SCHEMAS.pure_fill_blank;
-else if (type.includes('odd_one_out')) baseSchema = window.IoeDataEngine.SCHEMAS.pure_oddoneout;
-else if (type.includes('scramble')) baseSchema = window.IoeDataEngine.SCHEMAS.pure_scramble;
-else {
-baseSchema = window.IoeDataEngine.SCHEMAS.pure_quiz;
-isQuiz = true;
-}
-const batchSchema = {
-type: "OBJECT",
-properties: { items: { type: "ARRAY", items: baseSchema } },
-required: ["items"]
-};
-const res = await window.Utils.callGeminiApi(prompt, batchSchema, apiKey);
-const parsed = window.Utils.parseAiJson(res.text);
-if (res.tokenMetadata) {
-const used = res.tokenMetadata.totalTokenCount || 0;
-const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
-localStorage.setItem('fc_total_tokens', currentTotal + used);
-}
-let generatedItems = parsed.items || [];
-// Bơm bẫy nhiễu cho MCQ / Nối ô bằng Động cơ Offline (Tiết kiệm Token cực mạnh)
-if (isQuiz) {
-let cleanDeck = [];
-if (window.FallbackDataEngine) {
-const safeLang = track === 'hsk' ? 'zh' : 'en';
-cleanDeck = window.FallbackDataEngine.getFallbackData(safeLang, 'vocab', level, 30) || [];
-}
-generatedItems = generatedItems.map(item => {
-let distractors = ["Nhiễu A", "Nhiễu B", "Nhiễu C"];
-if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
-try {
-const gen = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(item.definition, cleanDeck, track === 'hsk'?'zh':'en', 'vocab', 3, false);
-if (gen && gen.length === 3) distractors = gen;
-} catch(e){}
-}
-const options = distractors.map(d => ({ text: d, isCorrect: false }));
-options.push({ text: item.definition, isCorrect: true });
-return {
-...item,
-options: window.Utils.shuffleArray ? window.Utils.shuffleArray(options) : options
-};
-});
-}
-// Bơm cứu hộ đồng cấp nếu AI lười biếng sinh thiếu số lượng yêu cầu
-while (generatedItems.length < count) {
-const fb = this._generateFallbackData(type, level, track, generatedItems.length);
-generatedItems.push({ ...fb, isAiGenerated: false, _isRescued: true });
-}
-return generatedItems.slice(0, count);
-},
-// ============================================================================
-// 1. HYDRATION LOGIC (BÙ ĐẮP CÂU HỎI MẤT TÍCH BẰNG AI - CÓ BỘ LỌC THÉP VÀ LỊCH SỬ)
+// 1. HYDRATION LOGIC (CỖ MÁY NẠP ĐẠN NGUYÊN TỬ ĐỘC TÔN)
 // ============================================================================
 hydrateQuestion: async function(metadata, apiKey, examHistory = []) {
 const { id, track, level, type, topic, passageGroup, questionIndexInPassage } = metadata;
@@ -3010,6 +2884,7 @@ console.log(`[ExamEngine] Cache Miss for ${id}. Hydrating via AI...`);
 let generatedData = null;
 let finalError = null;
 // --- CHIẾN DỊCH ĐỌC HIỂU: THUẬT TOÁN "BẺ KÉN" (PASSAGE GROUPING) ---
+// Chống lặp câu hỏi trong đoạn văn. 1 Tổ kén (Passage) chỉ gọi AI 1 lần duy nhất cho toàn bộ các câu con.
 if (passageGroup) {
 const groupId = passageGroup;
 const qIndex = questionIndexInPassage || 0;
@@ -3039,7 +2914,7 @@ return parsed;
 } catch(e) {
 pLastErr = e;
 pAttempt++;
-// [QA FIX V1.29] Backoff chống lỗi 429
+// Backoff chống lỗi 429
 if (e.message && (e.message.includes('429') || e.message.includes('quota') || e.message.includes('Timeout'))) {
 await new Promise(r => setTimeout(r, 2000 * pAttempt));
 }
@@ -3098,7 +2973,7 @@ tempGeneratedData.options[0].isCorrect = true;
 }
 metadata.type = 'ioe_multiple_choice';
 }
-// [QA FIX V1.29] Sanitize cho câu hỏi từ kén (Chặn rác)
+// Sanitize cho câu hỏi từ kén (Chặn rác)
 if (!isRescuedPassageChild && !this._sanitizeAiItem(tempGeneratedData, metadata.type, track, level)) {
 throw new Error("Dữ liệu câu hỏi con vi phạm quy tắc (Ám sát sư phạm).");
 }
@@ -3221,7 +3096,7 @@ tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'e
 if (!tempGeneratedData) {
 throw new Error(`AI returned empty data for type: ${type}`);
 }
-// [QA FIX V1.29] Lọc rác đáp án dài từ Atomic Fetch
+// Lọc rác đáp án dài từ Atomic Fetch
 if (!this._sanitizeAiItem(tempGeneratedData, type, track, level)) {
 throw new Error(`Dữ liệu vi phạm quy tắc Sư phạm (Ám sát sư phạm).`);
 }
@@ -3261,7 +3136,7 @@ generatedData = tempGeneratedData;
 } catch (error) {
 finalError = error;
 attempt++;
-// [QA FIX V1.29] Backoff thông minh chống lỗi 429 (Rate Limit) khi gọi song song
+// Backoff thông minh chống lỗi 429 (Rate Limit) khi gọi liên tiếp
 if (error.message && (error.message.includes('429') || error.message.includes('quota') || error.message.includes('Timeout'))) {
 await new Promise(r => setTimeout(r, 2000 * attempt));
 }
@@ -3275,7 +3150,9 @@ try {
 let rescuedData = null;
 if (!rescuedData) {
 console.log(`[ExamEngine] Kéo cáp cứu hộ từ FallbackDataEngine cho dạng bài: ${metadata.type || type}`);
-rescuedData = this._generateFallbackData(metadata.type || type, level, track);
+// Dùng index từ vòng lặp metadata để bốc thẻ xoay vòng
+const rescueIndex = metadata.index || 0;
+rescuedData = this._generateFallbackData(metadata.type || type, level, track, rescueIndex);
 }
 if (rescuedData) {
 generatedData = rescuedData;
@@ -3308,184 +3185,6 @@ console.warn("[ExamEngine] Auto-save to bank failed:", e);
 }
 }
 return atomicQuestion;
-},
-// ============================================================================
-// 2. MICRO-BATCH HYDRATION (NẠP ĐẠN GOM NHÓM ĐỒNG NHẤT SONG SONG)
-// ============================================================================
-hydrateBatch: async function(blueprintChunk, apiKey, examHistory = []) {
-const results = [];
-const passageItems = [];
-const specificItems = [];
-const batchableItems = [];
-const finalResultsMap = {}; // Quản lý trật tự trả về
-const localBatchTerms = []; // [QA FIX V1.28] Mảng theo dõi từ vựng nội bộ Batch
-// Fetch Global Retry Bag
-let globalRetryBag = {};
-if (window.FcDB) {
-try { globalRetryBag = await window.FcDB.get('fc_global_retry_bag') || {}; } catch(e) {}
-}
-// 1. Phân loại đạn và Kiểm tra Cache
-for (const meta of blueprintChunk) {
-// Bật khiên Cache DB trước để không gọi API thừa
-let cachedData = null;
-if (window.FcDB) {
-try { cachedData = await window.FcDB.get(meta.id, 'fc_questions_bank'); } catch(e) {}
-}
-if (cachedData) {
-finalResultsMap[meta.id] = cachedData;
-this._syncMemory(cachedData.content, meta.type, examHistory);
-continue;
-}
-if (meta.passageGroup) {
-passageItems.push(meta);
-} else if (['ioe_listening', 'ioe_image_quiz', 'ioe_pronunciation', 'ielts_listening_fill'].includes(meta.type)) {
-specificItems.push(meta);
-} else {
-// Bốc từ túi nháp cho Micro-Batching
-let rescuedFromBag = null;
-if (Math.random() < 0.3) {
-let bagType = 'quiz';
-if (meta.type === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE) bagType = 'spotmistake';
-else if (meta.type === window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK) bagType = 'fillblank';
-else if (meta.type === window.IoeDataEngine.QUESTION_TYPES.IOE_SCRAMBLE) bagType = 'scramble';
-else if (meta.type === window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT) bagType = 'oddoneout';
-else if (meta.type === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH) bagType = 'match';
-const bagItems = globalRetryBag[bagType] || [];
-const validRetryCards = bagItems.filter(c => {
-if (!c) return false;
-if (meta.topic && c.topic && c.topic !== meta.topic) return false; // Lọc Topic Mismatch
-if (bagType === 'spotmistake') return c.wrongSentence && c.wrongWord;
-if (bagType === 'fillblank') return c.displaySentence && c.targetWord;
-if (bagType === 'oddoneout') return c.words && c.oddWord;
-return c.term && c.definition;
-});
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-const pulled = validRetryCards[randIdx];
-let finalContent = null;
-if (bagType === 'spotmistake') finalContent = pulled;
-else if (bagType === 'fillblank') finalContent = pulled;
-else if (bagType === 'oddoneout') finalContent = pulled;
-else if (bagType === 'scramble') finalContent = { term: pulled.term, definition: pulled.definition };
-else if (bagType === 'quiz' || bagType === 'match') {
-let options = [];
-if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
-const miniDeck = bagItems.filter(c => c.term && c.term !== pulled.term);
-const distTexts = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(pulled.definition, miniDeck, 'en', 'vocab', 3, true);
-options = distTexts.map(d => ({ text: d, isCorrect: false }));
-options.push({ text: pulled.definition, isCorrect: true });
-options = window.Utils.shuffleArray ? window.Utils.shuffleArray(options) : options;
-} else {
-options = [
-{ text: pulled.definition, isCorrect: true },
-{ text: "Nhiễu 1", isCorrect: false },
-{ text: "Nhiễu 2", isCorrect: false },
-{ text: "Nhiễu 3", isCorrect: false }
-];
-}
-finalContent = { term: pulled.term, definition: pulled.definition, options };
-}
-if (finalContent) {
-rescuedFromBag = {
-id: meta.id,
-content: { ...finalContent, isAiGenerated: false, _isRescuedFromBag: true },
-metadata: meta,
-timestamp: Date.now()
-};
-}
-}
-}
-if (rescuedFromBag) {
-finalResultsMap[meta.id] = rescuedFromBag;
-this._syncMemory(rescuedFromBag.content, meta.type, examHistory);
-if (window.FcDB) window.FcDB.set(meta.id, rescuedFromBag, 'fc_questions_bank').catch(e => {});
-} else {
-batchableItems.push(meta);
-}
-}
-}
-// [QA FIX V1.29] CHUYỂN TỪ TUẦN TỰ SANG CHẠY SONG SONG ĐỂ PHÁ BỎ NÚT THẮT CỔ CHAI 3 PHÚT
-const allPromises = [];
-// 2. Xử lý Tổ kén (Passage) - Chạy song song
-for (const meta of passageItems) {
-allPromises.push(
-this.hydrateQuestion(meta, apiKey, examHistory)
-.then(qData => { if (qData) finalResultsMap[meta.id] = qData; })
-.catch(e => console.error(`Passage Hydration failed for ${meta.id}:`, e))
-);
-}
-// 3. Xử lý Đạn Đặc thù (Atomic Fetch) - Chạy song song
-for (const meta of specificItems) {
-allPromises.push(
-this.hydrateQuestion(meta, apiKey, examHistory)
-.then(qData => { if (qData) finalResultsMap[meta.id] = qData; })
-.catch(e => console.error(`Specific Hydration failed for ${meta.id}:`, e))
-);
-}
-// 4. HOMOGENEOUS BATCHING (Gom nhóm Đồng nhất) - Chạy song song
-if (batchableItems.length > 0) {
-const groupedBatchable = {};
-for (const meta of batchableItems) {
-if (!groupedBatchable[meta.type]) groupedBatchable[meta.type] = [];
-groupedBatchable[meta.type].push(meta);
-}
-Object.keys(groupedBatchable).forEach(groupType => {
-const items = groupedBatchable[groupType];
-allPromises.push(
-this._fetchHomogeneousGroup(groupType, items, apiKey, examHistory)
-.then(aiResults => {
-for (let i = 0; i < items.length; i++) {
-const meta = items[i];
-const aiItem = aiResults[i];
-let finalContent = null;
-if (aiItem && !aiItem._isRescued && this._sanitizeAiItem(aiItem, meta.type, meta.track, meta.level)) {
-// Lọc trùng lặp nội bộ Batch
-const termsToCheck = this._extractTermsToCheck(aiItem, meta.type);
-const combinedHistory = [...examHistory, ...localBatchTerms];
-if (!this._isDuplicate(termsToCheck, combinedHistory)) {
-finalContent = { ...aiItem, isAiGenerated: true };
-// Ghi nhận vào localBatchTerms để chặn các câu tiếp theo
-termsToCheck.forEach(t => { if(t) localBatchTerms.push(t.toLowerCase().trim()); });
-} else {
-console.warn(`[BatchEngine] Bắt được trùng lặp nội bộ/toàn cục: ${termsToCheck.join(', ')}`);
-}
-}
-if (!finalContent) {
-console.warn(`[BatchEngine] Câu ${i+1} Nhóm ${groupType} lỗi/vi phạm/trùng lặp. Rút thẻ dự phòng đồng cấp.`);
-const rescuedData = this._generateFallbackData(meta.type, meta.level, meta.track, i);
-finalContent = { ...rescuedData, isAiGenerated: false, _isRescued: true };
-}
-this._syncMemory(finalContent, meta.type, examHistory);
-const atomicQuestion = { id: meta.id, content: finalContent, metadata: meta, timestamp: Date.now() };
-finalResultsMap[meta.id] = atomicQuestion;
-if (window.FcDB) window.FcDB.set(meta.id, atomicQuestion, 'fc_questions_bank').catch(()=>{});
-}
-})
-.catch(batchErr => {
-console.error(`[ExamEngine] Homogeneous Batching failed for ${groupType}:`, batchErr);
-console.log(`[ExamEngine] Kích hoạt Fallback Khẩn Cấp cho toàn bộ Nhóm ${groupType}.`);
-for (let i = 0; i < items.length; i++) {
-const meta = items[i];
-const rescuedData = this._generateFallbackData(meta.type, meta.level, meta.track, i);
-const finalContent = { ...rescuedData, isAiGenerated: false, _isRescued: true };
-this._syncMemory(finalContent, meta.type, examHistory);
-const atomicQuestion = { id: meta.id, content: finalContent, metadata: meta, timestamp: Date.now() };
-finalResultsMap[meta.id] = atomicQuestion;
-if (window.FcDB) window.FcDB.set(meta.id, atomicQuestion, 'fc_questions_bank').catch(()=>{});
-}
-})
-);
-});
-}
-// Chờ tất cả các luồng chạy song song hoàn thành
-await Promise.all(allPromises);
-// 5. RÁP LẠI MẢNG ĐẦU RA ĐÚNG TRẬT TỰ CỦA BLUEPRINT (Order Preservation)
-for (const meta of blueprintChunk) {
-if (finalResultsMap[meta.id]) {
-results.push(finalResultsMap[meta.id]);
-}
-}
-return results;
 }
 };
 // Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.06
@@ -16168,10 +15867,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.16
-// Last Updated: 2026-04-18 16:50
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.17
+// Last Updated: 2026-04-18 17:30
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, và tự động lưu Snapshot (Resilience).
-// Cập nhật: [QA FIX V1.28 - MACRO BATCHING] 1. Khai tử Micro-batching, chuyển sang Macro-batching (Chunk=10, Threshold=5) để triệt tiêu lỗi 429 Rate Limit. 2. Tái cấu trúc startExam để nạp đầy băng đạn (10 câu) ngay lúc khởi động, chấm dứt tình trạng load xoay vòng ở câu số 2. Tuân thủ Điều 3.
+// Cập nhật: [ROLLBACK V1.33] Khai tử Batching. Tái cấu trúc thành Hybrid Pre-load (Nạp 3 câu đầu song song, ép Timeout 30s). Cấy ghép Zero-ammo Abort: Tự động hủy phiên thi nếu mạng sập sau 30s. Áp dụng Cửa sổ trượt (Sliding Window) nạp đạn tuần tự từng viên (Max 5). Tuân thủ Điều 3.
 // ==================================================================================
 window.useExamLogic = function(apiKey) {
 const [examState, setExamState] = React.useState({
@@ -16256,58 +15955,46 @@ setCachedCount(0);
 return () => clearInterval(queueScanner);
 }, [examState.blueprint, examState.currentIndex]);
 // ------------------------------------------------------------------------
-// 2. THUẬT TOÁN NẠP ĐẠN TRƯỚC (MACRO-BATCHING PREFETCH)
+// 2. THUẬT TOÁN NẠP ĐẠN TRƯỚC (SLIDING WINDOW PREFETCH)
 // ------------------------------------------------------------------------
 const prefetchQuestions = async (blueprint, currentIndex) => {
 if (!isExamActiveRef.current) return;
-// [QA FIX V1.28] Ngưỡng nạp đạn Macro-batching (Threshold = 5)
-// Kiểm tra xem trong nòng còn bao nhiêu viên đạn tương lai liên tiếp
+// [ROLLBACK V1.33] Ngưỡng nạp đạn Cửa sổ trượt (Magazine Size = 5)
 let readyCount = 0;
 for (let i = currentIndex + 1; i < blueprint.length; i++) {
 if (hydratedCacheRef.current[blueprint[i].id]) readyCount++;
 else break; // Chỉ đếm số đạn liên tiếp không bị đứt quãng
 }
-// Nếu đạn vẫn dồi dào (>= 5 viên), KHÔNG GỌI API để tiết kiệm băng thông và chống Flicker
+// Đạn vẫn dồi dào -> Ngủ đông
 if (readyCount >= 5) return;
-// [QA FIX V1.28] Tăng giới hạn nạp đạn lên 10 viên mỗi lần gọi API
-const CHUNK_SIZE = 10;
+// Lấy danh sách các viên đạn còn thiếu trong khung ngắm 5 viên tiếp theo
+const THRESHOLD = 5;
 const unhydratedItems = [];
-// Thu thập chính xác 10 viên đạn còn thiếu tiếp theo
-for (let i = currentIndex + 1; i < blueprint.length; i++) {
+for (let i = currentIndex + 1; i <= currentIndex + THRESHOLD && i < blueprint.length; i++) {
 const meta = blueprint[i];
 if (!hydratedCacheRef.current[meta.id] && !hydrationPromisesRef.current[meta.id]) {
 unhydratedItems.push(meta);
 }
-if (unhydratedItems.length >= CHUNK_SIZE) break;
 }
-if (unhydratedItems.length > 0 && apiKey) {
-let resolveBackground;
-const batchPromise = new Promise(r => resolveBackground = r);
-unhydratedItems.forEach(meta => {
-hydrationPromisesRef.current[meta.id] = batchPromise;
-});
-try {
-// Đọc lại Lịch sử AI mới nhất từ RAM để ném cho Tầng 2 (Chống Amnesia triệt để)
-const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
-if (window.ExamEngine.hydrateBatch) {
-const results = await window.ExamEngine.hydrateBatch(unhydratedItems, apiKey, freshHistory);
-if (!isExamActiveRef.current) return; // Safe Exit Guard
-results.forEach(qData => {
-if (qData && qData.id) hydratedCacheRef.current[qData.id] = qData;
-});
-} else {
+if (unhydratedItems.length === 0) return;
+// [QA FIX] Nạp đạn âm thầm từng viên một (Tuần tự) để tránh Rate Limit API
 for (const meta of unhydratedItems) {
-if (!isExamActiveRef.current) break; // Safe Exit Guard
+if (!isExamActiveRef.current) break;
+let resolveBg;
+const p = new Promise(r => resolveBg = r);
+hydrationPromisesRef.current[meta.id] = p;
+try {
+// Rút Lịch sử RAM mới nhất
+const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
+// Gọi thẳng Atomic Fetch (Khai tử hydrateBatch)
 const qData = await window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory);
 if (!isExamActiveRef.current) break;
 if (qData) hydratedCacheRef.current[meta.id] = qData;
-}
-}
 } catch (e) {
-console.warn(`[useExamLogic] Background prefetch failed:`, e);
+console.warn(`[useExamLogic] Prefetch failed for ${meta.id}:`, e);
 } finally {
-unhydratedItems.forEach(meta => delete hydrationPromisesRef.current[meta.id]);
-resolveBackground();
+delete hydrationPromisesRef.current[meta.id];
+resolveBg();
 }
 }
 };
@@ -16321,7 +16008,7 @@ setExamState(prev => ({ ...prev, status: 'completed' }));
 return false;
 }
 const meta = targetState.blueprint[index];
-// Kích hoạt thuật toán nạp ngầm (Sẽ tự động bị chặn nếu đạn còn nhiều do Threshold)
+// Kích hoạt thuật toán nạp ngầm (Cửa sổ trượt)
 prefetchQuestions(targetState.blueprint, index);
 let qData = hydratedCacheRef.current[meta.id];
 // Nếu câu hỏi chưa có trong Cache (Cache Miss), phải xử lý an toàn
@@ -16338,7 +16025,7 @@ qData = hydratedCacheRef.current[meta.id];
 if (!qData) {
 // Đọc lại trí nhớ tươi nhất
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
-// Nếu vẫn không có, gọi trực tiếp (CẮM CÁP LỊCH SỬ)
+// Gọi trực tiếp Atomic Fetch
 hydrationPromisesRef.current[meta.id] = window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory);
 qData = await hydrationPromisesRef.current[meta.id];
 if (!isExamActiveRef.current) return false; // Trừ tà "Bóng ma phục sinh"
@@ -16415,37 +16102,62 @@ score: 0,
 isTransitioning: false
 };
 setExamState(loadingState);
-// [QA FIX V1.28] BƯỚC 1: NẠP ĐẦY BĂNG ĐẠN LÚC KHỞI ĐỘNG (MACRO-BATCH)
-const INITIAL_CHUNK = Math.min(10, blueprint.length);
-const initialItems = blueprint.slice(0, INITIAL_CHUNK);
-let resolveBg;
-const batchPromise = new Promise(r => resolveBg = r);
-initialItems.forEach(meta => {
-hydrationPromisesRef.current[meta.id] = batchPromise;
-});
+// [ROLLBACK V1.33] HYBRID PRE-LOAD VỚI TIMEOUT 30s & ZERO-AMMO ABORT
+const INITIAL_COUNT = Math.min(3, blueprint.length); // Cố gắng tải 3 câu
+const initialItems = blueprint.slice(0, INITIAL_COUNT);
+let raceResult;
 try {
+const fetchPromises = initialItems.map(meta => {
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
-if (window.ExamEngine.hydrateBatch) {
-const results = await window.ExamEngine.hydrateBatch(initialItems, apiKey, freshHistory);
-if (!isExamActiveRef.current) return;
-results.forEach(qData => {
-if (qData && qData.id) hydratedCacheRef.current[qData.id] = qData;
-});
-} else {
-for (const meta of initialItems) {
-if (!isExamActiveRef.current) break;
-const qData = await window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory);
-if (!isExamActiveRef.current) break;
-if (qData) hydratedCacheRef.current[meta.id] = qData;
+let resolveBg;
+const p = new Promise(r => resolveBg = r);
+hydrationPromisesRef.current[meta.id] = p;
+return window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory)
+.then(qData => {
+if (isExamActiveRef.current && qData) {
+hydratedCacheRef.current[meta.id] = qData;
 }
-}
-} catch (e) {
-console.warn(`[useExamLogic] Initial preload failed:`, e);
-} finally {
-initialItems.forEach(meta => delete hydrationPromisesRef.current[meta.id]);
+})
+.catch(e => console.warn("Init fetch error:", e))
+.finally(() => {
+delete hydrationPromisesRef.current[meta.id];
 resolveBg();
+});
+});
+// Đồng hồ đếm ngược 30 giây
+const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 30000));
+// Thi gan!
+raceResult = await Promise.race([Promise.all(fetchPromises), timeoutPromise]);
+} catch (e) {
+console.error("Initial preload failed:", e);
 }
-// Nạp đạn câu số 0 (Đợi đến khi có đạn thực sự mới cho chơi)
+if (!isExamActiveRef.current) return;
+// Xử lý khi Timeout xảy ra
+if (raceResult === 'TIMEOUT') {
+console.warn("[useExamLogic] 30s timeout reached for initial load.");
+const loadedCount = initialItems.filter(meta => hydratedCacheRef.current[meta.id]).length;
+if (loadedCount === 0) {
+// CHỐT CHẶN: ZERO-AMMO ABORT (HỦY DIỆT PHIÊN THI NẾU RỖNG)
+if (window.globalShowToast) window.globalShowToast("Lỗi Mạng hoặc API Key không phản hồi. Phiên thi đã bị hủy.", "error");
+quitExam();
+return; // Dừng luồng hoàn toàn
+} else {
+// Đã có đạn (1 hoặc 2 viên). Ép vào game bằng cách cứu hộ nóng câu số 0 nếu nó đang bị khuyết
+const meta0 = initialItems[0];
+if (!hydratedCacheRef.current[meta0.id]) {
+const fbData = window.ExamEngine._generateFallbackData ? window.ExamEngine._generateFallbackData(meta0.type, meta0.level, meta0.track, 0) : { term: "Lỗi mạng", definition: "Vui lòng kiểm tra kết nối" };
+hydratedCacheRef.current[meta0.id] = {
+id: meta0.id,
+content: { ...fbData, isAiGenerated: false, _isRescued: true },
+metadata: meta0,
+timestamp: Date.now()
+};
+// Gỡ bỏ Promise đang treo để hàm loadQuestion bên dưới chạy lọt qua ngay lập tức
+delete hydrationPromisesRef.current[meta0.id];
+}
+}
+}
+// Nạp đạn câu số 0 vào màn hình
 const isLoaded = await loadQuestion(0, loadingState);
 if (!isExamActiveRef.current) return; // Trừ tà "Bóng ma phục sinh"
 if (isLoaded && isExamActiveRef.current) {
