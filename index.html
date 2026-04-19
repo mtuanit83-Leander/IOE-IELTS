@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.04
-// Last Updated: 2026-04-18 14:45
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.05
+// Last Updated: 2026-04-19 09:26
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [QA FIX V1.25 - NHÁT DAO 1] Nâng cấp hàm fetchWithFallback. Bơm thêm dàn Proxy hạng nặng (CorsProxyIO, CodeTabs) để trị triệt để lỗi CORS Origin: null khi người dùng chạy file HTML trực tiếp từ ổ cứng máy tính (file://). Tuân thủ Điều 3.
+// Cập nhật: [GIAI ĐOẠN 2 - CHỐNG AI AMNESIA] Bơm cơ chế Nhiễu loạn Nhiệt độ (Temperature Jittering từ 0.7 đến 1.1) vào toàn bộ các request gửi đến Gemini API. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -207,7 +207,12 @@ const rawK = keyPool[i]; if (!rawK || rawK.length < 10) continue;
 const k = rawK.replace(/["'\s]/g, "");
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
-if (schema) { body.generationConfig = { responseMimeType: "application/json", responseSchema: schema }; }
+const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
+body.generationConfig = { temperature: randomTemp };
+if (schema) {
+body.generationConfig.responseMimeType = "application/json";
+body.generationConfig.responseSchema = schema;
+}
 // [QA VÁ LỖI] Sử dụng Promise.race để bọc timeout 15s cho lệnh fetch
 const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
@@ -353,7 +358,8 @@ responseSchema: {
 type: "OBJECT",
 properties: propertiesToFetch,
 required: requiredFields
-}
+},
+temperature: Math.random() * (1.1 - 0.7) + 0.7
 }
 };
 let finalResult = null;
@@ -752,10 +758,10 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.08
-// Last Updated: 2026-04-17 11:35
+// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.09
+// Last Updated: 2026-04-19 09:29
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các Prompt cho AI.
-// Cập nhật: [LỘ TRÌNH LẦN 3] Bơm lệnh "Bàn Tay Sắt" (Negative Prompting) vào getMicroTierReadingRule để cấm AI ảo giác từ vựng sinh học phức tạp (caterpillar, cocoon) ở Level Tiểu học. Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [GIAI ĐOẠN 2 - CHỐNG AI HALLUCINATION] Tiêm Few-shot Prompting (Ví dụ JSON mẫu) vào hàm buildPureModePrompt cho các dạng bài phức tạp (Spot Mistake, Reading, Match Hard). Tuân thủ tuyệt đối Điều 3.
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -1282,11 +1288,15 @@ const vocabTierRule = dataMode === 'vocab' ? this.getMicroTierVocabTypeRule(mapp
 if (gameType === 'match_hard') {
 const modeName = dataMode === 'sentence' ? 'sentences' : 'vocabulary words';
 taskInstruction = "Return a JSON object with two arrays:\n1. 'correctPairs': Exactly 4 grammatically correct " + modeName + " strictly matching the LEVEL and the TOPIC FOCUS, with short Vietnamese definitions.\n2. 'trapPairs': Exactly 2 INCORRECT " + modeName + " acting as traps.\nTRAP CREATION RULE: ";
+// Add Example inline safely
+taskInstruction += " [EXAMPLE TRAP PAIR]: {\"wrongSentence\": \"I has a cat\", \"wrongWord\": \"has\", \"correction\": \"have\", \"definition\": \"Tôi có một con mèo\", \"explanation\": \"I đi với have\"}. ";
 let trapRule = this.getMicroTierDistortionRule(targetLang, dataMode, mappedKey, actualTopic);
 return "You are an expert Language Examiner creating a matching game for " + targetLang + " learners at " + mappedKey + ".\nLEVEL CONTEXT: " + context + "\nTOPIC FOCUS: " + actualTopic + "\nTASK: " + taskInstruction + trapRule + "\n\nRULES:\n1. Your output MUST be ONLY a raw JSON object matching the requested schema.\n2. The 'definition' field inside 'trapPairs' MUST be a highly natural, realistic Vietnamese translation to trick the user into thinking it's a correct option.\n3. The 'explanation' field MUST BE 100% IN VIETNAMESE.";
 }
 if (gameType === 'spotmistake') {
 taskInstruction = "Generate ONE natural " + targetLang + " sentence. Then, intentionally create EXACTLY ONE grammatical, vocabulary, or preposition mistake in that sentence. Return the wrong sentence, the wrong word, the correction, and a short Vietnamese explanation.";
+// Add Example inline safely
+taskInstruction += " [EXAMPLE STRUCTURE]: {\"wrongSentence\": \"He don't like it.\", \"wrongWord\": \"don't\", \"correction\": \"doesn't\", \"explanation\": \"Chủ ngữ He đi với doesn't\"}";
 const rule = this.getMicroTierDistortionRule(targetLang, 'sentence', mappedKey, actualTopic);
 if (rule) pedagogyRule = "\nCRITICAL DISTORTION RULE: " + rule;
 } else if (gameType === 'fillblank') {
@@ -1327,6 +1337,8 @@ const rule = this.getMicroTierListeningRule(mappedKey);
 if (rule) pedagogyRule = "\n" + rule;
 } else if (gameType === 'reading_passage') {
 taskInstruction = "Generate ONE Reading Comprehension Passage (Tổ kén). CRITICAL RULES: 1. Create a 'passage' strictly matching the topic, length, and level context requested. 2. Create an array of 'questions'. 3. Question types can be 'mcq' (Multiple Choice - provide 4 options), 'fill_blank' (Summary completion - answer must be exact words from text), or 'tfng' (True/False/Not Given). 4. Each question MUST have a clear Vietnamese 'explanation' quoting the exact sentence in the passage.";
+// Add Example inline safely
+taskInstruction += " [EXAMPLE STRUCTURE]: {\"passage\": \"Text...\", \"questions\": [{\"type\": \"mcq\", \"questionText\": \"...?\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correctAnswer\": \"A\", \"explanation\": \"Vì...\"}]}";
 const rule = this.getMicroTierReadingRule(mappedKey);
 if (rule) pedagogyRule = "\n" + rule;
 }
@@ -2620,15 +2632,15 @@ _tokenUsage: res.tokenMetadata
 throw new Error("Invalid format from AI for Match Pure Mode (Hard)");
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.23
-// Last Updated: 2026-04-18 20:45
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.24
+// Last Updated: 2026-04-19 09:36
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [QA FIX V1.36] 1. Cấy _volatileMemory chống lặp từ song song (Amnesia). 2. Cập nhật _sanitizeAiItem kiểm tra tính toàn vẹn cấu trúc (Structural Integrity) chống ảo giác thiếu đáp án. 3. Viết lại _generateFallbackData bốc thẻ tuyến tính (Linear Pick) chống lặp rác offline. Tuân thủ Điều 3.
+// Cập nhật: [ĐẠI PHẪU GIAI ĐOẠN 3] Cấy ghép Thuật toán Lai (Hybrid Fetching), Sổ Luân Hồi (UID Exclusion), Tự động vá đáp án (On-The-Fly Distractors) và Thu hoạch tự động (Auto-Harvesting). Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
 _passageLocks: {},
-// [NEW V1.23] Bộ nhớ RAM siêu tốc: Đồng bộ hóa ngay lập tức các từ vừa được AI sinh ra trong cùng 1 Batch/Sliding Window trước khi ghi xuống IndexedDB.
+// Bộ nhớ RAM siêu tốc: Đồng bộ hóa ngay lập tức các từ vừa được AI sinh ra trong cùng 1 Batch/Sliding Window trước khi ghi xuống IndexedDB.
 _volatileMemory: [],
 // ============================================================================
 // [INTERNAL UTILS] CÁC HÀM TIỆN ÍCH NỘI BỘ
@@ -2649,7 +2661,7 @@ examHistory.push(cleanTerm);
 while (examHistory.length > 400) examHistory.shift();
 try { localStorage.setItem('fc_ai_memory', JSON.stringify(examHistory)); } catch(e) {}
 }
-// 2. [NEW V1.23] Lưu ngay lập tức vào Volatile Memory để chống lặp song song
+// 2. Lưu ngay lập tức vào Volatile Memory để chống lặp song song
 if (!this._volatileMemory) this._volatileMemory = [];
 if (!this._volatileMemory.includes(cleanTerm)) {
 this._volatileMemory.push(cleanTerm);
@@ -2672,7 +2684,7 @@ terms.push(data.term);
 return terms;
 },
 _isDuplicate: function(termsToCheck, history) {
-// [NEW V1.23] Trộn Lịch sử tổng (DB) với Bộ nhớ chớp nhoáng (RAM)
+// Trộn Lịch sử tổng (DB) với Bộ nhớ chớp nhoáng (RAM)
 const volatile = this._volatileMemory || [];
 const combinedHistory = [...(history || []), ...volatile];
 if (combinedHistory.length === 0) return false;
@@ -2734,7 +2746,7 @@ if (w && typeof w === 'string' && w.split(' ').length > maxWords) return false;
 }
 }
 }
-// 3. [NEW V1.23] Lưới lọc thép Cấu trúc (Structural Integrity)
+// 3. Lưới lọc thép Cấu trúc (Structural Integrity)
 const isOptionsType = expectedType.includes('multiple_choice') || expectedType.includes('match') || expectedType.includes('listening') || expectedType.includes('image_quiz') || expectedType.includes('pronunciation');
 if (isOptionsType) {
 // Cấm mảng options bị rỗng hoặc thiếu
@@ -2766,7 +2778,7 @@ fallbackCards = [
 {term: "Subsequent", definition: "Xảy ra sau đó"}, {term: "Intrinsic", definition: "Thuộc về bản chất"}
 ];
 } else {
-// [NEW V1.23] Trích xuất trực tiếp mảng gốc, bỏ qua hàm trộn ngẫu nhiên của FallbackDataEngine
+// Trích xuất trực tiếp mảng gốc, bỏ qua hàm trộn ngẫu nhiên của FallbackDataEngine
 const mode = (type.includes('sentence') || type.includes('spot_mistake') || type.includes('fill_blank') || type.includes('scramble') || type.includes('reading')) ? 'sentence' : 'vocab';
 try {
 if (window.FallbackDataEngine && window.FallbackDataEngine[lang] && window.FallbackDataEngine[lang][mode] && window.FallbackDataEngine[lang][mode][level]) {
@@ -2785,7 +2797,7 @@ fallbackCards = [
 ];
 }
 }
-// [NEW V1.23] Bốc xoay vòng TUYẾN TÍNH (Linear Pick) theo index
+// Bốc xoay vòng TUYẾN TÍNH (Linear Pick) theo index
 const safeIndex = index % fallbackCards.length;
 const baseCard = fallbackCards[safeIndex] || {term: "Error", definition: "Lỗi"};
 // Trích xuất 3 nhiễu tịnh tiến an toàn
@@ -2920,19 +2932,69 @@ console.warn("[ExamEngine] DB Get Error or Store missing:", e);
 if (questionData) {
 return questionData;
 }
-// 3. Cache Miss: Kích hoạt AiFactoryEngine đúc câu hỏi mới
-console.log(`[ExamEngine] Cache Miss for ${id}. Hydrating via AI...`);
+// 3. Cache Miss: Khởi tạo Thuật toán Lai (Hybrid Fetching)
+console.log("[ExamEngine] Cache Miss for " + id + ". Hydrating via Hybrid Engine...");
 let generatedData = null;
 let finalError = null;
+let isFromHarvestPool = false;
+let harvestId = null;
+// Đọc cấu hình từ DB (Thuật toán Lai & Sổ luân hồi)
+let ratio = 70;
+let harvestPool = {};
+let userHistory = [];
+const targetLang = track === 'hsk' ? 'zh' : (track === 'vi' ? 'vi' : 'en');
+const safeTopic = topic || 'General';
+if (window.FcDB) {
+try {
+const r = await window.FcDB.get('fc_exam_ratio');
+if (r !== undefined && r !== null) ratio = Number(r);
+const p = await window.FcDB.get('fc_exam_pool');
+if (p) harvestPool = p;
+const h = await window.FcDB.get('fc_user_exam_history');
+if (h && Array.isArray(h)) userHistory = h;
+} catch(e) { console.warn("[ExamEngine] Lỗi đọc DB Lai:", e); }
+}
+const fetchFromOfflinePool = (targetType) => {
+if (!harvestPool[targetLang] || !harvestPool[targetLang][level] || !harvestPool[targetLang][level][safeTopic] || !harvestPool[targetLang][level][safeTopic][targetType]) return null;
+const items = harvestPool[targetLang][level][safeTopic][targetType];
+if (!items || items.length === 0) return null;
+const available = items.filter(item => !userHistory.includes(item.id));
+if (available.length === 0) return null;
+return available[Math.floor(Math.random() * available.length)];
+};
+const autoHarvest = (contentData, itemType) => {
+const newUid = "ex_" + itemType + "_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+if (!harvestPool[targetLang]) harvestPool[targetLang] = {};
+if (!harvestPool[targetLang][level]) harvestPool[targetLang][level] = {};
+if (!harvestPool[targetLang][level][safeTopic]) harvestPool[targetLang][level][safeTopic] = {};
+if (!harvestPool[targetLang][level][safeTopic][itemType]) harvestPool[targetLang][level][safeTopic][itemType] = [];
+const newItem = { id: newUid, content: contentData, timestamp: Date.now() };
+harvestPool[targetLang][level][safeTopic][itemType].push(newItem);
+if (window.FcDB) { window.FcDB.set('fc_exam_pool', harvestPool).catch(e=>{}); }
+return newUid;
+};
+const tryOfflineFirst = (Math.random() * 100) <= ratio;
 // --- CHIẾN DỊCH ĐỌC HIỂU: THUẬT TOÁN "BẺ KÉN" (PASSAGE GROUPING) ---
-// Chống lặp câu hỏi trong đoạn văn. 1 Tổ kén (Passage) chỉ gọi AI 1 lần duy nhất cho toàn bộ các câu con.
 if (passageGroup) {
 const groupId = passageGroup;
 const qIndex = questionIndexInPassage || 0;
 if (!this._passageLocks[groupId]) {
 this._passageLocks[groupId] = (async () => {
+let pData = null;
 let pAttempt = 0;
 let pLastErr = null;
+const pType = type.includes('reading') ? 'ielts_reading_passage' : type;
+// Thử bốc kho Offline trước
+if (tryOfflineFirst) {
+const picked = fetchFromOfflinePool(pType);
+if (picked && picked.content && picked.content.questions && picked.content.questions.length > 0) {
+pData = JSON.parse(JSON.stringify(picked.content));
+pData._harvestId = picked.id;
+console.log("[ExamEngine] Offline Passage Hit: " + picked.id);
+}
+}
+// Gọi AI nếu kho Offline thất bại
+if (!pData) {
 while(pAttempt < 3) {
 try {
 if (!apiKey) throw new Error("Missing API Key");
@@ -2951,17 +3013,20 @@ const used = aiRes.tokenMetadata.totalTokenCount || 0;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
-return parsed;
+pData = parsed;
+pData._harvestId = autoHarvest(parsed, pType);
+break;
 } catch(e) {
 pLastErr = e;
 pAttempt++;
-// Backoff chống lỗi 429
 if (e.message && (e.message.includes('429') || e.message.includes('quota') || e.message.includes('Timeout'))) {
 await new Promise(r => setTimeout(r, 2000 * pAttempt));
 }
 }
 }
-throw pLastErr;
+if (!pData) throw pLastErr;
+}
+return pData;
 })();
 setTimeout(() => {
 if (this._passageLocks[groupId]) {
@@ -2974,10 +3039,10 @@ const passageSet = await this._passageLocks[groupId];
 let qData = passageSet.questions[qIndex];
 let isRescuedPassageChild = false;
 if (!qData) {
-console.warn(`[ExamEngine] Ảo giác AI: Tổ kén thiếu câu hỏi số ${qIndex + 1}. Kích hoạt cứu hộ cục bộ.`);
+console.warn("[ExamEngine] Ảo giác AI: Tổ kén thiếu câu hỏi số " + (qIndex + 1) + ". Kích hoạt cứu hộ cục bộ.");
 qData = {
 type: 'mcq',
-questionText: `Câu hỏi dự phòng (Hệ thống ghi nhận AI sinh thiếu câu số ${qIndex + 1})`,
+questionText: "Câu hỏi dự phòng (Hệ thống ghi nhận AI sinh thiếu câu số " + (qIndex + 1) + ")",
 options: ["A. Dữ liệu bị khuyết", "B. Vui lòng chọn bừa", "C. Đáp án đúng", "D. Lỗi ảo giác"],
 correctAnswer: "C. Đáp án đúng",
 explanation: "Hệ thống tự động sinh ra do AI không cung cấp đủ số lượng câu hỏi yêu cầu trong Blueprint."
@@ -3018,14 +3083,43 @@ metadata.type = 'ioe_multiple_choice';
 if (!isRescuedPassageChild && !this._sanitizeAiItem(tempGeneratedData, metadata.type, track, level)) {
 throw new Error("Dữ liệu câu hỏi con vi phạm quy tắc (Ám sát sư phạm hoặc thiếu đáp án).");
 }
+harvestId = passageSet._harvestId;
+isFromHarvestPool = true;
 generatedData = tempGeneratedData;
 } catch (e) {
-console.error(`[ExamEngine] Passage Cocoon break failed for ${groupId}:`, e);
+console.error("[ExamEngine] Passage Cocoon break failed for " + groupId + ":", e);
 finalError = e;
 }
 }
 else {
-// --- CÁC CÂU HỎI ĐƠN LẺ NGUYÊN TỬ (VÒNG LẶP MAX_ATTEMPTS) ---
+// --- CÁC CÂU HỎI ĐƠN LẺ NGUYÊN TỬ ---
+if (tryOfflineFirst) {
+const picked = fetchFromOfflinePool(type);
+if (picked && picked.content) {
+let qContent = JSON.parse(JSON.stringify(picked.content));
+// ON-THE-FLY DISTRACTORS CHO TRẮC NGHIỆM TỪ MINI-GAME
+const isMCQ = type.includes('multiple_choice') || type.includes('match') || type.includes('image_quiz');
+if (isMCQ && (!qContent.options || qContent.options.length < 3)) {
+const correctText = qContent.definition || qContent.targetWord || qContent.correction || qContent.oddWord || qContent.term || "Đáp án";
+if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
+try {
+const dists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(correctText, [], targetLang, 'vocab', 3, false);
+qContent.options = window.Utils.shuffleArray([
+...dists.map(d => ({ text: d, isCorrect: false })),
+{ text: correctText, isCorrect: true }
+]);
+} catch(e) {}
+}
+}
+if (this._sanitizeAiItem(qContent, type, track, level)) {
+generatedData = qContent;
+isFromHarvestPool = true;
+harvestId = picked.id;
+console.log("[ExamEngine] Offline Pool Hit: " + harvestId);
+}
+}
+}
+// Gọi AI nếu Offline thất bại
 let attempt = 0;
 const MAX_ATTEMPTS = 3;
 while (attempt < MAX_ATTEMPTS && !generatedData) {
@@ -3039,8 +3133,8 @@ baseHistoryPrompt = window.AiFactoryEngine.getHistoryPrompt(examHistory);
 }
 let retryPrompt = "";
 if (attempt > 0) {
-retryPrompt = `\nCRITICAL WARNING: Your previous output was a DUPLICATE. You MUST generate completely different vocabulary/sentences. Focus on sub-topics or advanced words you haven't used yet. (Random Seed: ${Math.floor(Math.random() * 10000)})`;
-console.warn(`[ExamEngine] Retry Attempt ${attempt + 1}/${MAX_ATTEMPTS} for ${type}...`);
+retryPrompt = "\nCRITICAL WARNING: Your previous output was a DUPLICATE. You MUST generate completely different vocabulary/sentences. Focus on sub-topics or advanced words you haven't used yet. (Random Seed: " + Math.floor(Math.random() * 10000) + ")";
+console.warn("[ExamEngine] Retry Attempt " + (attempt + 1) + "/" + MAX_ATTEMPTS + " for " + type + "...");
 }
 const finalHistoryPrompt = baseHistoryPrompt + retryPrompt;
 let tempGeneratedData = null;
@@ -3135,11 +3229,11 @@ tempGeneratedData = await window.AiFactoryEngine.fetchPureCard(level, 'quiz', 'e
 }
 // --- BỘ LỌC THÉP 1: SCHEMA VALIDATOR ---
 if (!tempGeneratedData) {
-throw new Error(`AI returned empty data for type: ${type}`);
+throw new Error("AI returned empty data for type: " + type);
 }
 // Lọc rác đáp án dài hoặc thiếu options từ Atomic Fetch
 if (!this._sanitizeAiItem(tempGeneratedData, type, track, level)) {
-throw new Error(`Dữ liệu vi phạm quy tắc Sư phạm (Ám sát sư phạm hoặc Thiếu đáp án).`);
+throw new Error("Dữ liệu vi phạm quy tắc Sư phạm (Ám sát sư phạm hoặc Thiếu đáp án).");
 }
 // Thu thuế Token cho Atomic Fetch
 if (tempGeneratedData._tokenUsage) {
@@ -3171,7 +3265,11 @@ throw new Error("Ảo giác AI: Thiếu trường 'words' hoặc 'oddWord'.");
 // --- BỘ LỌC THÉP 2: CLIENT-SIDE DUPLICATION CHECK ---
 const termsToCheck = this._extractTermsToCheck(tempGeneratedData, type);
 if (this._isDuplicate(termsToCheck, examHistory)) {
-throw new Error(`[Duplicate Detected] AI generated an already used word: ${termsToCheck.join(', ')}`);
+throw new Error("[Duplicate Detected] AI generated an already used word: " + termsToCheck.join(', '));
+}
+// Auto Harvest sau khi AI sinh thành công
+if (!isFromHarvestPool && tempGeneratedData && !tempGeneratedData._isRescued) {
+harvestId = autoHarvest(tempGeneratedData, type);
 }
 generatedData = tempGeneratedData;
 } catch (error) {
@@ -3186,11 +3284,11 @@ await new Promise(r => setTimeout(r, 2000 * attempt));
 } // End Else (Single Question)
 // NẾU 3 LẦN ĐỀU THẤT BẠI HOẶC TỔ KÉN SẬP -> KÍCH HOẠT CỨU HỘ (FALLBACK)
 if (!generatedData) {
-console.warn(`[ExamEngine] AI Hydration FATALLY failed for ${id}. KÍCH HOẠT QUY TRÌNH CỨU HỘ...`);
+console.warn("[ExamEngine] AI Hydration FATALLY failed for " + id + ". KÍCH HOẠT QUY TRÌNH CỨU HỘ...");
 try {
 let rescuedData = null;
 if (!rescuedData) {
-console.log(`[ExamEngine] Kéo cáp cứu hộ từ FallbackDataEngine cho dạng bài: ${metadata.type || type}`);
+console.log("[ExamEngine] Kéo cáp cứu hộ từ FallbackDataEngine cho dạng bài: " + (metadata.type || type));
 // Dùng index từ vòng lặp metadata để bốc thẻ xoay vòng
 const rescueIndex = index || 0;
 rescuedData = this._generateFallbackData(metadata.type || type, level, track, rescueIndex);
@@ -3203,8 +3301,8 @@ generatedData._isRescued = true;
 throw new Error("Không có dữ liệu cứu hộ.");
 }
 } catch (rescueError) {
-console.error(`[ExamEngine] Cứu hộ thất bại:`, rescueError);
-throw new Error(`Sinh dữ liệu và cứu hộ đều thất bại: ${finalError?.message}`);
+console.error("[ExamEngine] Cứu hộ thất bại:", rescueError);
+throw new Error("Sinh dữ liệu và cứu hộ đều thất bại: " + finalError?.message);
 }
 }
 // ĐỒNG BỘ TRÍ NHỚ CHUNG QUA HÀM _syncMemory
@@ -3212,15 +3310,16 @@ this._syncMemory(generatedData, type, examHistory);
 // 4. ĐÓNG GÓI THÀNH ATOMIC QUESTION
 const atomicQuestion = {
 id: id,
+harvestId: harvestId,
 content: generatedData,
 metadata: metadata,
 timestamp: Date.now()
 };
-// 5. LƯU TRỮ NGƯỢC LẠI VÀO DB ĐỂ TÁI SỬ DỤNG
+// 5. LƯU TRỮ NGƯỢC LẠI VÀO DB ĐỂ TÁI SỬ DỤNG VÀ PHỤC HỒI SESSION
 if (window.FcDB) {
 try {
 await window.FcDB.set(id, atomicQuestion, 'fc_questions_bank');
-console.log(`[ExamEngine] Saved ${id} to Question Bank.`);
+console.log("[ExamEngine] Saved " + id + " to Question Bank.");
 } catch(e) {
 console.warn("[ExamEngine] Auto-save to bank failed:", e);
 }
@@ -5795,7 +5894,7 @@ className="w-16 h-16 text-3xl font-serif border-2 border-gray-200 rounded-xl hov
 // EXPORT GLOBAL
 window.WordSelectorModal = WordSelectorModal;
 window.HanziSelectorModal = HanziSelectorModal;
-// Block4.8: TẦNG 4: CÁC TÍNH NĂNG & MODALS (User Guide & Documentation) - Version 1.1
+// Block4.8: TẦNG 4: CÁC TÍNH NĂNG & MODALS (User Guide & Documentation) - Version 1.01
 // Last Updated: 2026-04-04 14:00
 // Nhiệm vụ: Chuyên trách hệ thống hướng dẫn sử dụng chi tiết (Manual/Documentation). Dành không gian mở rộng nội dung text đồ sộ trong tương lai.
 // Gồm: HelpModal
@@ -5872,6 +5971,207 @@ return (
 };
 // EXPORT GLOBAL
 window.HelpModal = HelpModal;
+// Block4.9: TẦNG 4: QUẢN TRỊ NGÂN HÀNG ĐỀ THI (Exam Pool Manager) - Version 1.01
+// Last Updated: 2026-04-19 08:48
+// Nhiệm vụ: Giao diện Modal quản trị trung tâm cho Kho Khảo thí. Hiển thị Dashboard, điều chỉnh Tỉ lệ Lai, và Quản lý I/O.
+// Cập nhật: Khởi tạo module độc lập. Tuân thủ tuyệt đối Điều 3.2 Hiến Pháp.
+// ==================================================================================
+const ExamPoolManagerModal = ({ isOpen, onClose, mainColor = 'blue', examPoolData }) => {
+const Icons = window.Icons;
+const fileInputRef = React.useRef(null);
+const [showPreview, setShowPreview] = React.useState(false);
+// Rã băng các dữ liệu từ Hook 6.8
+const {
+examPool,
+hybridRatio,
+isPoolLoading,
+handleRatioChange,
+handleClearPool,
+handleImportFromMiniGame,
+handleExportExamPoolToExcel
+} = examPoolData || {};
+React.useEffect(() => {
+if (isOpen) {
+setShowPreview(false);
+}
+}, [isOpen]);
+// 1. TÍNH TOÁN THỐNG KÊ (DASHBOARD)
+const stats = React.useMemo(() => {
+let total = 0;
+const byLevel = {};
+if (examPool) {
+Object.keys(examPool).forEach(lang => {
+Object.keys(examPool[lang]).forEach(level => {
+if (!byLevel[level]) byLevel[level] = 0;
+Object.keys(examPool[lang][level]).forEach(topic => {
+Object.keys(examPool[lang][level][topic]).forEach(type => {
+const count = examPool[lang][level][topic][type].length;
+total += count;
+byLevel[level] += count;
+});
+});
+});
+});
+}
+return { total, byLevel };
+}, [examPool]);
+// 2. HANDLER CHO FILE UPLOAD
+const onFileChange = (e) => {
+const file = e.target.files[0];
+if (file && handleImportFromMiniGame) {
+handleImportFromMiniGame(file);
+if (fileInputRef.current) fileInputRef.current.value = '';
+}
+};
+if (!isOpen) return null;
+return (
+<div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+<div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh] border border-gray-200 relative">
+{/* Màn hình Loading khi Import */}
+{isPoolLoading && (
+<div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in">
+<div className={`w-16 h-16 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-4`}></div>
+<p className={`text-${mainColor}-700 font-bold animate-pulse text-lg`}>Đang xử lý dữ liệu...</p>
+</div>
+)}
+{/* Header */}
+<div className={`p-4 border-b bg-${mainColor}-50 flex justify-between items-center shrink-0 shadow-sm`}>
+<div className="flex items-center gap-3">
+<div className={`w-10 h-10 rounded-full bg-${mainColor}-100 text-${mainColor}-600 flex items-center justify-center shadow-inner`}>
+<Icons.Database size={20} />
+</div>
+<div>
+<h3 className={`font-black text-lg text-${mainColor}-800 leading-tight uppercase tracking-wide`}>Trung Tâm Đề Thi</h3>
+<p className="text-[10px] font-bold text-gray-500">Exam Harvest Pool Manager</p>
+</div>
+</div>
+<button onClick={onClose} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-95">
+<Icons.X size={24} />
+</button>
+</div>
+<div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-gray-50/50 space-y-6">
+{/* PHẦN 1: DASHBOARD */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div className={`md:col-span-1 bg-gradient-to-br from-${mainColor}-500 to-${mainColor}-700 rounded-2xl p-5 text-white shadow-md relative overflow-hidden flex flex-col items-center justify-center`}>
+<Icons.Layers size={64} className="absolute -right-4 -bottom-4 opacity-10" />
+<span className="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Tổng Số Câu</span>
+<span className="text-5xl font-black tracking-tight">{stats.total}</span>
+</div>
+<div className="md:col-span-2 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center">
+<span className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">Phân bổ theo Cấp độ</span>
+{Object.keys(stats.byLevel).length === 0 ? (
+<div className="text-sm text-gray-400 italic text-center py-2">Kho dữ liệu đang trống.</div>
+) : (
+<div className="flex flex-wrap gap-2">
+{Object.entries(stats.byLevel).map(([lvl, count]) => (
+<div key={lvl} className={`px-3 py-1.5 bg-${mainColor}-50 border border-${mainColor}-100 rounded-lg flex items-center gap-2`}>
+<span className={`text-[10px] font-bold text-${mainColor}-600 uppercase`}>{lvl.replace('level_', '').replace(/_/g, ' ')}</span>
+<span className="text-sm font-black text-gray-700 bg-white px-2 rounded shadow-sm">{count}</span>
+</div>
+))}
+</div>
+)}
+</div>
+</div>
+{/* PHẦN 2: RATIO CONTROLLER */}
+<div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+<div className="flex justify-between items-center mb-4">
+<div className="flex items-center gap-2">
+<Icons.Settings size={20} className={`text-${mainColor}-500`} />
+<h4 className="font-bold text-gray-800 text-lg">Cấu hình Thuật toán Lai</h4>
+</div>
+<span className={`px-3 py-1 rounded-full text-xs font-black bg-${mainColor}-100 text-${mainColor}-700 shadow-sm`}>
+AI: {hybridRatio}% / Kho: {100 - hybridRatio}%
+</span>
+</div>
+<p className="text-xs text-gray-500 mb-6 max-w-lg">
+Điều chỉnh tỉ lệ bốc câu hỏi giữa Kho Dữ liệu Offline và Máy chủ AI. Tỉ lệ AI càng cao, kho dữ liệu của bạn sẽ càng nhanh chóng phình to.
+</p>
+<div className="w-full px-2 mb-8">
+<input type="range" min="0" max="100" step="10" value={hybridRatio} onChange={(e) => handleRatioChange(e.target.value)} className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-${mainColor}-600`} />
+<div className="flex justify-between mt-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+<div className="flex flex-col items-center"><span>0%</span><span className="text-gray-500">Offline 100%</span></div>
+<div className="flex flex-col items-center"><span>50%</span><span className="text-blue-500">Cân bằng</span></div>
+<div className="flex flex-col items-center"><span>100%</span><span className="text-purple-500">Cày AI</span></div>
+</div>
+</div>
+</div>
+{/* PHẦN 3: I/O MANAGER */}
+<div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+<h4 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
+<Icons.RefreshCw size={20} className="text-green-500" /> Quản lý Luồng Dữ liệu
+</h4>
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<div>
+<input type="file" ref={fileInputRef} onChange={onFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
+<button onClick={() => fileInputRef.current?.click()} className="w-full h-full py-3 px-2 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95">
+<Icons.Upload size={24} /> Thu mua từ Game
+</button>
+</div>
+<button onClick={handleExportExamPoolToExcel} disabled={stats.total === 0} className="w-full py-3 px-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl hover:bg-blue-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-95">
+<Icons.Download size={24} /> Xuất Excel Kho
+</button>
+<button onClick={handleClearPool} disabled={stats.total === 0} className="w-full py-3 px-2 bg-red-50 text-red-600 border border-red-200 rounded-xl hover:bg-red-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-95">
+<Icons.Trash2 size={24} /> Reset Toàn bộ
+</button>
+</div>
+</div>
+{/* PHẦN 4: PREVIEW KHO DỮ LIỆU */}
+<div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300">
+<button onClick={() => setShowPreview(!showPreview)} className="w-full p-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
+<h4 className="font-bold text-gray-800 flex items-center gap-2">
+<Icons.Eye size={20} className="text-gray-400" /> Xem trước nội dung kho
+</h4>
+<Icons.ChevronDown size={20} className={`text-gray-400 transition-transform ${showPreview ? 'rotate-180' : ''}`} />
+</button>
+{showPreview && (
+<div className="p-4 border-t border-gray-100 bg-gray-50/50 max-h-[300px] overflow-y-auto custom-scrollbar">
+{stats.total === 0 ? (
+<div className="text-center text-sm text-gray-400 py-4 italic">Kho hiện tại đang trống rỗng.</div>
+) : (
+<div className="space-y-4">
+{Object.keys(examPool).map(langKey => (
+Object.keys(examPool[langKey]).map(lvlKey => {
+const lvlData = examPool[langKey][lvlKey];
+let flatItems = [];
+Object.values(lvlData).forEach(topicObj => {
+Object.values(topicObj).forEach(typeArr => {
+flatItems = flatItems.concat(typeArr);
+});
+});
+return (
+<div key={`${langKey}-${lvlKey}`} className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+<div className={`text-xs font-black text-${mainColor}-600 uppercase tracking-widest border-b pb-2 mb-2`}>
+[{langKey.toUpperCase()}] {lvlKey.replace('level_', '').replace(/_/g, ' ')} ({flatItems.length} câu)
+</div>
+<div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+{flatItems.map(item => {
+const c = item.content;
+const qText = c.term || c.displaySentence || c.wrongSentence || (Array.isArray(c.words) ? c.words.join(' • ') : "Lỗi hiển thị");
+const aText = c.definition || c.targetWord || c.correction || c.oddWord || c.correctAnswer || "Lỗi đáp án";
+return (
+<div key={item.id} className="text-[11px] bg-gray-50 p-2 rounded border border-gray-100">
+<div className="font-bold text-gray-700 mb-0.5">{qText}</div>
+<div className="text-green-600 font-medium">➔ {aText}</div>
+</div>
+);
+})}
+</div>
+</div>
+);
+})
+))}
+</div>
+)}
+</div>
+)}
+</div>
+</div>
+</div>
+</div>
+);
+};
+window.ExamPoolManagerModal = ExamPoolManagerModal;
 // Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.23
 // Last Updated: 2026-04-12 07:15
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind.
@@ -9106,13 +9406,13 @@ queueLength={queueLength}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.10
-// Last Updated: 2026-04-17 16:15
+// Block5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.11
+// Last Updated: 2026-04-19 09:19
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [QA DEBUG V4] Vá lỗi iOS Listening: Cắm cáp onPlay và lang cho ExamUIShell để truyền sức mạnh xử lý giọng nói xuống Tầng 5.14. Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [EXAM POOL MANAGER] Bổ sung nút truy cập "Quản lý Ngân hàng đề thi" tại phân khu Khảo thí. Truyền prop onOpenExamPoolManager. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 // 1. GAME MENU (Menu chính)
-const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions, onStartMockTest }) => {
+const GameMenu = ({ t, mainColor, lang, cards, dataMode, onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut, onResume, gameSessions, onStartMockTest, onOpenExamPoolManager }) => {
 const [matchAiMode, setMatchAiMode] = React.useState(false);
 // State quản lý Hộp thoại Tiếp tục
 const [pendingResumeGame, setPendingResumeGame] = React.useState(null);
@@ -9271,9 +9571,22 @@ title="Bật/Tắt AI tạo nhiễu khó"
 {/* CỘT PHẢI: KỶ NGUYÊN KHẢO THÍ (MOCK TEST ERA) - COMBO CARDS */}
 {lang !== 'vi' && (
 <div className="w-full md:w-[280px] lg:w-[320px] shrink-0 flex flex-col gap-3 mt-4 md:mt-0 animate-in slide-in-from-right-8">
-<div className="flex items-center gap-2 mb-1 px-2">
+{/* [UPDATED v1.11] Header Đánh giá năng lực có kèm nút Mở Kho Khảo thí */}
+<div className="flex items-center justify-between w-full mb-1 px-2">
+<div className="flex items-center gap-2">
 <window.Icons.Award size={16} className="text-red-500" />
 <h3 className="text-sm sm:text-base font-bold text-gray-700 uppercase tracking-wider">Đánh giá năng lực</h3>
+</div>
+{onOpenExamPoolManager && (
+<button
+onClick={onOpenExamPoolManager}
+className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors shadow-sm flex items-center gap-1 active:scale-95"
+title="Quản lý Ngân hàng đề thi"
+>
+<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+<span className="text-[10px] font-bold hidden sm:inline">Ngân hàng đề</span>
+</button>
+)}
 </div>
 <div className="bg-gradient-to-b from-blue-50 to-indigo-50/50 p-3 sm:p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col gap-3 w-full">
 {/* Thẻ 1: IOE hoặc HSK */}
@@ -9372,7 +9685,7 @@ Hủy bỏ
 );
 };
 // 2. GAME VIEW (Controller chính - Clean Router)
-const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings, onUpdateCards, onSaveToHarvest, dataMode, currentLevel, currentTopic, globalRetryBag, addToRetryBag, removeFromRetryBag, onOpenIncorrect }) => {
+const GameView = ({ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang, onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying, gameSessions, setGameSessions, settings, onUpdateCards, onSaveToHarvest, dataMode, currentLevel, currentTopic, globalRetryBag, addToRetryBag, removeFromRetryBag, onOpenIncorrect, onOpenExamPoolManager }) => {
 const [gameState, setGameState] = React.useState('menu');
 const [gameType, setGameType] = React.useState(null);
 const [gameConfig, setGameConfig] = React.useState({});
@@ -9570,6 +9883,7 @@ onStartOddOneOut={handleStartOddOneOut}
 onResume={handleResumeSession}
 gameSessions={gameSessions}
 onStartMockTest={handleStartMockTest}
+onOpenExamPoolManager={onOpenExamPoolManager}
 />
 </div>
 )}
@@ -13847,11 +14161,11 @@ className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 trans
 // EXPORT TO GLOBAL WINDOW
 window.Block5_16_ExamReviewModal = ExamReviewModal;
 window.ExamReviewModal = ExamReviewModal;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.9
-// Last Updated: 2026-04-13 15:45
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.10
+// Last Updated: 2026-04-19 08:58
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật: [INDEXEDDB MIGRATION - PHẦN 3] Nạp bất đồng bộ Sổ tay (notebook, mastered, incorrectList) từ IndexedDB thay vì LocalStorage đồng bộ. Tuân thủ Điều 3.
+// Cập nhật: [EXAM POOL MANAGER] Bổ sung State `showExamPoolManager` để điều khiển hiển thị Modal Quản trị Ngân hàng đề thi. Tuân thủ Điều 3.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -13921,6 +14235,7 @@ const [showAiChat, setShowAiChat] = useState(false);
 const [showIncorrectModal, setShowIncorrectModal] = useState(false);
 const [showHelp, setShowHelp] = useState(false);
 const [showSaveLoadModal, setShowSaveLoadModal] = useState(false);
+const [showExamPoolManager, setShowExamPoolManager] = useState(false); // [NEW v1.10] State Quản trị Khảo thí
 // Hanzi Toggles
 const [showHanziSelector, setShowHanziSelector] = useState(false);
 const [showHanziWriter, setShowHanziWriter] = useState(false);
@@ -13987,7 +14302,7 @@ await window.FcDB.init();
 // 2. Nạp dữ liệu Kho AI
 const pool = await window.FcDB.get('fc_ai_harvest_pool');
 if (pool) setAiHarvestPool(pool);
-// 3. Nạp dữ liệu Túi Nháp
+// 3. Nạp dữ liệu Tú Nháp
 const bag = await window.FcDB.get('fc_global_retry_bag');
 if (bag) setGlobalRetryBag(bag);
 setIsDbReady(true);
@@ -14126,8 +14441,9 @@ isDbReady, // [NEW v1.8] Báo cáo tình trạng DB cho App Component
 dataMode, setDataMode,
 currentLevel, setCurrentLevel,
 currentTopic, setCurrentTopic,
+// UI Toggles
 showSettings, showApiKeyModal, showNotebook, showManual, showLinkManager, showWordSelect, showMastered, showIncorrectModal,
-showAiChat, showHelp, showSaveLoadModal, showHanziSelector, showHanziWriter, currentHanziChar,
+showAiChat, showHelp, showSaveLoadModal, showHanziSelector, showHanziWriter, currentHanziChar, showExamPoolManager,
 wordSelectTarget, toast, isAiLoading, isAiModeLearn, isAiModeGame, resetPending,
 importUrl, defaultUrl, exportUrl, apiKeySheetUrl,
 currentCardIndex, isFlipped, isAutoPlaying, isShuffle, isAutoMode, isFlipLocked,
@@ -14136,7 +14452,7 @@ isMuted, isGamePlaying, settings, voices, DEFAULT_SETTINGS, isContentHidden, isB
 setViewMode, setLang, setUiLang, setCards, setNotebook, setMastered, setIsStudyingNotebook,
 setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag,
 setShowSettings, setShowApiKeyModal, setShowNotebook, setShowManual, setShowLinkManager, setShowWordSelect, setShowMastered, setShowIncorrectModal,
-setShowAiChat, setShowHelp, setShowSaveLoadModal, setShowHanziSelector, setShowHanziWriter, setCurrentHanziChar,
+setShowAiChat, setShowHelp, setShowSaveLoadModal, setShowHanziSelector, setShowHanziWriter, setCurrentHanziChar, setShowExamPoolManager,
 setWordSelectTarget, setToast, setIsAiLoading, setIsAiModeLearn, setIsAiModeGame, setResetPending,
 setImportUrl, setDefaultUrl, setExportUrl, setApiKeySheetUrl,
 setCurrentCardIndex, setIsFlipped, setIsAutoPlaying, setIsShuffle, setIsAutoMode, setIsFlipLocked,
@@ -15048,10 +15364,10 @@ secureCopy
 window.Block6_3_useDataIO = useDataIO;
 window.Block15_useDataLogic = useDataIO; // Fallback
 window.useDataLogic = useDataIO;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.02
-// Last Updated: 2026-04-14 18:45
-// Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5), AI Curator (6.6) và Mock Test Logic (6.7).
-// Cập nhật: [MOCK TEST ERA - BƯỚC 10] Khởi tạo useExamLogic tại Main Controller để bảo toàn State bài thi khi người dùng chuyển tab. Tuân thủ Điều 3.
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.03
+// Last Updated: 2026-04-19 09:10
+// Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5), AI Curator (6.6), Mock Test Logic (6.7) và Exam Pool Logic (6.8).
+// Cập nhật: [EXAM POOL MANAGER] Nhúng useExamPoolLogic (Block 6.8) và bổ sung các action mở/đóng Modal Quản trị Ngân hàng đề. Cập nhật mảng Keyboard Shortcuts. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
 // ==================================================================================
 const useAppLogic = (core) => {
 // 1. LẤY CORE STATE
@@ -15341,6 +15657,9 @@ const studyProgress = StudyProgressHook ? StudyProgressHook(core, latestStateRef
 // Mảnh 3: Quản lý Kho AI (Block 6.6)
 const AiCuratorHook = window.Block6_6_useAiCurator || (() => ({}));
 const aiCurator = AiCuratorHook ? AiCuratorHook(core, latestStateRef, { t, showToast }) : {};
+// Mảnh 4: Quản lý Kho Khảo thí (Block 6.8)
+const ExamPoolLogicHook = window.Block6_8_useExamPoolLogic || window.useExamPoolLogic || (() => ({}));
+const examPoolLogic = ExamPoolLogicHook ? ExamPoolLogicHook(core, sharedCallbacks) : {};
 // ==================================================================================
 // 6. UI ORCHESTRATION (HÀM ĐIỀU PHỐI GIAO DIỆN)
 // ==================================================================================
@@ -15433,7 +15752,7 @@ const handleCloseHanziWriter = () => core.setShowHanziWriter(false);
 React.useEffect(() => {
 const handleKeyDown = (e) => {
 if (viewMode !== 'learn') return; // Chặn phím tắt tác động vào Exam Mode (Chỉ chạy ở Learn Mode)
-if (core.showSettings || core.showApiKeyModal || core.showNotebook || core.showManual || core.showLinkManager || core.showWordSelect || core.showMastered || core.showIncorrectModal || core.showHelp || core.showHanziSelector || core.showHanziWriter || core.showSaveLoadModal || core.showAiChat) return;
+if (core.showSettings || core.showApiKeyModal || core.showNotebook || core.showManual || core.showLinkManager || core.showWordSelect || core.showMastered || core.showIncorrectModal || core.showHelp || core.showHanziSelector || core.showHanziWriter || core.showSaveLoadModal || core.showAiChat || core.showExamPoolManager) return;
 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 switch (e.key) {
 case 'ArrowRight': case 'd': case 'D': handleNext(); break;
@@ -15457,7 +15776,7 @@ break;
 };
 window.addEventListener('keydown', handleKeyDown);
 return () => window.removeEventListener('keydown', handleKeyDown);
-}, [viewMode, core.showSettings, core.showApiKeyModal, core.showNotebook, core.showManual, core.showLinkManager, core.showWordSelect, core.showMastered, core.showIncorrectModal, core.showHelp, core.showHanziSelector, core.showHanziWriter, core.showSaveLoadModal, core.showAiChat, handleNext, handlePrev, cards, currentCardIndex, speak, toggleAutoPlay, handleStopAutoPlay, handleToggleMute, handleToggleShuffle]);
+}, [viewMode, core.showSettings, core.showApiKeyModal, core.showNotebook, core.showManual, core.showLinkManager, core.showWordSelect, core.showMastered, core.showIncorrectModal, core.showHelp, core.showHanziSelector, core.showHanziWriter, core.showSaveLoadModal, core.showAiChat, core.showExamPoolManager, handleNext, handlePrev, cards, currentCardIndex, speak, toggleAutoPlay, handleStopAutoPlay, handleToggleMute, handleToggleShuffle]);
 // 8. RETURN MERGED ACTIONS (Lắp ráp API cho Tầng 7)
 return {
 // [MOCK TEST ERA] Bơm examLogic ra ngoài state tổng để GameView truy cập được
@@ -15505,13 +15824,17 @@ handleOpenHanziStudy,
 handleCloseHanziSelector,
 handleStartWriting,
 handleCloseHanziWriter,
+handleOpenExamPoolManager: () => core.setShowExamPoolManager(true),
+handleCloseExamPoolManager: () => core.setShowExamPoolManager(false),
 setIsGamePlaying: core.setIsGamePlaying,
 addToRetryBag,
 removeFromRetryBag,
 ...dataIO,
 ...studyProgress,
-...aiCurator
+...aiCurator,
+...examPoolLogic
 },
+examPoolData: examPoolLogic,
 refs: { audioTimeoutRef: core.audioTimeoutRef }
 };
 };
@@ -15916,10 +16239,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.19
-// Last Updated: 2026-04-18 21:00
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.20
+// Last Updated: 2026-04-19 09:43
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, và tự động lưu Snapshot (Resilience).
-// Cập nhật: [QA FIX V1.36 - NHÁT DAO 1] Vá lỗi "Màn hình trắng" khi Zero-Ammo Timeout. Thay vì dùng quitExam(), hệ thống sẽ chuyển sang trạng thái 'error' để kích hoạt màn hình Báo Lỗi Cứng tại Block 5.14, cho phép người dùng thoát ra an toàn. Tuân thủ Điều 3.
+// Cập nhật: [HOÀN TẤT GIAI ĐOẠN 3] Cấy ghép logic ghi Sổ luân hồi (UID Exclusion) vào hàm submitAnswer. Mỗi câu hoàn thành sẽ tự động khóa ID vào lịch sử để chống lặp cho các bài thi sau. Tuân thủ Điều 3.
 // ==================================================================================
 window.useExamLogic = function(apiKey) {
 const [examState, setExamState] = React.useState({
@@ -16244,6 +16567,18 @@ isTransitioningRef.current = true;
 const activeMeta = currentQuestion?.metadata;
 const activeContent = currentQuestion?.content;
 const prev = examState; // Chốt State hiện tại để xử lý đồng bộ
+// [GIAI ĐOẠN 3] - Ghi nhận Sổ luân hồi (User Exam History)
+if (activeMeta && activeMeta.id && window.FcDB) {
+window.FcDB.get('fc_user_exam_history').then(hist => {
+let currentHist = Array.isArray(hist) ? hist : [];
+if (!currentHist.includes(activeMeta.id)) {
+currentHist.push(activeMeta.id);
+// Giữ kích thước sổ luân hồi không quá lớn (VD: 5000 câu)
+if (currentHist.length > 5000) currentHist.shift();
+window.FcDB.set('fc_user_exam_history', currentHist).catch(e => {});
+}
+}).catch(e => console.warn("[useExamLogic] Sổ luân hồi lưu thất bại", e));
+}
 const newAnswers = [...prev.answers, {
 index: prev.currentIndex,
 answer: answerObj,
@@ -16357,10 +16692,237 @@ quitExam,
 setTransitionState
 };
 };
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.05
-// Last Updated: 2026-04-16 23:30
+// Block6.8: TẦNG 6: LOGIC LƯU TRỮ KHẢO THÍ (Exam Pool Logic) - Version 1.01
+// Last Updated: 2026-04-19 08:44
+// Nhiệm vụ: "Thủ kho" quản lý Ngân hàng đề thi (Exam Harvest Pool), Sổ luân hồi (UID History) và Tỉ lệ Lai (Hybrid Ratio).
+// Cập nhật: Khởi tạo module độc lập. Xây dựng bộ chuyển đổi Adapter nạp dữ liệu từ Mini-game. Tuân thủ tuyệt đối Điều 3.2 Hiến Pháp.
+// ==================================================================================
+window.Block6_8_useExamPoolLogic = function(core, callbacks) {
+const { showToast } = callbacks;
+// --- 1. STATE ĐỊNH NGHĨA ---
+const [examPool, setExamPool] = React.useState({});
+const [hybridRatio, setHybridRatio] = React.useState(70);
+const [userExamHistory, setUserExamHistory] = React.useState([]);
+const [isPoolLoading, setIsPoolLoading] = React.useState(false);
+// --- 2. KHỞI TẠO TỪ INDEXEDDB ---
+React.useEffect(() => {
+if (core.isDbReady && window.FcDB) {
+window.FcDB.get('fc_exam_pool').then(data => {
+if (data) setExamPool(data);
+});
+window.FcDB.get('fc_exam_ratio').then(data => {
+if (data !== undefined && data !== null) setHybridRatio(Number(data));
+});
+window.FcDB.get('fc_user_exam_history').then(data => {
+if (data && Array.isArray(data)) setUserExamHistory(data);
+});
+}
+}, [core.isDbReady]);
+// --- 3. TIỆN ÍCH LƯU TRỮ (PERSISTENCE) ---
+const savePoolToDB = async (newPool) => {
+setExamPool(newPool);
+if (window.FcDB) await window.FcDB.set('fc_exam_pool', newPool);
+};
+const handleRatioChange = async (newRatio) => {
+const num = Number(newRatio);
+setHybridRatio(num);
+if (window.FcDB) await window.FcDB.set('fc_exam_ratio', num);
+};
+const handleClearPool = async () => {
+if (!confirm("Hành động này sẽ XÓA VĨNH VIỄN toàn bộ Ngân hàng đề thi. Bạn có chắc chắn không?")) return;
+await savePoolToDB({});
+if (window.FcDB) await window.FcDB.set('fc_user_exam_history', []);
+setUserExamHistory([]);
+showToast("Đã làm rỗng Ngân hàng đề thi và Sổ luân hồi!", "success");
+};
+// Helper: Phân bổ 1 câu hỏi vào đúng "ngăn kéo" trong Cây thư mục
+const insertIntoPool = (poolObj, item, lang, level, topic, type) => {
+if (!poolObj[lang]) poolObj[lang] = {};
+if (!poolObj[lang][level]) poolObj[lang][level] = {};
+const safeTopic = topic || 'General';
+if (!poolObj[lang][level][safeTopic]) poolObj[lang][level][safeTopic] = {};
+if (!poolObj[lang][level][safeTopic][type]) poolObj[lang][level][safeTopic][type] = [];
+// Chống trùng lặp tuyệt đối dựa vào ID hoặc Content
+const targetArray = poolObj[lang][level][safeTopic][type];
+const isDup = targetArray.some(existing => {
+if (existing.id && item.id && existing.id === item.id) return true;
+return JSON.stringify(existing.content) === JSON.stringify(item.content);
+});
+if (!isDup) {
+// Bơm UID nếu chưa có
+if (!item.id) {
+const uid = "ex_" + type + "_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+item.id = uid;
+}
+targetArray.push(item);
+return true;
+}
+return false;
+};
+// --- 4. BỘ CHUYỂN ĐỔI (MINI-GAME ADAPTER) ---
+const handleImportFromMiniGame = (file) => {
+if (!file) return;
+setIsPoolLoading(true);
+const reader = new FileReader();
+reader.onload = async (evt) => {
+try {
+if (!window.XLSX) throw new Error("Thư viện XLSX chưa được tải");
+const wb = window.XLSX.read(evt.target.result, { type: 'binary' });
+let addedCount = 0;
+let currentPool = { ...examPool };
+for (let i = 0; i < wb.SheetNames.length; i++) {
+const sheetName = wb.SheetNames[i];
+const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1 });
+if (rows.length < 2) continue;
+// Bỏ qua dòng Header (index 0)
+for (let r = 1; r < rows.length; r++) {
+const row = rows[r];
+if (!row || row.length < 11) continue;
+// Chuẩn Map 11 cột từ Block 6.6
+const term = String(row[0] || "").trim();
+const definition = String(row[2] || "").trim();
+const analysis = String(row[3] || "").trim();
+const example = String(row[5] || "").trim();
+const pos = String(row[7] || "").trim();
+const topic = String(row[8] || "General").trim();
+const levelCode = String(row[9] || "en_level_4").trim();
+const langCode = String(row[10] || "en").trim();
+if (!term) continue;
+let questionContent = {};
+let qType = "";
+// Adapter rẽ nhánh theo PartOfSpeech
+if (pos === "Spot Mistake") {
+qType = "ioe_spot_mistake";
+questionContent = {
+wrongSentence: term,
+wrongWord: "",
+correction: definition,
+explanation: analysis
+};
+// Nội suy wrongWord từ chuỗi example (VD: "Câu hoàn chỉnh: ...")
+if (example.includes("Câu hoàn chỉnh:")) {
+const cleanSentence = example.replace("Câu hoàn chỉnh:", "").trim();
+const wordsOriginal = term.split(" ");
+const wordsClean = cleanSentence.split(" ");
+for (let w = 0; w < wordsOriginal.length; w++) {
+if (wordsOriginal[w] !== wordsClean[w]) {
+questionContent.wrongWord = wordsOriginal[w];
+break;
+}
+}
+}
+} else if (pos === "Fill Blank") {
+qType = "ioe_fill_blank";
+questionContent = {
+displaySentence: term,
+targetWord: definition,
+hint: analysis
+};
+} else if (pos === "Odd One Out") {
+qType = "ioe_odd_one_out";
+questionContent = {
+words: term.split(" • ").map(w => w.trim()),
+oddWord: definition,
+explanation: analysis
+};
+} else {
+// Pure AI Content -> Biến thành dạng trắc nghiệm / ghép câu nền tảng
+qType = "ioe_multiple_choice";
+questionContent = {
+term: term,
+definition: definition,
+analysis: analysis,
+example: example
+};
+}
+const newItem = {
+id: "ex_" + qType + "_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+content: questionContent,
+timestamp: Date.now()
+};
+const isAdded = insertIntoPool(currentPool, newItem, langCode, levelCode, topic, qType);
+if (isAdded) addedCount++;
+}
+}
+if (addedCount > 0) {
+await savePoolToDB(currentPool);
+showToast("Đã nạp và chuyển đổi thành công " + addedCount + " câu hỏi từ Mini-Game!", "success");
+} else {
+showToast("Không tìm thấy dữ liệu hợp lệ hoặc tất cả đã bị trùng lặp.", "warning");
+}
+} catch (err) {
+console.error("Mini-game Import Error:", err);
+showToast("Lỗi đọc file: " + err.message, "error");
+} finally {
+setIsPoolLoading(false);
+// Reset input file nếu cần (thực hiện ở UI Tầng 4)
+}
+};
+reader.readAsBinaryString(file);
+};
+// --- 5. EXPORT / XUẤT KHO ---
+const handleExportExamPoolToExcel = () => {
+if (!window.XLSX) {
+showToast("Thư viện Excel chưa được tải!", "error");
+return;
+}
+let flatData = [];
+// Duyệt qua toàn bộ Cây thư mục để là phẳng dữ liệu (Flatten)
+Object.keys(examPool).forEach(lang => {
+Object.keys(examPool[lang]).forEach(level => {
+Object.keys(examPool[lang][level]).forEach(topic => {
+Object.keys(examPool[lang][level][topic]).forEach(type => {
+const items = examPool[lang][level][topic][type];
+items.forEach(item => {
+const c = item.content;
+let termText = c.term || c.displaySentence || c.wrongSentence || (Array.isArray(c.words) ? c.words.join(' • ') : "") || c.audioScript || c.passage || "";
+let defText = c.definition || c.targetWord || c.correction || c.oddWord || c.correctAnswer || "";
+flatData.push({
+ID: item.id,
+Language: lang,
+Level: level,
+Topic: topic,
+Type: type,
+Question_Term: termText,
+Correct_Answer: defText,
+Options_JSON: c.options ? JSON.stringify(c.options) : "",
+Explanation: c.explanation || c.analysis || c.hint || "",
+AudioScript: c.audioScript || "",
+PassageId: c.passageGroup || "",
+Timestamp: item.timestamp || ""
+});
+});
+});
+});
+});
+});
+if (flatData.length === 0) {
+showToast("Ngân hàng đề thi đang trống rỗng!", "warning");
+return;
+}
+const ws = window.XLSX.utils.json_to_sheet(flatData);
+const wb = window.XLSX.utils.book_new();
+window.XLSX.utils.book_append_sheet(wb, ws, "Exam_Master_Pool");
+const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+window.XLSX.writeFile(wb, "Exam_Harvest_Pool_" + dateStr + ".xlsx");
+showToast("Đã tải xuống file Ngân hàng đề thi thành công!", "success");
+};
+// Trả về API cho Tầng 7 nhúng vào Main Controller
+return {
+examPool,
+hybridRatio,
+isPoolLoading,
+handleRatioChange,
+handleClearPool,
+handleImportFromMiniGame,
+handleExportExamPoolToExcel
+};
+};
+window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.06
+// Last Updated: 2026-04-19 09:22
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [QA DEBUG V3] Thay đổi UI Lỗi mạng thành "Thoát" và đưa về trạng thái Idle. Tiêu diệt bóng ma dataLogic gây khởi tạo Hook kép (Memory Leak/State Sync Issue). Chuyển toàn bộ cáp dataLogic?. sang logic.actions?. Tuân thủ Điều 3.
+// Cập nhật: [EXAM POOL MANAGER] Bổ sung ExamPoolManagerModal và useExamPoolLogic vào Dependency Checker. Render Modal Quản trị Ngân hàng đề thi và truyền hàm mở Modal vào GameView. Tuân thủ tuyệt đối Điều 3.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -16373,7 +16935,7 @@ const maxAttempts = 100; // Giới hạn 10 giây (100 * 100ms)
 let timeoutId;
 const checkDependencies = () => {
 if (isIdle) return; // Dừng check nếu đang ở trạng thái chờ
-const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB', 'useAppLogic', 'useAiLogic', 'useDataLogic', 'useExamLogic', 'ExamUIShell'];
+const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB', 'useAppLogic', 'useAiLogic', 'useDataLogic', 'useExamLogic', 'ExamUIShell', 'ExamPoolManagerModal', 'useExamPoolLogic'];
 const missing = required.filter(dep => !window[dep]);
 if (missing.length === 0) {
 setIsReady(true);
@@ -16531,7 +17093,8 @@ window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[coreState.lang].dataKey, 
 onSaveToHarvest: logic.actions?.handleSaveToHarvest,
 currentLevel: coreState.currentLevel,
 currentTopic: coreState.currentTopic, // Cắm cáp Topic cho AI
-dataMode: coreState.dataMode
+dataMode: coreState.dataMode,
+onOpenExamPoolManager: logic.actions?.handleOpenExamPoolManager
 });
 } else {
 // B. Màn hình Học (Flashcard) - Mặc định
@@ -16778,6 +17341,12 @@ onExport: logic.actions?.handleExportSaveFile,
 onImport: logic.actions?.handleImportSaveFile,
 t: logic.actions?.t,
 mainColor: appMainColor
+}),
+coreState.showExamPoolManager && renderComponent('ExamPoolManagerModal', {
+isOpen: true,
+onClose: logic.actions?.handleCloseExamPoolManager,
+mainColor: appMainColor,
+examPoolData: logic.examPoolData
 }),
 coreState.toast && React.createElement('div', {
 className: `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[300] font-bold text-white animate-in slide-in-from-top-4 fade-in duration-300 flex items-center gap-2 ${coreState.toast.type === 'error' ? 'bg-red-500' : coreState.toast.type === 'success' ? 'bg-green-500' : coreState.toast.type === 'warning' ? 'bg-orange-500' : 'bg-gray-800'}`
