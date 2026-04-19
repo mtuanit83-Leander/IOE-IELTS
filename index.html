@@ -6005,10 +6005,10 @@ return (
 };
 // EXPORT GLOBAL
 window.HelpModal = HelpModal;
-// Block4.9: TẦNG 4: QUẢN TRỊ NGÂN HÀNG ĐỀ THI (Exam Pool Manager) - Version 1.03
-// Last Updated: 2026-04-19 13:05
+// Block4.9: TẦNG 4: QUẢN TRỊ NGÂN HÀNG ĐỀ THI (Exam Pool Manager) - Version 1.04
+// Last Updated: 2026-04-19 20:45
 // Nhiệm vụ: Giao diện Modal quản trị trung tâm cho Kho Khảo thí. Hiển thị Dashboard, điều chỉnh Tỉ lệ Lai, và Quản lý I/O.
-// Cập nhật: [HUMAN-IN-THE-LOOP] Bổ sung nút bấm "Nhập Excel Kho" để nạp ngược lại dữ liệu đã qua chỉnh sửa của con người. Tái cấu trúc lưới 4 cột. Tuân thủ tuyệt đối Điều 3.2.
+// Cập nhật: [GIAI ĐOẠN 5 - BƯỚC 3] Vá lỗi UI "Xem trước nội dung kho". Cập nhật thuật toán đọc đáp án từ mảng options để xóa sổ thông báo "Lỗi đáp án" sai lệch. Tuân thủ Điều 3.2.
 // ==================================================================================
 // COMPONENT ICON NỘI BỘ (Chống crash khi thiếu thư viện)
 const LocalIcon = ({ name, size = 24, className = "" }) => {
@@ -6030,7 +6030,7 @@ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="c
 };
 const ExamPoolManagerModal = ({ isOpen, onClose, mainColor = 'blue', examPoolData }) => {
 const fileInputRef = React.useRef(null);
-const excelInputRef = React.useRef(null); // [NEW] Khai báo Ref cho tính năng Nhập Excel Kho
+const excelInputRef = React.useRef(null);
 const [showPreview, setShowPreview] = React.useState(false);
 // Rã băng các dữ liệu từ Hook 6.8
 const {
@@ -6041,7 +6041,7 @@ handleRatioChange,
 handleClearPool,
 handleImportFromMiniGame,
 handleExportExamPoolToExcel,
-handleImportFromExcel // [NEW] Nhận hàm từ Hook
+handleImportFromExcel
 } = examPoolData || {};
 React.useEffect(() => {
 if (isOpen) {
@@ -6076,7 +6076,7 @@ handleImportFromMiniGame(file);
 if (fileInputRef.current) fileInputRef.current.value = '';
 }
 };
-// [NEW] HANDLER CHO FILE UPLOAD (EXCEL KHO ĐÃ QUA CHỈNH SỬA)
+// HANDLER CHO FILE UPLOAD (EXCEL KHO ĐÃ QUA CHỈNH SỬA)
 const onExcelChange = (e) => {
 const file = e.target.files[0];
 if (file && handleImportFromExcel) {
@@ -6157,7 +6157,7 @@ AI: {hybridRatio}% / Kho: {100 - hybridRatio}%
 </div>
 </div>
 </div>
-{/* PHẦN 3: I/O MANAGER (Đã cập nhật lưới Grid 4 nút) */}
+{/* PHẦN 3: I/O MANAGER */}
 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
 <h4 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
 <LocalIcon name="RefreshCw" size={20} className="text-green-500" /> Quản lý Luồng Dữ liệu
@@ -6214,12 +6214,25 @@ return (
 <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
 {flatItems.map(item => {
 const c = item.content;
-const qText = c.term || c.displaySentence || c.wrongSentence || (Array.isArray(c.words) ? c.words.join(' • ') : "Lỗi hiển thị");
-const aText = c.definition || c.targetWord || c.correction || c.oddWord || c.correctAnswer || "Lỗi đáp án";
+// [VÁ LỖI V1.04] Trích xuất Text an toàn, bổ sung Ngữ cảnh Bài Nghe / Đọc Hiểu
+let qText = c.term || c.displaySentence || c.wrongSentence || (Array.isArray(c.words) ? c.words.join(' • ') : "") || c.audioScript || c.passage || "Lỗi hiển thị";
+let aText = c.definition || c.targetWord || c.correction || c.oddWord || c.correctAnswer || "";
+// Quét mảng Options để tìm đáp án đúng (Loại bỏ triệt để chữ "Lỗi đáp án")
+if (c.options && Array.isArray(c.options)) {
+const correctOpt = c.options.find(o => o.isCorrect === true || String(o.isCorrect).toLowerCase() === 'true');
+if (correctOpt) {
+aText = correctOpt.text;
+}
+}
+// Nếu là Tổ kén (Đoạn văn) không chứa câu hỏi con
+if (!aText && c.passage && !c.term) {
+aText = "Đoạn văn gốc (Reference)";
+}
+if (!aText) aText = "Lỗi đáp án";
 return (
 <div key={item.id} className="text-[11px] bg-gray-50 p-2 rounded border border-gray-100">
-<div className="font-bold text-gray-700 mb-0.5">{qText}</div>
-<div className="text-green-600 font-medium">➔ {aText}</div>
+<div className="font-bold text-gray-700 mb-0.5 line-clamp-2">{qText}</div>
+<div className="text-green-600 font-medium line-clamp-1">➔ {aText}</div>
 </div>
 );
 })}
@@ -16130,11 +16143,11 @@ handleResetSrs
 // EXPORT GLOBAL
 window.Block6_5_useStudyProgress = useStudyProgress;
 window.useStudyProgress = useStudyProgress;
-// Block6.6: TẦNG 6: LOGIC LƯU TRỮ AI (AI Curator Logic) - Version 1.2
-// Last Updated: 2026-04-13 22:30
+// Block6.6: TẦNG 6: LOGIC LƯU TRỮ AI (AI Curator Logic) - Version 1.3
+// Last Updated: 2026-04-19 20:22
 // Nhiệm vụ: Chuyên trách quản lý Kho dữ liệu AI tự sinh (AI Harvest Pool).
 // Chức năng: Thu hoạch câu hỏi, bảo trì bộ nhớ, xuất bản dữ liệu sang Excel chuẩn.
-// Cập nhật: [PRO UPGRADE] Khắc phục triệt để 3 Anti-patterns: Xóa Double Write, Tuân thủ Pure Function React, và Xử lý Race Condition bằng Event Loop Delay. Xóa 100% hàm gọi FcDB trực tiếp để Tầng 6.1 tự lo. Tuân thủ Điều 3.
+// Cập nhật: [GIAI ĐOẠN 5 - BƯỚC 1] Gỡ bỏ hoàn toàn giới hạn 2000 câu và thuật toán cắt tỉa (Garbage Collection). Biến kho lưu trữ thành "Vô tận" trên IndexedDB. Chỉ cảnh báo khi đạt 50,000 câu. Tuân thủ Điều 3.
 // ==================================================================================
 const useAiCurator = (core, latestStateRef, callbacks) => {
 const { t, showToast } = callbacks;
@@ -16166,7 +16179,7 @@ handleCheckHarvestMemory();
 }, 1000);
 }, [core.setAiHarvestPool]);
 // ==================================================================================
-// 2. BẢO TRÌ BỘ NHỚ (MAINTENANCE)
+// 2. BẢO TRÌ BỘ NHỚ (MAINTENANCE - GỠ BỎ GIỚI HẠN)
 // ==================================================================================
 const handleCheckHarvestMemory = React.useCallback(() => {
 try {
@@ -16174,34 +16187,15 @@ const currentPool = latestStateRef.current.aiHarvestPool;
 if (!currentPool) return;
 // Tính tổng số mục trong kho
 const totalItems = Object.values(currentPool).reduce((sum, arr) => sum + (arr?.length || 0), 0);
-const DANGER_LIMIT = 2000; // Ngưỡng bắt đầu cắt tỉa
-const WARNING_LIMIT = 1500;
-if (totalItems > DANGER_LIMIT) {
-let trimmedPool = {};
-let totalTrimmed = 0;
-Object.keys(currentPool).forEach(levelKey => {
-const items = currentPool[levelKey];
-if (items && items.length > 50) {
-// Sắp xếp theo thời gian và giữ lại 50% câu mới nhất
-const sorted = [...items].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-const keepCount = Math.floor(sorted.length / 2);
-trimmedPool[levelKey] = sorted.slice(-keepCount);
-totalTrimmed += (items.length - keepCount);
-} else {
-trimmedPool[levelKey] = items;
-}
-});
-// Chỉ Set lên RAM, Block 6.1 sẽ lo việc ghi xuống DB
-core.setAiHarvestPool(trimmedPool);
-showToast(`Tự động tối ưu: Đã dọn dẹp ${totalTrimmed} câu cũ trong Kho AI.`, "warning");
-} else if (totalItems > WARNING_LIMIT && !window.fc_harvest_warned) {
-showToast("Kho AI sắp đầy. Bạn nên xuất ra Excel để lưu trữ!", "warning");
+const WARNING_LIMIT = 50000; // Ngưỡng cảnh báo cực lớn cho IndexedDB
+if (totalItems > WARNING_LIMIT && !window.fc_harvest_warned) {
+showToast(`Kho dữ liệu AI hiện đã đạt ${totalItems} câu. Bạn nên xuất ra Excel để Backup an toàn!`, "warning");
 window.fc_harvest_warned = true;
 }
 } catch (e) {
 console.warn("[AiCurator] Maintenance Error:", e);
 }
-}, [latestStateRef, core.setAiHarvestPool, showToast]);
+}, [latestStateRef, showToast]);
 const handleClearHarvestPool = React.useCallback(() => {
 if (!confirm("Hành động này sẽ xóa vĩnh viễn toàn bộ câu hỏi AI đã thu hoạch. Bạn có chắc chắn?")) {
 return;
@@ -16229,7 +16223,7 @@ Object.keys(pool).forEach(levelKey => {
 const items = pool[levelKey];
 if (items && items.length > 0) {
 hasData = true;
-// Trích xuất thông tin Level và Language từ Key (VD: 'en_level_4')
+// Trích xuất thông划 Level và Language từ Key (VD: 'en_level_4')
 const parts = levelKey.split('_');
 const languageCode = parts[0] || 'en';
 const levelCode = levelKey;
@@ -16784,10 +16778,10 @@ quitExam,
 setTransitionState
 };
 };
-// Block6.8: TẦNG 6: LOGIC LƯU TRỮ KHẢO THÍ (Exam Pool Logic) - Version 1.03
-// Last Updated: 2026-04-19 17:42
+// Block6.8: TẦNG 6: LOGIC LƯU TRỮ KHẢO THÍ (Exam Pool Logic) - Version 1.04
+// Last Updated: 2026-04-19 20:35
 // Nhiệm vụ: "Thủ kho" quản lý Ngân hàng đề thi (Exam Harvest Pool), Sổ luân hồi (UID History) và Tỉ lệ Lai (Hybrid Ratio).
-// Cập nhật: [GIAI ĐOẠN 4 - BƯỚC 2] Xây dựng màng lọc 70% (Fuzzy Matching) chống trùng lặp. Thiết kế Hàng đợi (Queue State) handleAutoHarvestToPool chống Race Condition khi AI bắn đạn dồn dập. Tuân thủ Điều 3.
+// Cập nhật: [GIAI ĐOẠN 5 - BƯỚC 2] Xây dựng Trạm gác tính toàn vẹn (validateQuestionData) để chặn dữ liệu khuyết tật từ AI. Vá lỗi thiếu đáp án khi Xuất Excel cho dạng bài Trắc nghiệm. Tuân thủ Điều 3.
 // ==================================================================================
 window.Block6_8_useExamPoolLogic = function(core, callbacks) {
 const { showToast } = callbacks;
@@ -16796,7 +16790,7 @@ const [examPool, setExamPool] = React.useState({});
 const [hybridRatio, setHybridRatio] = React.useState(70);
 const [userExamHistory, setUserExamHistory] = React.useState([]);
 const [isPoolLoading, setIsPoolLoading] = React.useState(false);
-// [NEW v1.03] Hệ thống Hàng đợi Thu hoạch (Harvest Queue)
+// Hệ thống Hàng đợi Thu hoạch (Harvest Queue)
 const harvestQueueRef = React.useRef([]);
 const isProcessingHarvestRef = React.useRef(false);
 // --- 2. KHỞI TẠO TỪ INDEXEDDB ---
@@ -16830,8 +16824,57 @@ if (window.FcDB) await window.FcDB.set('fc_user_exam_history', []);
 setUserExamHistory([]);
 showToast("Đã làm rỗng Ngân hàng đề thi và Sổ luân hồi!", "success");
 };
-// [VÁ LỖI V1.03] Helper: Phân bổ 1 câu hỏi vào đúng "ngăn kéo" KÈM MÀNG LỌC 70%
+// [NEW v1.04] TRẠM GÁC TÍNH TOÀN VẸN (DATA INTEGRITY GATEKEEPER)
+const validateQuestionData = (itemObj, qType) => {
+const c = itemObj.content;
+if (!c) return false;
+// 1. Kiểm tra giải thích (Bắt buộc cho mọi dạng bài thi chuẩn)
+const exp = c.explanation || c.analysis || c.hint || "";
+if (!exp || String(exp).trim() === "") {
+console.warn("[Gatekeeper] Bị từ chối do thiếu giải thích:", itemObj);
+return false;
+}
+// 2. Kiểm tra theo từng dạng bài
+const isOptionsType = qType.includes('multiple_choice') || qType.includes('match') || qType.includes('listening') || qType.includes('image_quiz') || qType.includes('pronunciation');
+if (isOptionsType) {
+if (!c.options || !Array.isArray(c.options) || c.options.length < 3) {
+console.warn("[Gatekeeper] Bị từ chối do thiếu options hoặc số lượng < 3:", itemObj);
+return false;
+}
+const hasCorrect = c.options.some(opt => opt.isCorrect === true || String(opt.isCorrect).toLowerCase() === 'true');
+if (!hasCorrect) {
+console.warn("[Gatekeeper] Bị từ chối do không có đáp án đúng (isCorrect = true):", itemObj);
+return false;
+}
+const termText = c.term || c.audioScript || c.passage || "";
+if (!termText || String(termText).trim() === "") {
+console.warn("[Gatekeeper] Bị từ chối do câu hỏi/đoạn văn rỗng:", itemObj);
+return false;
+}
+} else if (qType.includes('spot_mistake')) {
+if (!c.wrongSentence || !c.wrongWord || !c.correction) return false;
+// Đảm bảo từ sai có tồn tại thực tế trong câu gốc
+if (!c.wrongSentence.toLowerCase().includes(c.wrongWord.toLowerCase())) {
+console.warn("[Gatekeeper] Bị từ chối do từ sai không khớp với câu gốc:", itemObj);
+return false;
+}
+} else if (qType.includes('fill_blank')) {
+if (!c.displaySentence || !c.targetWord) return false;
+if (!c.displaySentence.includes('[__________]')) {
+console.warn("[Gatekeeper] Bị từ chối do thiếu lỗ hổng [__________]:", itemObj);
+return false;
+}
+} else if (qType.includes('odd_one_out')) {
+if (!c.words || !Array.isArray(c.words) || c.words.length < 4 || !c.oddWord) return false;
+}
+return true; // Dữ liệu hoàn hảo
+};
+// Helper: Phân bổ 1 câu hỏi vào đúng "ngăn kéo" KÈM MÀNG LỌC
 const insertIntoPool = (poolObj, item, lang, level, topic, type) => {
+// [VÁ LỖI V1.04] Trạm gác chặn dữ liệu rác trước khi chạm vào Cây thư mục
+if (!validateQuestionData(item, type)) {
+return false; // Bỏ qua câu hỏi khuyết tật
+}
 if (!poolObj[lang]) poolObj[lang] = {};
 if (!poolObj[lang][level]) poolObj[lang][level] = {};
 const safeTopic = topic || 'General';
@@ -16885,13 +16928,13 @@ item.id = uid;
 targetArray.push(item);
 return true;
 } else if (replaceIdx !== -1) {
-// [NÂNG CẤP] Nếu trùng ID, cho phép ghi đè nội dung mới từ Excel (Tính năng sửa lỗi của Admin)
+// Nếu trùng ID, cho phép ghi đè nội dung mới từ Excel (Tính năng sửa lỗi của Admin)
 targetArray[replaceIdx] = item;
 return true;
 }
 return false;
 };
-// --- 3.5 [NEW v1.03] BỘ NÃO HÀNG ĐỢI (CHỐNG RACE CONDITION) ---
+// --- 3.5 BỘ NÃO HÀNG ĐỢI (CHỐNG RACE CONDITION) ---
 const processHarvestQueue = async () => {
 if (isProcessingHarvestRef.current || harvestQueueRef.current.length === 0) return;
 isProcessingHarvestRef.current = true;
@@ -16917,7 +16960,7 @@ addedCount++;
 if (hasChanges) {
 setExamPool(currentPool);
 if (window.FcDB) await window.FcDB.set('fc_exam_pool', currentPool);
-console.log(`[ExamPool] Auto-harvested ${addedCount} new items securely.`);
+console.log(`[ExamPool] Auto-harvested ${addedCount} new valid items securely.`);
 }
 } catch (e) {
 console.error("[ExamPool] Harvest Queue Error:", e);
@@ -16999,7 +17042,7 @@ if (addedCount > 0) {
 await savePoolToDB(currentPool);
 showToast("Đã nạp và chuyển đổi thành công " + addedCount + " câu hỏi từ Mini-Game!", "success");
 } else {
-showToast("Không tìm thấy dữ liệu hợp lệ hoặc tất cả đã bị trùng lặp >70%.", "warning");
+showToast("Không tìm thấy dữ liệu hợp lệ hoặc tất cả đã bị loại bỏ.", "warning");
 }
 } catch (err) {
 console.error("Mini-game Import Error:", err);
@@ -17026,6 +17069,13 @@ items.forEach(item => {
 const c = item.content;
 let termText = c.term || c.displaySentence || c.wrongSentence || (Array.isArray(c.words) ? c.words.join(' • ') : "") || c.audioScript || c.passage || "";
 let defText = c.definition || c.targetWord || c.correction || c.oddWord || c.correctAnswer || "";
+// [VÁ LỖI V1.04] Trích xuất đáp án đúng từ mảng options nếu có
+if (c.options && Array.isArray(c.options)) {
+const correctOpt = c.options.find(o => o.isCorrect === true || String(o.isCorrect).toLowerCase() === 'true');
+if (correctOpt) {
+defText = correctOpt.text;
+}
+}
 flatData.push({
 ID: item.id,
 Language: lang,
@@ -17101,6 +17151,18 @@ let optsArr = [];
 if (cols.opts !== -1 && row[cols.opts]) {
 try { optsArr = JSON.parse(row[cols.opts]); } catch(e) {}
 }
+// Nếu Admin cập nhật lại cột Correct_Answer nhưng quên sửa Options_JSON, ta tự động đồng bộ lại mảng cho họ
+if (optsArr.length > 0 && ansText) {
+let foundCorrect = false;
+optsArr.forEach(o => {
+if (o.text === ansText) { o.isCorrect = true; foundCorrect = true; }
+else { o.isCorrect = false; }
+});
+if (!foundCorrect && optsArr.length > 0) {
+optsArr[0].text = ansText;
+optsArr[0].isCorrect = true;
+}
+}
 let content = {};
 if (qType === 'ioe_spot_mistake') {
 content = { wrongSentence: termText, correction: ansText, explanation: expText, wrongWord: ansText };
@@ -17127,7 +17189,7 @@ if (addedCount > 0) {
 await savePoolToDB(currentPool);
 showToast(`Đã nhập và cập nhật thành công ${addedCount} câu hỏi từ Excel Kho!`, "success");
 } else {
-showToast("Không có thay đổi mới nào được ghi nhận (Đã lọc trùng >70%).", "warning");
+showToast("Không có thay đổi mới nào được ghi nhận (Bị từ chối bởi Trạm gác).", "warning");
 }
 } catch (err) {
 console.error("Excel Import Kho Error:", err);
@@ -17148,7 +17210,7 @@ handleClearPool,
 handleImportFromMiniGame,
 handleExportExamPoolToExcel,
 handleImportFromExcel,
-handleAutoHarvestToPool // [NEW v1.03] Bơm Queue ra ngoài cho Tầng 2.7 bắn đạn vào
+handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
