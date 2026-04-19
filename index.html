@@ -5980,10 +5980,10 @@ return (
 };
 // EXPORT GLOBAL
 window.HelpModal = HelpModal;
-// Block4.9: TẦNG 4: QUẢN TRỊ NGÂN HÀNG ĐỀ THI (Exam Pool Manager) - Version 1.02
-// Last Updated: 2026-04-19 11:58
+// Block4.9: TẦNG 4: QUẢN TRỊ NGÂN HÀNG ĐỀ THI (Exam Pool Manager) - Version 1.03
+// Last Updated: 2026-04-19 13:05
 // Nhiệm vụ: Giao diện Modal quản trị trung tâm cho Kho Khảo thí. Hiển thị Dashboard, điều chỉnh Tỉ lệ Lai, và Quản lý I/O.
-// Cập nhật: [VÁ LỖI CRASH #130] Bọc thép Component bằng cách nhúng LocalIcon nội bộ. Đảm bảo tính độc lập tuyệt đối (Self-contained) không phụ thuộc vào window.Icons. Tuân thủ Điều 3.2.
+// Cập nhật: [HUMAN-IN-THE-LOOP] Bổ sung nút bấm "Nhập Excel Kho" để nạp ngược lại dữ liệu đã qua chỉnh sửa của con người. Tái cấu trúc lưới 4 cột. Tuân thủ tuyệt đối Điều 3.2.
 // ==================================================================================
 // COMPONENT ICON NỘI BỘ (Chống crash khi thiếu thư viện)
 const LocalIcon = ({ name, size = 24, className = "" }) => {
@@ -6005,6 +6005,7 @@ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="c
 };
 const ExamPoolManagerModal = ({ isOpen, onClose, mainColor = 'blue', examPoolData }) => {
 const fileInputRef = React.useRef(null);
+const excelInputRef = React.useRef(null); // [NEW] Khai báo Ref cho tính năng Nhập Excel Kho
 const [showPreview, setShowPreview] = React.useState(false);
 // Rã băng các dữ liệu từ Hook 6.8
 const {
@@ -6014,7 +6015,8 @@ isPoolLoading,
 handleRatioChange,
 handleClearPool,
 handleImportFromMiniGame,
-handleExportExamPoolToExcel
+handleExportExamPoolToExcel,
+handleImportFromExcel // [NEW] Nhận hàm từ Hook
 } = examPoolData || {};
 React.useEffect(() => {
 if (isOpen) {
@@ -6041,12 +6043,20 @@ byLevel[level] += count;
 }
 return { total, byLevel };
 }, [examPool]);
-// 2. HANDLER CHO FILE UPLOAD
+// 2. HANDLER CHO FILE UPLOAD (MINI GAME)
 const onFileChange = (e) => {
 const file = e.target.files[0];
 if (file && handleImportFromMiniGame) {
 handleImportFromMiniGame(file);
 if (fileInputRef.current) fileInputRef.current.value = '';
+}
+};
+// [NEW] HANDLER CHO FILE UPLOAD (EXCEL KHO ĐÃ QUA CHỈNH SỬA)
+const onExcelChange = (e) => {
+const file = e.target.files[0];
+if (file && handleImportFromExcel) {
+handleImportFromExcel(file);
+if (excelInputRef.current) excelInputRef.current.value = '';
 }
 };
 if (!isOpen) return null;
@@ -6067,7 +6077,7 @@ return (
 <LocalIcon name="Database" size={20} />
 </div>
 <div>
-<h3 className={`font-black text-lg text-${mainColor}-800 leading-tight uppercase tracking-wide`}>Trung Tâm Đề Thi</h3>
+<h3 className={`font-bold text-lg text-${mainColor}-800 leading-tight uppercase tracking-wide`}>Trung Tâm Đề Thi</h3>
 <p className="text-[10px] font-bold text-gray-500">Exam Harvest Pool Manager</p>
 </div>
 </div>
@@ -6122,19 +6132,25 @@ AI: {hybridRatio}% / Kho: {100 - hybridRatio}%
 </div>
 </div>
 </div>
-{/* PHẦN 3: I/O MANAGER */}
+{/* PHẦN 3: I/O MANAGER (Đã cập nhật lưới Grid 4 nút) */}
 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
 <h4 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
 <LocalIcon name="RefreshCw" size={20} className="text-green-500" /> Quản lý Luồng Dữ liệu
 </h4>
-<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 <div>
 <input type="file" ref={fileInputRef} onChange={onFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
-<button onClick={() => fileInputRef.current?.click()} className="w-full h-full py-3 px-2 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95">
+<button onClick={() => fileInputRef.current?.click()} className="w-full h-full py-3 px-2 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95" title="Chuyển đổi dữ liệu đã chơi từ Mini Game thành câu hỏi Khảo thí">
 <LocalIcon name="Upload" size={24} /> Thu mua từ Game
 </button>
 </div>
-<button onClick={handleExportExamPoolToExcel} disabled={stats.total === 0} className="w-full py-3 px-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl hover:bg-blue-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-95">
+<div>
+<input type="file" ref={excelInputRef} onChange={onExcelChange} accept=".xlsx, .xls, .csv" className="hidden" />
+<button onClick={() => excelInputRef.current?.click()} className="w-full h-full py-3 px-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95" title="Nhập lại file Excel Kho sau khi con người đã chỉnh sửa">
+<LocalIcon name="Database" size={24} /> Nhập Excel Kho
+</button>
+</div>
+<button onClick={handleExportExamPoolToExcel} disabled={stats.total === 0} className="w-full py-3 px-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl hover:bg-blue-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-95" title="Trích xuất cấu trúc chuẩn ra Excel">
 <LocalIcon name="Download" size={24} /> Xuất Excel Kho
 </button>
 <button onClick={handleClearPool} disabled={stats.total === 0} className="w-full py-3 px-2 bg-red-50 text-red-600 border border-red-200 rounded-xl hover:bg-red-100 transition-all font-bold text-sm flex flex-col items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-95">
@@ -16718,10 +16734,10 @@ quitExam,
 setTransitionState
 };
 };
-// Block6.8: TẦNG 6: LOGIC LƯU TRỮ KHẢO THÍ (Exam Pool Logic) - Version 1.01
-// Last Updated: 2026-04-19 08:44
+// Block6.8: TẦNG 6: LOGIC LƯU TRỮ KHẢO THÍ (Exam Pool Logic) - Version 1.02
+// Last Updated: 2026-04-19 13:04
 // Nhiệm vụ: "Thủ kho" quản lý Ngân hàng đề thi (Exam Harvest Pool), Sổ luân hồi (UID History) và Tỉ lệ Lai (Hybrid Ratio).
-// Cập nhật: Khởi tạo module độc lập. Xây dựng bộ chuyển đổi Adapter nạp dữ liệu từ Mini-game. Tuân thủ tuyệt đối Điều 3.2 Hiến Pháp.
+// Cập nhật: [HUMAN-IN-THE-LOOP] Bổ sung hàm handleImportFromExcel để nạp ngược file Excel Kho đã qua chỉnh sửa của con người vào hệ thống. Tuân thủ tuyệt đối Điều 3.2 Hiến Pháp.
 // ==================================================================================
 window.Block6_8_useExamPoolLogic = function(core, callbacks) {
 const { showToast } = callbacks;
@@ -16770,10 +16786,20 @@ if (!poolObj[lang][level][safeTopic]) poolObj[lang][level][safeTopic] = {};
 if (!poolObj[lang][level][safeTopic][type]) poolObj[lang][level][safeTopic][type] = [];
 // Chống trùng lặp tuyệt đối dựa vào ID hoặc Content
 const targetArray = poolObj[lang][level][safeTopic][type];
-const isDup = targetArray.some(existing => {
-if (existing.id && item.id && existing.id === item.id) return true;
-return JSON.stringify(existing.content) === JSON.stringify(item.content);
-});
+let isDup = false;
+let replaceIdx = -1;
+for (let i = 0; i < targetArray.length; i++) {
+const existing = targetArray[i];
+if (existing.id && item.id && existing.id === item.id) {
+isDup = true;
+replaceIdx = i; // Ghi nhớ vị trí để ghi đè (Cập nhật câu hỏi khi Import lại file Excel đã sửa)
+break;
+}
+if (JSON.stringify(existing.content) === JSON.stringify(item.content)) {
+isDup = true;
+break;
+}
+}
 if (!isDup) {
 // Bơm UID nếu chưa có
 if (!item.id) {
@@ -16781,6 +16807,10 @@ const uid = "ex_" + type + "_" + Date.now() + "_" + Math.random().toString(36).s
 item.id = uid;
 }
 targetArray.push(item);
+return true;
+} else if (replaceIdx !== -1) {
+// [NÂNG CẤP] Nếu trùng ID, cho phép ghi đè nội dung mới từ Excel (Tính năng sửa lỗi của Admin)
+targetArray[replaceIdx] = item;
 return true;
 }
 return false;
@@ -16800,11 +16830,9 @@ for (let i = 0; i < wb.SheetNames.length; i++) {
 const sheetName = wb.SheetNames[i];
 const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1 });
 if (rows.length < 2) continue;
-// Bỏ qua dòng Header (index 0)
 for (let r = 1; r < rows.length; r++) {
 const row = rows[r];
 if (!row || row.length < 11) continue;
-// Chuẩn Map 11 cột từ Block 6.6
 const term = String(row[0] || "").trim();
 const definition = String(row[2] || "").trim();
 const analysis = String(row[3] || "").trim();
@@ -16816,16 +16844,9 @@ const langCode = String(row[10] || "en").trim();
 if (!term) continue;
 let questionContent = {};
 let qType = "";
-// Adapter rẽ nhánh theo PartOfSpeech
 if (pos === "Spot Mistake") {
 qType = "ioe_spot_mistake";
-questionContent = {
-wrongSentence: term,
-wrongWord: "",
-correction: definition,
-explanation: analysis
-};
-// Nội suy wrongWord từ chuỗi example (VD: "Câu hoàn chỉnh: ...")
+questionContent = { wrongSentence: term, wrongWord: "", correction: definition, explanation: analysis };
 if (example.includes("Câu hoàn chỉnh:")) {
 const cleanSentence = example.replace("Câu hoàn chỉnh:", "").trim();
 const wordsOriginal = term.split(" ");
@@ -16839,27 +16860,13 @@ break;
 }
 } else if (pos === "Fill Blank") {
 qType = "ioe_fill_blank";
-questionContent = {
-displaySentence: term,
-targetWord: definition,
-hint: analysis
-};
+questionContent = { displaySentence: term, targetWord: definition, hint: analysis };
 } else if (pos === "Odd One Out") {
 qType = "ioe_odd_one_out";
-questionContent = {
-words: term.split(" • ").map(w => w.trim()),
-oddWord: definition,
-explanation: analysis
-};
+questionContent = { words: term.split(' • '), oddWord: definition, explanation: analysis };
 } else {
-// Pure AI Content -> Biến thành dạng trắc nghiệm / ghép câu nền tảng
 qType = "ioe_multiple_choice";
-questionContent = {
-term: term,
-definition: definition,
-analysis: analysis,
-example: example
-};
+questionContent = { term: term, definition: definition, analysis: analysis, example: example };
 }
 const newItem = {
 id: "ex_" + qType + "_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
@@ -16881,7 +16888,6 @@ console.error("Mini-game Import Error:", err);
 showToast("Lỗi đọc file: " + err.message, "error");
 } finally {
 setIsPoolLoading(false);
-// Reset input file nếu cần (thực hiện ở UI Tầng 4)
 }
 };
 reader.readAsBinaryString(file);
@@ -16893,7 +16899,6 @@ showToast("Thư viện Excel chưa được tải!", "error");
 return;
 }
 let flatData = [];
-// Duyệt qua toàn bộ Cây thư mục để là phẳng dữ liệu (Flatten)
 Object.keys(examPool).forEach(lang => {
 Object.keys(examPool[lang]).forEach(level => {
 Object.keys(examPool[lang][level]).forEach(topic => {
@@ -16933,6 +16938,88 @@ const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 window.XLSX.writeFile(wb, "Exam_Harvest_Pool_" + dateStr + ".xlsx");
 showToast("Đã tải xuống file Ngân hàng đề thi thành công!", "success");
 };
+// --- 6. [NEW] IMPORT / NHẬP NGƯỢC EXCEL TỪ KHO ĐÃ XUẤT ---
+const handleImportFromExcel = (file) => {
+if (!file) return;
+setIsPoolLoading(true);
+const reader = new FileReader();
+reader.onload = async (evt) => {
+try {
+if (!window.XLSX) throw new Error("Thư viện XLSX chưa được tải");
+const wb = window.XLSX.read(evt.target.result, { type: 'binary' });
+let addedCount = 0;
+let currentPool = { ...examPool };
+const sheetName = wb.SheetNames.includes("Exam_Master_Pool") ? "Exam_Master_Pool" : wb.SheetNames[0];
+const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1 });
+if (rows.length < 2) {
+throw new Error("File trống hoặc không đúng định dạng chuẩn của Kho Khảo thí.");
+}
+const headers = rows[0].map(h => String(h || "").trim());
+const getCol = (name) => headers.indexOf(name);
+const cols = {
+id: getCol("ID"), lang: getCol("Language"), level: getCol("Level"), topic: getCol("Topic"),
+type: getCol("Type"), term: getCol("Question_Term"), ans: getCol("Correct_Answer"),
+opts: getCol("Options_JSON"), exp: getCol("Explanation"), audio: getCol("AudioScript"),
+passage: getCol("PassageId"), timestamp: getCol("Timestamp")
+};
+if (cols.lang === -1 || cols.level === -1 || cols.type === -1) {
+throw new Error("File bị khuyết các cột bắt buộc (Language, Level, Type). Không thể nạp.");
+}
+for (let r = 1; r < rows.length; r++) {
+const row = rows[r];
+if (!row || row.length === 0) continue;
+const langCode = String(row[cols.lang] || "").trim();
+const levelCode = String(row[cols.level] || "").trim();
+const topic = String(row[cols.topic] || "General").trim();
+const qType = String(row[cols.type] || "").trim();
+const id = cols.id !== -1 ? String(row[cols.id] || "") : "";
+if (!langCode || !levelCode || !qType) continue;
+const termText = cols.term !== -1 ? String(row[cols.term] || "") : "";
+const ansText = cols.ans !== -1 ? String(row[cols.ans] || "") : "";
+const expText = cols.exp !== -1 ? String(row[cols.exp] || "") : "";
+const audioText = cols.audio !== -1 ? String(row[cols.audio] || "") : "";
+const passageId = cols.passage !== -1 ? String(row[cols.passage] || "") : "";
+let optsArr = [];
+if (cols.opts !== -1 && row[cols.opts]) {
+try { optsArr = JSON.parse(row[cols.opts]); } catch(e) {}
+}
+let content = {};
+if (qType === 'ioe_spot_mistake') {
+content = { wrongSentence: termText, correction: ansText, explanation: expText, wrongWord: ansText };
+} else if (qType === 'ioe_fill_blank') {
+content = { displaySentence: termText, targetWord: ansText, hint: expText };
+} else if (qType === 'ioe_odd_one_out') {
+content = { words: termText.split(' • '), oddWord: ansText, explanation: expText };
+} else if (qType === 'ioe_listening') {
+content = { audioScript: audioText, term: termText, options: optsArr, explanation: expText };
+} else if (qType === 'ielts_reading_passage') {
+content = { passage: termText, passageGroup: passageId };
+} else {
+content = { term: termText, definition: ansText, options: optsArr, explanation: expText, passageGroup: passageId };
+}
+const newItem = {
+id: id || ("ex_" + qType + "_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5)),
+content: content,
+timestamp: cols.timestamp !== -1 && row[cols.timestamp] ? Number(row[cols.timestamp]) : Date.now()
+};
+const isAdded = insertIntoPool(currentPool, newItem, langCode, levelCode, topic, qType);
+if (isAdded) addedCount++;
+}
+if (addedCount > 0) {
+await savePoolToDB(currentPool);
+showToast(`Đã nhập và cập nhật thành công ${addedCount} câu hỏi từ Excel Kho!`, "success");
+} else {
+showToast("Không có thay đổi mới nào được ghi nhận.", "warning");
+}
+} catch (err) {
+console.error("Excel Import Kho Error:", err);
+showToast("Lỗi đọc file: " + err.message, "error");
+} finally {
+setIsPoolLoading(false);
+}
+};
+reader.readAsBinaryString(file);
+};
 // Trả về API cho Tầng 7 nhúng vào Main Controller
 return {
 examPool,
@@ -16941,7 +17028,8 @@ isPoolLoading,
 handleRatioChange,
 handleClearPool,
 handleImportFromMiniGame,
-handleExportExamPoolToExcel
+handleExportExamPoolToExcel,
+handleImportFromExcel
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
