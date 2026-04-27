@@ -2098,10 +2098,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.12
-// Last Updated: 2026-04-26 07:45
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.13
+// Last Updated: 2026-04-26 14:25
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [THIẾT QUÂN LUẬT NGỮ ÂM] Bơm lệnh STRICT MARTIAL LAW vào Lò đúc Ma trận cho game Pronunciation. Bắt buộc 4 đáp án phải có "Mỏ neo trực quan" (Exact Substring Match) và cấm tuyệt đối Biến dị chính tả (No Spelling Variance). Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI NÚT THẮT 20S & ÁO GIÁC HÌNH ẢNH] Bổ sung schema `vocab_mcq` cho Lò đúc 3. Tích hợp luật Phân rã ngữ nghĩa (Semantic Decoupling) để 3 đáp án nhiễu phải khác biệt rõ rệt về hình dáng vật lý, chống nhầm lẫn ảnh (VD: Lamp vs Bulb). Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2221,6 +2221,12 @@ prompt += `CRITICAL RULE 1: DO NOT insert '[__________]' into the sentence. The 
 const clozeRule = window.IoeDataEngine?.getMicroTierClozeRule ? window.IoeDataEngine.getMicroTierClozeRule(targetLang, dataMode, level, topic) : "";
 if (clozeRule) prompt += clozeRule + "\n";
 prompt += `RULES: The 'hint' field MUST BE the Vietnamese translation of the entire sentence.\n`;
+} else if (subType === 'vocab_mcq') {
+prompt += `TASK: Generate a multiple-choice question for vocabulary recognition at level ${cefrLevel}.\n`;
+prompt += `FORMAT: Provide the target word/phrase in ${targetLang} in the 'term' field. Provide exactly 4 options in VIETNAMESE (1 correct translation, 3 distractors).\n`;
+prompt += `SEMANTIC DECOUPLING RULE: The 3 distractors MUST belong to the same broad topic but MUST be VISUALLY DISTINCT objects or completely different sub-categories. DO NOT use closely related items that look similar (e.g., if the answer is 'Lamp', do NOT use 'Bulb' or 'Flashlight' as distractors. Use 'Table', 'Chair', etc.).\n`;
+prompt += `IMAGE KEYWORD RULE: Provide a highly specific English 'image_keyword' for the correct term, appending 'isolated white background clipart' to ensure clear image search results.\n`;
+prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'spot_mistake') {
 prompt += `TASK: Generate a ${targetLang} sentence matching level ${cefrLevel} that contains EXACTLY ONE subtle grammar or vocabulary mistake.\n`;
 prompt += `RULES: Provide the wrong sentence, the wrong word, the correct word, and an explanation in VIETNAMESE.\n`;
@@ -2267,6 +2273,9 @@ return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { t
 if (forgeType === 'context') {
 if (subType === 'fill_blank') {
 return { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" } }, required: ["displaySentence", "targetWord", "hint"] };
+}
+if (subType === 'vocab_mcq') {
+return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["term", "options", "image_keyword", "explanation"] };
 }
 if (subType === 'spot_mistake') {
 return { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["wrongSentence", "wrongWord", "correction", "explanation"] };
@@ -2346,7 +2355,7 @@ const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error(`AI Co
 const res = await Promise.race([aiPromise, timeoutPromise]);
 const parsed = window.Utils.parseAiJson(res.text);
 const result = { ...parsed, isAiGenerated: true, type: subType, _tokenUsage: res.tokenMetadata };
-if (subType === 'listening' || subType === 'grammar_mcq') {
+if (subType === 'listening' || subType === 'grammar_mcq' || subType === 'vocab_mcq') {
 if (result.options && Array.isArray(result.options)) {
 result.options = window.Utils.shuffleArray(result.options);
 }
@@ -2361,10 +2370,10 @@ throw e;
 }
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.13
-// Last Updated: 2026-04-26 07:15
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.15
+// Last Updated: 2026-04-26 14:35
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [NO-MARKING ARCHITECTURE] Gỡ bỏ Trạm gác vá lỗi dấu sao (Self-Repair) cho Game Ngữ âm. Trả lại RAM và luồng xử lý tinh gọn do AI giờ đây chỉ trả về văn bản thô. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [VÁ LỖI NÚT THẮT 20S] Xóa bỏ án phạt chờ lũy tiến (Exponential Backoff) trong vòng lặp đúc đạn. Đổi từ 2500 * attempt thành thời gian tĩnh 1500ms để AI thử lại ngay lập tức khi rớt mạng/ảo giác. Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
@@ -2512,8 +2521,6 @@ if (!hasCorrect) {
 console.warn("[Sanitizer] Blocked: No correct option provided by AI.");
 return false;
 }
-// [NO-MARKING] Đã xóa bỏ hoàn toàn trạm gác Self-Repair cho Pronunciation.
-// Chỉ cần vượt qua bước kiểm tra hasCorrect ở trên là đủ điều kiện lên mâm.
 }
 return true; // Dữ liệu sạch
 },
@@ -2780,7 +2787,7 @@ break;
 pLastErr = e;
 pAttempt++;
 if (e.message && (e.message.includes('429') || e.message.includes('quota') || e.message.includes('Timeout'))) {
-await new Promise(r => setTimeout(r, 2000 * pAttempt));
+await new Promise(r => setTimeout(r, 1500));
 }
 }
 }
@@ -2928,7 +2935,10 @@ const finalHistoryPrompt = baseHistoryPrompt + retryPrompt;
 let tempGeneratedData = null;
 const isMatch = type === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH || type === 'ioe_match';
 const isImageQuiz = type === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || type === 'ioe_image_quiz';
-if (isMatch || isImageQuiz) {
+// [A/B TESTING] Cờ bẻ ghi luồng AI
+const useLegacyAi = window.localStorage ? window.localStorage.getItem('fc_debug_legacy_ai') === 'true' : false;
+if ((isMatch || isImageQuiz) && useLegacyAi) {
+console.log("[ExamEngine] Running Legacy 2-Shot AI for: " + type);
 const dataModeParam = 'vocab';
 tempGeneratedData = await window.AiFactoryEngine.forgeBaseCard(level, targetLang, apiKey, topic, finalHistoryPrompt, dataModeParam);
 if (!tempGeneratedData) throw new Error("AI returned empty data");
@@ -2962,6 +2972,29 @@ const correctOpt = { text: correctOptText, isCorrect: true };
 const wrongOpts = dists.slice(0, 3).map(d => ({ text: d, isCorrect: false }));
 tempGeneratedData.options = window.Utils.shuffleArray([...wrongOpts, correctOpt]);
 if (isImageQuiz) {
+tempGeneratedData.options = tempGeneratedData.options.map(opt => {
+let query = opt.text + " isolated clipart";
+if (opt.isCorrect && tempGeneratedData.image_keyword) {
+query = tempGeneratedData.image_keyword;
+}
+return {
+...opt, image: `https://tse4.mm.bing.net/th?q=${encodeURIComponent(query)}&w=300&h=300&c=7&rs=1&p=0`
+};
+});
+}
+}
+else if ((isMatch || isImageQuiz) && !useLegacyAi) {
+console.log("[ExamEngine] Running Fast 1-Shot AI for: " + type);
+// Cắm cáp vào Lò Đúc Ngữ Cảnh 3 (vocab_mcq)
+tempGeneratedData = await window.AiFactoryEngine.forgeContext('vocab_mcq', level, targetLang, apiKey, topic, finalHistoryPrompt);
+if (!tempGeneratedData) throw new Error("AI returned empty data for vocab_mcq");
+let doubleCheckHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
+const termsToCheck = this._extractTermsToCheck(tempGeneratedData, type);
+if (this._isDuplicate(termsToCheck, doubleCheckHistory)) {
+throw new Error("[Duplicate Detected] Lưới lọc phát hiện từ khóa trùng lặp. Ép AI đúc lại.");
+}
+this._syncMemory(tempGeneratedData, type);
+if (isImageQuiz && tempGeneratedData.options) {
 tempGeneratedData.options = tempGeneratedData.options.map(opt => {
 let query = opt.text + " isolated clipart";
 if (opt.isCorrect && tempGeneratedData.image_keyword) {
@@ -3062,7 +3095,7 @@ generatedData = tempGeneratedData;
 } catch (error) {
 finalError = error;
 attempt++;
-await new Promise(r => setTimeout(r, 2500 * attempt));
+await new Promise(r => setTimeout(r, 1500));
 }
 }
 }
