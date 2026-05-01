@@ -2098,10 +2098,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.13
-// Last Updated: 2026-04-26 14:25
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.14
+// Last Updated: 2026-05-01 17:08
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [VÁ LỖI NÚT THẮT 20S & ÁO GIÁC HÌNH ẢNH] Bổ sung schema `vocab_mcq` cho Lò đúc 3. Tích hợp luật Phân rã ngữ nghĩa (Semantic Decoupling) để 3 đáp án nhiễu phải khác biệt rõ rệt về hình dáng vật lý, chống nhầm lẫn ảnh (VD: Lamp vs Bulb). Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI POSITIONAL BIAS] Bơm thuật toán xáo trộn (shuffleArray) vào Lò đúc Ma trận (forgeMatrix) cho dạng bài OddOneOut và Pronunciation, triệt tiêu hội chứng AI luôn xếp đáp án đúng ở vị trí cuối cùng. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2335,6 +2335,13 @@ throw new Error("Invalid format from AI for Matrix Match");
 if (subType === 'match_hard' && (!parsed.correctPairs || !parsed.trapPairs)) {
 throw new Error("Invalid format from AI for Matrix Match Hard");
 }
+// [VÁ LỖI POSITIONAL BIAS] Triệt tiêu hội chứng thiên vị vị trí của AI
+if (subType === 'odd_one_out' && result.words && Array.isArray(result.words)) {
+result.words = window.Utils.shuffleArray(result.words);
+}
+if (subType === 'pronunciation' && result.options && Array.isArray(result.options)) {
+result.options = window.Utils.shuffleArray(result.options);
+}
 return result;
 } catch (e) {
 console.error(`forgeMatrix [${subType}] Error:`, e);
@@ -2360,9 +2367,6 @@ if (result.options && Array.isArray(result.options)) {
 result.options = window.Utils.shuffleArray(result.options);
 }
 }
-if (subType === 'pronunciation' && result.options) {
-result.options = window.Utils.shuffleArray(result.options);
-}
 return result;
 } catch (e) {
 console.error(`forgeContext [${subType}] Error:`, e);
@@ -2370,10 +2374,10 @@ throw e;
 }
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.15
-// Last Updated: 2026-04-26 14:35
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.16
+// Last Updated: 2026-05-01 17:25
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [VÁ LỖI NÚT THẮT 20S] Xóa bỏ án phạt chờ lũy tiến (Exponential Backoff) trong vòng lặp đúc đạn. Đổi từ 2500 * attempt thành thời gian tĩnh 1500ms để AI thử lại ngay lập tức khi rớt mạng/ảo giác. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI POSITIONAL BIAS] Bơm thuật toán xáo trộn (shuffleArray) vào khâu nạp câu hỏi MCQ của Đọc hiểu (Reading Passages). Triệt tiêu hội chứng lặp đáp án đúng ở vị trí cố định. Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
@@ -2856,13 +2860,10 @@ if (!tempGeneratedData.options.some(o=>o.isCorrect)) tempGeneratedData.options[0
 metadata.type = 'ioe_multiple_choice';
 } else {
 tempGeneratedData.term = qData.questionText;
-tempGeneratedData.options = (qData.options && qData.options.length > 0 ? qData.options : ["A","B","C","D"]).map(o => ({
-text: o,
-isCorrect: String(o).toLowerCase().trim() === String(qData.correctAnswer).toLowerCase().trim() || String(o).includes(String(qData.correctAnswer))
-}));
-if (!tempGeneratedData.options.some(o => o.isCorrect) && tempGeneratedData.options.length > 0) {
-tempGeneratedData.options[0].isCorrect = true;
-}
+const mappedOptions = (qData.options && qData.options.length > 0 ? qData.options : ["A","B","C","D"]).map(o => ({ text: o, isCorrect: String(o).toLowerCase().trim() === String(qData.correctAnswer).toLowerCase().trim() || String(o).includes(String(qData.correctAnswer)) }));
+// [VÁ LỖI POSITIONAL BIAS] Bọc shuffleArray cho các tùy chọn MCQ của Đọc Hiểu
+tempGeneratedData.options = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(mappedOptions) : mappedOptions;
+if (!tempGeneratedData.options.some(o => o.isCorrect) && tempGeneratedData.options.length > 0) { tempGeneratedData.options[0].isCorrect = true; }
 metadata.type = 'ioe_multiple_choice';
 }
 if (!isRescuedPassageChild && !this._sanitizeAiItem(tempGeneratedData, metadata.type, track, level)) {
