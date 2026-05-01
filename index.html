@@ -2098,10 +2098,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.14
-// Last Updated: 2026-05-01 17:08
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.15
+// Last Updated: 2026-05-01 22:42
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [VÁ LỖI POSITIONAL BIAS] Bơm thuật toán xáo trộn (shuffleArray) vào Lò đúc Ma trận (forgeMatrix) cho dạng bài OddOneOut và Pronunciation, triệt tiêu hội chứng AI luôn xếp đáp án đúng ở vị trí cuối cùng. Tuân thủ Điều 3.
+// Cập nhật: [THIẾT QUÂN LUẬT TỪ VỰNG] Bơm 'STRICT LEXICAL MARTIAL LAW' vào lõi System Prompt. Cấm tuyệt đối AI sử dụng từ vựng A1/A2 cho các mức độ IELTS/Academic và ngược lại. Ép buộc độ khó phải khớp chính xác với Khung CEFR. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2178,6 +2178,8 @@ let prompt = `You are an expert ${targetLang} language tutor generating content 
 prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
+// [VÁ LỖI TRƯỢT CẤP ĐỘ] THIẾT QUÂN LUẬT TỪ VỰNG BẮT BUỘC
+prompt += `STRICT LEXICAL MARTIAL LAW: CEFR/IELTS ALIGNMENT IS MANDATORY. You MUST audit the target vocabulary/sentence before outputting. If target is B2/C1/C2 or IELTS 5.5+, you are ABSOLUTELY FORBIDDEN from using basic A1/A2 words as the main focus (e.g., do NOT use 'good' or 'bad', use 'beneficial' or 'detrimental'). If target is A1/A2, you MUST NOT use advanced academic words. THE DIFFICULTY MUST EXACTLY MATCH ${cefrLevel}.\n`;
 if (topic && subType !== 'pronunciation') prompt += `TOPIC FOCUS: Strictly related to "${topic}".\n`;
 if (forgeType === 'base_card') {
 prompt += `TASK: Generate a single ${dataMode === 'sentence' ? 'sentence' : 'vocabulary item'} matching the exact standard level (${cefrLevel}) and topic.\n`;
@@ -2335,7 +2337,6 @@ throw new Error("Invalid format from AI for Matrix Match");
 if (subType === 'match_hard' && (!parsed.correctPairs || !parsed.trapPairs)) {
 throw new Error("Invalid format from AI for Matrix Match Hard");
 }
-// [VÁ LỖI POSITIONAL BIAS] Triệt tiêu hội chứng thiên vị vị trí của AI
 if (subType === 'odd_one_out' && result.words && Array.isArray(result.words)) {
 result.words = window.Utils.shuffleArray(result.words);
 }
@@ -3195,10 +3196,10 @@ timestamp: Date.now()
 return atomicQuestion;
 }
 };
-// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.07
-// Last Updated: 2026-04-26 06:30
+// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.08
+// Last Updated: 2026-05-01 23:15
 // Nhiệm vụ: Chứa định nghĩa chi tiết (Blueprints) của 6 cấu trúc đề thi (IOE-Mini, IOE-Std, IELTS-Mini, IELTS-Std, HSK-Mini, HSK-Std) và Bảng Ánh xạ Trình độ (CEFR Mapping).
-// Cập nhật: [CHIẾN DỊCH GIẢI CỨU NGỮ PHÁP] Bơm Meta-tag phân hóa Ngữ pháp Chức năng (Functional) và Ngữ pháp Từ vựng (Lexical) vào Màn 3 và Màn 4. Định hướng mục tiêu rõ ràng cho Lò Đúc 3. Tuân thủ Điều 3.
+// Cập nhật: [TRIPLE-TOPIC HYBRID V2] Tích hợp thuật toán Phân bổ 3 Chủ đề / Chặng. Đảm bảo 1 đề IOE Standard phủ sóng tuyệt đối 100% (26/26) chủ đề Cambridge mà không gây trùng lặp cục bộ. Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamProfiles = {
 // 1. TỪ ĐIỂN CẤU HÌNH ĐỀ THI TỔNG QUAN
@@ -3309,30 +3310,70 @@ const TYPE_LISTENING = types.IOE_LISTENING || 'ioe_listening';
 const TYPE_READING_PASSAGE = types.IELTS_READING_PASSAGE || 'ielts_reading_passage';
 // Xác định cấp Tiểu học (Để điều phối kết hợp Game Hình ảnh và Game Nghe)
 const isPrimary = ['en_level_1', 'en_level_2', 'en_level_3', 'level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced'].includes(targetLevel);
-// [TOPIC SEEDING ENGINE V2] Rút trích Ma trận 26 Chủ đề và Xáo trộn
-let availableTopics = window.IoeDataEngine?.TOPICS?.[targetLevel] || [];
-if (window.Utils && window.Utils.shuffleArray && availableTopics.length > 0) {
-availableTopics = window.Utils.shuffleArray([...availableTopics]);
+// ============================================================================
+// [THUẬT TOÁN MỚI] TRIPLE-TOPIC HYBRID V2 (100% COVERAGE SCRIPTING)
+// ============================================================================
+const availableTopics = window.IoeDataEngine?.TOPICS?.[targetLevel] || [];
+const phaseTopics = {}; // { phaseNum: [topic1, topic2, topic3] }
+if (availableTopics.length >= 26) {
+const shuffled = window.Utils.shuffleArray([...availableTopics]);
+const base20 = shuffled.slice(0, 20);
+const remaining6 = shuffled.slice(20, 26);
+// Bước 2: Cấp phát Base 20 chủ đề cho 10 chặng
+for (let p = 1; p <= 10; p++) {
+phaseTopics[p] = [base20[(p - 1) * 2], base20[(p - 1) * 2 + 1]];
 }
-let tIdx = 0;
-const phaseTopicMap = {}; // Bảng đồ ánh xạ: 1 Phase <-> 1 Topic
-// Hàm cấp phát Topic: Khóa chặt 1 Topic cho 1 Phase
-const getTopicForPhase = (phaseNum) => {
-if (targetTopic) return targetTopic; // Tôn trọng user nếu ép 1 chủ đề từ Menu
-if (!availableTopics || availableTopics.length === 0) return "";
-// Nếu Phase này chưa được bốc thăm chủ đề, bốc 1 cái mới từ mảng 26
-if (!phaseTopicMap[phaseNum]) {
-phaseTopicMap[phaseNum] = availableTopics[(tIdx++) % availableTopics.length];
+// Bước 3: Vét máng 6 chủ đề còn lại cho 6 chặng ngẫu nhiên
+const phases = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const lucky6Phases = window.Utils.shuffleArray([...phases]).slice(0, 6);
+for (let i = 0; i < 6; i++) {
+phaseTopics[lucky6Phases[i]].push(remaining6[i]);
 }
-return phaseTopicMap[phaseNum];
-};
-// Bơm đạn kèm Topic Độc Lập theo Phase
+// Bước 4: Cấp phát Random cho 4 chặng còn lại (từ kho 24 chủ đề khác Base)
+for (let p = 1; p <= 10; p++) {
+if (phaseTopics[p].length < 3) {
+const currentBase = phaseTopics[p];
+const pool24 = shuffled.filter(t => !currentBase.includes(t));
+phaseTopics[p].push(window.Utils.shuffleArray(pool24)[0]);
+}
+}
+} else if (availableTopics.length > 0) {
+// Fallback nếu kho không đủ 26 chủ đề
+const shuffled = window.Utils.shuffleArray([...availableTopics]);
+for (let p = 1; p <= 10; p++) {
+phaseTopics[p] = [
+shuffled[Math.floor(Math.random() * shuffled.length)],
+shuffled[Math.floor(Math.random() * shuffled.length)],
+shuffled[Math.floor(Math.random() * shuffled.length)]
+];
+}
+} else {
+for (let p = 1; p <= 10; p++) {
+phaseTopics[p] = ["", "", ""];
+}
+}
+const passageCountTracker = {}; // Dành riêng cho Đọc hiểu: Đếm số lượng passage group
+// Bơm đạn kèm Thuật toán Xoay vòng 3 Chủ đề
 const addQuestions = (qType, count, phaseNum, chapterName, passageGroup = null, specialFocus = "") => {
-const phaseTopic = getTopicForPhase(phaseNum);
+const isPassage = qType === TYPE_READING_PASSAGE || qType.includes('reading');
+if (isPassage && passageGroup && !passageCountTracker[passageGroup]) {
+passageCountTracker[passageGroup] = Object.keys(passageCountTracker).length;
+}
 for (let i = 0; i < count; i++) {
-// [VÁ LỖI ZOMBIE LISTENING] Cấy Chỉ mục Vi phân (Micro-Topic Index) để phá Local Minimum của AI
-let microTopic = phaseTopic ? `${phaseTopic} (Specific Scenario ${i + 1})` : "";
-// [CHIẾN DỊCH GIẢI CỨU NGỮ PHÁP] Bơm Meta-tag Sư phạm
+let selectedTopic = targetTopic; // Tôn trọng user nếu ép 1 chủ đề từ Menu
+if (!selectedTopic) {
+const phaseTopicsList = phaseTopics[phaseNum] || ["", "", ""];
+if (isPassage && passageGroup) {
+// [LƯU Ý 1] Các câu hỏi con trong cùng Tổ kén phải chung 1 chủ đề
+selectedTopic = phaseTopicsList[passageCountTracker[passageGroup] % 3];
+} else {
+// [LƯU Ý 2] Các câu hỏi rời rạc phải được đan xen 3 chủ đề liên tục
+selectedTopic = phaseTopicsList[i % 3];
+}
+}
+// Cấy Chỉ mục Vi phân (Micro-Topic Index) để phá Local Minimum của AI
+let microTopic = selectedTopic ? `${selectedTopic} (Specific Scenario ${i + 1})` : "";
+// Bơm Meta-tag Sư phạm
 if (specialFocus) {
 microTopic = microTopic ? `${microTopic} - [GRAMMAR FOCUS: ${specialFocus}]` : `[GRAMMAR FOCUS: ${specialFocus}]`;
 }
@@ -3344,7 +3385,7 @@ chapter: chapterName,
 track: config.track,
 level: targetLevel,
 type: qType,
-topic: microTopic, // Cắm cáp Topic Vi phân & Meta-tag thay vì Topic cục bộ
+topic: microTopic,
 passageGroup: passageGroup,
 questionIndexInPassage: passageGroup ? i : null
 });
@@ -3357,7 +3398,7 @@ switch (profileId) {
 // TRACK: IOE (Tiếng Anh Phổ Thông)
 // ----------------------------------------------------
 case 'ioe_mini':
-// 50 CÂU => CHIA LÀM 5 CHẶNG (MỖI CHẶNG 10 CÂU, 1 CHỦ ĐỀ RIÊNG BIỆT)
+// 50 CÂU => CHIA LÀM 5 CHẶNG
 if (isPrimary) {
 // Phase 1 (10 câu)
 addQuestions(TYPE_LISTENING, 5, 1, 'Kỹ năng Nghe (Listening)');
@@ -3392,7 +3433,7 @@ addQuestions(types.IOE_SCRAMBLE, 5, 5, 'Tái cấu trúc câu');
 }
 break;
 case 'ioe_std':
-// 200 CÂU => CHIA LÀM 10 CHẶNG (MỖI CHẶNG 20 CÂU, 1 CHỦ ĐỀ RIÊNG BIỆT)
+// 200 CÂU => CHIA LÀM 10 CHẶNG
 // Phase 1: Kỹ năng Nghe / Hình ảnh (20 câu)
 if (isPrimary) {
 addQuestions(TYPE_LISTENING, 10, 1, 'Kỹ năng Nghe (Listening)');
@@ -3413,11 +3454,11 @@ addQuestions(types.IOE_SPOT_MISTAKE, 10, 4, 'Săn lỗi sai Ngữ pháp');
 addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 5, 'Trắc nghiệm Ngữ pháp - P1', null, 'Functional Grammar (Tenses, Prepositions, Articles, Conditionals)');
 // Phase 6: Ngữ pháp 2 (20 câu)
 addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 6, 'Trắc nghiệm Ngữ pháp - P2', null, 'Lexical Grammar (Word Forms, Collocations, Idioms)');
-// Phase 7: Đọc hiểu 1 (20 câu - 4 tổ kén, chung 1 Topic lớn)
+// Phase 7: Đọc hiểu 1 (20 câu - 4 tổ kén)
 for (let p = 1; p <= 4; p++) {
 addQuestions(TYPE_READING_PASSAGE, 5, 7, `Đọc hiểu: Đoạn văn ${p}`, `ioe_passage_std_${p}_${Date.now()}`);
 }
-// Phase 8: Đọc hiểu 2 (20 câu - 4 tổ kén, chung 1 Topic lớn khác)
+// Phase 8: Đọc hiểu 2 (20 câu - 4 tổ kén)
 for (let p = 5; p <= 8; p++) {
 addQuestions(TYPE_READING_PASSAGE, 5, 8, `Đọc hiểu: Đoạn văn ${p}`, `ioe_passage_std_${p}_${Date.now()}`);
 }
@@ -3432,13 +3473,13 @@ break;
 // TRACK: IELTS (Tiếng Anh Học Thuật)
 // ----------------------------------------------------
 case 'ielts_mini':
-// 15 CÂU => CHIA LÀM 3 CHẶNG (MỖI CHẶNG 5 CÂU)
+// 15 CÂU => CHIA LÀM 3 CHẶNG
 addQuestions(TYPE_READING_PASSAGE, 5, 1, 'Reading: Academic Passage', `passage_mini_${Date.now()}`);
 addQuestions(TYPE_LISTENING, 5, 2, 'Listening: Academic Monologue');
 addQuestions(types.IOE_SPOT_MISTAKE, 5, 3, 'Grammar: Error Correction');
 break;
 case 'ielts_std':
-// 40 CÂU => CHIA LÀM 4 CHẶNG (MỖI CHẶNG 10 CÂU = 2 ĐOẠN VĂN)
+// 40 CÂU => CHIA LÀM 4 CHẶNG
 for (let p = 1; p <= 8; p++) {
 const phaseNum = Math.ceil(p / 2); // p=1,2 -> phase=1; p=3,4 -> phase=2...
 addQuestions(TYPE_READING_PASSAGE, 5, phaseNum, `Reading: Passage ${p}`, `passage_std_${p}_${Date.now()}`);
@@ -3448,13 +3489,13 @@ break;
 // TRACK: HSK (Tiếng Trung)
 // ----------------------------------------------------
 case 'hsk_mini':
-// 15 CÂU => CHIA LÀM 3 CHẶNG (MỖI CHẶNG 5 CÂU)
+// 15 CÂU => CHIA LÀM 3 CHẶNG
 addQuestions(types.IOE_MATCH, 5, 1, 'Nhận diện Hán tự');
 addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 2, 'Trắc nghiệm Ngữ pháp');
 addQuestions(types.IOE_FILL_BLANK, 5, 3, 'Điền Lượng từ');
 break;
 case 'hsk_std':
-// 45 CÂU => CHIA LÀM 3 CHẶNG (MỖI CHẶNG 15 CÂU)
+// 45 CÂU => CHIA LÀM 3 CHẶNG
 // Phase 1 (15 câu)
 addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 1, 'Nghe hiểu (Mô phỏng)');
 addQuestions(types.IOE_MATCH, 5, 1, 'Nối Pinyin & Hán tự P1');
