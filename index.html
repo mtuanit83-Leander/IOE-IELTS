@@ -2098,10 +2098,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.17
-// Last Updated: 2026-05-02 14:15
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.18
+// Last Updated: 2026-05-02 15:30
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [VÁ LỖI ANTI-DUPLICATION] Sửa lỗi lỗ hổng 3 ký tự (cho phép lọc từ > 1 ký tự để bảo vệ từ vựng ngắn như cat, dog). Mở rộng bộ nhớ Prompt từ 30 lên 80 từ gần nhất để đồng bộ với Trạm gác 2.7, giảm thiểu việc AI sinh lại từ cũ. Tuân thủ Điều 3.
+// Cập nhật: [TOPIC FREEDOM] Ban hành đặc xá chủ đề cho các Game kỹ thuật (OddOneOut, SpotMistake, Pronunciation) và khi topic là 'ANY'. Gỡ bỏ giới hạn Topic Focus để chống Deadlock và giải phóng khả năng sáng tạo ngữ pháp/âm vị của AI. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2155,12 +2155,10 @@ getHistoryPrompt: function(historyArray) {
 if (!historyArray || historyArray.length === 0) return "";
 const stopWords = ['the', 'and', 'are', 'was', 'were', 'that', 'this', 'have', 'has', 'had', 'what', 'when', 'where', 'who', 'how', 'why', 'then', 'there', 'their', 'they', 'them', 'with', 'from', 'about'];
 let processedHistory = [];
-// [VÁ LỖI BẤT ĐỐI XỨNG BỘ NHỚ] Nâng cấp tầm nhìn từ 30 lên 80 từ
 historyArray.slice(-80).forEach(item => {
 if (typeof item !== 'string') return;
 if (item.length > 30) {
 const words = item.toLowerCase().replace(/[^\p{L}\p{N}]/gu, " ").split(/\s+/);
-// [VÁ LỖI LỖ HỔNG 3 KÝ TỰ] Lấy cả những từ có 2, 3 ký tự (Ví dụ: ox, cat, dog, sun)
 const validWords = words.filter(w => w.length > 1 && !stopWords.includes(w));
 const keywords = [...new Set(validWords)].slice(0, 5).join(' ');
 if (keywords) processedHistory.push(keywords);
@@ -2180,11 +2178,15 @@ let prompt = `You are an expert ${targetLang} language tutor generating content 
 prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
-// [VÁ LỖI TRƯỢT CẤP ĐỘ TỪ VỰNG & NHIỄU] THIẾT QUÂN LUẬT TỪ VỰNG BẮT BUỘC
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
-// [LEVEL TAGGING] Kích hoạt Khóa an toàn tâm lý
 prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
-if (topic && subType !== 'pronunciation') prompt += `TOPIC FOCUS: Strictly related to "${topic}".\n`;
+// [TOPIC FREEDOM] Đặc xá chủ đề cho các game kỹ thuật
+const isTopicFree = topic === 'ANY' || subType === 'pronunciation' || subType === 'odd_one_out' || subType === 'spot_mistake';
+if (isTopicFree) {
+prompt += `TOPIC FREEDOM: You have absolute freedom to use vocabulary from ALL 26 Cambridge topics. Focus entirely on the technical mechanics of the question (Spelling, Grammar, or Odd-one-out logic).\n`;
+} else if (topic) {
+prompt += `TOPIC FOCUS: Strictly related to "${topic}".\n`;
+}
 if (forgeType === 'base_card') {
 prompt += `TASK: Generate a single ${dataMode === 'sentence' ? 'sentence' : 'vocabulary item'} matching the exact standard level (${cefrLevel}) and topic.\n`;
 const typeRule = window.IoeDataEngine?.getMicroTierVocabTypeRule ? window.IoeDataEngine.getMicroTierVocabTypeRule(level) : "";
@@ -3198,10 +3200,10 @@ timestamp: Date.now()
 return atomicQuestion;
 }
 };
-// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.08
-// Last Updated: 2026-05-01 23:15
+// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.09
+// Last Updated: 2026-05-02 16:15
 // Nhiệm vụ: Chứa định nghĩa chi tiết (Blueprints) của 6 cấu trúc đề thi (IOE-Mini, IOE-Std, IELTS-Mini, IELTS-Std, HSK-Mini, HSK-Std) và Bảng Ánh xạ Trình độ (CEFR Mapping).
-// Cập nhật: [TRIPLE-TOPIC HYBRID V2] Tích hợp thuật toán Phân bổ 3 Chủ đề / Chặng. Đảm bảo 1 đề IOE Standard phủ sóng tuyệt đối 100% (26/26) chủ đề Cambridge mà không gây trùng lặp cục bộ. Tuân thủ Điều 3.
+// Cập nhật: [TOPIC FREEDOM] Cấy ghép cờ 'ANY' vào thuộc tính topic của các dạng bài đòi hỏi kỹ thuật cao (Odd One Out, Spot Mistake, Pronunciation) để giải phóng trí thông minh của AI. Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamProfiles = {
 // 1. TỪ ĐIỂN CẤU HÌNH ĐỀ THI TỔNG QUAN
@@ -3378,6 +3380,11 @@ let microTopic = selectedTopic ? `${selectedTopic} (Specific Scenario ${i + 1})`
 // Bơm Meta-tag Sư phạm
 if (specialFocus) {
 microTopic = microTopic ? `${microTopic} - [GRAMMAR FOCUS: ${specialFocus}]` : `[GRAMMAR FOCUS: ${specialFocus}]`;
+}
+// [TOPIC FREEDOM] Giải phóng các Game Kỹ thuật khỏi ràng buộc Chủ đề
+const isTopicFreeType = qType === TYPE_PRONUNCIATION || qType === types.IOE_ODD_ONE_OUT || qType === 'ioe_odd_one_out' || qType === types.IOE_SPOT_MISTAKE || qType === 'ioe_spot_mistake';
+if (isTopicFreeType) {
+microTopic = "ANY";
 }
 blueprint.push({
 id: `${profileId}_${targetLevel}_${qType}_${globalIndex}_${Date.now()}_${i}`,
