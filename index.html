@@ -2098,10 +2098,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.16
-// Last Updated: 2026-05-02 12:51
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.17
+// Last Updated: 2026-05-02 14:15
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [LEVEL TAGGING] Bổ sung trường cefr_level vào TẤT CẢ các JSON Schema. Bơm lệnh kiểm toán 'STRICT LEVEL TAGGING' vào System Prompt để AI tự đối chiếu và gán nhãn độ khó. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [VÁ LỖI ANTI-DUPLICATION] Sửa lỗi lỗ hổng 3 ký tự (cho phép lọc từ > 1 ký tự để bảo vệ từ vựng ngắn như cat, dog). Mở rộng bộ nhớ Prompt từ 30 lên 80 từ gần nhất để đồng bộ với Trạm gác 2.7, giảm thiểu việc AI sinh lại từ cũ. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2155,11 +2155,13 @@ getHistoryPrompt: function(historyArray) {
 if (!historyArray || historyArray.length === 0) return "";
 const stopWords = ['the', 'and', 'are', 'was', 'were', 'that', 'this', 'have', 'has', 'had', 'what', 'when', 'where', 'who', 'how', 'why', 'then', 'there', 'their', 'they', 'them', 'with', 'from', 'about'];
 let processedHistory = [];
-historyArray.slice(-30).forEach(item => {
+// [VÁ LỖI BẤT ĐỐI XỨNG BỘ NHỚ] Nâng cấp tầm nhìn từ 30 lên 80 từ
+historyArray.slice(-80).forEach(item => {
 if (typeof item !== 'string') return;
 if (item.length > 30) {
 const words = item.toLowerCase().replace(/[^\p{L}\p{N}]/gu, " ").split(/\s+/);
-const validWords = words.filter(w => w.length > 3 && !stopWords.includes(w));
+// [VÁ LỖI LỖ HỔNG 3 KÝ TỰ] Lấy cả những từ có 2, 3 ký tự (Ví dụ: ox, cat, dog, sun)
+const validWords = words.filter(w => w.length > 1 && !stopWords.includes(w));
 const keywords = [...new Set(validWords)].slice(0, 5).join(' ');
 if (keywords) processedHistory.push(keywords);
 } else {
@@ -2378,10 +2380,10 @@ throw e;
 }
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.16
-// Last Updated: 2026-05-01 17:25
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.17
+// Last Updated: 2026-05-02 14:20
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [VÁ LỖI POSITIONAL BIAS] Bơm thuật toán xáo trộn (shuffleArray) vào khâu nạp câu hỏi MCQ của Đọc hiểu (Reading Passages). Triệt tiêu hội chứng lặp đáp án đúng ở vị trí cố định. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI ANTI-DUPLICATION] Vô hiệu hóa màng lọc Fuzzy Matching 70% đối với các từ ngắn (<= 4 ký tự) để chống việc Trạm gác bắn nhầm các từ vựng hợp lệ (ví dụ: cat vs bat). Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
@@ -2457,8 +2459,8 @@ const hasMatch = combinedHistory.some(histItem => {
 if (!histItem || typeof histItem !== 'string') return false;
 const cleanHist = histItem.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
 if (cleanHist === cleanCheck) return true;
-// Lưới lọc 70% (Fuzzy Matching) chống AI ảo giác đụng ý tưởng
-if (window.Utils && window.Utils.calculateSimilarity) {
+// [VÁ LỖI ANTI-DUPLICATION] Lưới lọc 70% (Fuzzy Matching) - Chỉ áp dụng cho từ dài > 4 ký tự để tránh bắn nhầm
+if (cleanCheck.length > 4 && window.Utils && window.Utils.calculateSimilarity) {
 const simScore = window.Utils.calculateSimilarity(cleanCheck, cleanHist);
 if (simScore >= 0.7) {
 console.log(`[ExamEngine] Lưới lọc 70% phát hiện trùng lặp (${Math.round(simScore*100)}%):`, cleanCheck);
@@ -2865,7 +2867,6 @@ metadata.type = 'ioe_multiple_choice';
 } else {
 tempGeneratedData.term = qData.questionText;
 const mappedOptions = (qData.options && qData.options.length > 0 ? qData.options : ["A","B","C","D"]).map(o => ({ text: o, isCorrect: String(o).toLowerCase().trim() === String(qData.correctAnswer).toLowerCase().trim() || String(o).includes(String(qData.correctAnswer)) }));
-// [VÁ LỖI POSITIONAL BIAS] Bọc shuffleArray cho các tùy chọn MCQ của Đọc Hiểu
 tempGeneratedData.options = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(mappedOptions) : mappedOptions;
 if (!tempGeneratedData.options.some(o => o.isCorrect) && tempGeneratedData.options.length > 0) { tempGeneratedData.options[0].isCorrect = true; }
 metadata.type = 'ioe_multiple_choice';
@@ -2940,7 +2941,6 @@ const finalHistoryPrompt = baseHistoryPrompt + retryPrompt;
 let tempGeneratedData = null;
 const isMatch = type === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH || type === 'ioe_match';
 const isImageQuiz = type === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || type === 'ioe_image_quiz';
-// [A/B TESTING] Cờ bẻ ghi luồng AI
 const useLegacyAi = window.localStorage ? window.localStorage.getItem('fc_debug_legacy_ai') === 'true' : false;
 if ((isMatch || isImageQuiz) && useLegacyAi) {
 console.log("[ExamEngine] Running Legacy 2-Shot AI for: " + type);
@@ -2990,7 +2990,6 @@ return {
 }
 else if ((isMatch || isImageQuiz) && !useLegacyAi) {
 console.log("[ExamEngine] Running Fast 1-Shot AI for: " + type);
-// Cắm cáp vào Lò Đúc Ngữ Cảnh 3 (vocab_mcq)
 tempGeneratedData = await window.AiFactoryEngine.forgeContext('vocab_mcq', level, targetLang, apiKey, topic, finalHistoryPrompt);
 if (!tempGeneratedData) throw new Error("AI returned empty data for vocab_mcq");
 let doubleCheckHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
@@ -19863,10 +19862,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.18
-// Last Updated: 2026-04-26 01:05
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.19
+// Last Updated: 2026-05-02 13:30
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, tự động lưu Snapshot và Xuất dữ liệu.
-// Cập nhật: [KHÓA CỬA PHÒNG CHỜ] Thay thế Promise.race bằng Promise.all để khóa cứng thời gian đếm ngược 30s đầu game. Bắt buộc người chơi phải chờ đủ 30s, tạo không gian chạy đà hoàn hảo cho AI tích trữ 4 viên đạn. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [ANTI-STREAK SHUFFLER] Bơm thuật toán "Trộn bài có trí nhớ" vào hàm loadQuestion. Cưỡng chế hoán đổi đáp án nếu phát hiện đáp án đúng nằm ở một vị trí quá 2 lần liên tiếp (Ví dụ: D, D, D). Ngoại trừ dạng bài TFNG. Tuân thủ Điều 3.
 // ==================================================================================
 window.useExamLogic = function(apiKey, handleAutoHarvestToPool) {
 const [examState, setExamState] = React.useState({
@@ -19892,6 +19891,8 @@ const coordinatorRef = React.useRef(null);
 const currentBlueprintRef = React.useRef([]);
 const blueprintIndexRef = React.useRef(0);
 const uiIndexRef = React.useRef(0); // [PHASE-GATED] Đồng bộ tức thời Index của UI để FetchTask dò đường
+// [ANTI-STREAK] Bộ nhớ lưu vết vị trí đáp án đúng
+const answerPositionHistoryRef = React.useRef([]);
 const timerRef = React.useRef(null);
 const isExamActiveRef = React.useRef(false); // Cờ trạng thái sinh tồn của bài thi
 const isTransitioningRef = React.useRef(false); // Khóa luồng submit chống Rage-click
@@ -20049,7 +20050,6 @@ queue.splice(i, 1);
 }
 }
 // 1. TÌM KIẾM CHÍNH XÁC (STRICT EXTRACTION) - LUẬT CẤM CƯỚP ĐẠN
-// Bắt buộc lấy đúng viên đạn có index khớp với UI. Cấm lấy đạn của câu sau đắp vào câu trước.
 let validBullets = queue.filter(item => item.metadata && item.metadata.index === meta.index);
 if (validBullets.length === 0) return null;
 // 2. Phân loại: Tìm Golden Bullet (Ưu tiên đạn AI)
@@ -20073,7 +20073,6 @@ let qData = extractBestBullet();
 if (!qData) {
 if (coordinatorRef.current && typeof coordinatorRef.current.maintain === 'function') {
 const maintainPromise = coordinatorRef.current.maintain(true, 30000);
-// Đồng bộ Timeout của Tầng UI (30s) với Timeout của Tầng QueueEngine
 const emergencyTimeout = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 30000));
 await Promise.race([maintainPromise, emergencyTimeout]);
 }
@@ -20094,6 +20093,34 @@ timestamp: Date.now()
 // Ghi đè id và metadata để đồng bộ hoàn hảo với index hiện tại (Bảo vệ UI)
 qData.id = meta.id;
 qData.metadata = meta;
+}
+// ============================================================================
+// [VÁ LỖI ANTI-STREAK] KÍCH HOẠT THUẬT TOÁN "TRỘN CÓ TRÍ NHỚ"
+// ============================================================================
+if (qData && qData.content && Array.isArray(qData.content.options) && qData.metadata && !qData.metadata.type.includes('tfng')) {
+const options = qData.content.options;
+let correctIdx = options.findIndex(o => o.isCorrect === true || String(o.isCorrect).toLowerCase() === 'true');
+if (correctIdx !== -1) {
+const history = answerPositionHistoryRef.current;
+// Kiểm tra nếu 2 câu liên tiếp trước đó có cùng vị trí đáp án với câu hiện tại
+if (history.length >= 2 && history[history.length - 1] === correctIdx && history[history.length - 2] === correctIdx) {
+// KẺ HỦY DIỆT CHUỖI LÊN TIẾNG: Buộc phải hoán đổi đáp án đúng sang một ô sai ngẫu nhiên
+let swapIdx = Math.floor(Math.random() * options.length);
+while (swapIdx === correctIdx) {
+swapIdx = Math.floor(Math.random() * options.length);
+}
+// Tráo đổi phần tử
+const temp = options[correctIdx];
+options[correctIdx] = options[swapIdx];
+options[swapIdx] = temp;
+// Cập nhật lại Index mới
+correctIdx = swapIdx;
+console.log(`[Anti-Streak] Đã bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
+}
+// Ghi vào lịch sử, giữ lại tối đa 5 bước
+history.push(correctIdx);
+if (history.length > 5) history.shift();
+}
 }
 setCurrentQuestion(qData);
 setIsHydrating(false);
@@ -20122,6 +20149,7 @@ isTransitioningRef.current = false;
 setCurrentQuestion(null);
 setCachedCount(0);
 setExamCooldown(0);
+answerPositionHistoryRef.current = []; // Reset trí nhớ Anti-Streak
 // Tẩy não AI triệt để ngay khi bắt đầu bài thi mới
 localStorage.setItem('fc_ai_memory', '[]');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
@@ -20331,6 +20359,7 @@ isTransitioningRef.current = false;
 setExamState(prev => ({ ...prev, status: 'loading', preloadCountdown: 30 }));
 setCurrentQuestion(null);
 setExamCooldown(0);
+answerPositionHistoryRef.current = []; // Reset trí nhớ Anti-Streak
 try {
 if (window.FcDB) {
 const savedState = await window.FcDB.get(sessionId, 'exam_sessions');
@@ -20368,6 +20397,7 @@ isTransitioningRef.current = false;
 setExamState({ status: 'idle', sessionId: null, profile: null, blueprint: [], currentIndex: 0, answers: [], timeRemaining: 0, score: 0, isTransitioning: false, preloadCountdown: 30 });
 setCurrentQuestion(null);
 setExamCooldown(0);
+answerPositionHistoryRef.current = []; // Reset trí nhớ
 localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 setCachedCount(0);
