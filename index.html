@@ -2098,10 +2098,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.18
-// Last Updated: 2026-05-02 15:30
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.19
+// Last Updated: 2026-05-02 16:45
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [TOPIC FREEDOM] Ban hành đặc xá chủ đề cho các Game kỹ thuật (OddOneOut, SpotMistake, Pronunciation) và khi topic là 'ANY'. Gỡ bỏ giới hạn Topic Focus để chống Deadlock và giải phóng khả năng sáng tạo ngữ pháp/âm vị của AI. Tuân thủ Điều 3.
+// Cập nhật: [DYNAMIC SEEDING] Vá lỗi Mode Collapse do "Nghịch lý sự tự do". Bơm thuật toán Hạt giống động (Cụm chữ cái, Cặp chủ đề, Điểm ngữ pháp) vào System Prompt cho Pronunciation, OddOneOut, SpotMistake. Xóa Few-Shot examples rác. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2208,16 +2208,21 @@ if (subType === 'match_hard') {
 prompt += `ADDITIONAL TASK: Generate exactly 2 TRAP items (wrong items). Each trap must be a slightly distorted/incorrect version of a valid item at ${cefrLevel}, to trick the student. Provide explanation in Vietnamese for why the trap is wrong.\n`;
 }
 } else if (subType === 'odd_one_out') {
-prompt += `TASK: Generate an 'Odd One Out' question with exactly 4 ${targetLang} words matching standard level ${cefrLevel}. 3 words must share a common feature, 1 word must be the odd one out.\n`;
+const allTopics = ["Animals", "Food", "Colors", "Numbers", "Body parts", "Clothes", "House", "School", "Jobs", "Weather", "Sports", "Vehicles", "Nature", "Emotions", "Technology", "Space", "Art", "Music", "Medicine", "Business"];
+const shuffledTopics = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...allTopics]) : allTopics.sort(() => Math.random() - 0.5);
+prompt += `TASK: Generate an 'Odd One Out' question with exactly 4 ${targetLang} words matching standard level ${cefrLevel}.\n`;
+prompt += `DYNAMIC SEEDING RULE: You MUST pick 3 items belonging to the semantic category [${shuffledTopics[0]}] and 1 odd item belonging to the semantic category [${shuffledTopics[1]}].\n`;
 const oddRule = window.IoeDataEngine?.getMicroTierOddRule ? window.IoeDataEngine.getMicroTierOddRule(targetLang, dataMode, level, topic) : "";
 if (oddRule) prompt += oddRule + "\n";
 prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'pronunciation') {
+const clusters = ['ea', 'ou', 'th', 'ch', 'sh', 'oo', 'ee', 'ay', 'ow', 'ar', 'er', 'ir', 'ur', 'a_e', 'i_e', 'o_e', 'u_e', 'aw', 'au', 'ew', 'oi', 'oy', 'c', 'g', 's'];
+const seedCluster = clusters[Math.floor(Math.random() * clusters.length)];
 prompt += "TASK: Generate a Pronunciation/Phonetics question.\n";
-prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLevel}. ALL 4 words MUST contain an EXACTLY IDENTICAL spelling cluster/vowel (e.g., 'ea', 'ch', 'tion', 'a'), but ONE word must have a DIFFERENT pronunciation for that specific cluster.\n`;
-prompt += "STRICT MARTIAL LAW: NO SPELLING VARIANCE ALLOWED. You CANNOT use words with different spellings for the same sound (e.g., DO NOT mix 'ay', 'eigh', 'a_e'). They MUST share the exact same visual spelling anchor.\n";
+prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLevel}.\n`;
+prompt += `DYNAMIC SEEDING RULE: ALL 4 words MUST contain the EXACT IDENTICAL spelling cluster: [${seedCluster}]. However, ONE word must have a DIFFERENT pronunciation for that specific cluster [${seedCluster}] compared to the other three.\n`;
+prompt += "STRICT MARTIAL LAW: NO SPELLING VARIANCE ALLOWED. They MUST share the exact same visual spelling anchor.\n";
 prompt += "CRITICAL FORMAT RULE: ABSOLUTELY DO NOT use asterisks (*) or any special characters to mark the word. Return PLAIN TEXT only.\n";
-prompt += "[FEW-SHOT EXAMPLES]\n1. cat, hat, tall, map\n2. peace, seat, meat, bread\n3. book, look, good, food\n4. wash, watch, want, baby\n5. find, mind, blind, window\n6. mother, brother, son, both\n7. think, thing, thick, this\n8. know, knee, knife, name\n9. cat, car, cold, city\n10. bus, cup, run, put\n";
 prompt += "RECOVERY_FORMAT: If you cannot find a valid set, fallback to returning: face, place, make, cat.\n";
 prompt += "RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, clearly explaining which specific sound/IPA is different for the shared spelling cluster.\n";
 }
@@ -2236,7 +2241,10 @@ prompt += `SEMANTIC DECOUPLING RULE: The 3 distractors MUST belong to the same b
 prompt += `IMAGE KEYWORD RULE: Provide a highly specific English 'image_keyword' for the correct term, appending 'isolated white background clipart' to ensure clear image search results.\n`;
 prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'spot_mistake') {
+const grammarPoints = ['Subject-Verb Agreement', 'Prepositions (in/on/at/of/for)', 'Articles (a/an/the)', 'Tenses (Past/Present/Future)', 'Plural Nouns (s/es)', 'Relative Pronouns (who/which/that)', 'Conjunctions (and/but/so/because/although)', 'Word Form (Noun vs Adjective vs Adverb)', 'Comparative/Superlative'];
+const seedGrammar = grammarPoints[Math.floor(Math.random() * grammarPoints.length)];
 prompt += `TASK: Generate a ${targetLang} sentence matching level ${cefrLevel} that contains EXACTLY ONE subtle grammar or vocabulary mistake.\n`;
+prompt += `DYNAMIC SEEDING RULE: The mistake MUST strictly test the following grammar/vocabulary point: [${seedGrammar}]. The context of the sentence should be completely creative.\n`;
 prompt += `RULES: Provide the wrong sentence, the wrong word, the correct word, and an explanation in VIETNAMESE.\n`;
 } else if (subType === 'listening') {
 prompt += `TASK: Generate a listening comprehension script and a corresponding multiple-choice question matching level ${cefrLevel}.\n`;
