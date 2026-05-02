@@ -4443,10 +4443,10 @@ Thứ tự từng nét
 };
 // EXPORT GLOBAL
 window.HanziWriterModal = HanziWriterModal;
-// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.01
-// Last Updated: 2026-04-18 00:41
+// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.02
+// Last Updated: 2026-05-02 23:05
 // Nhiệm vụ: Chứa giao diện Cài đặt toàn hệ thống (Giao diện, Phông chữ, Âm thanh, Auto-play, SRS).
-// Cập nhật: [QA FIX V1.11 - MŨI NHỌN 1] Xóa triệt để trí nhớ AI. Bổ sung lệnh xóa 'fc_match_history' vào hàm handleResetAIBank để đồng bộ hóa việc tẩy não cho game Nối ô. Tuân thủ Điều 3.
+// Cập nhật: [TOKEN COUNTER RESET] Bổ sung nút đặt lại (reset) bộ đếm Token AI về 0 cục bộ. Tuân thủ Điều 3.
 // ==================================================================================
 // Helper Components cho SRS Settings
 const NumberUnitInput = ({ value, onChange, label }) => (
@@ -4516,14 +4516,14 @@ const SettingSlider = ({ label, val, min, max, step, onChange, suffix = '', main
 <input type="range" min={min} max={max} step={step} value={val} onChange={(e) => onChange(parseFloat(e.target.value))} className={`w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-${mainColor}-500`} />
 </div>
 );
-const SettingsModal = ({ isOpen, onClose, onApply, initialSettings, voices, testSpeak, onResetData, currentLang, t, uiLang, setUiLang, mainColor, onDone, onUpdate, totalTokens }) => {
-// [NEW v1.3] Lưu trạng thái gốc khi vừa mở Modal để phục vụ tính năng Revert (Cancel)
-const [originalSettings] = useState(initialSettings);
-const [localSettings, setLocalSettings] = useState(initialSettings);
-const [position, setPosition] = useState({ x: 0, y: 0 });
-const dragRef = useRef({ isDragging: false, startX: 0, startY: 0, initialX: 0, initialY: 0 });
-const [keyStats, setKeyStats] = useState({ count: 0, active: 'Chưa có' });
-// [SAFE] Thêm kiểm tra an toàn cho voices
+const SettingsModal = ({ isOpen, onClose, onApply, initialSettings, voices, testSpeak, onResetData, currentLang, t, uiLang, setUiLang, mainColor, onDone, onUpdate, totalTokens, onResetTokens }) => {
+const [originalSettings] = React.useState(initialSettings);
+const [localSettings, setLocalSettings] = React.useState(initialSettings);
+const [position, setPosition] = React.useState({ x: 0, y: 0 });
+const dragRef = React.useRef({ isDragging: false, startX: 0, startY: 0, initialX: 0, initialY: 0 });
+const [keyStats, setKeyStats] = React.useState({ count: 0, active: 'Chưa có' });
+// [TOKEN COUNTER RESET] State cục bộ để cập nhật UI ngay lập tức
+const [localTotalTokens, setLocalTotalTokens] = React.useState(totalTokens || 0);
 const safeVoices = Array.isArray(voices) ? voices : [];
 const filteredVoices = safeVoices.filter(v => {
 const voiceLang = v.lang.replace('_', '-').toLowerCase();
@@ -4533,10 +4533,13 @@ return voiceLang.startsWith('zh') || voiceLang.startsWith('cmn') || voiceLang.in
 return voiceLang.startsWith(currentLang);
 });
 const voiceOptions = filteredVoices.length > 0 ? filteredVoices : safeVoices;
-useEffect(() => {
+React.useEffect(() => {
 setLocalSettings(initialSettings);
 }, [isOpen, initialSettings]);
-useEffect(() => {
+React.useEffect(() => {
+setLocalTotalTokens(totalTokens || 0);
+}, [totalTokens]);
+React.useEffect(() => {
 if (isOpen) {
 setPosition({ x: 0, y: 0 });
 const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
@@ -4547,15 +4550,12 @@ setKeyStats({ count: pool?.length || 0, active: currentKey ? `...${currentKey.sl
 const handleChange = (key, value) => {
 const newSettings = { ...localSettings, [key]: value };
 setLocalSettings(newSettings);
-// Bật lại Live Update để xem trước thay đổi
 if (onUpdate) onUpdate(newSettings);
 };
-// Logic Cancel: Hoàn tác về trạng thái gốc
 const handleCancel = () => {
 if (onUpdate) onUpdate(originalSettings); // Revert
 onClose();
 };
-// Logic OK: Chỉ cần đóng (vì đã Live Update rồi)
 const handleSave = () => {
 onDone();
 };
@@ -4585,15 +4585,23 @@ document.addEventListener('mouseup', up);
 document.addEventListener('touchmove', move, { passive: false });
 document.addEventListener('touchend', up);
 };
-// [CHIẾN DỊCH CHỐNG AI AMNESIA] Hàm làm mới ngân hàng đề AI
 const handleResetAIBank = () => {
 if (confirm("Bạn có chắc chắn muốn làm mới Ngân hàng đề AI?\n\nHành động này sẽ xóa trí nhớ của AI. Trong các lượt chơi tiếp theo, AI có thể sẽ ra lại những từ vựng cơ bản mà bạn đã gặp trước đó.")) {
 localStorage.removeItem('fc_ai_memory');
-localStorage.removeItem('fc_match_history'); // [QA FIX V1.11] Quét sạch thêm bộ nhớ cục bộ của Game Nối Ô
+localStorage.removeItem('fc_match_history');
 if (window.globalShowToast) {
 window.globalShowToast("Đã làm mới! Hệ thống đang tải lại...", "success");
 }
 setTimeout(() => window.location.reload(), 500); // Ép reload để xóa RAM
+}
+};
+// [TOKEN COUNTER RESET]
+const handleResetTokens = () => {
+if (confirm("Bạn có chắc chắn muốn đặt lại bộ đếm Token về 0?")) {
+localStorage.setItem('fc_total_tokens', '0');
+setLocalTotalTokens(0);
+if (onResetTokens) onResetTokens(0);
+if (window.globalShowToast) window.globalShowToast("Đã đặt lại bộ đếm Token", "success");
 }
 };
 if (!isOpen) return null;
@@ -4602,7 +4610,7 @@ return (
 <div className="absolute inset-0 bg-transparent pointer-events-auto"></div>
 <div className="bg-white/95 backdrop-blur-md shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col z-10 overflow-hidden pointer-events-auto rounded-xl border border-gray-200 transition-transform duration-75 ease-out" style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
 <div className="flex justify-between items-center p-4 border-b bg-gray-50/80 cursor-move select-none active:bg-gray-100 transition-colors" onMouseDown={handleMouseDown} onTouchStart={handleMouseDown}>
-<h2 className="text-xl font-bold flex items-center gap-2 pointer-events-none text-gray-700"><Icons.Settings size={20} className="text-gray-500" /> {t('settingsTitle')}</h2>
+<h2 className="text-xl font-bold flex items-center gap-2 pointer-events-none text-gray-700"><window.Icons.Settings size={20} className="text-gray-500" /> {t('settingsTitle')}</h2>
 </div>
 <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
 <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 flex justify-between items-center text-xs">
@@ -4644,7 +4652,7 @@ testSpeak(text, localSettings.rate, v);
 className={`p-2 bg-${mainColor}-100 text-${mainColor}-600 rounded`}
 title={t('ttTestVoice')}
 >
-<Icons.Volume2 size={20} />
+<window.Icons.Volume2 size={20} />
 </button>
 </div>
 <input type="range" min="0.5" max="2" step="0.1" value={localSettings.rate || 0.8} onChange={(e) => handleChange('rate', parseFloat(e.target.value))} className={`w-full accent-${mainColor}-500`} />
@@ -4667,22 +4675,26 @@ title={t('ttTestVoice')}
 </div>
 <div className="bg-gray-100 p-3 rounded-lg flex justify-between items-center text-xs text-gray-500 font-mono mt-4">
 <span>Tổng Token đã dùng:</span>
-<span className={`font-bold text-${mainColor}-600`}>{(totalTokens || 0).toLocaleString()}</span>
+<div className="flex items-center gap-2">
+<span className={`font-bold text-${mainColor}-600`}>{(localTotalTokens || 0).toLocaleString()}</span>
+<button onClick={handleResetTokens} className="p-1 text-gray-400 hover:text-red-500 hover:bg-gray-200 rounded transition-colors" title="Đặt lại bộ đếm Token">
+<window.Icons.RotateCcw size={14} />
+</button>
 </div>
-{/* [NEW v1.02] Khu vực Nút chức năng nâng cao */}
+</div>
 <div className="mt-4 space-y-2">
 <button onClick={handleResetAIBank} className={`w-full p-3 text-${mainColor}-600 border border-${mainColor}-200 rounded flex items-center justify-center gap-2 hover:bg-${mainColor}-50 transition-colors`} title="Xóa bộ nhớ đệm để AI ra đề lại từ đầu">
-<Icons.RefreshCw size={16} /> Làm mới Ngân hàng đề AI
+<window.Icons.RefreshCw size={16} /> Làm mới Ngân hàng đề AI
 </button>
 <button onClick={onResetData} className="w-full p-3 text-red-600 border border-red-200 rounded flex items-center justify-center gap-2 hover:bg-red-50 transition-colors">
-<Icons.Trash2 size={16} /> {t('resetData')}
+<window.Icons.Trash2 size={16} /> {t('resetData')}
 </button>
 </div>
 </div>
 <div className="p-4 border-t bg-gray-50 rounded-b-xl flex justify-end gap-3">
 <button onClick={handleCancel} className="px-5 py-2 rounded text-gray-600 font-bold hover:bg-gray-200 transition-colors">Cancel</button>
 <button onClick={handleSave} className={`px-5 py-2 rounded ${mainColor ? `bg-${mainColor}-600` : 'bg-blue-600'} text-white font-bold flex items-center gap-2 hover:opacity-90 transition-colors`}>
-<Icons.Check size={18} /> OK
+<window.Icons.Check size={18} /> OK
 </button>
 </div>
 </div>
@@ -21075,10 +21087,10 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.02
-// Last Updated: 2026-04-25 20:45
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.03
+// Last Updated: 2026-05-02 23:15
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [VÁ LỖI ĐỨT DÂY TÍN HIỆU KHẢO THÍ] Bổ sung truyền prop `examLogic: logic.state?.examLogic` xuống GameView để nối thông luồng bài thi Mock Test và kho chứa Exam Pool. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [TOKEN COUNTER RESET] Đi dây tín hiệu `onResetTokens` vào SettingsModal, móc nối thẳng với State `setTotalTokens` của Tầng 6. Tuân thủ Điều 3.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -21371,6 +21383,7 @@ setUiLang: coreState.setUiLang,
 mainColor: appMainColor,
 onDone: () => coreState.setShowSettings(false),
 totalTokens: coreState.totalTokens,
+onResetTokens: () => coreState.setTotalTokens(0),
 voices: coreState.voices,
 testSpeak: logic.actions?.speak
 }),
