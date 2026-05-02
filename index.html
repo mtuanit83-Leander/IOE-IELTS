@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.02
-// Last Updated: 2026-04-26 12:00
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.03
+// Last Updated: 2026-05-02 17:25
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [VÁ LỖI BÓNG MA BĂNG THÔNG] Tích hợp AbortController vào callGeminiApi. Chấm dứt triệt để các request chạy ngầm gây tốn Quota và kẹt băng thông khi bị Timeout (Nguyên lý Boomerang). Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [QUÉT RADAR KHO ĐẠN] Bổ sung hàm pingGeminiKey để thăm dò và kiểm tra sức khỏe của từng API Key (200 OK, 429 Hết Quota, 400 Lỗi). Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -196,6 +196,25 @@ window.Utils.wakeLock = null;
 console.log("Wake Lock released.");
 }
 },
+// [NEW v1.03] THĂM DÒ XUNG KÍCH (HEURISTIC PROBING)
+pingGeminiKey: async (apiKey) => {
+try {
+const k = apiKey.replace(/["'\s]/g, "");
+const body = { contents: [{ parts: [{ text: "Reply 'OK'" }] }] };
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 10000);
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(body),
+signal: controller.signal
+});
+clearTimeout(timeoutId);
+return { status: res.status, ok: res.ok };
+} catch (e) {
+return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message };
+}
+},
 callGeminiApi: async (prompt, schema = null, apiKeyOverride = null) => {
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -213,7 +232,6 @@ if (schema) {
 body.generationConfig.responseMimeType = "application/json";
 body.generationConfig.responseSchema = schema;
 }
-// [VÁ LỖI BÓNG MA BĂNG THÔNG] Thêm AbortController
 const controller = new AbortController();
 const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
@@ -223,7 +241,7 @@ signal: controller.signal
 });
 const timeoutPromise = new Promise((_, reject) => {
 setTimeout(() => {
-controller.abort(); // Bóp chết request ngầm
+controller.abort();
 reject(new Error("API Timeout (15s)"));
 }, 15000);
 });
@@ -234,7 +252,7 @@ if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả v�
 resultText = d.candidates[0].content.parts[0].text;
 if (d.usageMetadata) tokenMetadata = d.usageMetadata;
 successKey = k;
-break; // Thoát vòng lặp KeyPool nếu gọi thành công
+break;
 } catch (e) {
 console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message);
 lastError = e;
@@ -306,7 +324,6 @@ const headers = ['term', 'pronunciation', 'definition', 'analysis', 'sinoViet', 
 const rows = data.map(item => headers.map(key => { let val = item[key] || ''; val = String(val).replace(/(\r\n|\n|\r)/gm, " "); return val; }).join('\t'));
 return rows.join('\n');
 },
-// [NEW v1.06] VŨ KHÍ LỌC MỜ (Sørensen–Dice Coefficient)
 calculateSimilarity: (str1, str2) => {
 if (!str1 || !str2) return 0;
 const clean1 = String(str1).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
@@ -448,7 +465,6 @@ const cleanTarget = targetText ? targetText.replace(/\u0332/g, '') : '';
 const schema = { type: "object", properties: { distractors: { type: "array", items: { type: "string" } } }, required: ["distractors"] };
 const isSentence = window.Utils.detectSentence(cleanTarget);
 const promptKey = isSentence ? 'quiz_sentence' : 'quiz_word';
-// Truyền đầy đủ ngữ cảnh để chống Context Collision
 const prompt = window.Utils.getPrompt(promptKey, { baseText, targetText: cleanTarget, term: baseText, definition: cleanTarget });
 try {
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, schema);
@@ -5424,46 +5440,165 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.01
-// Last Updated: 2026-04-13 08:15
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.03
+// Last Updated: 2026-05-02 18:00
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal
-// Cập nhật: [HARVEST POOL UI] Nâng cấp giao diện Quản lý Kho AI: Thêm lưới nút bấm (Xem trước, Làm rỗng, Xuất Excel). Tích hợp Khung Preview nội bộ có phân nhóm theo Level. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [QUÉT RADAR KHO ĐẠN] Nâng cấp ApiKeyModal thành Dashboard Mini. Cho phép Test hàng loạt các API Key và hiển thị màu sắc trạng thái (200, 429, 400). Tuân thủ Điều 3.
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
-const [stats, setStats] = React.useState({ count: 0 });
+const [keyPool, setKeyPool] = React.useState([]);
+const [isTesting, setIsTesting] = React.useState(false);
+const [testResults, setTestResults] = React.useState({});
+const [newKeyInput, setNewKeyInput] = React.useState('');
 React.useEffect(() => {
-if(isOpen) {
+if (isOpen) {
 const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
-setStats({ count: pool.length });
+const currentKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '';
+// Đảm bảo currentKey luôn nằm ở đầu nếu chưa có trong pool
+let initialPool = [...pool];
+if (currentKey && !initialPool.includes(currentKey)) {
+initialPool.unshift(currentKey);
+} else if (currentKey) {
+initialPool = [currentKey, ...initialPool.filter(k => k !== currentKey)];
+}
+setKeyPool(initialPool);
+setNewKeyInput('');
+setTestResults({});
 }
 }, [isOpen]);
+const handleAddKey = () => {
+const k = newKeyInput.trim();
+if (k && k.length > 20 && !keyPool.includes(k)) {
+const newPool = [k, ...keyPool];
+setKeyPool(newPool);
+window.Utils.safeLocalStorageSet('fc_apikey_pool', newPool);
+setApiKey(k); // Đặt làm key chính luôn
+setNewKeyInput('');
+if (window.globalShowToast) window.globalShowToast("Đã thêm API Key mới!", "success");
+}
+};
+const handleRemoveKey = (keyToRemove) => {
+const newPool = keyPool.filter(k => k !== keyToRemove);
+setKeyPool(newPool);
+window.Utils.safeLocalStorageSet('fc_apikey_pool', newPool);
+if (apiKey === keyToRemove) {
+const nextKey = newPool.length > 0 ? newPool[0] : '';
+setApiKey(nextKey);
+}
+};
+const handleSetPrimary = (k) => {
+const newPool = [k, ...keyPool.filter(item => item !== k)];
+setKeyPool(newPool);
+window.Utils.safeLocalStorageSet('fc_apikey_pool', newPool);
+setApiKey(k);
+if (window.globalShowToast) window.globalShowToast("Đã đổi Key ưu tiên!", "success");
+};
+// [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích
+const handleTestKeys = async () => {
+if (keyPool.length === 0) return;
+setIsTesting(true);
+const results = { ...testResults };
+for (const k of keyPool) {
+results[k] = 'testing';
+setTestResults({ ...results });
+if (window.Utils && window.Utils.pingGeminiKey) {
+const res = await window.Utils.pingGeminiKey(k);
+results[k] = res.status;
+} else {
+results[k] = 0; // Fallback nếu chưa có hàm ping
+}
+setTestResults({ ...results });
+// Delay nhỏ để tránh spam quá nhanh
+await new Promise(r => setTimeout(r, 500));
+}
+setIsTesting(false);
+if (window.globalShowToast) window.globalShowToast("Đã hoàn tất kiểm tra kho đạn!", "info");
+};
+const getStatusBadge = (status) => {
+if (status === 'testing') return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 animate-pulse">Đang thử...</span>;
+if (status === 200) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">🟢 Sẵn sàng</span>;
+if (status === 429) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">🟠 Quá tải</span>;
+if (status === 400 || status === 403) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">🔴 Hỏng</span>;
+if (status === 408) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200">⏳ Mạng yếu</span>;
+if (status === 0) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Lỗi mạng</span>;
+return null;
+};
 if (!isOpen) return null;
 return (
 <div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-<div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-<div className="flex justify-between items-center mb-4 border-b pb-2">
-<h3 className="font-bold text-lg flex items-center gap-2 text-purple-600">
-<window.Icons.Key /> {t('apiKeyLabel')}
+<div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+{/* Header */}
+<div className="flex justify-between items-center p-4 border-b bg-purple-50 shrink-0 rounded-t-xl">
+<h3 className="font-bold text-lg flex items-center gap-2 text-purple-700">
+<window.Icons.Key /> Quản lý API Key (Radar)
 </h3>
-<button onClick={onClose}><window.Icons.X /></button>
+<button onClick={onClose} className="text-gray-400 hover:text-gray-700"><window.Icons.X /></button>
 </div>
-<div className="space-y-4">
-<div className="bg-purple-50 p-2 rounded text-xs text-purple-800 border border-purple-100 flex justify-between">
-<span>Số Key dự phòng:</span>
-<span className="font-bold">{stats.count}</span>
-</div>
-<p className="text-xs text-gray-500 italic">Google Gemini API Key</p>
+<div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 bg-gray-50/50">
+{/* Thêm Key Mới */}
+<div className="space-y-2">
+<label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Thêm Key thủ công</label>
+<div className="flex gap-2">
 <input
 type="password"
-value={apiKey}
-onChange={(e) => setApiKey(e.target.value)}
-className="w-full p-3 border rounded-lg text-sm bg-purple-50 focus:ring-2 focus:ring-purple-200 outline-none font-mono"
+value={newKeyInput}
+onChange={(e) => setNewKeyInput(e.target.value)}
+onKeyDown={(e) => e.key === 'Enter' && handleAddKey()}
+className="flex-1 p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-purple-200 outline-none font-mono"
 placeholder={t('apiKeyPlace')}
-autoFocus
 />
-<button onClick={onClose} className="w-full py-2 bg-purple-600 text-white rounded-lg font-bold shadow hover:bg-purple-700">
-<window.Icons.Check size={18} className="inline mr-1" /> {t('apply')}
+<button onClick={handleAddKey} disabled={!newKeyInput.trim()} className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold shadow hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1 transition-all active:scale-95">
+<window.Icons.Plus size={18} /> Thêm
+</button>
+</div>
+</div>
+{/* Radar Dashboard */}
+<div className="space-y-3 border-t pt-4">
+<div className="flex justify-between items-center">
+<label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Kho đạn dự phòng ({keyPool.length})</label>
+<button onClick={handleTestKeys} disabled={isTesting || keyPool.length === 0} className="text-[10px] font-bold px-3 py-1.5 bg-blue-100 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-200 disabled:opacity-50 flex items-center gap-1 transition-all active:scale-95">
+{isTesting ? <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div> : <window.Icons.Search size={14} />}
+Kiểm tra sức khỏe
+</button>
+</div>
+{keyPool.length === 0 ? (
+<div className="text-center text-sm text-gray-400 italic p-4 bg-white rounded-xl border border-dashed border-gray-200">
+Kho đạn đang trống. Vui lòng thêm Key!
+</div>
+) : (
+<div className="space-y-2">
+{keyPool.map((k, index) => {
+const isPrimary = apiKey === k;
+const displayKey = k.length > 15 ? `${k.substring(0, 8)}...${k.substring(k.length - 4)}` : k;
+const status = testResults[k];
+return (
+<div key={index} className={`flex items-center justify-between p-3 rounded-xl border transition-all shadow-sm ${isPrimary ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100'}`}>
+<div className="flex items-center gap-2">
+{isPrimary ? (
+<div className="w-6 h-6 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center shrink-0" title="Key đang dùng chính"><window.Icons.Check size={14} strokeWidth={3}/></div>
+) : (
+<button onClick={() => handleSetPrimary(k)} className="w-6 h-6 rounded-full border-2 border-gray-200 hover:border-purple-400 flex items-center justify-center shrink-0 transition-colors" title="Đặt làm Key chính"></button>
+)}
+<div className="flex flex-col">
+<span className="font-mono text-sm font-bold text-gray-700">{displayKey}</span>
+{status !== undefined && <div className="mt-0.5">{getStatusBadge(status)}</div>}
+</div>
+</div>
+<button onClick={() => handleRemoveKey(k)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa Key">
+<window.Icons.Trash2 size={16} />
+</button>
+</div>
+);
+})}
+</div>
+)}
+</div>
+</div>
+<div className="p-4 border-t bg-white shrink-0 rounded-b-xl flex justify-between items-center">
+<p className="text-[10px] text-gray-400 italic">* Các key hỏng (400) bạn có thể tự xóa bằng tay.</p>
+<button onClick={onClose} className="px-6 py-2 bg-purple-600 text-white rounded-lg font-bold shadow hover:bg-purple-700 transition-all active:scale-95">
+Đóng
 </button>
 </div>
 </div>
@@ -5479,8 +5614,8 @@ aiHarvestPool = {}, onExportHarvestToExcel, onClearHarvestPool
 }) => {
 const fileInputRef = React.useRef(null);
 const [notebookUrl, setNotebookUrl] = React.useState('');
-const [showPreview, setShowPreview] = React.useState(false); // [NEW v1.5] State cho khung Xem trước Kho AI
-// [NEW v1.4] Master Links State
+const [showPreview, setShowPreview] = React.useState(false);
+// Master Links State
 const defaultVocabKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_vocab';
 const defaultSentenceKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_sentence';
 const [vocabUrl, setVocabUrl] = React.useState('');
@@ -5489,7 +5624,7 @@ React.useEffect(() => {
 if (isOpen) {
 setVocabUrl(localStorage.getItem(defaultVocabKey) || window.DEFAULT_SHEETS?.[lang]?.vocab || '');
 setSentenceUrl(localStorage.getItem(defaultSentenceKey) || window.DEFAULT_SHEETS?.[lang]?.sentence || '');
-setShowPreview(false); // Reset preview state
+setShowPreview(false);
 }
 }, [isOpen, lang]);
 const totalHarvested = Object.values(aiHarvestPool).reduce((sum, arr) => sum + (arr?.length || 0), 0);
@@ -5510,7 +5645,7 @@ return (
 <button onClick={() => onSaveSettings(window.STORAGE_KEYS.API_KEY_SHEET, apiKeySheetUrl)} className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700" title="Lưu làm mặc định"><window.Icons.Save size={16} /></button>
 </div>
 </div>
-{/* [NEW v1.4] TRẠM NẠP 1: NGUỒN TỪ VỰNG */}
+{/* TRẠM NẠP 1: NGUỒN TỪ VỰNG */}
 <div className="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100 shadow-sm">
 <label className="block text-sm font-bold text-blue-800 mb-1 flex items-center gap-2">
 <window.Icons.Layers size={16}/> Nguồn Từ Vựng (Master File)
@@ -5525,7 +5660,7 @@ return (
 </div>
 </div>
 </div>
-{/* [NEW v1.4] TRẠM NẠP 2: NGUỒN CÂU VĂN */}
+{/* TRẠM NẠP 2: NGUỒN CÂU VĂN */}
 <div className="mb-4 bg-teal-50 p-3 rounded-lg border border-teal-100 shadow-sm">
 <label className="block text-sm font-bold text-teal-800 mb-1 flex items-center gap-2">
 <window.Icons.BookOpen size={16}/> Nguồn Câu Văn (Master File)
@@ -5552,7 +5687,7 @@ return (
 </button>
 </div>
 </div>
-{/* [UPDATE v1.5] BẢNG QUẢN LÝ KHO AI */}
+{/* BẢNG QUẢN LÝ KHO AI */}
 <div className="mb-4 bg-indigo-50 p-3 rounded-lg border border-indigo-200 shadow-sm relative overflow-hidden">
 <div className="absolute -right-4 -top-4 opacity-10"><window.Icons.Sparkles size={64}/></div>
 <label className="block text-sm font-bold text-indigo-800 mb-1 flex items-center gap-2 relative z-10">
