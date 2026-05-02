@@ -2099,9 +2099,9 @@ getTotalLoaded: function() { return this.totalLoaded; }
 }
 };
 // Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.15
-// Last Updated: 2026-05-01 22:42
+// Last Updated: 2026-05-02 11:50
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [THIẾT QUÂN LUẬT TỪ VỰNG] Bơm 'STRICT LEXICAL MARTIAL LAW' vào lõi System Prompt. Cấm tuyệt đối AI sử dụng từ vựng A1/A2 cho các mức độ IELTS/Academic và ngược lại. Ép buộc độ khó phải khớp chính xác với Khung CEFR. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI TRƯỢT CẤP ĐỘ TOÀN DIỆN] Bơm 'STRICT LEXICAL MARTIAL LAW' vào lõi System Prompt. Ép AI kiểm toán TẤT CẢ từ vựng (bao gồm cả đáp án nhiễu - distractors). Cấm tuyệt đối dùng từ vựng B1/B2/C1 (như shovel, rake) làm nhiễu cho câu hỏi A1. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2178,8 +2178,8 @@ let prompt = `You are an expert ${targetLang} language tutor generating content 
 prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
-// [VÁ LỖI TRƯỢT CẤP ĐỘ] THIẾT QUÂN LUẬT TỪ VỰNG BẮT BUỘC
-prompt += `STRICT LEXICAL MARTIAL LAW: CEFR/IELTS ALIGNMENT IS MANDATORY. You MUST audit the target vocabulary/sentence before outputting. If target is B2/C1/C2 or IELTS 5.5+, you are ABSOLUTELY FORBIDDEN from using basic A1/A2 words as the main focus (e.g., do NOT use 'good' or 'bad', use 'beneficial' or 'detrimental'). If target is A1/A2, you MUST NOT use advanced academic words. THE DIFFICULTY MUST EXACTLY MATCH ${cefrLevel}.\n`;
+// [VÁ LỖI TRƯỢT CẤP ĐỘ TỪ VỰNG & NHIỄU] THIẾT QUÂN LUẬT TỪ VỰNG BẮT BUỘC
+prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
 if (topic && subType !== 'pronunciation') prompt += `TOPIC FOCUS: Strictly related to "${topic}".\n`;
 if (forgeType === 'base_card') {
 prompt += `TASK: Generate a single ${dataMode === 'sentence' ? 'sentence' : 'vocabulary item'} matching the exact standard level (${cefrLevel}) and topic.\n`;
