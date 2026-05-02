@@ -2098,10 +2098,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.15
-// Last Updated: 2026-05-02 11:50
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.16
+// Last Updated: 2026-05-02 12:51
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [VÁ LỖI TRƯỢT CẤP ĐỘ TOÀN DIỆN] Bơm 'STRICT LEXICAL MARTIAL LAW' vào lõi System Prompt. Ép AI kiểm toán TẤT CẢ từ vựng (bao gồm cả đáp án nhiễu - distractors). Cấm tuyệt đối dùng từ vựng B1/B2/C1 (như shovel, rake) làm nhiễu cho câu hỏi A1. Tuân thủ Điều 3.
+// Cập nhật: [LEVEL TAGGING] Bổ sung trường cefr_level vào TẤT CẢ các JSON Schema. Bơm lệnh kiểm toán 'STRICT LEVEL TAGGING' vào System Prompt để AI tự đối chiếu và gán nhãn độ khó. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2180,6 +2180,8 @@ const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
 // [VÁ LỖI TRƯỢT CẤP ĐỘ TỪ VỰNG & NHIỄU] THIẾT QUÂN LUẬT TỪ VỰNG BẮT BUỘC
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
+// [LEVEL TAGGING] Kích hoạt Khóa an toàn tâm lý
+prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
 if (topic && subType !== 'pronunciation') prompt += `TOPIC FOCUS: Strictly related to "${topic}".\n`;
 if (forgeType === 'base_card') {
 prompt += `TASK: Generate a single ${dataMode === 'sentence' ? 'sentence' : 'vocabulary item'} matching the exact standard level (${cefrLevel}) and topic.\n`;
@@ -2256,40 +2258,40 @@ return prompt;
 },
 _getMasterSchema: function(forgeType, subType) {
 if (forgeType === 'base_card') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, image_keyword: { type: "STRING" } }, required: ["term", "definition", "image_keyword"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, image_keyword: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["term", "definition", "image_keyword", "cefr_level"] };
 }
 if (forgeType === 'matrix') {
 if (subType === 'match') {
-return { type: "OBJECT", properties: { items: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } } }, required: ["items"] };
+return { type: "OBJECT", properties: { items: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, cefr_level: { type: "STRING" } }, required: ["items", "cefr_level"] };
 }
 if (subType === 'match_hard') {
-return { type: "OBJECT", properties: { correctPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, trapPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { wrongWord: { type: "STRING" }, correction: { type: "STRING" }, definition: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["wrongWord", "correction", "definition", "explanation"] } } }, required: ["correctPairs", "trapPairs"] };
+return { type: "OBJECT", properties: { correctPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, trapPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { wrongWord: { type: "STRING" }, correction: { type: "STRING" }, definition: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["wrongWord", "correction", "definition", "explanation"] } }, cefr_level: { type: "STRING" } }, required: ["correctPairs", "trapPairs", "cefr_level"] };
 }
 if (subType === 'odd_one_out') {
-return { type: "OBJECT", properties: { words: { type: "ARRAY", items: { type: "STRING" } }, oddWord: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["words", "oddWord", "explanation"] };
+return { type: "OBJECT", properties: { words: { type: "ARRAY", items: { type: "STRING" } }, oddWord: { type: "STRING" }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["words", "oddWord", "explanation", "cefr_level"] };
 }
 if (subType === 'pronunciation') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } } }, required: ["term", "definition", "options"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, cefr_level: { type: "STRING" } }, required: ["term", "definition", "options", "cefr_level"] };
 }
 }
 if (forgeType === 'context') {
 if (subType === 'fill_blank') {
-return { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" } }, required: ["displaySentence", "targetWord", "hint"] };
+return { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["displaySentence", "targetWord", "hint", "cefr_level"] };
 }
 if (subType === 'vocab_mcq') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["term", "options", "image_keyword", "explanation"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["term", "options", "image_keyword", "explanation", "cefr_level"] };
 }
 if (subType === 'spot_mistake') {
-return { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["wrongSentence", "wrongWord", "correction", "explanation"] };
+return { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["wrongSentence", "wrongWord", "correction", "explanation", "cefr_level"] };
 }
 if (subType === 'listening') {
-return { type: "OBJECT", properties: { audioScript: { type: "STRING" }, question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" } }, required: ["audioScript", "question", "options", "explanation"] };
+return { type: "OBJECT", properties: { audioScript: { type: "STRING" }, question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["audioScript", "question", "options", "explanation", "cefr_level"] };
 }
 if (subType === 'reading_passage') {
-return { type: "OBJECT", properties: { passage: { type: "STRING" }, questions: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, questionText: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, correctAnswer: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["type", "questionText", "correctAnswer", "explanation"] } } }, required: ["passage", "questions"] };
+return { type: "OBJECT", properties: { passage: { type: "STRING" }, questions: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, questionText: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, correctAnswer: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["type", "questionText", "correctAnswer", "explanation"] } }, cefr_level: { type: "STRING" } }, required: ["passage", "questions", "cefr_level"] };
 }
 if (subType === 'grammar_mcq') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" } }, required: ["term", "options", "explanation"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["term", "options", "explanation", "cefr_level"] };
 }
 }
 return null;
@@ -2310,6 +2312,7 @@ return {
 term: parsed.term,
 definition: parsed.definition,
 image_keyword: parsed.image_keyword || parsed.term,
+cefr_level: parsed.cefr_level || "",
 isAiGenerated: true,
 _tokenUsage: res.tokenMetadata
 };
