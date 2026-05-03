@@ -4443,10 +4443,10 @@ Thứ tự từng nét
 };
 // EXPORT GLOBAL
 window.HanziWriterModal = HanziWriterModal;
-// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.02
-// Last Updated: 2026-05-02 23:05
+// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.03
+// Last Updated: 2026-05-03 08:20
 // Nhiệm vụ: Chứa giao diện Cài đặt toàn hệ thống (Giao diện, Phông chữ, Âm thanh, Auto-play, SRS).
-// Cập nhật: [TOKEN COUNTER RESET] Bổ sung nút đặt lại (reset) bộ đếm Token AI về 0 cục bộ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI BÓNG MA TOKEN] Bổ sung logic đọc trực tiếp fc_total_tokens từ localStorage mỗi khi mở Modal để đồng bộ số Token tiêu thụ từ các tác vụ chạy ngầm (Mock Test). Sửa lỗi trỏ nhầm key hiển thị API Key. Tuân thủ Điều 3.
 // ==================================================================================
 // Helper Components cho SRS Settings
 const NumberUnitInput = ({ value, onChange, label }) => (
@@ -4522,7 +4522,6 @@ const [localSettings, setLocalSettings] = React.useState(initialSettings);
 const [position, setPosition] = React.useState({ x: 0, y: 0 });
 const dragRef = React.useRef({ isDragging: false, startX: 0, startY: 0, initialX: 0, initialY: 0 });
 const [keyStats, setKeyStats] = React.useState({ count: 0, active: 'Chưa có' });
-// [TOKEN COUNTER RESET] State cục bộ để cập nhật UI ngay lập tức
 const [localTotalTokens, setLocalTotalTokens] = React.useState(totalTokens || 0);
 const safeVoices = Array.isArray(voices) ? voices : [];
 const filteredVoices = safeVoices.filter(v => {
@@ -4543,8 +4542,12 @@ React.useEffect(() => {
 if (isOpen) {
 setPosition({ x: 0, y: 0 });
 const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
-const currentKey = localStorage.getItem('fc_apikey') || '';
+// [FIX] Sửa lại tên key lấy API Key đang dùng để hiển thị chính xác
+const currentKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '';
 setKeyStats({ count: pool?.length || 0, active: currentKey ? `...${currentKey.slice(-5)}` : 'Chưa có' });
+// [VÁ LỖI BÓNG MA TOKEN] Đồng bộ cưỡng bức từ ổ cứng lên State khi mở Modal
+const savedTokens = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+setLocalTotalTokens(savedTokens);
 }
 }, [isOpen]);
 const handleChange = (key, value) => {
@@ -4595,7 +4598,6 @@ window.globalShowToast("Đã làm mới! Hệ thống đang tải lại...", "su
 setTimeout(() => window.location.reload(), 500); // Ép reload để xóa RAM
 }
 };
-// [TOKEN COUNTER RESET]
 const handleResetTokens = () => {
 if (confirm("Bạn có chắc chắn muốn đặt lại bộ đếm Token về 0?")) {
 localStorage.setItem('fc_total_tokens', '0');
