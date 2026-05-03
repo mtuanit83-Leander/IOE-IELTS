@@ -2139,9 +2139,9 @@ getTotalLoaded: function() { return this.totalLoaded; }
 }
 };
 // Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.21
-// Last Updated: 2026-05-03 09:17
+// Last Updated: 2026-05-03 12:57
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [FINAL POLISH] Đồng bộ thời gian thực 09:17. Ép chuẩn cefr_level cho tất cả Schemas. Củng cố luật "Plain Text" cho Ngữ âm. Rà soát Điều 3.2 chống SyntaxError.
+// Cập nhật: [CHIẾN DỊCH GIẢI CỨU NGỮ ÂM] Triển khai Categorical Phonetic Seeding. Ép xáo trộn hậu kiểm cho tất cả các dạng bài trắc nghiệm/phân loại. Ép chuẩn cefr_level cho mọi Schema. Tuân thủ Điều 3 & 5.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2234,7 +2234,7 @@ prompt += `TASK: Generate a single ${dataMode === 'sentence' ? 'sentence' : 'voc
 const typeRule = window.IoeDataEngine?.getMicroTierVocabTypeRule ? window.IoeDataEngine.getMicroTierVocabTypeRule(level) : "";
 if (typeRule && dataMode === 'vocab') {
 prompt += typeRule + "\n";
-prompt += `VISUAL CLARITY RULE: For vocabulary, strictly prefer concrete nouns (animals, fruits, objects, professions) with distinct shapes. CRITICAL: THE chosen noun MUST BE AT THE EXACT SAME ACADEMIC LEVEL (${cefrLevel}). Do not use A1 words (like 'cat' or 'apple') if the level is B1 or B2. Avoid abstract adjectives.\n`;
+prompt += `VISUAL CLARITY RULE: For vocabulary, strictly prefer concrete nouns (animals, fruits, objects, professions) with distinct shapes. CRITICAL: The chosen noun MUST BE AT THE EXACT SAME ACADEMIC LEVEL (${cefrLevel}). Do not use A1 words (like 'cat' or 'apple') if the level is B1 or B2. Avoid abstract adjectives.\n`;
 }
 prompt += `RULES: The 'definition' field must be a clear Vietnamese translation. You MUST also provide an 'image_keyword' in English. This keyword must be highly specific and focus ONLY on the core object (e.g., 'red apple isolated cartoon', 'microscope isolated clipart').\n`;
 }
@@ -2264,8 +2264,8 @@ const seedCategory = phoneticCategories[Math.floor(Math.random() * phoneticCateg
 prompt += "TASK: Generate a Pronunciation/Phonetics question.\n";
 prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLevel}.\n`;
 prompt += `DYNAMIC SEEDING RULE: You have the ABSOLUTE FREEDOM to choose ONE specific spelling pattern belonging to this category: [${seedCategory}]. Generate 4 words sharing that exact same spelling pattern, but ONE word must have a DIFFERENT pronunciation for that pattern or be NOT silent.\n`;
-prompt += "STRICT MARTIAL LAW: NO SPELLING VARIANCE ALLOWED within the chosen pattern. They MUST share the exact same visual spelling anchor.\n";
-prompt += "CRITICAL FORMAT RULE: ABSOLUTELY DO NOT use asterisks (*) or any special characters to mark the word. Return PLAIN TEXT only.\n";
+prompt += "STRICT MARTIAL LAW 1: NO SPELLING VARIANCE ALLOWED within the chosen pattern. They MUST share the exact same visual spelling anchor.\n";
+prompt += "STRICT MARTIAL LAW 2: RETURN PLAIN TEXT ONLY. Absolutely do not use asterisks (*) or any special characters to mark letters.\n";
 prompt += "RECOVERY_FORMAT: If you cannot find a valid set, fallback to returning: face, place, make, cat.\n";
 prompt += "RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, clearly explaining which specific sound/IPA is different for the shared spelling pattern.\n";
 }
@@ -2309,41 +2309,43 @@ prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely
 return prompt;
 },
 _getMasterSchema: function(forgeType, subType) {
+const commonProps = { cefr_level: { type: "STRING" } };
+const commonRequired = ["cefr_level"];
 if (forgeType === 'base_card') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, image_keyword: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["term", "definition", "image_keyword", "cefr_level"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, image_keyword: { type: "STRING" }, ...commonProps }, required: ["term", "definition", "image_keyword", ...commonRequired] };
 }
 if (forgeType === 'matrix') {
 if (subType === 'match') {
-return { type: "OBJECT", properties: { items: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, cefr_level: { type: "STRING" } }, required: ["items", "cefr_level"] };
+return { type: "OBJECT", properties: { items: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, ...commonProps }, required: ["items", ...commonRequired] };
 }
 if (subType === 'match_hard') {
-return { type: "OBJECT", properties: { correctPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, trapPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { wrongWord: { type: "STRING" }, correction: { type: "STRING" }, definition: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["wrongWord", "correction", "definition", "explanation"] } }, cefr_level: { type: "STRING" } }, required: ["correctPairs", "trapPairs", "cefr_level"] };
+return { type: "OBJECT", properties: { correctPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, trapPairs: { type: "ARRAY", items: { type: "OBJECT", properties: { wrongWord: { type: "STRING" }, correction: { type: "STRING" }, definition: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["wrongWord", "correction", "definition", "explanation"] } }, ...commonProps }, required: ["correctPairs", "trapPairs", ...commonRequired] };
 }
 if (subType === 'odd_one_out') {
-return { type: "OBJECT", properties: { words: { type: "ARRAY", items: { type: "STRING" } }, oddWord: { type: "STRING" }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["words", "oddWord", "explanation", "cefr_level"] };
+return { type: "OBJECT", properties: { words: { type: "ARRAY", items: { type: "STRING" } }, oddWord: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["words", "oddWord", "explanation", ...commonRequired] };
 }
 if (subType === 'pronunciation') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, cefr_level: { type: "STRING" } }, required: ["term", "definition", "options", "cefr_level"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, ...commonProps }, required: ["term", "definition", "options", ...commonRequired] };
 }
 }
 if (forgeType === 'context') {
 if (subType === 'fill_blank') {
-return { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["displaySentence", "targetWord", "hint", "cefr_level"] };
+return { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" }, ...commonProps }, required: ["displaySentence", "targetWord", "hint", ...commonRequired] };
 }
 if (subType === 'vocab_mcq') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["term", "options", "image_keyword", "explanation", "cefr_level"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["term", "options", "image_keyword", "explanation", ...commonRequired] };
 }
 if (subType === 'spot_mistake') {
-return { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["wrongSentence", "wrongWord", "correction", "explanation", "cefr_level"] };
+return { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["wrongSentence", "wrongWord", "correction", "explanation", ...commonRequired] };
 }
 if (subType === 'listening') {
-return { type: "OBJECT", properties: { audioScript: { type: "STRING" }, question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["audioScript", "question", "options", "explanation", "cefr_level"] };
+return { type: "OBJECT", properties: { audioScript: { type: "STRING" }, question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, ...commonProps }, required: ["audioScript", "question", "options", "explanation", ...commonRequired] };
 }
 if (subType === 'reading_passage') {
-return { type: "OBJECT", properties: { passage: { type: "STRING" }, questions: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, questionText: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, correctAnswer: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["type", "questionText", "correctAnswer", "explanation"] } }, cefr_level: { type: "STRING" } }, required: ["passage", "questions", "cefr_level"] };
+return { type: "OBJECT", properties: { passage: { type: "STRING" }, questions: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, questionText: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, correctAnswer: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["type", "questionText", "correctAnswer", "explanation"] } }, ...commonProps }, required: ["passage", "questions", ...commonRequired] };
 }
 if (subType === 'grammar_mcq') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, cefr_level: { type: "STRING" } }, required: ["term", "options", "explanation", "cefr_level"] };
+return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, ...commonProps }, required: ["term", "options", "explanation", ...commonRequired] };
 }
 }
 return null;
@@ -2386,17 +2388,15 @@ const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Ma
 const res = await Promise.race([aiPromise, timeoutPromise]);
 const parsed = window.Utils.parseAiJson(res.text);
 const result = { ...parsed, isAiGenerated: true, type: subType, _tokenUsage: res.tokenMetadata };
-if (subType === 'match' && (!parsed.items || !Array.isArray(parsed.items))) {
-throw new Error("Invalid format from AI for Matrix Match");
-}
-if (subType === 'match_hard' && (!parsed.correctPairs || !parsed.trapPairs)) {
-throw new Error("Invalid format from AI for Matrix Match Hard");
-}
+// [VÁ LỖI XÁO TRỘN HẬU KIỂM] Chống Positional Bias
 if (subType === 'odd_one_out' && result.words && Array.isArray(result.words)) {
 result.words = window.Utils.shuffleArray(result.words);
 }
 if (subType === 'pronunciation' && result.options && Array.isArray(result.options)) {
 result.options = window.Utils.shuffleArray(result.options);
+}
+if ((subType === 'match' || subType === 'match_hard') && result.items) {
+result.items = window.Utils.shuffleArray(result.items);
 }
 return result;
 } catch (e) {
