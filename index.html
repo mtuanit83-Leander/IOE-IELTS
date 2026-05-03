@@ -2114,10 +2114,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.19
-// Last Updated: 2026-05-02 16:45
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.20
+// Last Updated: 2026-05-03 08:35
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [DYNAMIC SEEDING] Vá lỗi Mode Collapse do "Nghịch lý sự tự do". Bơm thuật toán Hạt giống động (Cụm chữ cái, Cặp chủ đề, Điểm ngữ pháp) vào System Prompt cho Pronunciation, OddOneOut, SpotMistake. Xóa Few-Shot examples rác. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI BỐC HƠI TOKEN] Áp dụng Thiết quân luật Độ dài (< 8 từ) cho level thấp. [VÁ LỖI GAME NGỮ ÂM] Thay mảng hạt giống cứng bằng Categorical Phonetic Seeding. Đảm bảo hàm shuffleArray hoạt động cho OddOneOut và Pronunciation. Tuân thủ Điều 3.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2195,6 +2195,8 @@ prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
+// [VÁ LỖI BỐC HƠI TOKEN] Thiết quân luật độ dài ngăn chặn lỗi dài dòng của AI
+prompt += `STRICT LENGTH MARTIAL LAW: If the target level is Pre-A1, A1, or A2 (e.g., Kiddie, Junior, Starters, Movers, Flyers), ALL options/distractors MUST BE STRICTLY LESS THAN 8 WORDS. Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
 prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
 // [TOPIC FREEDOM] Đặc xá chủ đề cho các game kỹ thuật
 const isTopicFree = topic === 'ANY' || subType === 'pronunciation' || subType === 'odd_one_out' || subType === 'spot_mistake';
@@ -2232,15 +2234,16 @@ const oddRule = window.IoeDataEngine?.getMicroTierOddRule ? window.IoeDataEngine
 if (oddRule) prompt += oddRule + "\n";
 prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'pronunciation') {
-const clusters = ['ea', 'ou', 'th', 'ch', 'sh', 'oo', 'ee', 'ay', 'ow', 'ar', 'er', 'ir', 'ur', 'a_e', 'i_e', 'o_e', 'u_e', 'aw', 'au', 'ew', 'oi', 'oy', 'c', 'g', 's'];
-const seedCluster = clusters[Math.floor(Math.random() * clusters.length)];
+// [VÁ LỖI GAME NGỮ ÂM] Thuật toán Hạt giống Phân loại (Categorical Phonetic Seeding)
+const phoneticCategories = ['single vowels (a, e, i, o, u)', 'vowel digraphs (e.g., ea, oo, ou)', 'consonant digraphs (e.g., ch, th, gh)', 'silent letters (e.g., k, w, b)', 'grammar suffixes (-ed or -s/-es)'];
+const seedCategory = phoneticCategories[Math.floor(Math.random() * phoneticCategories.length)];
 prompt += "TASK: Generate a Pronunciation/Phonetics question.\n";
 prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLevel}.\n`;
-prompt += `DYNAMIC SEEDING RULE: ALL 4 words MUST contain the EXACT IDENTICAL spelling cluster: [${seedCluster}]. However, ONE word must have a DIFFERENT pronunciation for that specific cluster [${seedCluster}] compared to the other three.\n`;
-prompt += "STRICT MARTIAL LAW: NO SPELLING VARIANCE ALLOWED. They MUST share the exact same visual spelling anchor.\n";
+prompt += `DYNAMIC SEEDING RULE: You have the ABSOLUTE FREEDOM to choose ONE specific spelling pattern belonging to this category: [${seedCategory}]. Generate 4 words sharing that exact same spelling pattern, but ONE word must have a DIFFERENT pronunciation for that pattern or be NOT silent.\n`;
+prompt += "STRICT MARTIAL LAW: NO SPELLING VARIANCE ALLOWED within the chosen pattern. They MUST share the exact same visual spelling anchor.\n";
 prompt += "CRITICAL FORMAT RULE: ABSOLUTELY DO NOT use asterisks (*) or any special characters to mark the word. Return PLAIN TEXT only.\n";
 prompt += "RECOVERY_FORMAT: If you cannot find a valid set, fallback to returning: face, place, make, cat.\n";
-prompt += "RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, clearly explaining which specific sound/IPA is different for the shared spelling cluster.\n";
+prompt += "RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, clearly explaining which specific sound/IPA is different for the shared spelling pattern.\n";
 }
 }
 else if (forgeType === 'context') {
@@ -2257,10 +2260,7 @@ prompt += `SEMANTIC DECOUPLING RULE: The 3 distractors MUST belong to the same b
 prompt += `IMAGE KEYWORD RULE: Provide a highly specific English 'image_keyword' for the correct term, appending 'isolated white background clipart' to ensure clear image search results.\n`;
 prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'spot_mistake') {
-const grammarPoints = ['Subject-Verb Agreement', 'Prepositions (in/on/at/of/for)', 'Articles (a/an/the)', 'Tenses (Past/Present/Future)', 'Plural Nouns (s/es)', 'Relative Pronouns (who/which/that)', 'Conjunctions (and/but/so/because/although)', 'Word Form (Noun vs Adjective vs Adverb)', 'Comparative/Superlative'];
-const seedGrammar = grammarPoints[Math.floor(Math.random() * grammarPoints.length)];
 prompt += `TASK: Generate a ${targetLang} sentence matching level ${cefrLevel} that contains EXACTLY ONE subtle grammar or vocabulary mistake.\n`;
-prompt += `DYNAMIC SEEDING RULE: The mistake MUST strictly test the following grammar/vocabulary point: [${seedGrammar}]. The context of the sentence should be completely creative.\n`;
 prompt += `RULES: Provide the wrong sentence, the wrong word, the correct word, and an explanation in VIETNAMESE.\n`;
 } else if (subType === 'listening') {
 prompt += `TASK: Generate a listening comprehension script and a corresponding multiple-choice question matching level ${cefrLevel}.\n`;
@@ -2406,10 +2406,10 @@ throw e;
 }
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.17
-// Last Updated: 2026-05-02 14:20
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.18
+// Last Updated: 2026-05-03 08:50
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [VÁ LỖI ANTI-DUPLICATION] Vô hiệu hóa màng lọc Fuzzy Matching 70% đối với các từ ngắn (<= 4 ký tự) để chống việc Trạm gác bắn nhầm các từ vựng hợp lệ (ví dụ: cat vs bat). Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI BỐC HƠI TOKEN] Cắt giảm tầm nhìn Sổ đen xuống 80 từ gần nhất trong _isDuplicate để đồng bộ với Lò đúc. Nới lỏng màng lọc _sanitizeAiItem từ 5 lên 8 từ. Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
@@ -2475,7 +2475,8 @@ return terms;
 },
 _isDuplicate: function(termsToCheck, history) {
 const volatile = this._volatileMemory || [];
-const combinedHistory = [...(history || []), ...volatile];
+// [VÁ LỖI BỐC HƠI TOKEN] Cắt giảm tầm nhìn xuống 80 phần tử gần nhất để đồng bộ với Lò đúc
+const combinedHistory = [...(history || []), ...volatile].slice(-80);
 if (combinedHistory.length === 0) return false;
 for (const t of termsToCheck) {
 if (!t || typeof t !== 'string') continue;
@@ -2531,7 +2532,8 @@ if ((expectedType.includes('multiple_choice') || expectedType.includes('match'))
 // 2. Lọc độ dài đáp án (Ám sát sư phạm)
 const isBasicLevel = ['level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced', 'level_4_discovery_basic', 'level_5_discovery_advanced', 'en_level_1', 'en_level_2', 'en_level_3', 'en_level_4', 'en_level_5'].includes(level);
 if (isBasicLevel) {
-const maxWords = 5;
+// [VÁ LỖI BỐC HƠI TOKEN] Nới lỏng từ 5 lên 8 từ
+const maxWords = 8;
 if (expectedType.includes('multiple_choice') && Array.isArray(parsedData.options)) {
 for (const opt of parsedData.options) {
 if (opt.text && opt.text.split(' ').length > maxWords) return false;
