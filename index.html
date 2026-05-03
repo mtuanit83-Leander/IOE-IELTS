@@ -15896,10 +15896,10 @@ window.Block5_19_PronunciationSetup = PronunciationSetup;
 window.PronunciationSetup = PronunciationSetup;
 window.Block5_19_PronunciationPlayScreen = PronunciationPlayScreen;
 window.PronunciationPlayScreen = PronunciationPlayScreen;
-// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.04
-// Last Updated: 2026-04-26 07:25
+// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.05
+// Last Updated: 2026-05-03 12:19
 // Nhiệm vụ: Controller chính của Game Ngữ Âm (Pronunciation). Quản lý luồng AI, State và kết nối UI.
-// Cập nhật: [NO-MARKING ARCHITECTURE] Gỡ bỏ toàn bộ thuật toán dọn dẹp dấu sao (replace regex) trong logMistake và fetchTask. Tối ưu hóa biến isBookmarked. Tuân thủ Điều 3.
+// Cập nhật: [CHIẾN DỊCH GIẢI CỨU NGỮ ÂM] Mở rộng Sổ đen chứa cả 4 options. Tích hợp Anti-Streak chống lì đáp án. Nối cáp cứu hộ lấy dữ liệu động từ FallbackDataEngine thay vì Hardcode. Tuân thủ Điều 3 & 5.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const usePronunciationLogic = (cards, config, callbacks) => {
@@ -15934,6 +15934,8 @@ const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
 const deckRef = React.useRef([]);
 const cardsRef = React.useRef(cards);
+// [VÁ LỖI ANTI-STREAK] Trí nhớ lưu vết vị trí đáp án đúng 2 lượt gần nhất
+const streakTrackerRef = React.useRef([]);
 // Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
@@ -15984,12 +15986,12 @@ if (removeFromRetryBag) removeFromRetryBag('pronunciation', termToCheck);
 const logMistake = React.useCallback((question) => {
 if (!onLogWrong || !question) return;
 const correctOpt = question.options.find(o => o.isCorrect);
-// [NO-MARKING] Đã xóa replace regex, lưu trực tiếp text thô
+// [NO-MARKING] Lưu trực tiếp text thô
 const cleanTerm = correctOpt ? correctOpt.text : question.term;
 const mistakeCard = {
 id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 type: 'mistake',
-term: question.options.map(o => o.text).join(' • '), // [NO-MARKING]
+term: question.options.map(o => o.text).join(' • '),
 definition: `Phát âm khác: ${cleanTerm}`,
 analysis: question.definition || "Câu hỏi phân biệt ngữ âm",
 tags: ['pronunciation', level, sourceMode],
@@ -16033,34 +16035,37 @@ const popped = deckRef.current.shift();
 if (popped) seedTopic = `Focus heavily on word: "${popped.term}" or its exact spelling pattern.`;
 }
 const safeLevel = config?.level || level || 'level_4_discovery_basic';
-// [VÁ LỖI HIẾN PHÁP 3.2] Cắm cáp Lò đúc Ma trận, gộp toàn bộ tham số lên 1 dòng
+// Gộp dòng gọi API để tuân thủ 3.2
 const parsed = await window.AiFactoryEngine.forgeMatrix('pronunciation', safeLevel, lang, currentApiKey, seedTopic, historyPrompt, 'vocab');
-// Sanitize: Ép chuẩn 4 đáp án (Đã bỏ check dấu sao do No-Marking)
+// Sanitize: Ép chuẩn 4 đáp án (Đã bỏ check dấu sao)
 if (parsed && parsed.options && parsed.options.length === 4) {
-let isValid = true; // [NO-MARKING] Luôn true nếu đủ 4 options
-if (isValid) {
-parsed.options = window.Utils.shuffleArray(parsed.options);
-const result = { ...parsed, isAiGenerated: true, type: 'pronunciation' };
-// Ghi nhớ từ đúng vào trí nhớ AI
-const correctOpt = parsed.options.find(o => o.isCorrect);
-if (correctOpt) {
-const cleanWord = correctOpt.text; // [NO-MARKING]
-historyQueueRef.current.push(cleanWord);
+// [VÁ LỖI MÙ MÀU SỔ ĐEN] Tống khứ toàn bộ 4 từ (Cả đúng và nhiễu) vào Sổ đen
+parsed.options.forEach(opt => {
+if (opt && opt.text) historyQueueRef.current.push(opt.text.toLowerCase().trim());
+});
+// Giữ sổ đen không quá phình to để tránh tốn Token
 while (historyQueueRef.current.length > 400) historyQueueRef.current.shift();
 try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.current)); } catch(e) {}
+// [VÁ LỖI ANTI-STREAK] Trộn đáp án có trí nhớ (Chống lì vị trí)
+let finalOptions = [...parsed.options];
+let correctIdx = finalOptions.findIndex(o => o.isCorrect);
+let shuffleCount = 0;
+const streak = streakTrackerRef.current;
+while (streak.length >= 2 && streak[0] === correctIdx && streak[1] === correctIdx && shuffleCount < 5) {
+finalOptions = window.Utils.shuffleArray([...finalOptions]);
+correctIdx = finalOptions.findIndex(o => o.isCorrect);
+shuffleCount++;
 }
+// Cập nhật trí nhớ vị trí
+streakTrackerRef.current = [correctIdx, ...streak].slice(0, 2);
+const result = { ...parsed, options: finalOptions, isAiGenerated: true, type: 'pronunciation' };
 if (parsed._tokenUsage) {
 const used = parsed._tokenUsage.totalTokenCount || 0;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
 if (onSaveToHarvest) {
-onSaveToHarvest(safeLevel, {
-term: parsed.term,
-definition: parsed.definition,
-options: parsed.options,
-isAiGenerated: true
-}, 'ioe_pronunciation');
+onSaveToHarvest(safeLevel, { term: parsed.term, definition: parsed.definition, options: parsed.options, isAiGenerated: true }, 'ioe_pronunciation');
 }
 if (isInitializingRef.current && showToast) {
 aiGeneratedCountRef.current += 1;
@@ -16068,23 +16073,39 @@ safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`
 }
 return result;
 }
-}
 } catch (e) {
 console.warn("AI Pronunciation Fallback:", e.message);
 }
 }
-// 3. FALLBACK KHẨN CẤP CHỐNG CRASH
-return {
-term: "tall",
-definition: "Từ 'tall' phát âm là /ɔː/, các từ còn lại là /æ/ (Dữ liệu dự phòng do lỗi mạng)",
-options: window.Utils.shuffleArray([
-{ text: "cat", isCorrect: false },
-{ text: "bat", isCorrect: false },
-{ text: "tall", isCorrect: true },
-{ text: "map", isCorrect: false }
-]),
+// 3. FALLBACK KHẨN CẤP (ĐÃ NỐI CÁP)
+console.log("[Pronunciation Controller] Kích hoạt cáp cứu hộ khẩn cấp từ FallbackDataEngine");
+let fallbackItem = {
+term: "Lỗi mạng", definition: "Vui lòng kiểm tra lại kết nối.",
+options: window.Utils.shuffleArray([{ text: "Lỗi", isCorrect: true }, { text: "Mạng", isCorrect: false }, { text: "Yếu", isCorrect: false }, { text: "Kém", isCorrect: false }]),
 isAiGenerated: false
 };
+try {
+if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const safeLevel = config?.level || level || 'en_level_1';
+const fbs = window.FallbackDataEngine.getFallbackData(safeLang, 'pronunciation', safeLevel, 1);
+if (fbs && fbs.length > 0) fallbackItem = fbs[0];
+}
+} catch(err) {
+console.warn("Fallback pull failed:", err);
+}
+// Áp dụng Anti-streak cho cả Fallback
+let fbOptions = [...fallbackItem.options];
+let fbCorrectIdx = fbOptions.findIndex(o => o.isCorrect);
+let fbShuffleCount = 0;
+const streakFb = streakTrackerRef.current;
+while (streakFb.length >= 2 && streakFb[0] === fbCorrectIdx && streakFb[1] === fbCorrectIdx && fbShuffleCount < 3) {
+fbOptions = window.Utils.shuffleArray([...fbOptions]);
+fbCorrectIdx = fbOptions.findIndex(o => o.isCorrect);
+fbShuffleCount++;
+}
+streakTrackerRef.current = [fbCorrectIdx, ...streakFb].slice(0, 2);
+return { ...fallbackItem, options: fbOptions };
 };
 const startNewGame = async () => {
 if (!localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
@@ -16096,6 +16117,7 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
+streakTrackerRef.current = []; // Reset trí nhớ vị trí
 // Reset deck hạt giống nếu là Card Mode
 if (sourceMode === 'card') {
 let validCards = (cards || []).filter(c => c.term && c.term.trim() !== '');
@@ -16208,7 +16230,7 @@ const handleOptionClick = (idx) => {
 if (checkStatus === 'correct' || checkStatus === 'failed' || isGenerating) return;
 const clickedOpt = currentQuestion.options[idx];
 setSelectedIndex(idx);
-const isCorrect = clickedOpt.isCorrect === true || String(clickedOpt.isCorrect) === 'true';
+const isCorrect = clickedOpt.isCorrect === true || String(clickedOpt.isCorrect).toLowerCase() === 'true';
 if (isCorrect) {
 if (attempts === 0) {
 localRemoveFromRetryBag(currentQuestion.term);
@@ -16235,7 +16257,7 @@ const handleSkip = () => {
 if (checkStatus === 'correct' || checkStatus === 'failed' || isGenerating) return;
 localPushToRetryBag(currentQuestion);
 setCombo(1); setCheckStatus('failed'); setWrongCount(p => p + 1); setAttempts(2);
-safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); setResultTimer(6);
+safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); setResultTimer(8);
 setTimeout(() => triggerAutoSave(), 150);
 };
 // ĐỘNG CƠ ĐẾM NGƯỢC THỜI GIAN
@@ -16305,17 +16327,9 @@ const u = new SpeechSynthesisUtterance(text);
 u.lang = lang === 'en' ? 'en-US' : (lang === 'zh' ? 'zh-CN' : 'vi-VN');
 window.speechSynthesis.speak(u);
 });
+// Gộp props gọi Component để tránh rớt dòng
 return (
-<PronunciationPlayScreen
-t={t} mainColor={mainColor} config={safeConfig}
-{...logic}
-onBack={gameCallbacks.onBack}
-onEndGame={gameCallbacks.onEndGame}
-onSaveToNotebook={gameCallbacks.onSaveToNotebook}
-isBookmarked={isBookmarked}
-settings={settings}
-onPlay={safeOnPlay}
-/>
+<PronunciationPlayScreen t={t} mainColor={mainColor} config={safeConfig} {...logic} onBack={gameCallbacks.onBack} onEndGame={gameCallbacks.onEndGame} onSaveToNotebook={gameCallbacks.onSaveToNotebook} isBookmarked={isBookmarked} settings={settings} onPlay={safeOnPlay} />
 );
 };
 // EXPORT TO GLOBAL WINDOW
