@@ -2406,10 +2406,10 @@ throw e;
 }
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.18
-// Last Updated: 2026-05-03 08:50
+// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.20
+// Last Updated: 2026-05-03 09:30
 // Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [VÁ LỖI BỐC HƠI TOKEN] Cắt giảm tầm nhìn Sổ đen xuống 80 từ gần nhất trong _isDuplicate để đồng bộ với Lò đúc. Nới lỏng màng lọc _sanitizeAiItem từ 5 lên 8 từ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI ĐẾM TỪ] Nâng cấp hàm đếm từ bằng Regex để loại bỏ dấu câu, ký tự đặc biệt. Áp dụng màng lọc độ dài cho tất cả các dạng bài Options (Listening, Pronunciation...). Tuân thủ Điều 3.
 // ==================================================================================
 window.ExamEngine = {
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
@@ -2475,27 +2475,27 @@ return terms;
 },
 _isDuplicate: function(termsToCheck, history) {
 const volatile = this._volatileMemory || [];
-// [VÁ LỖI BỐC HƠI TOKEN] Cắt giảm tầm nhìn xuống 80 phần tử gần nhất để đồng bộ với Lò đúc
-const combinedHistory = [...(history || []), ...volatile].slice(-80);
+// Cắt giảm tầm nhìn xuống 40 để bớt khắt khe và giảm chi phí
+const combinedHistory = [...(history || []), ...volatile].slice(-40);
 if (combinedHistory.length === 0) return false;
 for (const t of termsToCheck) {
 if (!t || typeof t !== 'string') continue;
 const cleanCheck = t.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
 if (!cleanCheck) continue;
+const isCheckSentence = cleanCheck.includes(' ');
 const hasMatch = combinedHistory.some(histItem => {
 if (!histItem || typeof histItem !== 'string') return false;
 const cleanHist = histItem.toLowerCase().replace(/[.,?!;:'"“”]/g, "").trim();
+const isHistSentence = cleanHist.includes(' ');
 if (cleanHist === cleanCheck) return true;
-// [VÁ LỖI ANTI-DUPLICATION] Lưới lọc 70% (Fuzzy Matching) - Chỉ áp dụng cho từ dài > 4 ký tự để tránh bắn nhầm
-if (cleanCheck.length > 4 && window.Utils && window.Utils.calculateSimilarity) {
+// TẮT HOÀN TOÀN Fuzzy Match cho Câu Văn/Đoạn Văn. Nâng ngưỡng từ vựng lên 85%.
+if (!isCheckSentence && !isHistSentence && cleanCheck.length > 4 && window.Utils && window.Utils.calculateSimilarity) {
 const simScore = window.Utils.calculateSimilarity(cleanCheck, cleanHist);
-if (simScore >= 0.7) {
-console.log(`[ExamEngine] Lưới lọc 70% phát hiện trùng lặp (${Math.round(simScore*100)}%):`, cleanCheck);
+if (simScore >= 0.85) {
+console.log(`[ExamEngine] Lưới lọc 85% phát hiện trùng lặp từ vựng:`, cleanCheck);
 return true;
 }
 }
-const isCheckSentence = cleanCheck.includes(' ');
-const isHistSentence = cleanHist.includes(' ');
 if (isCheckSentence && isHistSentence && cleanHist.length > 20 && cleanCheck.length > 20) {
 return cleanHist.includes(cleanCheck) || cleanCheck.includes(cleanHist);
 }
@@ -2521,6 +2521,8 @@ return false;
 },
 _sanitizeAiItem: function(parsedData, expectedType, track, level) {
 if (!parsedData) return false;
+// Gom nhóm các dạng bài sử dụng Options
+const isOptionsType = expectedType.includes('multiple_choice') || expectedType.includes('match') || expectedType.includes('listening') || expectedType.includes('image_quiz') || expectedType.includes('pronunciation') || expectedType.includes('reading');
 // 1. Lọc Tiếng Việt lọt vào đề Tiếng Anh
 if (track !== 'hsk') {
 const viChars = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúúúụủũưừứựửữỳýỵỷỹđ]/i;
@@ -2529,24 +2531,34 @@ if (expectedType.includes('fill_blank') && viChars.test(parsedData.displaySenten
 if (expectedType.includes('odd_one_out') && Array.isArray(parsedData.words) && parsedData.words.some(w => viChars.test(w || ''))) return false;
 if ((expectedType.includes('multiple_choice') || expectedType.includes('match')) && viChars.test(parsedData.term || '')) return false;
 }
-// 2. Lọc độ dài đáp án (Ám sát sư phạm)
+// 2. Lọc độ dài đáp án (Ám sát sư phạm) - Đã nâng cấp đếm từ chuẩn
 const isBasicLevel = ['level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced', 'level_4_discovery_basic', 'level_5_discovery_advanced', 'en_level_1', 'en_level_2', 'en_level_3', 'en_level_4', 'en_level_5'].includes(level);
 if (isBasicLevel) {
-// [VÁ LỖI BỐC HƠI TOKEN] Nới lỏng từ 5 lên 8 từ
-const maxWords = 8;
-if (expectedType.includes('multiple_choice') && Array.isArray(parsedData.options)) {
+const maxWords = 12; // Vùng đệm 12 từ
+const countWords = (text) => {
+if (!text) return 0;
+// Xóa mọi dấu câu, ký tự đặc biệt, chỉ giữ chữ, số và khoảng trắng
+const cleaned = String(text).replace(/[^\p{L}\p{N}\s]/gu, '').trim();
+return cleaned ? cleaned.split(/\s+/).length : 0;
+};
+if (isOptionsType && Array.isArray(parsedData.options)) {
 for (const opt of parsedData.options) {
-if (opt.text && opt.text.split(' ').length > maxWords) return false;
+if (countWords(opt.text) > maxWords) {
+console.warn("[Sanitizer] Bị chặn do đáp án quá dài:", opt.text, "| Đếm được:", countWords(opt.text));
+return false;
+}
 }
 }
 if (expectedType.includes('odd_one_out') && Array.isArray(parsedData.words)) {
 for (const w of parsedData.words) {
-if (w && typeof w === 'string' && w.split(' ').length > maxWords) return false;
+if (countWords(w) > maxWords) {
+console.warn("[Sanitizer] Bị chặn do từ vựng quá dài:", w, "| Đếm được:", countWords(w));
+return false;
+}
 }
 }
 }
 // 3. Lưới lọc thép Cấu trúc (Structural Integrity)
-const isOptionsType = expectedType.includes('multiple_choice') || expectedType.includes('match') || expectedType.includes('listening') || expectedType.includes('image_quiz') || expectedType.includes('pronunciation');
 if (isOptionsType) {
 // Cấm mảng options bị rỗng hoặc thiếu
 if (!parsedData.options || !Array.isArray(parsedData.options) || parsedData.options.length < 3) {
