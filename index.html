@@ -11237,10 +11237,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 1.02
-// Last Updated: 2026-05-14 08:24
+// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 1.04
+// Last Updated: 2026-05-14 11:25
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
+// Cập nhật: [QA HOTFIX THỰC SỰ] Đã xóa bỏ hoàn toàn Component `SpotMistakeGame` ra khỏi file này để giải quyết dứt điểm lỗi SyntaxError "has already been declared" với Block 5.11. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -11713,43 +11713,11 @@ Bỏ qua câu này
 </div>
 );
 };
-// --- 2. GAME WRAPPER ---
-const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
-const gameCallbacks = {
-onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
-};
-const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: gameCallbacks.onEndGame };
-const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-const logic = window.Block5_11_useSpotMistakeLogic ? window.Block5_11_useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks) : window.useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks);
-const gameSpecificCallbacks = {
-onBack: logic.handleSaveAndBack,
-onSaveToNotebook: (payload) => {
-if (onBookmark) { onBookmark(payload); }
-else if (window.handleSaveToNotebook) { window.handleSaveToNotebook(payload); }
-else { if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning"); }
-}
-};
-const isBookmarked = logic.currentQuestion?.correction && notebook?.some(n => n.term.includes(logic.currentQuestion.correction));
-const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_SpotMistakePlayScreen;
-if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
-return (
-<SpotMistakePlayScreen
-t={t} mainColor={mainColor} config={safeConfig}
-{...logic}
-onBack={gameSpecificCallbacks.onBack}
-onEndGame={gameCallbacks.onEndGame}
-onSaveToNotebook={gameSpecificCallbacks.onSaveToNotebook}
-isBookmarked={isBookmarked}
-settings={settings}
-/>
-);
-};
 // EXPORT TO GLOBAL WINDOW
 window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-
 // Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.02
 // Last Updated: 2026-04-24 11:37
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
