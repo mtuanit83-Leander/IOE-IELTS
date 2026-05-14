@@ -6417,10 +6417,10 @@ return (
 );
 };
 window.ExamPoolManagerModal = ExamPoolManagerModal;
-// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.01
-// Last Updated: 2026-04-12 07:15
+// Block5.1: Tầng 5-Nối Ô (Match UI) - Version 1.02
+// Last Updated: 2026-05-14 07:59
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind.
-// Cập nhật: TÍCH HỢP ĐỒNG HỒ ĐẾM ĐẠN (QUEUE COUNTER). Bổ sung biến `queueLength` và hiển thị Nhãn nguồn dữ liệu đồng bộ ở Khu vực Thống kê. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -6554,6 +6554,10 @@ return (
 )}
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} vòng</span>
+</div>
 </div>
 );
 }
@@ -6657,7 +6661,7 @@ className={`px-4 py-1.5 sm:px-5 bg-${mainColor}-600 text-white rounded-xl font-b
 <div className="w-full flex flex-col items-center animate-in pb-10 relative px-2 sm:px-4">
 {/* Spacer tạo không gian đẩy phần nội dung xuống để không bị Đảo nổi đè lên */}
 <div className="w-full h-[90px] sm:h-[100px] shrink-0"></div>
-{/* KHU VỰC THỐNG KÊ KÈM QUEUE COUNTER */}
+{/* KHU VỰC THỐNG KÊ KÈM QUEUE COUNTER MỚI */}
 <div className="w-full max-w-5xl flex justify-between items-center mb-4 transition-all duration-300 px-2">
 <div className="flex gap-2 text-xs font-bold items-center">
 <span className="text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100 flex items-center gap-1"><Icons.CheckCircle size={14} /> {gameStats.correct}</span>
@@ -6665,19 +6669,22 @@ className={`px-4 py-1.5 sm:px-5 bg-${mainColor}-600 text-white rounded-xl font-b
 <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 flex items-center gap-1">🎯 {accuracy}%</span>
 </div>
 <div className="flex items-center gap-2">
-{matchState.isAiGenerated ? (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm" title="Vòng đấu được tạo bởi AI">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> Nguồn: AI
-{queueLength !== undefined && (
-<span className="bg-indigo-500 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} vòng`}>{"+" + queueLength}</span>
-)}
+{matchState._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-orange-100 text-orange-700 border border-orange-200" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : matchState.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-100 text-indigo-700 border border-indigo-200" title="Vòng đấu được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
-<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ
-{queueLength !== undefined && (
-<span className="bg-slate-400 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} vòng`}>{"+" + queueLength}</span>
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
+</span>
 )}
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} vòng`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
 <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider cursor-default ${difficulty==='hard'?'bg-red-100 text-red-700 border border-red-200':'bg-green-100 text-green-700 border border-green-200'}`}>
@@ -7420,10 +7427,10 @@ queueLength={queueLength}
 };
 window.MatchGame = MatchGame;
 window.Block5_2_MatchGame = MatchGame;
-// Block5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.01
-// Last Updated: 2026-04-12 07:45
+// Block5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.02
+// Last Updated: 2026-05-14 08:02
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Ghép Câu (Scramble Game).
-// Cập nhật: TÍCH HỢP ĐỒNG HỒ ĐẾM ĐẠN (QUEUE COUNTER). Bổ sung prop `queueLength` và hiển thị Nhãn nguồn dữ liệu đồng bộ. Tuân thủ tuyệt đối Quy tắc 3.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // 1. SCRAMBLE SETUP (Màn hình cấu hình)
 const ScrambleSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -7560,7 +7567,7 @@ return (
 };
 if (isGenerating && !gameState.origin) {
 return (
-<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in">
+<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in p-4 text-center">
 {aiCountdown > 0 ? (
 <div className="flex flex-col items-center animate-in zoom-in">
 <div className={`text-7xl font-black text-${mainColor}-500 mb-6 drop-shadow-md`}>{aiCountdown}</div>
@@ -7575,6 +7582,10 @@ return (
 </p>
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} vòng</span>
+</div>
 <button onClick={() => onEndGame(stats)} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-4 py-2 rounded-lg hover:bg-red-50 transition-colors">
 Hủy bỏ
 </button>
@@ -7618,7 +7629,7 @@ Thoát ngay
 {isGenerating && gameState.origin && (
 <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center animate-in fade-in">
 <div className={`w-10 h-10 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-2`}></div>
-<p className={`text-${mainColor}-600 font-bold text-sm animate-pulse`}>{t('aiGenerating')}</p>
+<p className={`text-${mainColor}-600 font-bold text-sm animate-pulse`}>{t('aiGenerating') || "AI đang thiết lập..."}</p>
 </div>
 )}
 {isPaused && (
@@ -7647,20 +7658,23 @@ Thoát ngay
 <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 flex items-center gap-1">🎯 {accuracy}%</span>
 </div>
 <div className="flex items-center gap-2">
-{/* Nguồn Badge (Source Badge) KÈM QUEUE COUNTER ĐỒNG BỘ */}
-{gameState.isAiGenerated ? (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm" title="Câu hỏi được tạo bởi AI">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> Nguồn: AI
-{queueLength !== undefined && (
-<span className="bg-indigo-500 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
-)}
+{/* Nguồn Badge KÈM QUEUE COUNTER ĐỒNG BỘ */}
+{gameState.origin?._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-orange-100 text-orange-700 border border-orange-200" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : gameState.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-100 text-indigo-700 border border-indigo-200" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
-<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ
-{queueLength !== undefined && (
-<span className="bg-slate-400 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
+</span>
 )}
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} vòng`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
 <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider ${inputMethod === 'tap' ? 'bg-blue-100 text-blue-700 border border-blue-200' : inputMethod === 'type' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-purple-100 text-purple-700 border border-purple-200'}`}>
@@ -8638,10 +8652,10 @@ queueLength={queueLength}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.01
-// Last Updated: 2026-04-13 22:46
+// Block5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.02
+// Last Updated: 2026-05-14 08:07
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật: [QA DEBUG] Vá lỗi treo màn hình Loading vô tận. Tách biệt cờ isGenerating. Bổ sung màn hình báo lỗi cứng (Hard Error Screen) và nút Hủy bỏ. Tuân thủ tuyệt đối Quy tắc 3.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -8789,7 +8803,7 @@ return 'text-red-600 animate-pulse';
 // [QA DEBUG] Phân tách cờ isGenerating để hiển thị màn hình Loading hoặc Lỗi cứng
 if (isGenerating && !currentQuestionData) {
 return (
-<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in">
+<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in p-6">
 {aiCountdown > 0 ? (
 <div className="flex flex-col items-center animate-in zoom-in">
 <div className={`text-7xl font-black text-${mainColor}-500 mb-6 drop-shadow-md`}>{aiCountdown}</div>
@@ -8804,6 +8818,10 @@ return (
 </p>
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} câu</span>
+</div>
 <button onClick={() => onEndGame()} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-4 py-2 rounded-lg hover:bg-red-50 transition-colors">
 Hủy bỏ
 </button>
@@ -8926,14 +8944,6 @@ Thoát ngay
 </div>
 </div>
 <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col p-4 gap-2 relative">
-{isGenerating && currentQuestionData && (
-<div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center animate-in fade-in">
-<div className={`w-10 h-10 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-2`}></div>
-<p className={`text-${mainColor}-600 font-bold text-sm animate-pulse`}>
-{(aiWaitTime || 0) > 0 ? `Đang nạp AI... (${aiWaitTime}s)` : t('aiGenerating')}
-</p>
-</div>
-)}
 {isLocked && !isPaused && (
 <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/10 backdrop-blur-[2px]">
 <button onClick={onStartRound} className={`group relative flex items-center justify-center w-24 h-24 bg-${mainColor}-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 border-4 border-white ring-4 ring-${mainColor}-200 animate-in zoom-in`}>
@@ -8944,20 +8954,27 @@ Thoát ngay
 )}
 <div className={`w-full flex justify-end items-center mb-1 gap-2`}>
 {/* Nhãn diện nguồn gốc AI và Đồng hồ Throttling KÈM QUEUE COUNTER */}
-{currentQuestionData?.isAiGenerated ? (
+{currentQuestionData?.question?._isRescued || currentQuestionData?._isRescued ? (
+<span className="text-[9px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : currentQuestionData?.isAiGenerated ? (
 <span className="text-[9px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm" title="Câu hỏi hoặc đáp án được tạo bởi AI">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> Nguồn: AI
-{queueLength !== undefined && (
-<span className="bg-indigo-500 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
-)}
-{(aiWaitTime || 0) > 0 && <span className="bg-indigo-600 text-white px-1.5 rounded-sm font-mono ml-0.5">{aiWaitTime}s</span>}
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
 <span className="text-[9px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ của bạn">
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
-{queueLength !== undefined && (
-<span className="bg-slate-400 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
+</span>
 )}
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} câu`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
+</span>
+)}
+{(aiWaitTime || 0) > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-500 text-white border border-indigo-600" title="Thời gian tản nhiệt AI">
+<Icons.Clock size={12} /> {aiWaitTime}s
 </span>
 )}
 <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider cursor-default ${hardMode?'bg-red-100 text-red-700 border border-red-200':'bg-green-100 text-green-700 border border-green-200'}`}>
@@ -10315,10 +10332,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 1.01
-// Last Updated: 2026-04-21 06:27
+// Block5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 1.02
+// Last Updated: 2026-05-14 08:12
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật: [QA FIX V1.10] Đồng bộ Payload onStart (truyền đủ sourceMode, aiMode). Bổ sung tùy chỉnh Timer vào Setup. Nâng cấp giao diện AI Loading đếm ngược text-7xl. Tuân thủ Điều 3.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -10496,6 +10513,10 @@ return (
 </p>
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} câu</span>
+</div>
 <p className="text-gray-400 text-xs mt-4 italic">(Cấp độ: {safeLevelStr})</p>
 <button onClick={handleSaveAndBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-6 py-3 rounded-xl transition-colors hover:bg-red-50 bg-white shadow-sm">Hủy bỏ</button>
 </div>
@@ -10573,20 +10594,23 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 <div className={`text-lg sm:text-xl font-mono font-bold text-${mainColor}-600 w-12 text-right hidden sm:block`}>{time}s</div>
 </div>
-<div className="flex items-center gap-1">
-{currentQuestion?.isAiGenerated ? (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm" title="Câu hỏi được tạo bởi AI">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> AI
-{queueLength !== undefined && (
-<span className="bg-indigo-500 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
-)}
+<div className="flex items-center gap-1 sm:gap-2">
+{currentQuestion?.origin?._isRescued || currentQuestion?._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : currentQuestion?.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
-<Icons.Layers size={12} className="text-slate-400" /> Thẻ
-{queueLength !== undefined && (
-<span className="bg-slate-400 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
+</span>
 )}
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
 <button
@@ -11213,10 +11237,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 1.01
-// Last Updated: 2026-04-21 06:49
+// Block5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 1.02
+// Last Updated: 2026-05-14 08:24
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật: [QA FIX V1.04] Đồng bộ Payload onStart (tự động truyền aiMode khi chọn AI Pure) để vá lỗi Vanishing Timer. Lưu cấu hình Setup. Nâng cấp giao diện AI Loading đếm ngược số siêu to khổng lồ. Tuân thủ Điều 3.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -11396,6 +11420,10 @@ return (
 </p>
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} câu</span>
+</div>
 <p className="text-gray-400 text-xs mt-4 italic">(Cấp độ: {safeLevelStr})</p>
 <button onClick={onBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-6 py-3 rounded-xl transition-colors hover:bg-red-50 bg-white shadow-sm">Hủy bỏ</button>
 </div>
@@ -11483,19 +11511,22 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 <div className="flex items-center gap-1 sm:gap-2">
 {/* Nguồn Badge (Source Badge) KÈM QUEUE COUNTER */}
-{currentQuestion?.isAiGenerated ? (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm" title="Câu hỏi được tạo bởi AI">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> Nguồn: AI
-{queueLength !== undefined && (
-<span className="bg-indigo-500 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
-)}
+{currentQuestion?.origin?._isRescued || currentQuestion?._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : currentQuestion?.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
-<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ
-{queueLength !== undefined && (
-<span className="bg-slate-400 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
+</span>
 )}
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
 <button
@@ -11682,11 +11713,43 @@ Bỏ qua câu này
 </div>
 );
 };
+// --- 2. GAME WRAPPER ---
+const SpotMistakeGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
+const gameCallbacks = {
+onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
+};
+const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: gameCallbacks.onEndGame };
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
+const logic = window.Block5_11_useSpotMistakeLogic ? window.Block5_11_useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks) : window.useSpotMistakeLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks);
+const gameSpecificCallbacks = {
+onBack: logic.handleSaveAndBack,
+onSaveToNotebook: (payload) => {
+if (onBookmark) { onBookmark(payload); }
+else if (window.handleSaveToNotebook) { window.handleSaveToNotebook(payload); }
+else { if (window.globalShowToast) window.globalShowToast("Vui lòng lưu từ Sổ tay chính!", "warning"); }
+}
+};
+const isBookmarked = logic.currentQuestion?.correction && notebook?.some(n => n.term.includes(logic.currentQuestion.correction));
+const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_SpotMistakePlayScreen;
+if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
+return (
+<SpotMistakePlayScreen
+t={t} mainColor={mainColor} config={safeConfig}
+{...logic}
+onBack={gameSpecificCallbacks.onBack}
+onEndGame={gameCallbacks.onEndGame}
+onSaveToNotebook={gameSpecificCallbacks.onSaveToNotebook}
+isBookmarked={isBookmarked}
+settings={settings}
+/>
+);
+};
 // EXPORT TO GLOBAL WINDOW
 window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
+window.Block5_10_SpotMistakeGame = SpotMistakeGame;
 // Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.02
 // Last Updated: 2026-04-24 11:37
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
@@ -12278,10 +12341,10 @@ window.Block5_11_useSpotMistakeLogic = useSpotMistakeLogic;
 window.useSpotMistakeLogic = useSpotMistakeLogic;
 window.Block5_11_SpotMistakeGame = SpotMistakeGame;
 window.SpotMistakeGame = SpotMistakeGame;
-// Block5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.02
-// Last Updated: 2026-04-23 18:03
+// Block5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.03
+// Last Updated: 2026-05-14 08:50
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Từ Khác Loại (Odd One Out).
-// Cập nhật: [VÁ LỖI DEADLOCK AI] Sửa luồng payload handleStart, ép kiểu aiMode thành true khi sourceMode là 'ai_pure' để tránh bị ngắt kết nối AI oan uổng. Tuân thủ tuyệt đối Điều 3 Hiến Pháp.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const OddOneOutSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -12289,8 +12352,7 @@ const [sourceMode, setSourceMode] = React.useState('card'); // 'card' or 'ai_pur
 // State cho Timer & AI
 const [timerMode, setTimerMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(15);
-const [aiMode, setAiMode] = React.useState(false); // [NEW v1.4] State cho Thử thách AI
-// [NEW v1.4] Tự động lưu/tải cấu hình
+const [aiMode, setAiMode] = React.useState(false);
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_oddoneout_config');
@@ -12304,7 +12366,7 @@ setAiMode(config.aiMode ?? false);
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
 const Icons = window.Icons;
-const MenuToggle = window.MenuToggle; // [NEW v1.4] Lấy MenuToggle từ Tầng 3
+const MenuToggle = window.MenuToggle;
 const handleStart = () => {
 const config = { sourceMode, timerMode, timeLimit, aiMode: sourceMode === 'ai_pure' || aiMode };
 localStorage.setItem('fc_oddoneout_config', JSON.stringify(config)); // Lưu lại thói quen setup
@@ -12341,7 +12403,7 @@ return (
 </button>
 </div>
 </div>
-{/* [NEW v1.4] Công tắc Thử thách AI */}
+{/* Công tắc Thử thách AI */}
 <MenuToggle active={aiMode} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={sourceMode === 'ai_pure' ? "(Chế độ Tự sinh đã bao gồm AI)" : (aiMode ? "AI nhào nặn nhóm từ tinh vi" : "Thuật toán phân loại nội bộ")} disabled={sourceMode === 'ai_pure'} />
 {/* Cấu hình Thời gian */}
 <MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / câu` : 'Thoải mái thời gian'} extra={
@@ -12384,21 +12446,31 @@ const m = Math.floor(seconds / 60);
 const s = seconds % 60;
 return `${m}:${s.toString().padStart(2, '0')}`;
 };
+// [QA FIX V1.03] Nâng cấp Màn hình Loading/AI Generating hiển thị số đạn nạp sẵn
 if (isGenerating && !currentQuestion) {
 const safeLevelStr = (config?.level || 'level_4_discovery_basic').replace('level_', '').replace(/_/g, ' ').toUpperCase();
 return (
-<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col items-center justify-center border-2 border-gray-200 animate-in fade-in">
-<div className="relative mb-6">
-<div className={`w-20 h-20 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin`}></div>
-<div className={`absolute inset-0 flex items-center justify-center font-black text-xl text-${mainColor}-600`}>
-{aiCountdown > 0 ? aiCountdown : <Icons.Sparkles className="animate-pulse" />}
+<div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in p-6 text-center">
+{aiCountdown > 0 ? (
+<div className="flex flex-col items-center animate-in zoom-in">
+<div className={`text-7xl font-black text-${mainColor}-500 mb-6 drop-shadow-md`}>{aiCountdown}</div>
+<p className={`text-${mainColor}-600 font-bold animate-pulse text-lg`}>AI đang phân tích dữ liệu...</p>
+<p className="text-gray-400 text-xs mt-2 italic">(Vui lòng đợi giây lát để có thử thách hay)</p>
 </div>
-</div>
+) : (
+<>
+<div className={`w-12 h-12 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin mb-4`}></div>
 <p className={`text-${mainColor}-600 font-bold animate-pulse text-lg`}>
 {config?.sourceMode === 'ai_pure' ? 'AI đang tạo nhóm từ vựng...' : 'Đang thiết lập trò chơi...'}
 </p>
-<p className="text-gray-400 text-xs mt-2 italic">(Cấp độ: {safeLevelStr})</p>
-<button onClick={onBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-4 py-2 rounded-lg transition-colors hover:bg-red-50">Hủy bỏ</button>
+</>
+)}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} câu</span>
+</div>
+<p className="text-gray-400 text-xs mt-4 italic">(Cấp độ: {safeLevelStr})</p>
+<button onClick={onBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-6 py-3 rounded-xl transition-colors hover:bg-red-50 bg-white shadow-sm">Hủy bỏ</button>
 </div>
 );
 }
@@ -12431,16 +12503,15 @@ return (
 );
 }
 if (!currentQuestion) return null;
-const shakeKeyframes = `
+return (
+<div className="w-full flex flex-col h-full bg-gray-50 relative overflow-hidden">
+<style>{`
 @keyframes shake {
 0%, 100% { transform: translateX(0); }
 20%, 60% { transform: translateX(-5px); }
 40%, 80% { transform: translateX(5px); }
 }
-`;
-return (
-<div className="w-full flex flex-col h-full bg-gray-50 relative overflow-hidden">
-<style>{shakeKeyframes}</style>
+`}</style>
 {/* Thanh đếm ngược thời gian */}
 {config?.timerMode && checkStatus !== 'success' && checkStatus !== 'failed' && !isGenerating && (
 <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 z-50">
@@ -12465,50 +12536,67 @@ return (
 )}
 {/* Header */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shrink-0 z-10 shadow-sm relative">
-<button onClick={onBack} className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors hover:bg-gray-100" title="Quay lại">
-<Icons.ChevronLeft size={24} />
+<button onClick={onBack} className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors hover:bg-gray-100" title="Tạm dừng / Quay lại">
+{Icon('ChevronLeft', { size: 24 })}
 </button>
 <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
-<div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">LEVEL {(config?.level || 'level_4_discovery_basic').split('_')[1]?.toUpperCase()}</div>
-<div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1">Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" /></div>
+<div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">
+LEVEL {(config?.level || '').match(/\d+/)?.[0] || '4'}
+</div>
+<div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1" title="Chế độ Vô tận">
+Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
+</div>
 <div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
-<span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1"><Icons.Check size={14}/> {correctCount || 0}</span>
+<span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1" title="Số câu Đúng"><Icons.Check size={14}/> {correctCount || 0}</span>
 <span className="text-gray-300">|</span>
-<span className="text-xs sm:text-sm font-bold text-red-500 flex items-center gap-1"><Icons.X size={14}/> {wrongCount || 0}</span>
+<span className="text-xs sm:text-sm font-bold text-red-500 flex items-center gap-1" title="Số câu Sai"><Icons.X size={14}/> {wrongCount || 0}</span>
 </div>
-<div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}><Icons.Sparkles size={18} /> x{combo}</div>
-<div className={`text-lg sm:text-xl font-mono font-bold text-${mainColor}-600 w-12 text-right hidden sm:block`}>{time}s</div>
+<div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500 scale-110' : 'text-gray-400'} transition-all`}>
+🔥 x{combo}
 </div>
-<div className="flex items-center gap-1">
+<div className={`text-lg sm:text-xl font-mono font-bold text-${mainColor}-600 w-12 text-right hidden sm:block`}>
+{time}s
+</div>
+</div>
+<div className="flex items-center gap-1 sm:gap-2">
 {/* Nguồn Badge (Source Badge) KÈM QUEUE COUNTER */}
-{currentQuestion?.isAiGenerated ? (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm" title="Câu hỏi được tạo bởi AI">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> Nguồn: AI
-{queueLength !== undefined && (
-<span className="bg-indigo-500 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
-)}
+{currentQuestion?.origin?._isRescued || currentQuestion?._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : currentQuestion?.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200" title="Trích xuất từ Bộ thẻ">
-<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ
-{queueLength !== undefined && (
-<span className="bg-slate-400 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
-)}
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-<button onClick={(e) => {
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
+</span>
+)}
+<button
+onClick={(e) => {
 e.stopPropagation();
 if (currentQuestion && onSaveToNotebook) {
 onSaveToNotebook({ isSmartTarget: true, display: currentQuestion.words.join(' • '), save: currentQuestion.oddWord, analysis: currentQuestion.explanation });
 }
-}} className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`} title="Lưu vào Sổ tay">
-<Icons.Bookmark size={20} fill={isBookmarked ? "currentColor" : "none"} />
+}}
+className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
+title="Lưu vào Sổ tay"
+>
+{Icon('Bookmark', { size: 20, fill: isBookmarked ? "currentColor" : "none" })}
 </button>
-<button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc"><Icons.X size={20} /></button>
+<button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Kết thúc">
+{Icon('X', { size: 20 })}
+</button>
 </div>
 </div>
-{/* Body */}
-<div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 flex flex-col items-center gap-6 relative">
+{/* Body: Khu vực nội dung chính */}
+<div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 flex flex-col items-center gap-8 relative">
 {/* Câu hỏi Hướng dẫn */}
 {checkStatus !== 'success' && checkStatus !== 'failed' && (
 <div className="w-full max-w-3xl text-center animate-in slide-in-from-top-4">
@@ -12578,31 +12666,53 @@ onSaveToNotebook({ isSmartTarget: true, display: currentQuestion.words.join(' �
 </div>
 )}
 </div>
-{/* Footer */}
-<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
+{/* Footer: Bảng điều khiển */}
+<div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 {checkStatus === 'success' || checkStatus === 'failed' ? (
 <div className="w-full max-w-md flex gap-3">
-<button onClick={() => toggleResultPause && toggleResultPause()} className={`flex-1 py-4 font-bold text-sm rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${isResultPaused ? 'bg-yellow-50 text-yellow-700 border-yellow-300 shadow-inner' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
-{isResultPaused ? <><Icons.Play size={18} fill="currentColor" /> Đã dừng</> : <><Icons.Pause size={18} fill="currentColor" /> Xem ({resultTimer}s)</>}
+<button
+onClick={() => toggleResultPause && toggleResultPause()}
+className={`flex-1 py-4 font-bold text-sm rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
+isResultPaused
+? 'bg-yellow-50 text-yellow-700 border-yellow-300 shadow-inner'
+: 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+}`}
+>
+{isResultPaused ? (
+<><Icons.Play size={18} fill="currentColor" /> Đã dừng</>
+) : (
+<><Icons.Pause size={18} fill="currentColor" /> Xem ({resultTimer}s)</>
+)}
 </button>
-<button onClick={nextRound} disabled={isGenerating} className={`flex-[2] py-4 bg-${checkStatus === 'success' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg transition-transform flex justify-center items-center gap-2 ${isGenerating ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'success' ? 'green-600' : mainColor + '-700'}`}`}>
-{isGenerating ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang tải...</> : <>Tiếp theo <Icons.ChevronRight size={24} /></>}
+<button
+onClick={nextRound}
+disabled={isGenerating}
+className={`flex-[2] py-4 bg-${checkStatus === 'success' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform ${isGenerating ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'success' ? 'green-600' : mainColor + '-700'}`}`}
+>
+{isGenerating ? (
+<><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang tải...</>
+) : (
+<>Tiếp theo <Icons.ChevronRight size={24} /></>
+)}
 </button>
 </div>
 ) : (
-<button onClick={handleSkip} className="w-full max-w-md py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all border border-gray-200 active:scale-95 flex items-center justify-center gap-2">
-Bỏ qua <Icons.SkipForward size={20} />
+<button
+onClick={handleSkip}
+className="w-full max-w-md py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all border border-gray-200 active:scale-95"
+>
+Bỏ qua câu này
 </button>
 )}
 </div>
 </div>
 );
 };
-// EXPORT TO WINDOW
-window.OddOneOutSetup = OddOneOutSetup;
-window.OddOneOutPlayScreen = OddOneOutPlayScreen;
+// EXPORT TO GLOBAL WINDOW
 window.Block5_12_OddOneOutSetup = OddOneOutSetup;
+window.OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
+window.OddOneOutPlayScreen = OddOneOutPlayScreen;
 // Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.04
 // Last Updated: 2026-04-24 14:40
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
@@ -14641,10 +14751,10 @@ className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 trans
 };
 window.Block5_16_ExamReviewModal = ExamReviewModal;
 window.ExamReviewModal = ExamReviewModal;
-// Block 5.17: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Setup & PlayScreen UI) - Version 1.02
-// Last Updated: 2026-04-23 15:52
+// Block 5.17: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Setup & PlayScreen UI) - Version 1.03
+// Last Updated: 2026-05-14 08:53
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Hình Ảnh. Tuân thủ Quiz Sample.
-// Cập nhật: [VÁ LỖI FATAL CRASH] Đưa biến isFinishedState ra khỏi vòng lặp map để sửa lỗi ReferenceError: isFinishedState is not defined khi render Footer và Feedback.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const ImageQuizSetup = ({ t, mainColor = 'purple', onStart, onBack }) => {
@@ -14779,6 +14889,10 @@ return (
 </p>
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} câu</span>
+</div>
 <p className="text-gray-400 text-xs mt-4 italic">(Cấp độ: {safeLevelStr})</p>
 <button onClick={handleSaveAndBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-6 py-3 rounded-xl transition-colors hover:bg-red-50 bg-white shadow-sm">Hủy bỏ</button>
 </div>
@@ -14814,7 +14928,7 @@ Hoàn tất
 );
 }
 if (!currentQuestion || !currentQuestion.options) return null;
-// [QA FIX] Khai báo isFinishedState ở Scope ngoài để các thẻ phía dưới đều gọi được
+// Khai báo isFinishedState ở Scope ngoài để các thẻ phía dưới đều gọi được
 const isFinishedState = checkStatus === 'correct' || checkStatus === 'wrong';
 return (
 <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-gray-50 relative overflow-hidden">
@@ -14848,9 +14962,23 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} />
 <div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500' : 'text-gray-400'}`}>🔥 x{combo}</div>
 </div>
 <div className="flex items-center gap-1">
-{currentQuestion.isAiGenerated && (
-<span className="text-[10px] px-2 py-1 rounded-full font-bold bg-indigo-100 text-indigo-700 border flex items-center gap-1">
-<Icons.Sparkles size={12}/> AI <span className="bg-indigo-500 text-white px-1 rounded-sm text-[9px]">+{queueLength||0}</span>
+{/* Nguồn Badge (Source Badge) KÈM QUEUE COUNTER */}
+{currentQuestion?.origin?._isRescued || currentQuestion?._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : currentQuestion?.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
+</span>
+) : (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
+</span>
+)}
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
 <button onClick={handleBookmark} className={`p-2 rounded-lg ${isBookmarked ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 hover:bg-gray-100'}`}><Icons.Bookmark size={20} fill={isBookmarked?"currentColor":"none"} /></button>
@@ -15537,10 +15665,10 @@ window.Block5_18_useImageQuizLogic = useImageQuizLogic;
 window.useImageQuizLogic = useImageQuizLogic;
 window.Block5_18_ImageQuizGame = ImageQuizGame;
 window.ImageQuizGame = ImageQuizGame;
-// Block 5.19: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Setup & PlayScreen UI) - Version 1.03
-// Last Updated: 2026-04-26 07:20
+// Block 5.19: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Setup & PlayScreen UI) - Version 1.04
+// Last Updated: 2026-05-14 08:57
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Ngữ Âm. Tuân thủ Quiz Sample.
-// Cập nhật: [NO-MARKING ARCHITECTURE] Gỡ bỏ hàm renderHighlightedText. Hiển thị từ vựng thô (Plain Text) để học sinh tự tư duy âm khác biệt. Xóa các hàm lột dấu sao bằng RegEx. Tuân thủ Điều 3.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const PronunciationSetup = ({ t, mainColor = 'indigo', onStart, onBack }) => {
@@ -15568,7 +15696,7 @@ onStart(config);
 return (
 <div className="w-full h-full flex flex-col">
 <div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
-<div className="w-full flex items-center justify-between mb-6 shrink-0">
+<div className="w-full flex items-center justify-between mb-6 shrink-0 mt-2">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
 <Icons.ChevronLeft size={24}/>
 </button>
@@ -15621,7 +15749,7 @@ className={`p-3 rounded-2xl border-2 flex flex-col items-center gap-2 transition
 } />
 )}
 </div>
-<div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0">
+<div className="w-full mt-4 pt-4 border-t border-gray-100 bg-white pb-safe shrink-0">
 <button onClick={handleStart} className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}>
 <Icons.Play size={24} fill="currentColor" /> LUYỆN PHÁT ÂM
 </button>
@@ -15647,7 +15775,6 @@ e.stopPropagation();
 if (!onSaveToNotebook || !currentQuestion) return;
 // Tìm đáp án đúng để lưu
 const correctOpt = currentQuestion.options.find(o => o.isCorrect);
-// [NO-MARKING] Đã xóa replace regex, lưu trực tiếp text thô
 const cleanWord = correctOpt ? correctOpt.text : "Từ vựng";
 onSaveToNotebook({
 isSmartTarget: true,
@@ -15675,6 +15802,10 @@ return (
 </p>
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} câu</span>
+</div>
 <p className="text-gray-400 text-xs mt-4 italic">(Cấp độ: {safeLevelStr})</p>
 <button onClick={handleSaveAndBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-6 py-3 rounded-xl transition-colors hover:bg-red-50 bg-white shadow-sm">Hủy bỏ</button>
 </div>
@@ -15762,19 +15893,22 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 </div>
 <div className="flex items-center gap-1">
-{currentQuestion?.isAiGenerated ? (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> AI
-{queueLength !== undefined && (
-<span className="bg-indigo-500 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
-)}
+{currentQuestion?.origin?._isRescued || currentQuestion?._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : currentQuestion?.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
-<Icons.Layers size={12} className="text-slate-400" /> Thẻ
-{queueLength !== undefined && (
-<span className="bg-slate-400 text-white px-1 rounded-[4px] font-mono ml-0.5 text-[9px] flex items-center" title={`Đã nạp sẵn ${queueLength} câu`}>{"+" + queueLength}</span>
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
+</span>
 )}
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
 <button
@@ -15796,7 +15930,6 @@ title="Lưu vào Sổ tay"
 <div className={`inline-flex items-center gap-2 bg-${mainColor}-50 text-${mainColor}-600 px-4 py-2 rounded-full border border-${mainColor}-200 text-sm font-bold uppercase tracking-widest mb-4`}>
 <Icons.Volume2 size={18} /> Phân biệt phát âm
 </div>
-{/* [NO-MARKING] Điều chỉnh câu hướng dẫn chuẩn sư phạm */}
 <h2 className="text-xl md:text-2xl font-bold text-gray-700">Chọn từ có phát âm <span className="text-red-500 font-black">khác</span> với các từ còn lại</h2>
 </div>
 {/* Lưới 4 từ (2x2) */}
@@ -15822,7 +15955,6 @@ key={idx}
 onClick={() => !isFinishedState && handleOptionClick(idx)}
 className={`relative flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl overflow-hidden group ${btnClass}`}
 >
-{/* [NO-MARKING] Hiển thị nguyên văn bản thô */}
 <span className="text-3xl sm:text-4xl font-black tracking-wide text-gray-800 pointer-events-none">
 {opt.text}
 </span>
@@ -16337,9 +16469,10 @@ window.Block5_20_usePronunciationLogic = usePronunciationLogic;
 window.usePronunciationLogic = usePronunciationLogic;
 window.Block5_20_PronunciationGame = PronunciationGame;
 window.PronunciationGame = PronunciationGame;
-// Block 5.21: TẦNG 5: TRÒ CHƠI HÓA (Listening Setup & PlayScreen UI) - Version 1.01
-// Last Updated: 2026-04-22 11:30
+// Block 5.21: TẦNG 5: TRÒ CHƠI HÓA (Listening Setup & PlayScreen UI) - Version 1.02
+// Last Updated: 2026-05-14 09:01
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Đôi Tai Vàng (Listening). Tuân thủ Quiz Sample.
+// Cập nhật: [CHIẾN DỊCH TÍCH HỢP KÉP] Đồng bộ hóa UI hiển thị "Nguồn thẻ" tách bạch với "Đồng hồ nạp đạn". Bổ sung cờ hiệu Cứu hộ (_isRescued). Cấy ghép UI trực quan hóa số đạn đã nạp trên màn hình Loading. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const ListeningSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
@@ -16369,7 +16502,7 @@ onStart(config);
 return (
 <div className="w-full h-full flex flex-col">
 <div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
-<div className="w-full flex items-center justify-between mb-6 shrink-0">
+<div className="w-full flex items-center justify-between mb-6 shrink-0 mt-2">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
 <Icons.ChevronLeft size={24}/>
 </button>
@@ -16430,7 +16563,7 @@ className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${so
 } />
 )}
 </div>
-<div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0">
+<div className="w-full mt-4 pt-4 border-t border-gray-100 bg-white pb-safe shrink-0">
 <button onClick={handleStart} className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}>
 <Icons.Play size={24} fill="currentColor" /> LUYỆN NGHE NGAY
 </button>
@@ -16500,6 +16633,10 @@ return (
 </p>
 </>
 )}
+<div className="px-4 py-2 mt-4 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+<Icons.Database size={16} className="text-blue-500 animate-bounce" />
+<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength || 0} câu</span>
+</div>
 <p className="text-gray-400 text-xs mt-4 italic">(Cấp độ: {safeLevelStr})</p>
 <button onClick={handleSaveAndBack} className="mt-8 text-sm text-gray-400 hover:text-red-500 font-bold border px-6 py-3 rounded-xl transition-colors hover:bg-red-50 bg-white shadow-sm">Hủy bỏ</button>
 </div>
@@ -16580,13 +16717,27 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} />
 <div className={`hidden sm:flex items-center gap-1 font-bold ${combo > 1 ? 'text-orange-500' : 'text-gray-400'}`}>🔥 x{combo}</div>
 </div>
 <div className="flex items-center gap-1">
-{currentQuestion.isAiGenerated && (
-<span className="text-[9px] sm:text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex">
-<Icons.Sparkles size={12} className="animate-pulse text-indigo-500" /> AI
-{queueLength !== undefined && <span className="bg-indigo-500 text-white px-1 rounded-sm text-[9px]">+{queueLength}</span>}
+{currentQuestion?.origin?._isRescued || currentQuestion?._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : currentQuestion?.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
+</span>
+) : (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-<button onClick={handleBookmark} className={`p-2 rounded-lg ${isBookmarked ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 hover:bg-gray-100'}`}><Icons.Bookmark size={20} fill={isBookmarked?"currentColor":"none"} /></button>
+{queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
+</span>
+)}
+<button onClick={handleBookmark} className={`p-2 rounded-lg ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:bg-gray-100'}`} title="Lưu vào Sổ tay">
+<Icons.Bookmark size={20} fill={isBookmarked ? "currentColor" : "none"} />
+</button>
 <button onClick={() => setShowConfirmEnd(true)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icons.X size={20} /></button>
 </div>
 </div>
