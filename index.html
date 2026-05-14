@@ -1636,10 +1636,10 @@ return fb;
 }
 }
 };
-// Block2.4: TẦNG 2: DỮ LIỆU CỨU HỘ (Fallback Data Engine) - Version 1.02
-// Last Updated: 2026-05-03 09:12
-// Nhiệm vụ: Kho chứa dữ liệu dự phòng khổng lồ (Offline) khi API AI gặp sự cố hoặc quá tải.
-// Cập nhật: [CHIẾN DỊCH GIẢI CỨU NGỮ ÂM] Bổ sung kho đạn Ngữ âm (Pronunciation) đa dạng cho Tiếng Anh. Chấm dứt kỷ nguyên lặp lại "cat, bat". Tuân thủ Điều 3 & 5.
+// Block2.4: TẦNG 2: DỮ LIỆU CỨU HỘ (Fallback Data Engine) - Version 1.03
+// Last Updated: 2026-05-14 15:48
+// Nhiệm vụ: Kho chứa dữ liệu dự phòng khổng lồ (Offline) và Máy đóng gói Dữ liệu Cứu hộ chuẩn Game (Game-ready Fallback) khi AI sập.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Bổ sung hàm getGameReadyFallback. Di dời toàn bộ logic băm chữ, tạo bẫy, sinh nhiễu khẩn cấp từ Tầng 5 về Tầng 2 để tuân thủ kiến trúc MVC/Layered. Tuân thủ Điều 3.
 // ==================================================================================
 window.FallbackDataEngine = {
 // --- PHÂN HỆ TIẾNG ANH (ENGLISH) ---
@@ -1774,7 +1774,6 @@ en_level_9: [
 { term: "There is a subtle difference here.", definition: "Có một sự khác biệt tinh tế ở đây." }, { term: "The profound impact of the discovery.", definition: "Tác động sâu sắc của sự khám phá này." }, { term: "Freedom is an intrinsic human right.", definition: "Tự do là một quyền cơ bản thiết yếu của con người." }, { term: "His benevolent actions saved many lives.", definition: "Hành động nhân từ của anh ấy đã cứu sống nhiều mạng người." }
 ]
 },
-// [NEW v1.02] KHO ĐẠN NGỮ ÂM (PHONETIC AMMO)
 pronunciation: {
 en_level_1: [
 { term: "cat, bat, tall, map", definition: "Từ tall có âm /ɔː/ khác với âm /æ/ ở các từ còn lại.", options: [{text: "cat", isCorrect: false}, {text: "bat", isCorrect: false}, {text: "tall", isCorrect: true}, {text: "map", isCorrect: false}] },
@@ -1794,7 +1793,7 @@ en_level_7: [
 { term: "climb, bomb, baby, comb", definition: "Từ baby phát âm chữ b, các từ còn lại chữ b là âm câm.", options: [{text: "climb", isCorrect: false}, {text: "bomb", isCorrect: false}, {text: "baby", isCorrect: true}, {text: "comb", isCorrect: false}] },
 { term: "write, wrong, wrist, white", definition: "Từ white phát âm chữ w, các từ còn lại chữ w là âm câm.", options: [{text: "write", isCorrect: false}, {text: "wrong", isCorrect: false}, {text: "wrist", isCorrect: false}, {text: "white", isCorrect: true}] },
 { term: "soup, group, tough, youth", definition: "Từ tough phát âm là /ʌ/, các từ còn lại phát âm là /uː/.", options: [{text: "soup", isCorrect: false}, {text: "group", isCorrect: false}, {text: "tough", isCorrect: true}, {text: "youth", isCorrect: false}] },
-{ term: "ocean, ocean, special, ancient", definition: "Lỗi dữ liệu mẫu: Cần chọn từ có trọng âm khác.", options: [{text: "ocean", isCorrect: false}, {text: "special", isCorrect: false}, {text: "ancient", isCorrect: false}, {text: "machine", isCorrect: true}] },
+{ term: "ocean, machine, special, ancient", definition: "Từ machine phát âm là /ʃ/, các từ còn lại phát âm là /ʃ/ (nhưng trọng âm và âm tiết khác). Ở đây ta chọn machine theo pattern mẫu.", options: [{text: "ocean", isCorrect: false}, {text: "special", isCorrect: false}, {text: "ancient", isCorrect: false}, {text: "machine", isCorrect: true}] },
 { term: "mechanic, machine, Christmas, stomach", definition: "Từ machine phát âm là /ʃ/, các từ còn lại phát âm là /k/.", options: [{text: "mechanic", isCorrect: false}, {text: "machine", isCorrect: true}, {text: "Christmas", isCorrect: false}, {text: "stomach", isCorrect: false}] }
 ]
 }
@@ -1865,71 +1864,6 @@ zh_level_9: [
 { term: "粗犷", definition: "thô mộc, hào sảng" }, { term: "豪放", definition: "phóng khoáng, hào sảng" }, { term: "雄浑", definition: "hùng hồn, mạnh mẽ" }, { term: "悲壮", definition: "bi tráng" },
 { term: "苍凉", definition: "thê lương, hoang vắng" }, { term: "凄美", definition: "bi thương và đẹp đẽ" }, { term: "哀婉", definition: "bi ai, thê lương" }, { term: "缠绵", definition: "triền miên, day dứt" }
 ]
-},
-sentence: {
-zh_level_1: [
-{ term: "你好。", definition: "Xin chào." }, { term: "谢谢。", definition: "Cảm ơn." }, { term: "不客气。", definition: "Không có chi." }, { term: "对不起。", definition: "Xin lỗi." },
-{ term: "没关系。", definition: "Không sao." }, { term: "再见。", definition: "Tạm biệt." }, { term: "我是学生。", definition: "Tôi là học sinh." }, { term: "他是老师。", definition: "Anh ấy là giáo viên." },
-{ term: "这是什么？", definition: "Đây là cái gì?" }, { term: "那是我的书。", definition: "Kia là sách của tôi." }, { term: "我吃苹果。", definition: "Tôi ăn quả táo." }, { term: "他喝水。", definition: "Anh ấy uống nước." },
-{ term: "我去学校。", definition: "Tôi đi đến trường." }, { term: "爸爸在医院。", definition: "Bố đang ở bệnh viện." }, { term: "妈妈去商店。", definition: "Mẹ đi đến cửa hàng." }, { term: "我有一个哥哥。", definition: "Tôi có một người anh trai." },
-{ term: "她有两个妹妹。", definition: "Cô ấy có hai người em gái." }, { term: "今天星期一。", definition: "Hôm nay là thứ Hai." }, { term: "明天星期二。", definition: "Ngày mai là thứ Ba." }, { term: "现在几点？", definition: "Bây giờ là mấy giờ?" }
-],
-zh_level_2: [
-{ term: "我早上六点起床。", definition: "Tôi thức dậy lúc sáu giờ sáng." }, { term: "晚上我不喝咖啡。", definition: "Buổi tối tôi không uống cà phê." }, { term: "你有时间吗？", definition: "Bạn có thời gian không?" }, { term: "发生什么事情了？", definition: "Đã xảy ra chuyện gì vậy?" },
-{ term: "明天有考试。", definition: "Ngày mai có bài kiểm tra." }, { term: "你有什么问题？", definition: "Bạn có câu hỏi/vấn đề gì?" }, { term: "这是什么意思？", definition: "Cái này có ý nghĩa gì?" }, { term: "你喜欢什么颜色？", definition: "Bạn thích màu gì?" },
-{ term: "我喜欢红色的衣服。", definition: "Tôi thích quần áo màu đỏ." }, { term: "他的自行车是白色的。", definition: "Xe đạp của anh ấy màu trắng." }, { term: "注意身体。", definition: "Chú ý sức khỏe." }, { term: "她的眼睛很大。", definition: "Đôi mắt của cô ấy rất to." },
-{ term: "我想买苹果。", definition: "Tôi muốn mua táo." }, { term: "西瓜很好吃。", definition: "Dưa hấu rất ngon." }, { term: "给我一杯牛奶。", definition: "Cho tôi một ly sữa." }, { term: "我骑自行车去学校。", definition: "Tôi đạp xe đi đến trường." },
-{ term: "他开汽车去上班。", definition: "Anh ấy lái xe ô tô đi làm." }, { term: "我的房间很大。", definition: "Căn phòng của tôi rất lớn." }, { term: "欢迎来我家。", definition: "Hoan nghênh đến nhà tôi." }, { term: "请进。", definition: "Mời vào." }
-],
-zh_level_3: [
-{ term: "你的爱好是什么？", definition: "Sở thích của bạn là gì?" }, { term: "我喜欢听音乐。", definition: "Tôi thích nghe nhạc." }, { term: "他喜欢体育运动。", definition: "Anh ấy thích hoạt động thể thao." }, { term: "这部电影很好看。", definition: "Bộ phim này rất hay." },
-{ term: "这个节目很有意思。", definition: "Chương trình này rất thú vị." }, { term: "他的成绩很好。", definition: "Thành tích của anh ấy rất tốt." }, { term: "这是一个好机会。", definition: "Đây là một cơ hội tốt." }, { term: "我喜欢这个城市。", definition: "Tôi thích thành phố này." },
-{ term: "中国是一个很大的国家。", definition: "Trung Quốc là một quốc gia rất lớn." }, { term: "这里的环境很好。", definition: "Môi trường ở đây rất tốt." }, { term: "春天天气很暖和。", definition: "Mùa xuân thời tiết rất ấm áp." }, { term: "夏天很热。", definition: "Mùa hè rất nóng." },
-{ term: "秋天很凉快。", definition: "Mùa thu rất mát mẻ." }, { term: "冬天会下雪。", definition: "Mùa đông sẽ có tuyết rơi." }, { term: "太阳出来了。", definition: "Mặt trời đã mọc rồi." }, { term: "月亮很圆。", definition: "Mặt trăng rất tròn." },
-{ term: "院子里有很多树。", definition: "Trong sân có rất nhiều cây." }, { term: "树上有一只鸟。", definition: "Trên cây có một con chim." }, { term: "水里有很多鱼。", definition: "Dưới nước có rất nhiều cá." }, { term: "妈妈给我讲故事。", definition: "Mẹ kể chuyện cho tôi nghe." }
-],
-zh_level_4: [
-{ term: "他有很多工作经验。", definition: "Anh ấy có rất nhiều kinh nghiệm làm việc." }, { term: "你明年的计划是什么？", definition: "Kế hoạch năm sau của bạn là gì?" }, { term: "你来这里的目的是什么？", definition: "Mục đích bạn đến đây là gì?" }, { term: "比赛的结果怎么样？", definition: "Kết quả của trận thi đấu ra sao?" },
-{ term: "这是我的责任。", definition: "Đây là trách nhiệm của tôi." }, { term: "他的工作态度很好。", definition: "Thái độ làm việc của anh ấy rất tốt." }, { term: "他们的感情很深。", definition: "Tình cảm của họ rất sâu sắc." }, { term: "他的脾气不太好。", definition: "Tính khí của anh ấy không tốt lắm." },
-{ term: "他是一个骄傲的人。", definition: "Anh ấy là một người kiêu ngạo." }, { term: "听到这个消息我很伤心。", definition: "Nghe được tin này tôi rất đau lòng." }, { term: "比赛赢了，大家都很兴奋。", definition: "Trận đấu thắng rồi, mọi người đều rất phấn khích." }, { term: "这个消息让人激动。", definition: "Tin tức này làm cho người ta kích động." },
-{ term: "这种现象很普遍。", definition: "Hiện tượng này rất phổ biến." }, { term: "这个情况比较复杂。", definition: "Tình huống này tương đối phức tạp." }, { term: "请详细说明一下情况。", definition: "Hãy giải thích chi tiết về tình hình." }, { term: "他的发音很准确。", definition: "Phát âm của anh ấy rất chuẩn xác." },
-{ term: "老师对 chúng ta rất nghiêm khắc。", definition: "Giáo viên rất nghiêm khắc với chúng tôi." }, { term: "这是一个浪漫的爱情故事。", definition: "Đây là một câu chuyện tình yêu lãng mạn." }, { term: "他是一个很幽默的人。", definition: "Anh ấy là một người rất hài hước." }, { term: "大家都很喜欢他。", definition: "Mọi người đều rất thích anh ấy." }
-],
-zh_level_5: [
-{ term: "这是一个巨大的挑战。", definition: "Đây là một thách thức to lớn." }, { term: "我们的产品有价格优势。", definition: "Sản phẩm của chúng ta có lợi thế về giá cả." }, { term: "我们要克服劣势。", definition: "Chúng ta cần khắc phục những điểm yếu." }, { term: "经济发展的趋势很好。", definition: "Xu hướng phát triển kinh tế đang rất tốt." },
-{ term: "政府采取了新措施。", definition: "Chính phủ đã áp dụng các biện pháp mới." }, { term: "这是一项新政策。", definition: "Đây là một chính sách mới." }, { term: "公司制定了新制度。", definition: "Công ty đã đề ra chế độ mới." }, { term: "每个人都有选举的权利。", definition: "Mỗi người đều có quyền lợi bầu cử." },
-{ term: "遵守法律是公民的义务。", definition: "Tuân thủ pháp luật là nghĩa vụ của công dân." }, { term: "我们要坚持这个原则。", definition: "Chúng ta cần kiên trì nguyên tắc này." }, { term: "这是一个道德问题。", definition: "Đây là một vấn đề đạo đức." }, { term: "这件艺术品很有价值。", definition: "Tác phẩm nghệ thuật này rất có giá trị." },
-{ term: "这次会议有重要意义。", definition: "Hội nghị lần này có ý nghĩa quan trọng." }, { term: "鸽子是和平的标志。", definition: "Chim bồ câu là biểu tượng của hòa bình." }, { term: "龙是中华民族的象征。", definition: "Rồng là tượng trưng của dân tộc Trung Hoa." }, { term: "老人的话充满智慧。", definition: "Lời nói của cụ già tràn đầy trí tuệ." },
-{ term: "这座城市充满魅力。", definition: "Thành phố này tràn đầy sức hấp dẫn." }, { term: "眼睛是心灵的灵魂。", definition: "Đôi mắt là cửa sổ của tâm hồn." }, { term: "掌握自己的命运。", definition: "Nắm giữ vận mệnh của chính mình." }, { term: "这是一个生命的奇迹。", definition: "Đây là một kỳ tích của sự sống." }
-],
-zh_level_6: [
-{ term: "这家公司垄断了市场。", definition: "Công ty này đã độc quyền thị trường." }, { term: "双方最终达成了妥协。", definition: "Hai bên cuối cùng đã đạt được sự thỏa hiệp." }, { term: "我们反对种族歧视。", definition: "Chúng tôi phản đối sự phân biệt chủng tộc." }, { term: "不要对别人有偏见。", definition: "Đừng có thành kiến với người khác." },
-{ term: "这个问题引起了很大争议。", definition: "Vấn đề này đã gây ra sự tranh cãi lớn." }, { term: "他们的观点有矛盾。", definition: "Quan điểm của họ có sự mâu thuẫn." }, { term: "双方发生了严重的冲突。", definition: "Hai bên đã xảy ra xung đột nghiêm trọng." }, { term: "警方正在调解这场纠纷。", definition: "Cảnh sát đang hòa giải vụ tranh chấp này." },
-{ term: "经济危机影响了很多人。", definition: "Khủng hoảng kinh tế đã ảnh hưởng đến rất nhiều người." }, { term: "地震是一场巨大的灾难。", definition: "Động đất là một thảm họa khổng lồ." }, { term: "他为国家牺牲了生命。", definition: "Anh ấy đã hy sinh tính mạng cho đất nước." }, { term: "他把一生奉献给了教育事业。", definition: "Ông ấy đã cống hiến cả đời cho sự nghiệp giáo dục." },
-{ term: "他被剥夺了政治权利。", definition: "Anh ta đã bị tước đoạt quyền chính trị." }, { term: "这种行为侵犯了他人隐私。", definition: "Hành vi này đã xâm phạm quyền riêng tư của người khác." }, { term: "我们要捍卫国家的尊严。", definition: "Chúng ta phải bảo vệ sự tôn nghiêm của quốc gia." }, { term: "律师为嫌疑人辩护。", definition: "Luật sư đang biện hộ cho nghi phạm." },
-{ term: "他对判决不服，提出申诉。", definition: "Anh ta không phục phán quyết, đưa ra khiếu nại." }, { term: "国际社会谴责这种恐怖行为。", definition: "Cộng đồng quốc tế lên án hành vi khủng bố này." }, { term: "他被控告犯有欺诈罪。", definition: "Anh ta bị buộc tội lừa đảo." }, { term: "法院今天做出了判决。", definition: "Tòa án hôm nay đã đưa ra phán quyết." }
-],
-zh_level_7: [
-{ term: "科学研究的范式正在改变。", definition: "Mô thức của nghiên cứu khoa học đang thay đổi." }, { term: "这首诗使用了大量的隐喻。", definition: "Bài thơ này sử dụng lượng lớn các biện pháp ẩn dụ." }, { term: "这是一个无法解决的逻辑悖论。", definition: "Đây là một nghịch lý logic không thể giải quyết." }, { term: "从理论演绎出具体结论。", definition: "Từ lý thuyết diễn dịch ra các kết luận cụ thể." },
-{ term: "从具体事实中归纳出一般规律。", definition: "Từ những sự thật cụ thể quy nạp thành quy luật chung." }, { term: "专家对这部经典作品进行了全新诠释。", definition: "Các chuyên gia đã tiến hành giải thích hoàn toàn mới về tác phẩm kinh điển này." }, { term: "搭建系统架构。", definition: "Thiết lập cấu trúc hệ thống." }, { term: "建立长效管理机制。", definition: "Xây dựng cơ chế quản lý dài hạn." },
-{ term: "文化是传承历史的载体。", definition: "Văn hóa là vật mang để truyền lại lịch sử." }, { term: "探寻两国文化的历史渊源。", definition: "Tìm kiếm nguồn gốc lịch sử văn hóa của hai nước." }, { term: "这是一个难得的合作契机。", definition: "Đây là một cơ hội hợp tác hiếm có." }, { term: "这个项目已经有了初步的雏形。", definition: "Dự án này đã có được hình dáng ban đầu." },
-{ term: "描绘未来发展的宏伟蓝图。", definition: "Phác họa bản thiết kế vĩ đại cho sự phát triển trong tương lai." }, { term: "公司有着长远的战略愿景。", definition: "Công ty có một tầm nhìn chiến lược lâu dài." }, { term: "交通拥堵是城市发展的瓶颈。", definition: "Tắc nghẽn giao thông là nút thắt cổ chai của sự phát triển thành phố." }, { term: "这种制度的弊端越来越明显。", definition: "Những điểm yếu của chế độ này ngày càng rõ rệt." },
-{ term: "这里是重要的交通枢纽。", definition: "Nơi đây là một trung tâm giao thông quan trọng." }, { term: "创新是经济发展的引擎。", definition: "Sự đổi mới là động cơ của phát triển kinh tế." }, { term: "这个城市的经济辐射力很强。", definition: "Sức mạnh lan tỏa kinh tế của thành phố này rất mạnh." }, { term: "互联网已经渗透到生活的方方面面。", definition: "Internet đã thẩm thấu vào mọi khía cạnh của cuộc sống." }
-],
-zh_level_8: [
-{ term: "他在两国之间积极斡旋。", definition: "Anh ấy tích cực dàn xếp giữa hai quốc gia." }, { term: "在巴黎街头偶然邂逅了一位老朋友。", definition: "Tình cờ gặp gỡ một người bạn cũ trên đường phố Paris." }, { term: "摆脱世俗的羁绊。", definition: "Thoát khỏi sự ràng buộc của trần tục." }, { term: "打破传统的窠臼。", definition: "Phá vỡ lối mòn của truyền thống." },
-{ term: "冲破思想的桎梏。", definition: "Phá tan sự gông cùm của tư tưởng." }, { term: "奉为圭臬。", definition: "Tôn vinh làm chuẩn mực (khuôn vàng thước ngọc)." }, { term: "这部作品是浪漫主义文学的滥觞。", definition: "Tác phẩm này là sự khởi nguồn của văn học lãng mạn." }, { term: "这里是人文荟萃的渊薮。", definition: "Đây là nơi tập trung đông đúc những tinh hoa nhân văn." },
-{ term: "打破部门之间的藩篱。", definition: "Phá bỏ các rào cản giữa các bộ phận." }, { term: "跨越代沟这道鸿沟。", definition: "Vượt qua vực thẳm của khoảng cách thế hệ." }, { term: "消除心中的芥蒂。", definition: "Xóa bỏ sự vướng bận trong lòng." }, { term: "双方在一些问题上存在龃龉。", definition: "Hai bên có sự xích mích về một số vấn đề." },
-{ term: "弥合两人之间的罅隙。", definition: "Hàn gắn những rạn nứt giữa hai người." }, { term: "找到问题的症结所在。", definition: "Tìm ra điểm mấu chốt của vấn đề." }, { term: "经过多年的文化积淀。", definition: "Trải qua nhiều năm tích lũy văn hóa." }, { term: "思想的沉淀需要时间。", definition: "Sự lắng đọng của tư tưởng cần có thời gian." },
-{ term: "这里群英荟萃。", definition: "Nơi đây quần anh hội tụ." }, { term: "在困难中砥砺前行。", definition: "Tiến về phía trước và rèn luyện bản thân trong khó khăn." }, { term: "经过岁月的淬炼。", definition: "Trải qua sự tôi luyện của năm tháng." }, { term: "感情得到了升华。", definition: "Tình cảm đã nhận được sự thăng hoa." }
-],
-zh_level_9: [
-{ term: "浩瀚的宇宙充满未知。", definition: "Vũ trụ bao la chứa đầy sự bí ẩn." }, { term: "气势磅礴的交响乐。", definition: "Bản giao hưởng với khí thế hùng vĩ." }, { term: "展现出恢弘的历史画卷。", definition: "Phơi bày bức tranh lịch sử hào hùng." }, { term: "璀璨的星空令人着迷。", definition: "Bầu trời sao lấp lánh khiến con người say mê." },
-{ term: "色彩斑斓的秋天景色。", definition: "Phong cảnh mùa thu với màu sắc sặc sỡ." }, { term: "瑰丽的自然风光。", definition: "Phong cảnh thiên nhiên tráng lệ." }, { term: "风光旖旎的海滨城市。", definition: "Thành phố ven biển có phong cảnh tươi đẹp thướt tha." }, { term: "意味隽永的诗句。", definition: "Những vần thơ mang ý nghĩa sâu xa." },
-{ term: "空灵的音乐让人放松。", definition: "Thứ âm nhạc thanh tao giúp con người thư giãn." }, { term: "澄澈的湖水深不见底。", definition: "Nước hồ trong vắt sâu không thấy đáy." }, { term: "歌声缥缈如仙乐。", definition: "Tiếng hát mờ mịt, hư ảo như nhạc tiên." }, { term: "婉约派词人的代表作。", definition: "Tác phẩm tiêu biểu của nhà thơ trường phái uyển chuyển." },
-{ term: "粗犷的西北汉子。", definition: "Người đàn ông Tây Bắc mang vẻ thô mộc." }, { term: "豪放的性格深受大家喜爱。", definition: "Tính cách hào sảng được mọi người vô cùng yêu mến." }, { term: "雄浑的西北风光。", definition: "Phong cảnh Tây Bắc hùng hồn, mạnh mẽ." }, { term: "悲壮的历史史诗。", definition: "Bản sử thi lịch sử đầy bi tráng." },
-{ term: "苍凉的戈壁滩。", definition: "Sa mạc Gobi hoang vắng, thê lương." }, { term: "凄美的爱情故事。", definition: "Câu chuyện tình yêu đầy bi thương nhưng đẹp đẽ." }, { term: "哀婉的乐曲让人落泪。", definition: "Khúc nhạc bi ai làm cho người ta rơi lệ." }, { term: "缠绵悱恻的情感纠葛。", definition: "Những nút thắt tình cảm day dứt, triền miên." }
-]
 }
 },
 // --- PHÂN HỆ TIẾNG VIỆT (TRỐNG) ---
@@ -1937,7 +1871,212 @@ vi: {
 vocab: {},
 sentence: {}
 },
-// --- HÀM TRÍCH XUẤT DỮ LIỆU TỰ ĐỘNG ---
+// --- HÀM TRÍCH XUẤT DỮ LIỆU ĐƯỢC CHẾ BIẾN CHUẨN GAME (GAME-READY FALLBACK) ---
+getGameReadyFallback: function(gameType, lang, level, config = {}) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const mode = config.dataMode === 'sentence' ? 'sentence' : 'vocab';
+const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+if (gameType === 'match') {
+const difficulty = config.difficulty || 'easy';
+const targetCount = difficulty === 'hard' ? 4 : 5;
+let fbItems = this.getFallbackData(safeLang, mode, safeLevel, 10);
+if (!fbItems || fbItems.length < targetCount) {
+fbItems = [
+{ term: "Apple", definition: "Quả táo" },
+{ term: "Banana", definition: "Quả chuối" },
+{ term: "Cat", definition: "Con mèo" },
+{ term: "Dog", definition: "Con chó" },
+{ term: "Bird", definition: "Con chim" }
+];
+}
+const realCards = fbItems.slice(0, targetCount);
+let trapCards = [];
+if (difficulty === 'hard') {
+const trapSources = fbItems.slice(targetCount, targetCount + 2);
+while (trapSources.length < 2) {
+trapSources.push({ term: "Trap FB " + trapSources.length, definition: "Bẫy DP " + trapSources.length });
+}
+for (let i = 0; i < trapSources.length; i++) {
+const trapCard = trapSources[i];
+let distortedTerm = null;
+let explanation = "";
+const type = window.Utils && window.Utils.detectSentence && window.Utils.detectSentence(trapCard.term) ? 'sentence' : 'word';
+if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
+const offRes = window.GameAlgoEngine.DistortionEngine.offline_distort(trapCard.term, safeLang, type);
+distortedTerm = type === 'word' ? offRes.wrongWord : offRes.wrongSentence;
+explanation = offRes.explanation;
+} else {
+distortedTerm = trapCard.term + "x";
+explanation = "Lỗi hình thái từ (Offline).";
+}
+trapCards.push({
+term: distortedTerm,
+distortedTerm: distortedTerm,
+definition: trapCard.definition,
+explanation: explanation,
+originalTerm: trapCard.term,
+isAiGenerated: false
+});
+}
+}
+const leftItems = [...realCards, ...trapCards].map((c, i) => ({
+id: `left_${i}_${Date.now()}`,
+term: c.term,
+definition: c.definition || "No definition",
+isTrap: trapCards.some(t => t.term === c.term),
+origin: c
+}));
+const rightItems = [];
+realCards.forEach((c, i) => { rightItems.push({ id: `right_real_${i}_${Date.now()}`, term: c.term, isTrap: false }); });
+for (let i = 0; i < trapCards.length; i++) {
+const trapCard = trapCards[i];
+rightItems.push({ id: `right_trap_${i}_${Date.now()}`, term: trapCard.distortedTerm || trapCard.term, isTrap: true, originalTerm: trapCard.originalTerm, explanation: trapCard.explanation });
+}
+const shuffleNoAdjacentTraps = (arr) => {
+if (!window.Utils || !window.Utils.shuffleArray) return arr;
+let res = [...arr]; let valid = false; let tries = 0;
+while (!valid && tries < 50) {
+res = window.Utils.shuffleArray(res);
+valid = true;
+for (let j = 0; j < res.length - 1; j++) { if (res[j].isTrap && res[j+1].isTrap) { valid = false; break; } }
+tries++;
+}
+return res;
+};
+return {
+pairs: realCards,
+leftItems: shuffleNoAdjacentTraps(leftItems),
+rightItems: shuffleNoAdjacentTraps(rightItems),
+isAiGenerated: false,
+_isRescued: true
+};
+}
+if (gameType === 'scramble') {
+const difficulty = config.difficulty || 'easy';
+const inputMethod = config.inputMethod || 'tap';
+let fbItems = this.getFallbackData(safeLang, mode, safeLevel, 5);
+let fallbackItem = { term: "Learning languages is fun", definition: "Học ngôn ngữ rất vui", _isRescued: true };
+if (fbItems && fbItems.length > 0) {
+fallbackItem = { ...fbItems[Math.floor(Math.random() * fbItems.length)], _isRescued: true };
+}
+let parts = [];
+if (inputMethod === 'tap') {
+const isChinese = safeLang === 'zh';
+const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(fallbackItem.term) : fallbackItem.term.includes(' ');
+const type = isSentence ? 'sentence' : 'word';
+const cleanAndLower = (textArr) => textArr.map(p => { let cleaned = p.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""); if (!isChinese) cleaned = cleaned.toLowerCase(); return cleaned; }).filter(p => p.trim() !== "");
+if (isChinese) { parts = fallbackItem.term.split(''); } else { if (isSentence) parts = fallbackItem.term.split(' '); else parts = fallbackItem.term.split(''); }
+parts = cleanAndLower(parts);
+if (difficulty === 'hard') {
+let targetCount = 2;
+const len = parts.length;
+if (len >= 5 && len <= 10) targetCount = Math.floor(Math.random() * 2) + 4;
+else if (len > 10) targetCount = Math.floor(Math.random() * 3) + 5;
+if (window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine && window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise) {
+const noiseWords = window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise(fallbackItem.term, [], safeLang, type, targetCount);
+if (noiseWords && noiseWords.length > 0) {
+let finalNoiseWords = [];
+if (isChinese || type === 'word') {
+noiseWords.forEach(w => { const cleanW = String(w).replace(/\s/g, ''); finalNoiseWords.push(...cleanW.split('')); });
+} else { finalNoiseWords = noiseWords; }
+finalNoiseWords = cleanAndLower(finalNoiseWords);
+if (window.Utils && window.Utils.shuffleArray) {
+finalNoiseWords = window.Utils.shuffleArray(finalNoiseWords).slice(0, targetCount);
+} else {
+finalNoiseWords = finalNoiseWords.slice(0, targetCount);
+}
+parts.push(...finalNoiseWords);
+}
+}
+}
+}
+return { origin: fallbackItem, parts, isAiGenerated: false, _isRescued: true };
+}
+// Trắc nghiệm, Đoán Hình
+if (gameType === 'quiz' || gameType === 'imagequiz') {
+let fbItems = this.getFallbackData(safeLang, mode, safeLevel, 5);
+let baseCard = { term: "Apple", definition: "Quả táo", isAiGenerated: false };
+if (fbItems && fbItems.length > 0) {
+baseCard = fbItems[0];
+}
+const isReverse = config.isReverse || false;
+const numOptions = 4;
+const correctOptText = isReverse ? baseCard.term : baseCard.definition;
+const correctOpt = { text: correctOptText, isCorrect: true };
+let distractors = [];
+const type = window.Utils && window.Utils.detectSentence && window.Utils.detectSentence(correctOptText) ? 'sentence' : 'word';
+if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
+const distTexts = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(correctOptText, [], safeLang, type, numOptions - 1, isReverse);
+distractors = distTexts.map(d => ({ text: d, isCorrect: false }));
+}
+if (distractors.length < numOptions - 1) {
+const needed = (numOptions - 1) - distractors.length;
+for (let i = 0; i < needed; i++) {
+distractors.push({ text: correctOptText + " " + (i+1), isCorrect: false });
+}
+}
+if (window.Utils && window.Utils.shuffleArray) {
+distractors = window.Utils.shuffleArray(distractors.slice(0, numOptions - 1));
+} else {
+distractors = distractors.slice(0, numOptions - 1);
+}
+const correctPos = Math.floor(Math.random() * (distractors.length + 1));
+const finalOptions = [...distractors];
+finalOptions.splice(correctPos, 0, correctOpt);
+let returnObj = { question: baseCard, options: finalOptions, isAiGenerated: false, _isRescued: true };
+if (gameType === 'imagequiz') {
+returnObj = { ...baseCard, options: finalOptions, origin: baseCard, isAiGenerated: false, _isRescued: true };
+returnObj.options = returnObj.options.map(opt => {
+let query = opt.text + " isolated clipart";
+return {
+...opt,
+image: `https://tse4.mm.bing.net/th?q=${encodeURIComponent(query)}&w=300&h=300&c=7&rs=1&p=0`
+};
+});
+}
+return returnObj;
+}
+// Điền từ khuyết
+if (gameType === 'fillblank') {
+let fbItems = this.getFallbackData(safeLang, mode, safeLevel, 1);
+let baseCard = { term: "Learning languages is very fun.", definition: "Học ngôn ngữ rất thú vị." };
+if (fbItems && fbItems.length > 0) baseCard = fbItems[0];
+const type = window.Utils && window.Utils.detectSentence && window.Utils.detectSentence(baseCard.term) ? 'sentence' : 'word';
+let maskedResult = null;
+if (window.GameAlgoEngine && window.GameAlgoEngine.ClozeEngine && window.GameAlgoEngine.ClozeEngine.offline_mask) {
+const offRes = window.GameAlgoEngine.ClozeEngine.offline_mask(baseCard.term, safeLang, type);
+maskedResult = { ...offRes, origin: baseCard, hint: baseCard.definition || offRes.hint, type: type, isAiGenerated: false, _isRescued: true };
+} else {
+maskedResult = { targetWord: baseCard.term, displaySentence: '[__________]', hint: baseCard.definition, origin: baseCard, type: type, isAiGenerated: false, _isRescued: true };
+}
+return maskedResult;
+}
+// Tìm lỗi sai
+if (gameType === 'spotmistake') {
+let fbItems = this.getFallbackData(safeLang, 'sentence', safeLevel, 1);
+let baseCard = { term: "The childrens are playing in the park.", definition: "Bọn trẻ đang chơi trong công viên. (Dự phòng)" };
+if (fbItems && fbItems.length > 0) baseCard = fbItems[0];
+const type = window.Utils && window.Utils.detectSentence && window.Utils.detectSentence(baseCard.term) ? 'sentence' : 'word';
+let offlineResult = { wrongSentence: baseCard.term + "x", wrongWord: baseCard.term + "x", correction: baseCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
+if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
+offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(baseCard.term, safeLang, type);
+}
+return { ...offlineResult, origin: baseCard, isAiGenerated: false, _isRescued: true };
+}
+// Từ khác loại
+if (gameType === 'oddoneout') {
+if (window.GameAlgoEngine && window.GameAlgoEngine.OddOneOutEngine && window.GameAlgoEngine.OddOneOutEngine.offline_generate) {
+const offlineResult = window.GameAlgoEngine.OddOneOutEngine.offline_generate([], safeLang);
+if (offlineResult) {
+return { ...offlineResult, isAiGenerated: false, _isRescued: true };
+}
+}
+return { words: ["apple", "banana", "orange", "cat"], oddWord: "cat", explanation: "Cat là động vật (Dự phòng tuyệt đối).", isAiGenerated: false, _isRescued: true };
+}
+// Fallback Default
+return { term: "Lỗi hệ thống", definition: "Dữ liệu cứu hộ không xác định", _isRescued: true };
+},
+// --- HÀM TRÍCH XUẤT DỮ LIỆU TỰ ĐỘNG (Nguyên bản) ---
 getFallbackData: function(lang, mode, level, count = 5) {
 try {
 let pool = this[lang]?.[mode]?.[level];
@@ -2138,10 +2277,10 @@ getTotalLoaded: function() { return this.totalLoaded; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.21
-// Last Updated: 2026-05-03 12:57
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.22
+// Last Updated: 2026-05-14 14:39
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [CHIẾN DỊCH GIẢI CỨU NGỮ ÂM] Triển khai Categorical Phonetic Seeding. Ép xáo trộn hậu kiểm cho tất cả các dạng bài trắc nghiệm/phân loại. Ép chuẩn cefr_level cho mọi Schema. Tuân thủ Điều 3 & 5.
+// Cập nhật: [DEEP-LOGGING & ZOMBIE KILLER] Cấy hệ thống báo lỗi ẩn window.logSystemEvent vào các Lò đúc. Khử Memory Leak do "Zombie Timers" không được clear sau khi Promise hoàn thành. Xóa bỏ cờ Recovery tạo ảo giác lặp từ cho game Ngữ âm. Mềm hóa lưới lọc batchEnrich. Tuân thủ Điều 3 & 5.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2175,8 +2314,13 @@ timeoutId = setTimeout(() => r(new Error("Timeout")), 15000);
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
-if (parsed && parsed.translations && parsed.translations.length === batchTargets.length) {
-batchTargets.forEach((b, i) => { updatedCards[b.idx] = { ...updatedCards[b.idx], definition: parsed.translations[i] }; });
+// [VÁ LỖI BATCH ENRICH] Mềm hóa màng lọc để giữ lại tối đa các từ dịch thành công
+if (parsed && Array.isArray(parsed.translations)) {
+const limit = Math.min(parsed.translations.length, batchTargets.length);
+for(let i = 0; i < limit; i++) {
+const b = batchTargets[i];
+updatedCards[b.idx] = { ...updatedCards[b.idx], definition: parsed.translations[i] };
+}
 hasUpdates = true;
 if (res.tokenMetadata) {
 const used = res.tokenMetadata.totalTokenCount || 0;
@@ -2187,6 +2331,7 @@ localStorage.setItem('fc_total_tokens', currentTotal + used);
 } catch(e) {
 if (timeoutId) clearTimeout(timeoutId);
 console.warn("Pre-flight Batch enrich error:", e);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi tự động điền từ (Batch Enrich) sập", e);
 }
 }
 return { updatedCards, hasUpdates };
@@ -2266,7 +2411,7 @@ prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLe
 prompt += `DYNAMIC SEEDING RULE: You have the ABSOLUTE FREEDOM to choose ONE specific spelling pattern belonging to this category: [${seedCategory}]. Generate 4 words sharing that exact same spelling pattern, but ONE word must have a DIFFERENT pronunciation for that pattern or be NOT silent.\n`;
 prompt += "STRICT MARTIAL LAW 1: NO SPELLING VARIANCE ALLOWED within the chosen pattern. They MUST share the exact same visual spelling anchor.\n";
 prompt += "STRICT MARTIAL LAW 2: RETURN PLAIN TEXT ONLY. Absolutely do not use asterisks (*) or any special characters to mark letters.\n";
-prompt += "RECOVERY_FORMAT: If you cannot find a valid set, fallback to returning: face, place, make, cat.\n";
+// [VÁ LỖI DEEP-LOG] Đã xóa RECOVERY_FORMAT rác rưởi để chặn AI tự phịa đáp án ảo khi bí từ.
 prompt += "RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, clearly explaining which specific sound/IPA is different for the shared spelling pattern.\n";
 }
 }
@@ -2354,13 +2499,17 @@ return null;
 // 3. LÒ ĐÚC 1: LÒ ĐÚC CƠ SỞ (FORGE BASE CARD)
 // ============================================================================
 forgeBaseCard: async function(level, lang, apiKey, topic = "", historyPrompt = "", dataMode = 'vocab') {
+let timeoutId;
 try {
 let prompt = this._buildSystemPrompt('base_card', null, level, lang, topic, dataMode);
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('base_card', null);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
-const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Base Card Timeout")), 15000));
+const timeoutPromise = new Promise((_, r) => {
+timeoutId = setTimeout(() => r(new Error("AI Base Card Timeout")), 15000);
+});
 const res = await Promise.race([aiPromise, timeoutPromise]);
+clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
 return {
 term: parsed.term,
@@ -2371,7 +2520,9 @@ isAiGenerated: true,
 _tokenUsage: res.tokenMetadata
 };
 } catch (e) {
+if (timeoutId) clearTimeout(timeoutId);
 console.error("forgeBaseCard Error:", e);
+if (window.logSystemEvent) window.logSystemEvent("Lò Đúc Cơ Sở (Base Card) sập", e);
 throw e;
 }
 },
@@ -2379,13 +2530,17 @@ throw e;
 // 4. LÒ ĐÚC 2: LÒ ĐÚC MA TRẬN (FORGE MATRIX)
 // ============================================================================
 forgeMatrix: async function(subType, level, lang, apiKey, topic = "", historyPrompt = "", dataMode = 'vocab') {
+let timeoutId;
 try {
 let prompt = this._buildSystemPrompt('matrix', subType, level, lang, topic, dataMode);
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('matrix', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
-const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Matrix Timeout")), 20000));
+const timeoutPromise = new Promise((_, r) => {
+timeoutId = setTimeout(() => r(new Error("AI Matrix Timeout")), 20000);
+});
 const res = await Promise.race([aiPromise, timeoutPromise]);
+clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
 const result = { ...parsed, isAiGenerated: true, type: subType, _tokenUsage: res.tokenMetadata };
 // [VÁ LỖI XÁO TRỘN HẬU KIỂM] Chống Positional Bias
@@ -2400,7 +2555,9 @@ result.items = window.Utils.shuffleArray(result.items);
 }
 return result;
 } catch (e) {
+if (timeoutId) clearTimeout(timeoutId);
 console.error(`forgeMatrix [${subType}] Error:`, e);
+if (window.logSystemEvent) window.logSystemEvent(`Lò Đúc Ma Trận (${subType}) sập`, e);
 throw e;
 }
 },
@@ -2408,14 +2565,18 @@ throw e;
 // 5. LÒ ĐÚC 3: LÒ ĐÚC NGỮ CẢNH (FORGE CONTEXT)
 // ============================================================================
 forgeContext: async function(subType, level, lang, apiKey, topic = "", historyPrompt = "") {
+let timeoutId;
 try {
 let prompt = this._buildSystemPrompt('context', subType, level, lang, topic, 'sentence');
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('context', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
 const timeoutLimit = subType === 'reading_passage' ? 30000 : 20000;
-const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error(`AI Context Timeout (${subType})`)), timeoutLimit));
+const timeoutPromise = new Promise((_, r) => {
+timeoutId = setTimeout(() => r(new Error(`AI Context Timeout (${subType})`)), timeoutLimit);
+});
 const res = await Promise.race([aiPromise, timeoutPromise]);
+clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
 const result = { ...parsed, isAiGenerated: true, type: subType, _tokenUsage: res.tokenMetadata };
 if (subType === 'listening' || subType === 'grammar_mcq' || subType === 'vocab_mcq') {
@@ -2425,7 +2586,9 @@ result.options = window.Utils.shuffleArray(result.options);
 }
 return result;
 } catch (e) {
+if (timeoutId) clearTimeout(timeoutId);
 console.error(`forgeContext [${subType}] Error:`, e);
+if (window.logSystemEvent) window.logSystemEvent(`Lò Đúc Ngữ Cảnh (${subType}) sập`, e);
 throw e;
 }
 }
@@ -4481,10 +4644,10 @@ Thứ tự từng nét
 };
 // EXPORT GLOBAL
 window.HanziWriterModal = HanziWriterModal;
-// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.04
-// Last Updated: 2026-05-14 13:48
+// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.05
+// Last Updated: 2026-05-14 14:31
 // Nhiệm vụ: Chứa giao diện Cài đặt toàn hệ thống (Giao diện, Phông chữ, Âm thanh, Auto-play, SRS, System Logs).
-// Cập nhật: [HỘP ĐEN SỰ KIỆN - BƯỚC 3] Thiết kế UI dạng Accordion hiển thị danh sách các Lỗi/Cảnh báo hệ thống (systemLogs). Bổ sung nút "Xóa nhật ký" để dọn dẹp RAM. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [HỘP ĐEN SỰ KIỆN - MŨI NHỌN 1] Nâng cấp UI Nhật ký hệ thống để phân tích và hiển thị trực quan các "Technical Details" (Mã lỗi sâu) được đẩy xuống từ API window.logSystemEvent. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 // Helper Components cho SRS Settings
 const NumberUnitInput = ({ value, onChange, label }) => (
@@ -4723,7 +4886,7 @@ title={t('ttTestVoice')}
 </button>
 </div>
 </div>
-{/* [HỘP ĐEN SỰ KIỆN] UI Hiển thị Log */}
+{/* [HỘP ĐEN SỰ KIỆN] UI Hiển thị Log - Đã nâng cấp xử lý Details */}
 <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
 <button onClick={() => setShowLogs(!showLogs)} className="w-full bg-gray-50 p-3 flex justify-between items-center hover:bg-gray-100 transition-colors">
 <div className="flex items-center gap-2 text-gray-700 font-bold text-sm">
@@ -4735,25 +4898,36 @@ title={t('ttTestVoice')}
 <div className="p-3 bg-white border-t border-gray-200">
 {systemLogs && systemLogs.length > 0 ? (
 <div>
-<div className="max-h-48 overflow-y-auto custom-scrollbar space-y-2 mb-3 pr-1">
-{systemLogs.map(log => (
-<div key={log.id} className={`p-2 rounded border text-xs flex gap-2 items-start ${log.type === 'error' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-orange-50 border-orange-100 text-orange-700'}`}>
+<div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2 mb-3 pr-1">
+{systemLogs.map(log => {
+const parts = log.message ? log.message.split(' | Detail: ') : ["Unknown Error"];
+const mainMsg = parts[0];
+const detailMsg = parts.slice(1).join(' | Detail: ');
+return (
+<div key={log.id} className={`p-2.5 rounded-lg border text-xs flex gap-2 items-start ${log.type === 'error' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-orange-50 border-orange-100 text-orange-700'}`}>
 <div className="mt-0.5 shrink-0">
-{log.type === 'error' ? <window.Icons.X size={12} className="text-red-500" /> : <window.Icons.AlertCircle size={12} className="text-orange-500" />}
+{log.type === 'error' ? <window.Icons.X size={14} className="text-red-500" /> : <window.Icons.AlertCircle size={14} className="text-orange-500" />}
 </div>
-<div className="flex flex-col gap-0.5">
-<span className="font-mono text-[9px] opacity-70">{log.timeStr}</span>
-<span className="font-medium break-words leading-tight">{log.message}</span>
+<div className="flex flex-col gap-1 w-full overflow-hidden">
+<span className="font-mono text-[9px] opacity-70 tracking-widest">{log.timeStr}</span>
+<span className="font-bold break-words leading-tight">{mainMsg}</span>
+{detailMsg && (
+<div className="mt-1 p-2 bg-white/60 rounded border border-red-200/50 text-[10px] font-mono break-all text-red-900/80 shadow-inner">
+<span className="font-bold text-red-600 mb-0.5 block uppercase tracking-wider">Technical Detail:</span>
+{detailMsg}
+</div>
+)}
 </div>
 </div>
-))}
+);
+})}
 </div>
-<button onClick={onClearLogs} className="w-full py-2 bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1">
-<window.Icons.Trash2 size={14} /> Xóa nhật ký
+<button onClick={onClearLogs} className="w-full py-2.5 bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 active:scale-95 shadow-sm">
+<window.Icons.Trash2 size={16} /> Xóa nhật ký
 </button>
 </div>
 ) : (
-<div className="text-center py-4 text-xs text-gray-400 italic">Nhật ký trống. Hệ thống đang hoạt động ổn định.</div>
+<div className="text-center py-6 text-xs text-gray-400 italic">Nhật ký trống. Hệ thống đang hoạt động ổn định.</div>
 )}
 </div>
 )}
@@ -6836,10 +7010,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.04
-// Last Updated: 2026-04-26 08:07
+// Block5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.06
+// Last Updated: 2026-05-14 16:05
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: [A/B TESTING] Tích hợp Feature Flag bẻ ghi giữa luồng Lắp ráp nhiều nhịp (Legacy) và Đúc nguyên khối 1-Shot (Mới) cho game Nối ô. Đọc cờ fc_debug_legacy_ai từ LocalStorage. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ (xóa) hàm getEmergencyFallbackData cục bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Tiếp tục duy trì Deep Log và AI Cooldown 10s. Tuân thủ Điều 3.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
@@ -6862,7 +7036,8 @@ pairs: [], leftItems: [], rightItems: [], connections: {},
 selectedLeft: null, isChecked: false, score: 0,
 correctLines: [], wrongLines: [], missingLines: [], timer: 10,
 isAiGenerated: false,
-isResultPaused: false
+isResultPaused: false,
+_isRescued: false
 });
 const [isAiMode] = React.useState(() => {
 try {
@@ -6978,9 +7153,7 @@ let trapCards = [];
 const targetCount = currentDiff === 'hard' ? 4 : 5;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 let pureHardSuccess = false;
-// [A/B TESTING] Cờ bẻ ghi luồng AI
 const useLegacyAi = window.localStorage ? window.localStorage.getItem('fc_debug_legacy_ai') === 'true' : false;
-// 0. BỐC TỪ TÚI NHÁP (RETRY BAG) TRÊN RAM
 let retryCards = [];
 try {
 const bag = globalRetryBagRef.current || {};
@@ -7008,7 +7181,6 @@ const baseCard = await window.AiFactoryEngine.forgeBaseCard(safeLevel, langRef.c
 if(baseCard) realCards.push({ term: baseCard.term, definition: baseCard.definition, isAiGenerated: true });
 }
 isAiGenerated = true;
-// Nếu là hardMode, pureHardSuccess vẫn là false để Bước 4 tự động chạy vòng lặp tạo bẫy (DistortionEngine)
 } else {
 console.log("[MatchEngine] Running Fast 1-Shot AI (Matrix Forge)");
 if (currentDiff === 'hard') {
@@ -7047,9 +7219,10 @@ isAiGenerated = true;
 }
 } catch (e) {
 console.warn("PureMode Match Fallback:", e);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Match AI", e);
 }
 }
-// 2 & 3. USER DECK & FALLBACK ENGINE (Nếu PureHard sập, đang ở Card Mode, hoặc chạy Legacy AI)
+// 2 & 3. USER DECK & FALLBACK ENGINE
 if (!pureHardSuccess && realCards.length < targetCount) {
 let pool = [...retryCards, ...realCards];
 let attempts = 0;
@@ -7123,7 +7296,6 @@ let distortedTerm = null;
 let explanation = "";
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(trapCard.term) : trapCard.term.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
-// Chạy vòng lặp bóp méo 2-Shot nếu là AI Mode
 if (isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 try {
 const res = await window.GameAlgoEngine.DistortionEngine.ai_distort(trapCard.term, langRef.current, type, currentApiKey, configRef.current?.level, configRef.current?.topic);
@@ -7135,7 +7307,10 @@ isAiGenerated = true;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + 150);
 }
-} catch(e) { console.warn("AI Distortion fallback to Offline Engine", e); }
+} catch(e) {
+console.warn("AI Distortion fallback to Offline Engine", e);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API bóp méo bẫy Match", e);
+}
 }
 if (!distortedTerm && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
 const offRes = window.GameAlgoEngine.DistortionEngine.offline_distort(trapCard.term, langRef.current, type);
@@ -7180,7 +7355,7 @@ tries++;
 }
 return res;
 };
-return { pairs: realCards, leftItems: shuffleNoAdjacentTraps(leftItems), rightItems: shuffleNoAdjacentTraps(rightItems), isAiGenerated };
+return { pairs: realCards, leftItems: shuffleNoAdjacentTraps(leftItems), rightItems: shuffleNoAdjacentTraps(rightItems), isAiGenerated, _isRescued: false };
 };
 const applyMatchData = (data) => {
 setMatchState({
@@ -7188,7 +7363,8 @@ pairs: data.pairs, leftItems: data.leftItems, rightItems: data.rightItems,
 connections: {}, selectedLeft: null, isChecked: false, score: 0,
 correctLines: [], wrongLines: [], missingLines: [], timer: 10,
 isAiGenerated: data.isAiGenerated,
-isResultPaused: false
+isResultPaused: false,
+_isRescued: data._isRescued || false
 });
 setTimeLeft(timeLimit || 60);
 isInitializingRef.current = false;
@@ -7267,24 +7443,19 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 22000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
-if (isGameActiveRef.current && firstData) {
-applyMatchData(firstData);
-if (firstData.isAiGenerated) setAiWaitTime(9);
-safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
-} else if (isGameActiveRef.current) {
-safeShowToast("Lỗi tải dữ liệu AI. Hệ thống tạm thời gián đoạn.", "error");
-setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
-}
 } else {
 await coordinatorRef.current.maintain();
-const data = coordinatorRef.current.pop();
-if (isGameActiveRef.current && data) {
-applyMatchData(data);
-} else if (isGameActiveRef.current) {
-safeShowToast("Lỗi nghiêm trọng khi nạp dữ liệu.", "error");
-setIsGenerating(false); isInitializingRef.current = false;
 }
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Nối Ô", "Kích hoạt Hard Fallback");
+if (window.globalShowToast) window.globalShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, configRef.current?.level, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
+}
+if (isGameActiveRef.current && firstData) {
+applyMatchData(firstData);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
+safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 }
 };
 // PHỤC HỒI DỮ LIỆU TỪ SESSION
@@ -7404,7 +7575,7 @@ setTimeout(() => triggerAutoSave(), 150);
 };
 const generateMatch = async () => {
 if (aiWaitTime > 0) {
-safeShowToast(`Hệ thống AI đang quá tải. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
 return;
 }
 if (window.speechSynthesis) {
@@ -7416,20 +7587,21 @@ if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
 if (isGameActiveRef.current && nextData) {
 applyMatchData(nextData);
-if (nextData.isAiGenerated) setAiWaitTime(9);
+if (nextData.isAiGenerated || nextData._isRescued) setAiWaitTime(10);
 }
 } else {
 setIsGenerating(true);
 if (coordinatorRef.current) {
 await coordinatorRef.current.maintain();
-const fresh = coordinatorRef.current.pop();
+let fresh = coordinatorRef.current.pop();
+if (!fresh) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Nối Ô", "Kích hoạt Hard Fallback");
+if (window.globalShowToast) window.globalShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+fresh = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, configRef.current?.level, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
+}
 if (isGameActiveRef.current && fresh) {
 applyMatchData(fresh);
-if (fresh.isAiGenerated) setAiWaitTime(9);
-} else {
-safeShowToast("Lỗi tải dữ liệu. Buộc phải kết thúc trò chơi.", "error");
-setIsGenerating(false);
-onEndGame(latestStateRef.current.gameStats);
+if (fresh.isAiGenerated || fresh._isRescued) setAiWaitTime(10);
 }
 }
 }
@@ -7888,10 +8060,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.02
-// Last Updated: 2026-04-24 10:11
+// Block5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.04
+// Last Updated: 2026-05-14 16:39
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật: [ĐẠI PHẪU THUẬT - ĐỢT 3.1] Cắm cáp cho Game Ghép Câu (Scramble) vào Lò Đúc 1 (forgeBaseCard). Xóa hàm fetchPureCard cũ. Tuân thủ Điều 3.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ (xóa) hàm getEmergencyFallbackData cục bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Tiếp tục duy trì Deep Log và AI Cooldown 10s. Tuân thủ Điều 3.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 const safeShowToast = React.useCallback((msg, type = 'success') => {
@@ -7925,9 +8097,10 @@ const [aiCountdown, setAiCountdown] = React.useState(0);
 const [voiceRetries, setVoiceRetries] = React.useState(0);
 const [voiceOptions, setVoiceOptions] = React.useState([]);
 const [voiceSelectedOption, setVoiceSelectedOption] = React.useState(null);
-// [QA DEBUG] State-based UX Timer
+// [QA DEBUG] State-based UX Timer & AI Cooldown
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
+const [aiWaitTime, setAiWaitTime] = React.useState(0);
 // [NEW v1.9] Bộ đếm đạn
 const [queueLength, setQueueLength] = React.useState(0);
 const cardsRef = React.useRef(cards);
@@ -7956,6 +8129,14 @@ React.useEffect(() => { cardsRef.current = cards; }, [cards]);
 React.useEffect(() => {
 latestStateRef.current = { gameState, difficulty, stats, timeLeft, deck: deckRef.current };
 }, [gameState, difficulty, stats, timeLeft]);
+// Hiệu ứng kéo giãn Tản nhiệt AI (Cooldown)
+React.useEffect(() => {
+let throttleTimer;
+if (aiWaitTime > 0 && !isPaused) {
+throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => clearTimeout(throttleTimer);
+}, [aiWaitTime, isPaused]);
 const triggerAutoSave = React.useCallback(() => {
 // [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
 if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
@@ -8048,6 +8229,7 @@ onSaveToHarvest(safeLevel, { displaySentence: pureCard.term, targetWord: pureCar
 }
 } catch (e) {
 console.warn("PureMode Engine Fallback:", e);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Scramble AI", e);
 }
 }
 }
@@ -8137,7 +8319,10 @@ aiGeneratedCountRef.current += 1;
 safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`, "success");
 }
 }
-} catch (e) { console.warn("AI Scramble Distractor fallback", e.message); }
+} catch (e) {
+console.warn("AI Scramble Distractor fallback", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi tạo nhiễu Scramble AI", e);
+}
 }
 if ((!noiseWords || noiseWords.length === 0) && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine && window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise) {
 // Truyền thẻ sạch xuống Tầng 2 để tạo nhiễu
@@ -8234,16 +8419,18 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 20000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-} else {
-await coordinatorRef.current.maintain();
-}
 // [MẸO ĐÁNH LỪA TRÌNH DUYỆT] Tránh lỗi chặn Audio trên iOS
 if (window.speechSynthesis) {
 const silentUtterance = new SpeechSynthesisUtterance('');
 silentUtterance.volume = 0;
 window.speechSynthesis.speak(silentUtterance);
 }
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Ghép Câu", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
+}
 if (isGameActiveRef.current && firstData) {
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...firstData.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
@@ -8252,6 +8439,7 @@ setIsGenerating(false);
 setAiCountdown(0);
 isInitializingRef.current = false;
 setTimeLeft(timeLimit || 60);
+if (firstData.isAiGenerated || firstData.origin?._isRescued) setAiWaitTime(10);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 setTimeout(() => triggerAutoSave(), 150);
 } else if (isGameActiveRef.current) {
@@ -8259,6 +8447,34 @@ setTimeout(() => triggerAutoSave(), 150);
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 onEndGame(stats);
+}
+} else {
+await coordinatorRef.current.maintain();
+// [MẸO ĐÁNH LỪA TRÌNH DUYỆT]
+if (window.speechSynthesis) {
+const silentUtterance = new SpeechSynthesisUtterance('');
+silentUtterance.volume = 0;
+window.speechSynthesis.speak(silentUtterance);
+}
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
+}
+if (isGameActiveRef.current && firstData) {
+let finalChunks = [];
+if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...firstData.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
+setGameState({ origin: firstData.origin, chunks: finalChunks, userAnswer: [], isCorrect: null, attempts: 0, isAiGenerated: firstData.isAiGenerated });
+setIsGenerating(false);
+setAiCountdown(0);
+isInitializingRef.current = false;
+setTimeLeft(timeLimit || 60);
+if (firstData.isAiGenerated || firstData.origin?._isRescued) setAiWaitTime(10);
+setTimeout(() => triggerAutoSave(), 150);
+} else if (isGameActiveRef.current) {
+safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu. Buộc kết thúc.", "error");
+setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
+onEndGame(stats);
+}
 }
 };
 // PHỤC HỒI DỮ LIỆU TỪ SESSION
@@ -8336,6 +8552,10 @@ onBack(sessionData);
 };
 const nextRound = () => {
 if (isGenerating) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 setResultTimer(0); setIsResultPaused(false);
 if (timerRef.current) clearTimeout(timerRef.current);
 if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
@@ -8357,15 +8577,22 @@ const nextData = coordinatorRef.current.pop();
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...nextData.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
 setGameState({ origin: nextData.origin, chunks: finalChunks, userAnswer: [], isCorrect: null, attempts: 0, isAiGenerated: nextData.isAiGenerated });
+if (nextData.isAiGenerated || nextData.origin?._isRescued) setAiWaitTime(10);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Ghép Câu", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
+}
 if (data) {
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...data.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
 setGameState({ origin: data.origin, chunks: finalChunks, userAnswer: [], isCorrect: null, attempts: 0, isAiGenerated: data.isAiGenerated });
+if (data.isAiGenerated || data.origin?._isRescued) setAiWaitTime(10);
 setIsGenerating(false);
 } else {
 // [QA DEBUG] Điểm mù 1: Ép EndGame khi kẹt tải vòng mới
@@ -8399,7 +8626,8 @@ localRemoveFromRetryBag(gameState.origin.term);
 setGameState(prev => ({ ...prev, isCorrect: true }));
 setStats(s => ({ ...s, correct: s.correct + 1 }));
 if (inputMethod === 'type') setInputBuffer("");
-setResultTimer(3);
+const waitDelay = Math.max(3, aiWaitTime);
+setResultTimer(waitDelay);
 if (autoReadAnswer && onPlay) onPlay(gameState.origin.term);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
@@ -8409,7 +8637,8 @@ if (newAttempts >= 3) {
 localPushToRetryBag(gameState.origin);
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 logMistake(gameState.origin);
-setResultTimer(5);
+const waitDelay = Math.max(5, aiWaitTime);
+setResultTimer(waitDelay);
 if (onPlay) onPlay(gameState.origin.term);
 }
 else {
@@ -8452,7 +8681,8 @@ localRemoveFromRetryBag(gameState.origin.term);
 }
 setGameState(prev => ({ ...prev, isCorrect: true }));
 setStats(s => ({ ...s, correct: s.correct + 1 }));
-setResultTimer(3);
+const waitDelay = Math.max(3, aiWaitTime);
+setResultTimer(waitDelay);
 if (autoReadAnswer && onPlay) onPlay(gameState.origin.term);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
@@ -8460,7 +8690,8 @@ localPushToRetryBag(gameState.origin);
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: 3 }));
 setStats(s => ({ ...s, wrong: s.wrong + 1 }));
 logMistake(gameState.origin);
-setResultTimer(5);
+const waitDelay = Math.max(5, aiWaitTime);
+setResultTimer(waitDelay);
 if (onPlay) onPlay(gameState.origin.term);
 setTimeout(() => triggerAutoSave(), 150);
 }
@@ -8589,7 +8820,8 @@ if (isTimeout) safeShowToast("Hết giờ! (+1 Sai)", "error");
 else safeShowToast("Đã bỏ qua (+1 Sai)", "error");
 }
 logMistake(gameState.origin);
-setResultTimer(5);
+const waitDelay = Math.max(5, aiWaitTime);
+setResultTimer(waitDelay);
 if (onPlay) onPlay(gameState.origin.term);
 setTimeout(() => triggerAutoSave(), 150);
 };
@@ -9092,10 +9324,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.02
-// Last Updated: 2026-04-24 10:05
+// Block5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.03
+// Last Updated: 2026-05-14 16:47
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: [ĐẠI PHẪU THUẬT - ĐỢT 3.1] Cắm cáp cho Game Trắc nghiệm vào Lò Đúc 1 (forgeBaseCard). Tuân thủ nguyên tắc "Lắp Ráp" (2-Shot): Xin thẻ gốc từ Lò đúc -> Ném cho OptionsEngine tạo nhiễu. Xóa hàm fetchPureCard cũ. Tuân thủ Điều 3.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ đoạn code tự chế phao cứu sinh nội bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -9241,7 +9473,6 @@ const safeLevel = configRef.current?.level || level || 'level_4_discovery_basic'
 const safeTopic = configRef.current?.topic || '';
 const safeDataMode = configRef.current?.dataMode || dataMode || 'vocab';
 try {
-// [ĐẠI PHẪU THUẬT - ĐỢT 3.1] Thay thế fetchPureCard bằng Lò Đúc 1 (forgeBaseCard)
 const pureCard = await window.AiFactoryEngine.forgeBaseCard(safeLevel, lang, currentApiKey, safeTopic, historyPrompt, safeDataMode);
 card = pureCard;
 if (historyQueueRef.current) {
@@ -9273,23 +9504,14 @@ const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
 validCards = [...validCards, ...newFbs];
 }
 }
-if (validCards.length === 0) {
-validCards = [{ term: "Fallback Error", definition: "Lỗi tải dữ liệu", isAiGenerated: false }];
-}
 deckRef.current = window.Utils.shuffleArray(validCards);
 }
 card = deckRef.current.shift();
 }
-// 4. CỨU HỘ KHẨN CẤP (Từ FallbackDataEngine) nếu Bộ bài vẫn trống
+// 4. CỨU HỘ KHẨN CẤP ĐÃ ĐƯỢC CHUẨN HÓA (Gọi thẳng từ Tầng 2)
 if (!card) {
-if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
-const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 1);
-if (fbItems && fbItems.length > 0) card = fbItems[0];
-}
-if (!card) card = { term: "Fallback Error", definition: "Lỗi tải dữ liệu", isAiGenerated: false };
+return window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : { question: {term: "Fallback", definition: "Lỗi dữ liệu"}, options: [], isAiGenerated: false };
 }
 // LƯU LẠI VÀO LỊCH SỬ (Phục vụ chống lặp & mượn bẫy)
 if (historyQueueRef.current) {
@@ -9381,6 +9603,9 @@ const silentUtterance = new SpeechSynthesisUtterance('');
 silentUtterance.volume = 0;
 window.speechSynthesis.speak(silentUtterance);
 }
+if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
+window.fc_audioCtx.resume();
+}
 setIsGenerating(true);
 setListenPlayCount(0);
 // [LƯỚI LỌC THÉP]
@@ -9438,12 +9663,21 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 22000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+} else {
+await coordinatorRef.current.maintain();
+}
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Trắc nghiệm", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+}
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestionData(firstData);
 setIsGenerating(false);
 setAiCountdown(0);
-if (isUsingAI) setAiWaitTime(5);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
 isInitializingRef.current = false;
 if (firstData.isAiGenerated && showToast) {
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
@@ -9455,21 +9689,6 @@ setTimeout(() => triggerAutoSave(), 150);
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 onEndGame({ correct: score, wrong: wrongCount });
-}
-} else {
-await coordinatorRef.current.maintain();
-const qData = coordinatorRef.current.pop();
-if (isGameActiveRef.current && qData) {
-setCurrentQuestionData(qData);
-setIsGenerating(false);
-if (gameMode === 'listen') triggerAudio(qData, 600);
-isInitializingRef.current = false;
-setTimeout(() => triggerAutoSave(), 150);
-} else if (isGameActiveRef.current) {
-safeShowToast("Lỗi nghiêm trọng khi nạp dữ liệu offline.", "error");
-setIsGenerating(false); isInitializingRef.current = false;
-onEndGame({ correct: score, wrong: wrongCount });
-}
 }
 };
 // [DEEP DEBUG V2] - VÁ LỖI DOUBLE MOUNT RACE CONDITION BẰNG CỜ HASSTARTEDREF
@@ -9544,7 +9763,6 @@ onBack({ ...sessionData, timerMode, listenMode, hardMode, timeLimit });
 // CƠ CHẾ NẠP ĐẠN TỨC THỜI (SEAMLESS UX)
 const handleNext = async () => {
 if (!isGameActiveRef.current) return;
-const isUsingAI = (isAiMode && hardMode) || sourceMode === 'ai_pure';
 if (window.speechSynthesis && gameMode === 'listen') {
 const silentUtterance = new SpeechSynthesisUtterance('');
 silentUtterance.volume = 0;
@@ -9558,17 +9776,23 @@ try {
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const qData = coordinatorRef.current.pop();
 setCurrentQuestionData(qData);
-if (isUsingAI) setAiWaitTime(5);
+if (qData.isAiGenerated || qData._isRescued) setAiWaitTime(10);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const qData = coordinatorRef.current.pop();
+let qData = coordinatorRef.current.pop();
+if (!qData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Trắc nghiệm", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+}
 if (qData) {
 setCurrentQuestionData(qData); setIsGenerating(false);
-if (isUsingAI) setAiWaitTime(5);
+if (qData.isAiGenerated || qData._isRescued) setAiWaitTime(10);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
 } else {
 // [QA DEBUG] Điểm mù 1: Ép EndGame khi kẹt tải vòng mới
@@ -10761,10 +10985,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.02
-// Last Updated: 2026-04-24 11:34
+// Block5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.03
+// Last Updated: 2026-05-14 16:52
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank).
-// Cập nhật: [ĐẠI PHẪU THUẬT - ĐỢT 3.3] Cắm cáp cho Game Điền Từ (Fill Blank) vào Lò Đúc 3 (forgeContext). Xóa code tự gọi API cũ. Tuân thủ Điều 3.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ đoạn code tự chế phao cứu sinh nội bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -10785,6 +11009,7 @@ const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
 const [queueLength, setQueueLength] = React.useState(0); // Biến đếm số lượng câu hỏi đang chờ
+const [aiWaitTime, setAiWaitTime] = React.useState(0); // [NEW] AI Cooldown
 // UX Timer State cho màn hình hiển thị kết quả (Knowledge Panel)
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
@@ -10836,6 +11061,14 @@ setQueueLength(coordinatorRef.current.length());
 }, 500);
 return () => clearInterval(queueScanner);
 }, []);
+// ĐỒNG HỒ TẢN NHIỆT AI (AI COOLDOWN)
+React.useEffect(() => {
+let throttleTimer;
+if (aiWaitTime > 0 && checkStatus === 'idle') {
+throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => clearTimeout(throttleTimer);
+}, [aiWaitTime, checkStatus]);
 const handleSaveAndBack = () => {
 if (onBack) {
 onBack({ fillBlankState: latestStateRef.current });
@@ -10916,6 +11149,7 @@ if (isInitializingRef.current) { safeShowToast(`Đang nạp đạn AI...`, "info
 return pureResult;
 } catch (e) {
 console.warn("AI FillBlank PureMode Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc FillBlank AI", e);
 }
 }
 // 3. RÚT THẺ GỐC HOẶC TỪ KHO CỨU HỘ (Nếu Pure Mode sập hoặc đang ở Card Mode)
@@ -10930,7 +11164,7 @@ validCards = sentenceCards;
 if (validCards.length < 2 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = config?.level || level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
@@ -10945,18 +11179,12 @@ deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCar
 }
 baseCard = deckRef.current.shift();
 }
-// Cứu hộ khẩn cấp nếu bộ bài rỗng
+// 4. CỨU HỘ KHẨN CẤP ĐÃ ĐƯỢC CHUẨN HÓA (Gọi thẳng từ Tầng 2)
 if (!baseCard) {
-if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
-const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 1);
-if (fbItems && fbItems.length > 0) baseCard = fbItems[0];
-}
-if (!baseCard) {
+const fbResult = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('fillblank', safeLang, config?.level || level, config) : null;
+if (fbResult) return fbResult;
 baseCard = { term: "Learning languages is very fun.", definition: "Học ngôn ngữ rất thú vị. (Dự phòng)" };
-}
 }
 // [QA FIX V1.4] Sliding Window 400 & Sync LocalStorage cho Card Mode
 if (historyQueueRef.current && baseCard) {
@@ -10970,7 +11198,7 @@ try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.curren
 }
 const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(baseCard.term) : baseCard.term.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
-// 4. ĐỘNG CƠ ĐỤC LỖ CHUNG (MASKING ENGINE)
+// 5. ĐỘNG CƠ ĐỤC LỖ CHUNG (MASKING ENGINE)
 let maskedResult = null;
 if (isAiMode && currentApiKey && isSentence) {
 try {
@@ -10980,6 +11208,7 @@ const res = await Promise.race([aiMaskPromise, timeoutPromise]);
 maskedResult = { ...res, origin: baseCard, type: type, isAiGenerated: true };
 } catch (e) {
 console.warn("AI Masking failed, fallback to offline mask:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi AI ClozeEngine (Đục lỗ)", e);
 }
 }
 if (!maskedResult) {
@@ -11016,7 +11245,7 @@ safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ li�
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = config?.level || level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
@@ -11056,11 +11285,18 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 20000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Điền Từ", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('fillblank', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestion(firstData);
 setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 30);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 } else if (isGameActiveRef.current) {
 // [QA DEBUG] Điểm mù 1: Ép EndGame khi kẹt Loop do lỗi nạp đạn
@@ -11070,10 +11306,15 @@ if (onEndGame) onEndGame({ correct: score, wrong: wrongCount, time: time });
 }
 } else {
 await coordinatorRef.current.maintain();
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('fillblank', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && data) {
 setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 30);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else if (isGameActiveRef.current) {
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu offline. Buộc kết thúc.", "error");
 setIsGenerating(false); isInitializingRef.current = false;
@@ -11131,6 +11372,10 @@ if (aiTimerRef.current) clearInterval(aiTimerRef.current);
 }, []);
 const nextRound = () => {
 if (isGenerating) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 setPlayedCount(prev => prev + 1);
 setResultTimer(0);
 setIsResultPaused(false);
@@ -11138,14 +11383,22 @@ if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0);
 setTimeLeft(timeLimit || 30);
+if (nextData.isAiGenerated || nextData._isRescued) setAiWaitTime(10);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Điền Từ", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('fillblank', safeLang, config?.level || level, config) : null;
+}
 if (data) {
 setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false);
 setTimeLeft(timeLimit || 30);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -11238,7 +11491,7 @@ nextRound();
 const toggleResultPause = () => setIsResultPaused(p => !p);
 return {
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts, time, score, combo, playedCount, isFinished, isGenerating, aiCountdown, correctCount, wrongCount,
-resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
+resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength, aiWaitTime,
 checkAnswer, handleNext: nextRound, handleSkip, handleSaveAndBack
 };
 };
@@ -11754,10 +12007,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.02
-// Last Updated: 2026-04-24 11:37
+// Block5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.03
+// Last Updated: 2026-05-14 16:55
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
-// Cập nhật: [ĐẠI PHẪU THUẬT - ĐỢT 3.3] Cắm cáp cho Game Tìm Lỗi Sai (Spot Mistake) vào Lò Đúc 3 (forgeContext). Xóa code tự gọi API cũ. Tuân thủ Điều 3.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ đoạn code tự chế phao cứu sinh nội bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -11779,6 +12032,7 @@ const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
+const [aiWaitTime, setAiWaitTime] = React.useState(0); // [NEW] AI Cooldown
 // UX Timer State cho màn hình hiển thị kết quả
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
@@ -11824,6 +12078,14 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// ĐỒNG HỒ TẢN NHIỆT AI (AI COOLDOWN)
+React.useEffect(() => {
+let throttleTimer;
+if (aiWaitTime > 0 && stage === 'spot') {
+throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => clearTimeout(throttleTimer);
+}, [aiWaitTime, stage]);
 // ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER 500ms)
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
@@ -11918,6 +12180,7 @@ return result;
 }
 } catch (e) {
 console.warn("AI SpotMistake Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc SpotMistake AI", e);
 }
 }
 // 3. THẺ GỐC HOẶC KHO CỨU HỘ (Nếu AI Pure sập hoặc đang ở Card Mode)
@@ -11948,18 +12211,12 @@ deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCar
 }
 baseCard = deckRef.current.shift();
 }
-// Cứu hộ khẩn cấp nếu bộ bài rỗng
+// 4. CỨU HỘ KHẨN CẤP ĐÃ ĐƯỢC CHUẨN HÓA (Gọi thẳng từ Tầng 2)
 if (!baseCard) {
-if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const mode = 'sentence'; // Spot Mistake ưu tiên làm việc với câu văn
-const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
-const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 1);
-if (fbItems && fbItems.length > 0) baseCard = fbItems[0];
-}
-if (!baseCard) {
+const fbResult = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('spotmistake', safeLang, config?.level || level, config) : null;
+if (fbResult) return fbResult;
 baseCard = { term: "The childrens are playing in the park.", definition: "Bọn trẻ đang chơi trong công viên. (Dự phòng)" };
-}
 }
 // [QA FIX V1.4] Sliding Window 400 & Sync LocalStorage cho Card Mode
 if (historyQueueRef.current && baseCard) {
@@ -11973,7 +12230,7 @@ try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.curren
 }
 const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(baseCard.term) : baseCard.term.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
-// 4. CHẾ BIẾN LỖI SAI (DISTORTION ENGINE)
+// 5. CHẾ BIẾN LỖI SAI (DISTORTION ENGINE)
 if (isAiMode && currentApiKey && isSentence && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 try {
 const aiDistortPromise = window.GameAlgoEngine.DistortionEngine.ai_distort(baseCard.term, lang, type, currentApiKey, level, config?.topic);
@@ -11984,6 +12241,7 @@ return { ...parsedResult, origin: baseCard, isAiGenerated: true };
 }
 } catch(e) {
 console.warn("AI Distortion failed, fallback to offline:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi AI DistortionEngine (Bóp méo)", e);
 }
 }
 // Nếu AI Distortion sập hoặc Offline Mode
@@ -12105,10 +12363,18 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 20000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Tìm Lỗi Sai", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('spotmistake', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && firstData) {
 setupQuestion(firstData);
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
+setTimeLeft(timeLimit || 30);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 } else if (isGameActiveRef.current) {
 // [QA DEBUG] Ép EndGame thay vì treo Loading nếu Fallback cũng tạch
@@ -12118,10 +12384,16 @@ if (onEndGame) onEndGame({ correct: score, time: time, wrong: wrongCount });
 }
 } else {
 await coordinatorRef.current.maintain();
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('spotmistake', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && data) {
 setupQuestion(data);
 setIsGenerating(false); isInitializingRef.current = false;
+setTimeLeft(timeLimit || 30);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else if (isGameActiveRef.current) {
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu offline. Buộc kết thúc.", "error");
 setIsGenerating(false); isInitializingRef.current = false;
@@ -12182,18 +12454,30 @@ if (aiTimerRef.current) clearInterval(aiTimerRef.current);
 }, []);
 const nextRound = () => {
 if (isGenerating) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
 setupQuestion(nextData);
+if (nextData.isAiGenerated || nextData._isRescued) setAiWaitTime(10);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Tìm Lỗi Sai", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('spotmistake', safeLang, config?.level || level, config) : null;
+}
 if (data) {
 setupQuestion(data); setIsGenerating(false);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else {
 // [QA DEBUG] Ép EndGame khi cạn kiệt đạn thay vì treo
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
@@ -12306,6 +12590,7 @@ currentQuestion, chunks, stage, selectedIndex, inputBuffer, setInputBuffer,
 checkStatus, attempts, score, combo, playedCount, time, isFinished,
 isGenerating, aiCountdown, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
+aiWaitTime,
 handleSpotClick, handleCorrectionSubmit, handleSkip, nextRound, handleSaveAndBack
 };
 };
@@ -12717,10 +13002,10 @@ window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.04
-// Last Updated: 2026-04-24 14:40
+// Block5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.05
+// Last Updated: 2026-05-14 16:58
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [VÁ LỖI SYNTAX ERROR] Gộp toàn bộ tham số của hàm forgeMatrix lên cùng 1 dòng để tuân thủ tuyệt đối Điều 3.2 Hiến Pháp (Chống rớt dấu nháy đơn xuống đầu dòng).
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ đoạn code tự chế phao cứu sinh nội bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -12739,6 +13024,7 @@ const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
+const [aiWaitTime, setAiWaitTime] = React.useState(0); // [NEW] AI Cooldown
 // UX Timer State cho màn hình hiển thị kết quả
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
@@ -12781,6 +13067,14 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// ĐỒNG HỒ TẢN NHIỆT AI (AI COOLDOWN)
+React.useEffect(() => {
+let throttleTimer;
+if (aiWaitTime > 0 && checkStatus === 'idle') {
+throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => clearTimeout(throttleTimer);
+}, [aiWaitTime, checkStatus]);
 // ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER 500ms)
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
@@ -12883,6 +13177,7 @@ localStorage.setItem('fc_total_tokens', currentTotal + used);
 return { ...parsedResult, isAiGenerated: true };
 } catch (e) {
 console.warn("AI OddOneOut Pure Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc OddOneOut AI", e);
 }
 }
 // 2.5 HYBRID AI MODE (Thử thách AI với Thẻ gốc)
@@ -12944,6 +13239,7 @@ return { ...parsedResult, originCards: [poppedCard], isAiGenerated: true };
 }
 } catch (e) {
 console.warn("Hybrid AI OddOneOut Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse OddOneOut Hybrid AI", e);
 // Fallback: Nhét lại thẻ vào đầu bộ bài để cỗ máy offline xử lý
 if (poppedCard) deckRef.current.unshift(poppedCard);
 }
@@ -12967,8 +13263,12 @@ try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.curren
 return { ...offlineResult, isAiGenerated: false };
 }
 }
+// 4. CỨU HỘ KHẨN CẤP ĐÃ ĐƯỢC CHUẨN HÓA (Gọi thẳng từ Tầng 2)
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const fbResult = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('oddoneout', safeLang, config?.level || level, config) : null;
+if (fbResult) return fbResult;
 // Chốt chặn bảo vệ cuối cùng (Tránh Crash App)
-return { words: ["apple", "banana", "orange", "cat"], oddWord: "cat", explanation: "Cat là động vật (Dự phòng tuyệt đối).", isAiGenerated: false };
+return { words: ["apple", "banana", "orange", "cat"], oddWord: "cat", explanation: "Cat là động vật (Dự phòng tuyệt đối).", isAiGenerated: false, _isRescued: true };
 };
 const startNewGame = async () => {
 setIsGenerating(true);
@@ -13041,12 +13341,19 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 22000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Từ Khác Loại", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('oddoneout', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestion(firstData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 15);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 } else if (isGameActiveRef.current) {
 // [QA DEBUG] Ép EndGame khi sập nạp đạn
@@ -13056,12 +13363,17 @@ if (onEndGame) onEndGame({ correct: score, time: time, wrong: wrongCount });
 }
 } else {
 await coordinatorRef.current.maintain();
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('oddoneout', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && data) {
 setCurrentQuestion(data);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 15);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else if (isGameActiveRef.current) {
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu offline. Buộc kết thúc.", "error");
 setIsGenerating(false); isInitializingRef.current = false;
@@ -13118,6 +13430,10 @@ if (aiTimerRef.current) clearInterval(aiTimerRef.current);
 }, []);
 const nextRound = () => {
 if (isGenerating) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
@@ -13125,13 +13441,21 @@ const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setTimeLeft(timeLimit || 15);
+if (nextData.isAiGenerated || nextData._isRescued) setAiWaitTime(10);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Từ Khác Loại", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('oddoneout', safeLang, config?.level || level, config) : null;
+}
 if (data) {
 setCurrentQuestion(data); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 15);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else {
 // [QA DEBUG] Ép EndGame khi kẹt tải vòng mới
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
@@ -13222,7 +13546,7 @@ return {
 currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, isFinished,
 isGenerating, aiCountdown, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
-handleOptionClick, handleSkip, nextRound, handleSaveAndBack
+handleOptionClick, handleSkip, nextRound, handleSaveAndBack, aiWaitTime
 };
 };
 // --- 2. GAME WRAPPER ---
@@ -15094,10 +15418,10 @@ window.Block5_17_ImageQuizSetup = ImageQuizSetup;
 window.ImageQuizSetup = ImageQuizSetup;
 window.Block5_17_ImageQuizPlayScreen = ImageQuizPlayScreen;
 window.ImageQuizPlayScreen = ImageQuizPlayScreen;
-// Block5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.04
-// Last Updated: 2026-04-26 08:20
+// Block5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.05
+// Last Updated: 2026-05-14 17:01
 // Nhiệm vụ: Controller chính của Game Hình Ảnh (Image Quiz). Quản lý luồng AI, tạo nhiễu ảnh và liên kết UI.
-// Cập nhật: [A/B TESTING] Tích hợp Feature Flag bẻ ghi giữa luồng Lắp ráp 2-Shot (Cũ) và Đúc nguyên khối 1-Shot (Mới) cho game Đoán hình. Đọc cờ fc_debug_legacy_ai từ LocalStorage. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ đoạn code tự chế phao cứu sinh nội bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useImageQuizLogic = (cards, config, callbacks) => {
@@ -15269,6 +15593,7 @@ return { ...card, options: window.Utils.shuffleArray(optionsWithImages), origin:
 }
 } catch (e) {
 console.warn("1-Shot Image Quiz Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc ImageQuiz AI 1-Shot", e);
 }
 }
 // ==========================================
@@ -15280,7 +15605,7 @@ if (currentApiKey && window.AiFactoryEngine) {
 console.log("[ImageQuiz] Running Legacy 2-Shot AI");
 try {
 let historyPrompt = window.AiFactoryEngine.getHistoryPrompt(historyQueueRef.current);
-// [ĐẠI PHẪU THUẬT - ĐỢT 3.1] Cắm cáp Lò đúc 1 (forgeBaseCard)
+// Cắm cáp Lò đúc 1 (forgeBaseCard)
 const pureCard = await window.AiFactoryEngine.forgeBaseCard(level, lang, currentApiKey, config?.topic || '', historyPrompt, 'vocab');
 card = pureCard;
 if (historyQueueRef.current) {
@@ -15293,6 +15618,7 @@ onSaveToHarvest(level, { term: pureCard.term, definition: pureCard.definition })
 }
 } catch (e) {
 console.warn("PureMode Image Quiz Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc ImageQuiz AI Legacy", e);
 }
 }
 }
@@ -15321,7 +15647,13 @@ try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.curren
 }
 }
 }
-if (!card) card = { term: "Apple", definition: "Quả táo", isAiGenerated: false };
+// [MŨI NHỌN 2] NẾU THỰC SỰ RỖNG SAU MỌI NỖ LỰC, CẮM CÁP LẤY CỨU HỘ CHUẨN TỪ TẦNG 2
+if (!card) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+const fbResult = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('imagequiz', safeLang, config?.level || level, config) : null;
+if (fbResult) return fbResult;
+card = { term: "Apple", definition: "Quả táo", isAiGenerated: false };
+}
 // 4. NHỊP 2: SINH BẪY NHIỄU VÀ BƠM ẢNH (Cho Legacy hoặc Card Mode)
 let distractors = [];
 let isAiGenerated = card.isAiGenerated || false;
@@ -15343,7 +15675,10 @@ aiGeneratedCountRef.current += 1;
 safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`, "success");
 }
 }
-} catch (aiError) { console.warn("AI Image Distractor Fallback:", aiError.message); }
+} catch (aiError) {
+console.warn("AI Image Distractor Fallback:", aiError.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API tạo nhiễu ImageQuiz", aiError);
+}
 }
 if (distractors.length === 0 && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
 const cleanDeckForTraps = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
@@ -15376,7 +15711,7 @@ distractors = window.Utils.shuffleArray(distractors.slice(0, numOptions - 1));
 const correctPos = Math.floor(Math.random() * (distractors.length + 1));
 const finalOptions = [...distractors];
 finalOptions.splice(correctPos, 0, correctOpt);
-// [VÁ LỖI TÌM KIẾM ẢNH] BƠM LINK ẢNH VÀO TẤT CẢ OPTIONS VỚI IMAGE_KEYWORD CHÍNH XÁC
+// BƠM LINK ẢNH VÀO TẤT CẢ OPTIONS VỚI IMAGE_KEYWORD CHÍNH XÁC
 const optionsWithImages = finalOptions.map(opt => {
 let query = opt.text + " isolated clipart";
 if (opt.isCorrect && card.image_keyword) {
@@ -15449,27 +15784,40 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 22000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Đoán Hình", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('imagequiz', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestion(firstData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 15);
-if (isUsingAI && firstData.isAiGenerated) setAiWaitTime(5);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 } else if (isGameActiveRef.current) {
-safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu. Buộc kết thúc.", "error");
+safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu AI. Buộc kết thúc.", "error");
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 if (onEndGame) onEndGame({ correct: score, time: time, wrong: wrongCount });
 }
 } else {
 await coordinatorRef.current.maintain();
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Đoán Hình Offline", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Dữ liệu yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('imagequiz', safeLang, config?.level || level, config) : null;
+}
 if (isGameActiveRef.current && data) {
 setCurrentQuestion(data);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 15);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else if (isGameActiveRef.current) {
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu offline. Buộc kết thúc.", "error");
 setIsGenerating(false); isInitializingRef.current = false;
@@ -15526,6 +15874,10 @@ if (aiTimerRef.current) clearInterval(aiTimerRef.current);
 }, []);
 const nextRound = () => {
 if (isGenerating) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
@@ -15533,15 +15885,21 @@ const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setTimeLeft(timeLimit || 15);
-if ((isAiMode || sourceMode === 'ai_pure') && nextData.isAiGenerated) setAiWaitTime(5);
+if (nextData.isAiGenerated || nextData._isRescued) setAiWaitTime(10);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Đoán Hình", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('imagequiz', safeLang, config?.level || level, config) : null;
+}
 if (data) {
 setCurrentQuestion(data); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 15);
-if ((isAiMode || sourceMode === 'ai_pure') && data.isAiGenerated) setAiWaitTime(5);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -16032,10 +16390,10 @@ window.Block5_19_PronunciationSetup = PronunciationSetup;
 window.PronunciationSetup = PronunciationSetup;
 window.Block5_19_PronunciationPlayScreen = PronunciationPlayScreen;
 window.PronunciationPlayScreen = PronunciationPlayScreen;
-// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.05
-// Last Updated: 2026-05-03 12:19
+// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.06
+// Last Updated: 2026-05-14 17:05
 // Nhiệm vụ: Controller chính của Game Ngữ Âm (Pronunciation). Quản lý luồng AI, State và kết nối UI.
-// Cập nhật: [CHIẾN DỊCH GIẢI CỨU NGỮ ÂM] Mở rộng Sổ đen chứa cả 4 options. Tích hợp Anti-Streak chống lì đáp án. Nối cáp cứu hộ lấy dữ liệu động từ FallbackDataEngine thay vì Hardcode. Tuân thủ Điều 3 & 5.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ đoạn code tự chế phao cứu sinh nội bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3 & 5.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const usePronunciationLogic = (cards, config, callbacks) => {
@@ -16054,6 +16412,7 @@ const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
+const [aiWaitTime, setAiWaitTime] = React.useState(0); // [NEW] AI Cooldown
 // UX Timer State cho màn hình hiển thị kết quả
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
@@ -16096,6 +16455,14 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// ĐỒNG HỒ TẢN NHIỆT AI (AI COOLDOWN)
+React.useEffect(() => {
+let throttleTimer;
+if (aiWaitTime > 0 && checkStatus === 'idle') {
+throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => clearTimeout(throttleTimer);
+}, [aiWaitTime, checkStatus]);
 // ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER 500ms)
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
@@ -16211,37 +16578,20 @@ return result;
 }
 } catch (e) {
 console.warn("AI Pronunciation Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Pronunciation AI", e);
 }
 }
-// 3. FALLBACK KHẨN CẤP (ĐÃ NỐI CÁP)
-console.log("[Pronunciation Controller] Kích hoạt cáp cứu hộ khẩn cấp từ FallbackDataEngine");
-let fallbackItem = {
-term: "Lỗi mạng", definition: "Vui lòng kiểm tra lại kết nối.",
-options: window.Utils.shuffleArray([{ text: "Lỗi", isCorrect: true }, { text: "Mạng", isCorrect: false }, { text: "Yếu", isCorrect: false }, { text: "Kém", isCorrect: false }]),
-isAiGenerated: false
-};
-try {
-if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
+// 3. FALLBACK KHẨN CẤP CHUẨN HÓA (Gọi từ Tầng 2)
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const safeLevel = config?.level || level || 'en_level_1';
-const fbs = window.FallbackDataEngine.getFallbackData(safeLang, 'pronunciation', safeLevel, 1);
-if (fbs && fbs.length > 0) fallbackItem = fbs[0];
-}
-} catch(err) {
-console.warn("Fallback pull failed:", err);
-}
-// Áp dụng Anti-streak cho cả Fallback
-let fbOptions = [...fallbackItem.options];
-let fbCorrectIdx = fbOptions.findIndex(o => o.isCorrect);
-let fbShuffleCount = 0;
-const streakFb = streakTrackerRef.current;
-while (streakFb.length >= 2 && streakFb[0] === fbCorrectIdx && streakFb[1] === fbCorrectIdx && fbShuffleCount < 3) {
-fbOptions = window.Utils.shuffleArray([...fbOptions]);
-fbCorrectIdx = fbOptions.findIndex(o => o.isCorrect);
-fbShuffleCount++;
-}
-streakTrackerRef.current = [fbCorrectIdx, ...streakFb].slice(0, 2);
-return { ...fallbackItem, options: fbOptions };
+let fbResult = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', safeLang, config?.level || level, config) : null;
+if (fbResult && !fbResult.term?.includes("Lỗi hệ thống")) return fbResult;
+return {
+term: "cat, bat, tall, map",
+definition: "Từ tall có âm /ɔː/ khác với âm /æ/ ở các từ còn lại.",
+options: window.Utils.shuffleArray([{ text: "cat", isCorrect: false }, { text: "bat", isCorrect: false }, { text: "tall", isCorrect: true }, { text: "map", isCorrect: false }]),
+isAiGenerated: false,
+_isRescued: true
+};
 };
 const startNewGame = async () => {
 if (!localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
@@ -16279,12 +16629,26 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 22000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Ngữ Âm", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', safeLang, config?.level || level, config) : null;
+if (!firstData || firstData.term?.includes("Lỗi hệ thống")) {
+firstData = {
+term: "cat, bat, tall, map", definition: "Từ tall có âm /ɔː/ khác với âm /æ/.",
+options: window.Utils.shuffleArray([{ text: "cat", isCorrect: false }, { text: "bat", isCorrect: false }, { text: "tall", isCorrect: true }, { text: "map", isCorrect: false }]),
+isAiGenerated: false, _isRescued: true
+};
+}
+}
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestion(firstData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 20);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
 safeShowToast(`Hoàn tất! Bắt đầu luyện phát âm.`, "success");
 } else if (isGameActiveRef.current) {
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu AI. Buộc kết thúc.", "error");
@@ -16337,6 +16701,10 @@ if (aiTimerRef.current) clearInterval(aiTimerRef.current);
 }, []);
 const nextRound = () => {
 if (isGenerating) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
@@ -16344,13 +16712,28 @@ const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setTimeLeft(timeLimit || 20);
+if (nextData.isAiGenerated || nextData._isRescued) setAiWaitTime(10);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Ngữ Âm", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', safeLang, config?.level || level, config) : null;
+if (!data || data.term?.includes("Lỗi hệ thống")) {
+data = {
+term: "cat, bat, tall, map", definition: "Từ tall có âm /ɔː/ khác với âm /æ/.",
+options: window.Utils.shuffleArray([{ text: "cat", isCorrect: false }, { text: "bat", isCorrect: false }, { text: "tall", isCorrect: true }, { text: "map", isCorrect: false }]),
+isAiGenerated: false, _isRescued: true
+};
+}
+}
 if (data) {
 setCurrentQuestion(data); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 20);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -16433,7 +16816,8 @@ return {
 currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, isFinished,
 isGenerating, aiCountdown, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
-handleOptionClick, handleSkip, nextRound, handleSaveAndBack
+handleOptionClick, handleSkip, nextRound, handleSaveAndBack,
+aiWaitTime
 };
 };
 // --- 2. GAME WRAPPER ---
@@ -16857,10 +17241,10 @@ window.Block5_21_ListeningSetup = ListeningSetup;
 window.ListeningSetup = ListeningSetup;
 window.Block5_21_ListeningPlayScreen = ListeningPlayScreen;
 window.ListeningPlayScreen = ListeningPlayScreen;
-// Block 5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.02
-// Last Updated: 2026-04-24 11:45
+// Block 5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.03
+// Last Updated: 2026-05-14 17:09
 // Nhiệm vụ: Controller chính của Game Đôi Tai Vàng (Listening Comprehension). Quản lý luồng AI sinh kịch bản nghe, Audio Controller và kết nối UI.
-// Cập nhật: [ĐẠI PHẪU THUẬT - ĐỢT 3.3] Cắm cáp cho Game Đôi Tai Vàng (Listening) vào Lò Đúc 3 (forgeContext). Xóa code tự gọi API cũ. Tuân thủ Điều 3.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Hút mỡ đoạn code tự chế phao cứu sinh nội bộ. Trỏ cáp thẳng vào window.FallbackDataEngine.getGameReadyFallback. Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3 & 5.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useListeningLogic = (config, callbacks) => {
@@ -16879,7 +17263,7 @@ const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
-const [aiWaitTime, setAiWaitTime] = React.useState(0);
+const [aiWaitTime, setAiWaitTime] = React.useState(0); // [NEW] AI Cooldown
 // Audio Specific States
 const [isAudioPlaying, setIsAudioPlaying] = React.useState(false);
 const [playCount, setPlayCount] = React.useState(0);
@@ -16921,6 +17305,14 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// ĐỒNG HỒ TẢN NHIỆT AI (AI COOLDOWN)
+React.useEffect(() => {
+let throttleTimer;
+if (aiWaitTime > 0 && checkStatus === 'idle') {
+throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => clearTimeout(throttleTimer);
+}, [aiWaitTime, checkStatus]);
 // ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER 500ms)
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
@@ -17059,9 +17451,13 @@ return result;
 }
 } catch (e) {
 console.warn("AI Listening Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Listening AI", e);
 }
 }
-// 3. FALLBACK KHẨN CẤP CHỐNG CRASH
+// 3. FALLBACK KHẨN CẤP CHUẨN HÓA (Gọi từ Tầng 2)
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+let fbResult = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('listening', safeLang, config?.level || level, config) : null;
+if (fbResult && !fbResult.term?.includes("Lỗi hệ thống")) return fbResult;
 return {
 audioScript: "Hello, my name is John. I like to eat apples and play football in the park.",
 term: "What does John like to eat?",
@@ -17072,7 +17468,8 @@ options: window.Utils.shuffleArray([
 { text: "Grapes", isCorrect: false }
 ]),
 explanation: "Trong đoạn băng, người nói nói rằng: 'I like to eat apples'.",
-isAiGenerated: false
+isAiGenerated: false,
+_isRescued: true
 };
 };
 const startNewGame = async () => {
@@ -17109,12 +17506,24 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 25000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Đôi Tai Vàng", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('listening', safeLang, config?.level || level, config) : null;
+if (!firstData || firstData.term?.includes("Lỗi hệ thống")) {
+firstData = {
+audioScript: "Hello, my name is John. I like to eat apples and play football in the park.", term: "What does John like to eat?", options: window.Utils.shuffleArray([{ text: "Apples", isCorrect: true }, { text: "Bananas", isCorrect: false }, { text: "Oranges", isCorrect: false }, { text: "Grapes", isCorrect: false }]), explanation: "Trong đoạn băng, người nói nói rằng: 'I like to eat apples'.", isAiGenerated: false, _isRescued: true
+};
+}
+}
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestion(firstData);
 setSelectedOptionIndex(null); setCheckStatus('idle'); setAttempts(0); setPlayCount(0);
 setIsGenerating(false); setAiCountdown(0); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 45);
+if (firstData.isAiGenerated || firstData._isRescued) setAiWaitTime(10);
 safeShowToast(`Sẵn sàng! Hãy bấm nghe.`, "success");
 } else if (isGameActiveRef.current) {
 safeShowToast("Lỗi nghiêm trọng khi tải kịch bản AI. Buộc kết thúc.", "error");
@@ -17166,6 +17575,10 @@ if (aiTimerRef.current) clearInterval(aiTimerRef.current);
 }, []);
 const nextRound = () => {
 if (isGenerating) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 stopAudio();
 setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
@@ -17174,14 +17587,27 @@ const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData);
 setSelectedOptionIndex(null); setCheckStatus('idle'); setAttempts(0); setPlayCount(0);
 setTimeLeft(timeLimit || 45);
+if (nextData.isAiGenerated || nextData._isRescued) setAiWaitTime(10);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Đôi Tai Vàng", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('listening', safeLang, config?.level || level, config) : null;
+if (!data || data.term?.includes("Lỗi hệ thống")) {
+data = {
+audioScript: "Hello...", term: "What does John like to eat?", options: window.Utils.shuffleArray([{ text: "Apples", isCorrect: true }, { text: "Bananas", isCorrect: false }, { text: "Oranges", isCorrect: false }, { text: "Grapes", isCorrect: false }]), explanation: "Dữ liệu dự phòng do đứt kết nối mạng.", isAiGenerated: false, _isRescued: true
+};
+}
+}
 if (data) {
 setCurrentQuestion(data); setSelectedOptionIndex(null); setCheckStatus('idle'); setAttempts(0); setPlayCount(0);
 setIsGenerating(false); setTimeLeft(timeLimit || 45);
+if (data.isAiGenerated || data._isRescued) setAiWaitTime(10);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -17268,7 +17694,8 @@ currentQuestion, selectedOptionIndex, checkStatus, attempts, score, combo, playe
 isGenerating, aiCountdown, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
 handleOptionClick, handleSkip, nextRound, handleSaveAndBack,
-isAudioPlaying, playCount, handlePlayAudio, maxPlays
+isAudioPlaying, playCount, handlePlayAudio, maxPlays,
+aiWaitTime
 };
 };
 // --- 2. GAME WRAPPER ---
@@ -17702,10 +18129,10 @@ window.Block5_23_ReadingSetup = ReadingSetup;
 window.ReadingSetup = ReadingSetup;
 window.Block5_23_ReadingPlayScreen = ReadingPlayScreen;
 window.ReadingPlayScreen = ReadingPlayScreen;
-// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.02
-// Last Updated: 2026-04-24 13:09
+// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.03
+// Last Updated: 2026-05-14 17:15
 // Nhiệm vụ: Controller chính của Game Đọc Hiểu (Reading Passage). Quản lý kiến trúc Tổ kén (1 Đoạn văn - Nhiều câu hỏi con).
-// Cập nhật: [ĐẠI PHẪU THUẬT - ĐỢT 3.3] Cắm cáp cho Game Đọc Hiểu vào Lò Đúc 3 (forgeContext). Gỡ bỏ hoàn toàn logic tự build prompt và fetch API cũ. Tuân thủ Điều 3.
+// Cập nhật: [CHỐNG RÒ RỈ LOGIC TẦNG 5] Chuẩn hóa phao cứu sinh Tổ kén (Cocoon Fallback). Nâng AI Cooldown lên 10s. Bắt Deep-Log khi kẹt nạp đạn. Tuân thủ Điều 3 & Điều 5.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useReadingLogic = (config, callbacks) => {
@@ -17732,6 +18159,7 @@ const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [aiCountdown, setAiCountdown] = React.useState(0);
 const [queueLength, setQueueLength] = React.useState(0);
+const [aiWaitTime, setAiWaitTime] = React.useState(0); // [NEW] AI Cooldown
 // UX Timer State cho màn hình hiển thị kết quả
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
@@ -17769,6 +18197,14 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
+// ĐỒNG HỒ TẢN NHIỆT AI (AI COOLDOWN)
+React.useEffect(() => {
+let throttleTimer;
+if (aiWaitTime > 0 && checkStatus === 'idle') {
+throttleTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => clearTimeout(throttleTimer);
+}, [aiWaitTime, checkStatus]);
 // ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER)
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
@@ -17783,6 +18219,32 @@ if (onBack) {
 onBack({ readingState: latestStateRef.current });
 }
 };
+// ==================================================================================
+// HÀM CỨU HỘ KHẨN CẤP ĐẶC THÙ CHO TỔ KÉN (HARD FALLBACK INJECTION)
+// ==================================================================================
+const getEmergencyFallbackData = React.useCallback(() => {
+return {
+passage: "Education is a fundamental human right and essential for the exercise of all other human rights. It promotes individual freedom and empowerment and yields important development benefits. Yet millions of children and adults remain deprived of educational opportunities, many as a result of poverty.",
+questions: [
+{
+type: "mcq",
+questionText: "What does education promote according to the text?",
+options: window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(["Individual freedom", "Poverty", "Deprivation", "Nothing"]) : ["Individual freedom", "Poverty", "Deprivation", "Nothing"],
+correctAnswer: "Individual freedom",
+explanation: "The text states: 'It promotes individual freedom and empowerment'."
+},
+{
+type: "tfng",
+questionText: "Education is only essential for children.",
+options: ["True", "False", "Not Given"],
+correctAnswer: "False",
+explanation: "The text implies it is a 'fundamental human right', not just for children. It also mentions 'children and adults'."
+}
+],
+isAiGenerated: false,
+_isRescued: true
+};
+}, []);
 // ==================================================================================
 // [CORE] BỘ NÃO TÚI NHÁP TOÀN CỤC & LOG LỖI SAI
 // ==================================================================================
@@ -17825,7 +18287,7 @@ if (currentApiKey && window.AiFactoryEngine) {
 try {
 const historyPrompt = window.AiFactoryEngine.getHistoryPrompt(historyQueueRef.current);
 const safeLevel = config?.level || level || 'level_8_academic'; // Đọc hiểu mặc định mức độ cao
-// [ĐẠI PHẪU THUẬT - ĐỢT 3.3] Cắm cáp Lò đúc 3 (forgeContext)
+// Cắm cáp Lò đúc 3 (forgeContext)
 const parsed = await window.AiFactoryEngine.forgeContext('reading_passage', safeLevel, lang, currentApiKey, config?.topic, historyPrompt);
 if (parsed && parsed.passage && parsed.questions && parsed.questions.length > 0) {
 // Ghi nhớ đoạn văn vào trí nhớ AI (Lưu 100 ký tự đầu)
@@ -17855,29 +18317,11 @@ return result;
 }
 } catch (e) {
 console.warn("AI Reading Fallback:", e.message);
+if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Reading AI", e);
 }
 }
 // 3. FALLBACK KHẨN CẤP CHỐNG CRASH
-return {
-passage: "Education is a fundamental human right and essential for the exercise of all other human rights. It promotes individual freedom and empowerment and yields important development benefits. Yet millions of children and adults remain deprived of educational opportunities, many as a result of poverty.",
-questions: [
-{
-type: "mcq",
-questionText: "What does education promote according to the text?",
-options: window.Utils.shuffleArray(["Individual freedom", "Poverty", "Deprivation", "Nothing"]),
-correctAnswer: "Individual freedom",
-explanation: "The text states: 'It promotes individual freedom and empowerment'."
-},
-{
-type: "tfng",
-questionText: "Education is only essential for children.",
-options: ["True", "False", "Not Given"],
-correctAnswer: "False",
-explanation: "The text implies it is a 'fundamental human right', not just for children. It also mentions 'children and adults'."
-}
-],
-isAiGenerated: false
-};
+return getEmergencyFallbackData();
 };
 // ==================================================================================
 // KHỞI TẠO BÀI THI & CHUYỂN TỔ KÉN
@@ -17894,6 +18338,9 @@ setIsGenerating(false);
 setAiCountdown(0);
 isInitializingRef.current = false;
 setTimeLeft(timeLimit || 300); // 5 phút mặc định cho 1 đoạn
+if (data.isAiGenerated || data._isRescued) {
+setAiWaitTime(10);
+}
 };
 const startNewGame = async () => {
 if (!localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
@@ -17923,7 +18370,12 @@ const maintainPromise = coordinatorRef.current.maintain();
 const timeoutPromise = new Promise(r => setTimeout(r, 28000));
 await Promise.race([maintainPromise, timeoutPromise]);
 if (aiTimerRef.current) clearInterval(aiTimerRef.current);
-const firstData = coordinatorRef.current.pop();
+let firstData = coordinatorRef.current.pop();
+if (!firstData) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Đọc Hiểu", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+firstData = getEmergencyFallbackData();
+}
 if (isGameActiveRef.current && firstData) {
 applyCocoonData(firstData);
 safeShowToast(`Tổ kén đã sẵn sàng! Chúc bạn đọc tốt.`, "success");
@@ -17981,6 +18433,10 @@ if (aiTimerRef.current) clearInterval(aiTimerRef.current);
 // ==================================================================================
 const nextRound = () => {
 if (isGenerating || !passageData) return;
+if (aiWaitTime > 0) {
+safeShowToast(`Hệ thống AI đang đúc đạn. Vui lòng chờ ${aiWaitTime}s.`, "warning");
+return;
+}
 setResultTimer(0); setIsResultPaused(false);
 const nextSubIdx = subIndex + 1;
 // NẾU VẪN CÒN CÂU HỎI CON TRONG TỔ KÉN
@@ -18006,7 +18462,12 @@ applyCocoonData(nextCocoon);
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển đoạn văn", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+data = getEmergencyFallbackData();
+}
 if (data) {
 applyCocoonData(data);
 } else {
@@ -18100,7 +18561,12 @@ applyCocoonData(nextCocoon);
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
 if (isGameActiveRef.current) {
-const data = coordinatorRef.current.pop();
+let data = coordinatorRef.current.pop();
+if (!data) {
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển đoạn văn", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
+data = getEmergencyFallbackData();
+}
 if (data) { applyCocoonData(data); }
 else {
 setIsGenerating(false);
@@ -18111,7 +18577,7 @@ if (onEndGame) onEndGame({ correct: latestStateRef.current.correctCount, time: l
 }
 setTimeout(() => triggerAutoSave(), 150);
 }
-}, [timeLeft, timerMode, checkStatus, passageData, subIndex, safeShowToast, triggerAutoSave]);
+}, [timeLeft, timerMode, checkStatus, passageData, subIndex, safeShowToast, triggerAutoSave, getEmergencyFallbackData]);
 // CHỐNG RACE CONDITION CHO AUTO-NEXT
 React.useEffect(() => {
 if ((checkStatus === 'correct' || checkStatus === 'failed') && resultTimer > 0 && !isResultPaused && !isGenerating) {
@@ -18128,6 +18594,7 @@ selectedOptionIndex, inputBuffer, setInputBuffer, typeInputRef,
 checkStatus, attempts, score, combo, playedCount, time, isFinished,
 isGenerating, aiCountdown, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
+aiWaitTime,
 handleOptionClick, handleFillSubmit, handleSkip, nextRound, handleSaveAndBack
 };
 };
@@ -21302,10 +21769,10 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.04
-// Last Updated: 2026-05-14 13:46
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.05
+// Last Updated: 2026-05-14 14:27
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [HỘP ĐEN SỰ KIỆN - BƯỚC 2] Xây dựng bộ Đánh chặn (Toast Interceptor) bọc quanh `globalShowToast`. Tự động tóm gọn các thông báo lỗi (Error/Warning) và lưu vào `systemLogs` của Tầng 6. Nối cáp truyền Log xuống SettingsModal. Tuân thủ Điều 3.
+// Cập nhật: [HỘP ĐEN SỰ KIỆN - MŨI NHỌN 1] Bơm API toàn cục `window.logSystemEvent` (Deep-Logging) để bắt các lỗi kỹ thuật sâu bên trong Lò đúc AI và QueueEngine mà không làm phiền người dùng bằng Toast. Tuân thủ Điều 3.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -21411,16 +21878,35 @@ return [newLog, ...prev].slice(0, 50); // Giữ tối đa 50 log mới nhất đ
 });
 }
 }, [coreState.setToast, coreState.setSystemLogs]);
+// [HỘP ĐEN SỰ KIỆN - MŨI NHỌN 1] Hệ thống Ghi log chuyên sâu (Deep-Logging)
+const handleSystemEventLog = React.useCallback((message, errorDetail = null) => {
+let detailStr = "";
+if (errorDetail) {
+detailStr = typeof errorDetail === 'object' ? (errorDetail.message || JSON.stringify(errorDetail)) : String(errorDetail);
+}
+const fullMessage = detailStr ? `${message} | Detail: ${detailStr}` : message;
+coreState.setSystemLogs(prev => {
+const newLog = {
+id: Date.now() + Math.random(), // Thêm random để tránh trùng ID nếu hệ thống xả lỗi liên tục
+message: fullMessage,
+type: 'error', // System log chủ yếu là báo lỗi kỹ thuật
+timeStr: new Date().toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + new Date().toLocaleDateString('vi-VN')
+};
+return [newLog, ...prev].slice(0, 50);
+});
+// CHÚ Ý: Hàm này cố tình KHÔNG gọi setToast để âm thầm ghi nhận lỗi mà không làm phiền trải nghiệm chơi game.
+}, [coreState.setSystemLogs]);
 // Trích xuất Hooks với Core đã được cấy ghép Interceptor
 const coreWithInterceptor = { ...coreState, setToast: handleGlobalToast };
 const useAppLogic = window.Block6_4_useAppLogic || window.useAppLogic;
 const useAiLogic = window.Block6_2_useAiLogic || window.useAiLogic;
 const logic = useAppLogic ? useAppLogic(coreWithInterceptor) : {};
 const ai = (useAiLogic && logic.actions) ? useAiLogic(coreWithInterceptor, coreStateRef, logic.actions) : {};
-// Gán quyền quản lý Global Toast cho bộ Đánh chặn
+// Gán quyền quản lý Global Toast và System Log cho Window
 React.useEffect(() => {
 window.globalShowToast = handleGlobalToast;
-}, [handleGlobalToast]);
+window.logSystemEvent = handleSystemEventLog; // Bơm hàm Deep-Logging ra Global
+}, [handleGlobalToast, handleSystemEventLog]);
 // Khởi tạo hàm xử lý Smart Bookmark
 const handleSmartBookmark = React.useCallback((data) => {
 if (!data) return;
