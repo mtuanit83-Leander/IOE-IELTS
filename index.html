@@ -4481,10 +4481,10 @@ Thứ tự từng nét
 };
 // EXPORT GLOBAL
 window.HanziWriterModal = HanziWriterModal;
-// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.03
-// Last Updated: 2026-05-03 08:20
-// Nhiệm vụ: Chứa giao diện Cài đặt toàn hệ thống (Giao diện, Phông chữ, Âm thanh, Auto-play, SRS).
-// Cập nhật: [VÁ LỖI BÓNG MA TOKEN] Bổ sung logic đọc trực tiếp fc_total_tokens từ localStorage mỗi khi mở Modal để đồng bộ số Token tiêu thụ từ các tác vụ chạy ngầm (Mock Test). Sửa lỗi trỏ nhầm key hiển thị API Key. Tuân thủ Điều 3.
+// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.04
+// Last Updated: 2026-05-14 13:48
+// Nhiệm vụ: Chứa giao diện Cài đặt toàn hệ thống (Giao diện, Phông chữ, Âm thanh, Auto-play, SRS, System Logs).
+// Cập nhật: [HỘP ĐEN SỰ KIỆN - BƯỚC 3] Thiết kế UI dạng Accordion hiển thị danh sách các Lỗi/Cảnh báo hệ thống (systemLogs). Bổ sung nút "Xóa nhật ký" để dọn dẹp RAM. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 // Helper Components cho SRS Settings
 const NumberUnitInput = ({ value, onChange, label }) => (
@@ -4554,13 +4554,14 @@ const SettingSlider = ({ label, val, min, max, step, onChange, suffix = '', main
 <input type="range" min={min} max={max} step={step} value={val} onChange={(e) => onChange(parseFloat(e.target.value))} className={`w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-${mainColor}-500`} />
 </div>
 );
-const SettingsModal = ({ isOpen, onClose, onApply, initialSettings, voices, testSpeak, onResetData, currentLang, t, uiLang, setUiLang, mainColor, onDone, onUpdate, totalTokens, onResetTokens }) => {
+const SettingsModal = ({ isOpen, onClose, onApply, initialSettings, voices, testSpeak, onResetData, currentLang, t, uiLang, setUiLang, mainColor, onDone, onUpdate, totalTokens, onResetTokens, systemLogs, onClearLogs }) => {
 const [originalSettings] = React.useState(initialSettings);
 const [localSettings, setLocalSettings] = React.useState(initialSettings);
 const [position, setPosition] = React.useState({ x: 0, y: 0 });
 const dragRef = React.useRef({ isDragging: false, startX: 0, startY: 0, initialX: 0, initialY: 0 });
 const [keyStats, setKeyStats] = React.useState({ count: 0, active: 'Chưa có' });
 const [localTotalTokens, setLocalTotalTokens] = React.useState(totalTokens || 0);
+const [showLogs, setShowLogs] = React.useState(false); // Trạng thái mở/đóng hộp đen sự kiện
 const safeVoices = Array.isArray(voices) ? voices : [];
 const filteredVoices = safeVoices.filter(v => {
 const voiceLang = v.lang.replace('_', '-').toLowerCase();
@@ -4580,10 +4581,10 @@ React.useEffect(() => {
 if (isOpen) {
 setPosition({ x: 0, y: 0 });
 const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
-// [FIX] Sửa lại tên key lấy API Key đang dùng để hiển thị chính xác
+// Sửa lại tên key lấy API Key đang dùng để hiển thị chính xác
 const currentKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '';
 setKeyStats({ count: pool?.length || 0, active: currentKey ? `...${currentKey.slice(-5)}` : 'Chưa có' });
-// [VÁ LỖI BÓNG MA TOKEN] Đồng bộ cưỡng bức từ ổ cứng lên State khi mở Modal
+// Đồng bộ cưỡng bức từ ổ cứng lên State khi mở Modal
 const savedTokens = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 setLocalTotalTokens(savedTokens);
 }
@@ -4721,6 +4722,41 @@ title={t('ttTestVoice')}
 <window.Icons.RotateCcw size={14} />
 </button>
 </div>
+</div>
+{/* [HỘP ĐEN SỰ KIỆN] UI Hiển thị Log */}
+<div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+<button onClick={() => setShowLogs(!showLogs)} className="w-full bg-gray-50 p-3 flex justify-between items-center hover:bg-gray-100 transition-colors">
+<div className="flex items-center gap-2 text-gray-700 font-bold text-sm">
+<window.Icons.AlertCircle size={16} className="text-gray-500"/> Nhật ký hệ thống ({systemLogs?.length || 0})
+</div>
+<window.Icons.ChevronDown size={16} className={`text-gray-400 transition-transform ${showLogs ? 'rotate-180' : ''}`} />
+</button>
+{showLogs && (
+<div className="p-3 bg-white border-t border-gray-200">
+{systemLogs && systemLogs.length > 0 ? (
+<div>
+<div className="max-h-48 overflow-y-auto custom-scrollbar space-y-2 mb-3 pr-1">
+{systemLogs.map(log => (
+<div key={log.id} className={`p-2 rounded border text-xs flex gap-2 items-start ${log.type === 'error' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-orange-50 border-orange-100 text-orange-700'}`}>
+<div className="mt-0.5 shrink-0">
+{log.type === 'error' ? <window.Icons.X size={12} className="text-red-500" /> : <window.Icons.AlertCircle size={12} className="text-orange-500" />}
+</div>
+<div className="flex flex-col gap-0.5">
+<span className="font-mono text-[9px] opacity-70">{log.timeStr}</span>
+<span className="font-medium break-words leading-tight">{log.message}</span>
+</div>
+</div>
+))}
+</div>
+<button onClick={onClearLogs} className="w-full py-2 bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1">
+<window.Icons.Trash2 size={14} /> Xóa nhật ký
+</button>
+</div>
+) : (
+<div className="text-center py-4 text-xs text-gray-400 italic">Nhật ký trống. Hệ thống đang hoạt động ổn định.</div>
+)}
+</div>
+)}
 </div>
 <div className="mt-4 space-y-2">
 <button onClick={handleResetAIBank} className={`w-full p-3 text-${mainColor}-600 border border-${mainColor}-200 rounded flex items-center justify-center gap-2 hover:bg-${mainColor}-50 transition-colors`} title="Xóa bộ nhớ đệm để AI ra đề lại từ đầu">
@@ -18129,11 +18165,11 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.01
-// Last Updated: 2026-04-19 08:58
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.02
+// Last Updated: 2026-05-14 13:35
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật: [EXAM POOL MANAGER] Bổ sung State `showExamPoolManager` để điều khiển hiển thị Modal Quản trị Ngân hàng đề thi. Tuân thủ Điều 3.
+// Cập nhật: [HỘP ĐEN SỰ KIỆN - BƯỚC 1] Bổ sung State `systemLogs` và cơ chế đồng bộ ổ cứng để lưu trữ nhật ký lỗi hệ thống. Tuân thủ Điều 3.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -18188,6 +18224,8 @@ const [studySourceName, setStudySourceName] = useState(null);
 const [isDbReady, setIsDbReady] = useState(false);
 const [aiHarvestPool, setAiHarvestPool] = useState({});
 const [globalRetryBag, setGlobalRetryBag] = useState({});
+// [NEW v1.02] SYSTEM EVENT LOGS STATE
+const [systemLogs, setSystemLogs] = useState(() => window.Utils?.safeJsonParse('fc_system_logs', []) || []);
 // Config & Token
 const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '');
 const [totalTokens, setTotalTokens] = useState(() => parseInt(localStorage.getItem('fc_total_tokens') || '0', 10));
@@ -18265,7 +18303,7 @@ setIsDbReady(true); // Cầu dao an toàn: vẫn cho app chạy
 return;
 }
 try {
-// 1. Mở kết nối và thực hiện Migration nếu cần
+// 1. M mở kết nối và thực hiện Migration nếu cần
 await window.FcDB.init();
 // 2. Nạp dữ liệu Kho AI
 const pool = await window.FcDB.get('fc_ai_harvest_pool');
@@ -18365,6 +18403,10 @@ useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.API_KEY, apiKey); }, [apiKey]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_game_sessions', globalGameSessions); }, [globalGameSessions]);
+// [NEW v1.02] SYSTEM LOGS PERSISTENCE
+useEffect(() => {
+window.Utils?.safeLocalStorageSet('fc_system_logs', systemLogs);
+}, [systemLogs]);
 // [NEW v1.8] LƯU TRỮ TRÊN INDEXEDDB (ASYNC)
 useEffect(() => {
 if (isDbReady && window.FcDB) window.FcDB.set('fc_ai_harvest_pool', aiHarvestPool);
@@ -18403,8 +18445,8 @@ if (window.globalShowToast) window.globalShowToast(`Đã cập nhật ${keys.len
 return {
 // State
 viewMode, lang, uiLang, cards, notebook, mastered, masteredCount: mastered.length, isStudyingNotebook,
-incorrectList, studySourceName, apiKey, totalTokens, aiHarvestPool, globalRetryBag,
-isDbReady, // [NEW v1.8] Báo cáo tình trạng DB cho App Component
+incorrectList, studySourceName, apiKey, totalTokens, aiHarvestPool, globalRetryBag, systemLogs,
+isDbReady, // Báo cáo tình trạng DB cho App Component
 // Multi-dimensional State
 dataMode, setDataMode,
 currentLevel, setCurrentLevel,
@@ -18418,7 +18460,7 @@ currentCardIndex, isFlipped, isAutoPlaying, isShuffle, isAutoMode, isFlipLocked,
 isMuted, isGamePlaying, settings, voices, DEFAULT_SETTINGS, isContentHidden, isBatterySaverMode, gameSessions,
 // Setters
 setViewMode, setLang, setUiLang, setCards, setNotebook, setMastered, setIsStudyingNotebook,
-setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag,
+setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag, setSystemLogs,
 setShowSettings, setShowApiKeyModal, setShowNotebook, setShowManual, setShowLinkManager, setShowWordSelect, setShowMastered, setShowIncorrectModal,
 setShowAiChat, setShowHelp, setShowSaveLoadModal, setShowHanziSelector, setShowHanziWriter, setCurrentHanziChar, setShowExamPoolManager,
 setWordSelectTarget, setToast, setIsAiLoading, setIsAiModeLearn, setIsAiModeGame, setResetPending,
@@ -21260,10 +21302,10 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.03
-// Last Updated: 2026-05-02 23:15
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.04
+// Last Updated: 2026-05-14 13:46
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [TOKEN COUNTER RESET] Đi dây tín hiệu `onResetTokens` vào SettingsModal, móc nối thẳng với State `setTotalTokens` của Tầng 6. Tuân thủ Điều 3.
+// Cập nhật: [HỘP ĐEN SỰ KIỆN - BƯỚC 2] Xây dựng bộ Đánh chặn (Toast Interceptor) bọc quanh `globalShowToast`. Tự động tóm gọn các thông báo lỗi (Error/Warning) và lưu vào `systemLogs` của Tầng 6. Nối cáp truyền Log xuống SettingsModal. Tuân thủ Điều 3.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -21343,23 +21385,42 @@ return React.createElement(MainAppContent);
 };
 const MainAppContent = () => {
 // ============================================================================
-// 1. GỌI TẤT CẢ HOOKS TRƯỚC TIÊN (TUYỆT ĐỐI KHÔNG ĐƯỢC CÓ EARLY RETURN Ở TRÊN)
+// 1. GỌI HOOKS VÀ KHỞI TẠO BỘ ĐÁNH CHẶN (INTERCEPTOR)
 // ============================================================================
-const useAppLogic = window.Block6_4_useAppLogic || window.useAppLogic;
-const useAiLogic = window.Block6_2_useAiLogic || window.useAiLogic;
 const coreState = window.Block6_1_useCoreState();
 const coreStateRef = React.useRef(coreState);
 React.useEffect(() => {
 coreStateRef.current = coreState;
 }, [coreState]);
-// Khởi tạo các Custom Hooks logic (luôn luôn được gọi, dù isDbReady là false)
-// [VÁ LỖI V1.05] Đã gỡ bỏ dòng const dataLogic = ... để chống khởi tạo kép (Memory Leak)
-const logic = useAppLogic ? useAppLogic(coreState) : {};
-const ai = (useAiLogic && logic.actions) ? useAiLogic(coreState, coreStateRef, logic.actions) : {};
-// Gán Global Toast
+// [HỘP ĐEN SỰ KIỆN] Bộ Đánh chặn Toast (Toast Interceptor)
+const handleGlobalToast = React.useCallback((msg, type = 'success') => {
+const messageText = typeof msg === 'string' ? msg : (msg?.text || msg?.message || 'Thông báo');
+const messageType = (typeof msg === 'object' && msg?.type) ? msg.type : type;
+// 1. Hiển thị UI Toast nguyên bản
+coreState.setToast({ text: messageText, type: messageType, id: Date.now() });
+// 2. Bắt lỗi và ghi vào "Hộp đen" (System Logs)
+if (messageType === 'error' || messageType === 'warning') {
+coreState.setSystemLogs(prev => {
+const newLog = {
+id: Date.now(),
+message: messageText,
+type: messageType,
+timeStr: new Date().toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + new Date().toLocaleDateString('vi-VN')
+};
+return [newLog, ...prev].slice(0, 50); // Giữ tối đa 50 log mới nhất để không tràn RAM
+});
+}
+}, [coreState.setToast, coreState.setSystemLogs]);
+// Trích xuất Hooks với Core đã được cấy ghép Interceptor
+const coreWithInterceptor = { ...coreState, setToast: handleGlobalToast };
+const useAppLogic = window.Block6_4_useAppLogic || window.useAppLogic;
+const useAiLogic = window.Block6_2_useAiLogic || window.useAiLogic;
+const logic = useAppLogic ? useAppLogic(coreWithInterceptor) : {};
+const ai = (useAiLogic && logic.actions) ? useAiLogic(coreWithInterceptor, coreStateRef, logic.actions) : {};
+// Gán quyền quản lý Global Toast cho bộ Đánh chặn
 React.useEffect(() => {
-window.globalShowToast = coreState.setToast;
-}, []);
+window.globalShowToast = handleGlobalToast;
+}, [handleGlobalToast]);
 // Khởi tạo hàm xử lý Smart Bookmark
 const handleSmartBookmark = React.useCallback((data) => {
 if (!data) return;
@@ -21416,7 +21477,7 @@ lang: coreState.lang,
 onPlay: logic.actions?.speak,
 onBookmark: handleSmartBookmark,
 notebook: coreState.notebook,
-showToast: coreState.setToast,
+showToast: handleGlobalToast, // NỐI CÁP ĐÁNH CHẶN TOAST XUỐNG GAME VIEW
 onLogWrong: logic.actions?.handleLogWrong,
 onOpenIncorrect: logic.actions?.handleOpenIncorrect,
 globalRetryBag: coreState.globalRetryBag,
@@ -21558,7 +21619,9 @@ onDone: () => coreState.setShowSettings(false),
 totalTokens: coreState.totalTokens,
 onResetTokens: () => coreState.setTotalTokens(0),
 voices: coreState.voices,
-testSpeak: logic.actions?.speak
+testSpeak: logic.actions?.speak,
+systemLogs: coreState.systemLogs,             // NỐI CÁP LOG XUỐNG SETTINGS
+onClearLogs: () => coreState.setSystemLogs([]) // HÀM XÓA LOG
 }),
 coreState.showApiKeyModal && renderComponent('ApiKeyModal', {
 isOpen: true,
