@@ -9487,10 +9487,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.08
-// Last Updated: 2026-05-15 18:42
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.09
+// Last Updated: 2026-05-15 22:43
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: [VÁ LỖI LOGIC PHANH AI] Giải phóng aiWaitTime khỏi Deadlock (đếm liên tục khi chuyển câu). Bịt lỗ hổng Auto-Next bằng cách ép thời gian chờ giải thích phải >= thời gian làm nguội còn lại. Tuân thủ Điều 3.
+// Cập nhật: [CHUẨN HÓA ANTI-STREAK - PHASE 2] Cấy ghép thuật toán "Trộn có trí nhớ" để chống hiện tượng ảo giác cụm (đáp án đúng liên tục rơi vào B hoặc D). Bẻ gãy chuỗi nếu lặp lại quá 2 lần. Tuân thủ Điều 3.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -9538,6 +9538,8 @@ const stateRef = React.useRef({});
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
 const configRef = React.useRef(config);
+// [CHUẨN HÓA ANTI-STREAK] Trí nhớ lưu vết vị trí đáp án đúng 2 lượt gần nhất
+const streakTrackerRef = React.useRef([]);
 // Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
@@ -9571,7 +9573,6 @@ setQueueLength(coordinatorRef.current.length());
 return () => clearInterval(queueScanner);
 }, []);
 // [VÁ LỖI DEADLOCK] ĐỒNG HỒ LÀM NGUỘI UI (UI COOLDOWN TIMER)
-// Đã loại bỏ isChecking khỏi màng lọc để đồng hồ luôn chạy khi vào câu mới
 React.useEffect(() => {
 let cdTimer = null;
 if (aiWaitTime > 0 && !isPaused && !isGenerating && !isResultPaused) {
@@ -9579,6 +9580,33 @@ cdTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
 }
 return () => { if (cdTimer) clearTimeout(cdTimer); };
 }, [aiWaitTime, isPaused, isGenerating, isResultPaused]);
+// ==================================================================================
+// HÀM TIỆN ÍCH ANTI-STREAK (BẺ GÃY CHUỖI ĐÁP ÁN TRÙNG LẶP)
+// ==================================================================================
+const applyAntiStreak = (data) => {
+if (data && Array.isArray(data.options)) {
+const options = data.options;
+let correctIdx = options.findIndex(o => o.isCorrect === true || String(o.isCorrect).toLowerCase() === 'true');
+if (correctIdx !== -1 && options.length > 1) {
+const streak = streakTrackerRef.current;
+let shuffleCount = 0;
+while (streak.length >= 2 && streak[0] === correctIdx && streak[1] === correctIdx && shuffleCount < 5) {
+let swapIdx = Math.floor(Math.random() * options.length);
+while (swapIdx === correctIdx) {
+swapIdx = Math.floor(Math.random() * options.length);
+}
+const temp = options[correctIdx];
+options[correctIdx] = options[swapIdx];
+options[swapIdx] = temp;
+correctIdx = swapIdx;
+shuffleCount++;
+console.log(`[Anti-Streak] Quiz Game: Bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
+}
+streakTrackerRef.current = [correctIdx, ...streak].slice(0, 2);
+}
+}
+return data;
+};
 // ==================================================================================
 // BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
 // ==================================================================================
@@ -9748,6 +9776,7 @@ setIsGenerating(true);
 setListenPlayCount(0);
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
+streakTrackerRef.current = []; // Reset trí nhớ vị trí
 let currentDeck = sourceMode === 'card' ? [...(cardsRef.current || [])] : [];
 let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -9803,7 +9832,7 @@ const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
 }
 if (isGameActiveRef.current && firstData) {
-setCurrentQuestionData(firstData);
+setCurrentQuestionData(applyAntiStreak(firstData));
 setIsGenerating(false);
 isInitializingRef.current = false;
 // Kích hoạt UI Cooldown
@@ -9832,6 +9861,7 @@ setGameMode(savedState.gameMode || (listenMode ? 'listen' : 'read'));
 setScore(savedState.stats?.correct || savedState.score || 0);
 setStreak(savedState.streak || 0);
 setWrongCount(savedState.stats?.wrong || savedState.wrongCount || 0);
+// Phục hồi nguyên trạng, không apply Anti-Streak để giữ đúng phiên cũ
 setCurrentQuestionData(savedState.currentQuestionData);
 setTimeLeft(savedState.timeLeft || timeLimit);
 if (savedState.quizState?.listenPlayCount !== undefined) setListenPlayCount(savedState.quizState.listenPlayCount);
@@ -9902,7 +9932,7 @@ setResultTimer(0); setIsResultPaused(false);
 try {
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const qData = coordinatorRef.current.pop();
-setCurrentQuestionData(qData);
+setCurrentQuestionData(applyAntiStreak(qData));
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
 // Kích hoạt UI Cooldown cho vòng mới
 let currentCooldown = 0;
@@ -9924,7 +9954,7 @@ const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
 }
 if (qData) {
-setCurrentQuestionData(qData); setIsGenerating(false);
+setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
 // Kích hoạt UI Cooldown
 let currentCooldown = 0;
@@ -12999,10 +13029,10 @@ window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.06
-// Last Updated: 2026-05-15 02:51
+// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.07
+// Last Updated: 2026-05-15 22:55
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [CHIẾN DỊCH TẬP TRUNG HÓA LOGIC] Hút mỡ triệt để các State rác (aiCountdown, aiWaitTime). Cắm cáp thẳng vào Máy Trộn Đề Vạn Năng (ExamEngine.hydrateQuestion) cho chế độ AI Pure. Giao phó việc block thời gian cho QueueEngine, dập tắt hoàn toàn lỗi Auto-next đè vạch thời gian. Tuân thủ Điều 3.
+// Cập nhật: [CHUẨN HÓA ANTI-STREAK - PHASE 3] Cấy ghép thuật toán "Trộn có trí nhớ" để chống hiện tượng ảo giác cụm (đáp án đúng liên tục rơi vào cùng 1 vị trí). Bẻ gãy chuỗi nếu lặp lại quá 2 lần. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -13036,6 +13066,8 @@ const gameTimerRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
 const deckRef = React.useRef([]); // Quản lý rút bài bằng Object thay vì Index
+// [CHUẨN HÓA ANTI-STREAK] Trí nhớ lưu vết vị trí đáp án đúng 2 lượt gần nhất
+const streakTrackerRef = React.useRef([]);
 // Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
@@ -13074,6 +13106,33 @@ const handleSaveAndBack = () => {
 if (onBack) {
 onBack({ oddOneOutState: latestStateRef.current });
 }
+};
+// ==================================================================================
+// HÀM TIỆN ÍCH ANTI-STREAK (BẺ GÃY CHUỖI ĐÁP ÁN TRÙNG LẶP CHO MẢNG WORDS)
+// ==================================================================================
+const applyAntiStreak = (data) => {
+if (data && Array.isArray(data.words) && data.oddWord) {
+const words = data.words;
+let correctIdx = words.findIndex(w => String(w).toLowerCase().trim() === String(data.oddWord).toLowerCase().trim());
+if (correctIdx !== -1 && words.length > 1) {
+const streak = streakTrackerRef.current;
+let shuffleCount = 0;
+while (streak.length >= 2 && streak[0] === correctIdx && streak[1] === correctIdx && shuffleCount < 5) {
+let swapIdx = Math.floor(Math.random() * words.length);
+while (swapIdx === correctIdx) {
+swapIdx = Math.floor(Math.random() * words.length);
+}
+const temp = words[correctIdx];
+words[correctIdx] = words[swapIdx];
+words[swapIdx] = temp;
+correctIdx = swapIdx;
+shuffleCount++;
+console.log(`[Anti-Streak] Odd One Out: Bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
+}
+streakTrackerRef.current = [correctIdx, ...streak].slice(0, 2);
+}
+}
+return data;
 };
 // ==================================================================================
 // [CORE] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
@@ -13246,6 +13305,7 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
+streakTrackerRef.current = []; // Reset trí nhớ vị trí
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
 let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 // PRE-FLIGHT BATCH ENRICH (Vá lỗi thẻ mù cho Card Mode)
@@ -13307,7 +13367,7 @@ const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('oddoneout', safeLang, config?.level || level, config) : null;
 }
 if (isGameActiveRef.current && firstData) {
-setCurrentQuestion(firstData);
+setCurrentQuestion(applyAntiStreak(firstData));
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 15);
@@ -13329,6 +13389,7 @@ hasStartedRef.current = true;
 isGameActiveRef.current = true;
 if (savedState && savedState.oddOneOutState) {
 const st = savedState.oddOneOutState;
+// Phục hồi nguyên trạng, không apply AntiStreak để giữ đúng phiên cũ
 setCurrentQuestion(st.currentQuestion);
 setSelectedIndex(st.selectedIndex !== undefined ? st.selectedIndex : null);
 setCheckStatus(st.checkStatus || 'idle');
@@ -13371,7 +13432,7 @@ setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
-setCurrentQuestion(nextData);
+setCurrentQuestion(applyAntiStreak(nextData));
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setTimeLeft(timeLimit || 15);
 } else {
@@ -13386,7 +13447,7 @@ const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('oddoneout', safeLang, config?.level || level, config) : null;
 }
 if (data) {
-setCurrentQuestion(data); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 15);
+setCurrentQuestion(applyAntiStreak(data)); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 15);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -15358,10 +15419,10 @@ window.Block5_17_ImageQuizSetup = ImageQuizSetup;
 window.ImageQuizSetup = ImageQuizSetup;
 window.Block5_17_ImageQuizPlayScreen = ImageQuizPlayScreen;
 window.ImageQuizPlayScreen = ImageQuizPlayScreen;
-// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.06
-// Last Updated: 2026-05-15 02:54
+// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.07
+// Last Updated: 2026-05-15 22:50
 // Nhiệm vụ: Controller chính của Game Hình Ảnh (Image Quiz). Quản lý luồng AI, tạo nhiễu ảnh và liên kết UI.
-// Cập nhật: [CHIẾN DỊCH TẬP TRUNG HÓA LOGIC] Hút mỡ triệt để các State rác (aiCountdown, aiWaitTime). Cắm cáp thẳng vào Máy Trộn Đề Vạn Năng (ExamEngine.hydrateQuestion) cho chế độ AI Pure. Giao phó việc block thời gian cho QueueEngine, dập tắt hoàn toàn lỗi Auto-next đè vạch thời gian. Tuân thủ Điều 3.
+// Cập nhật: [CHUẨN HÓA ANTI-STREAK - PHASE 2] Cấy ghép thuật toán "Trộn có trí nhớ" để chống hiện tượng ảo giác cụm (đáp án đúng liên tục rơi vào cùng một vị trí ảnh). Bẻ gãy chuỗi nếu lặp lại quá 2 lần. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useImageQuizLogic = (cards, config, callbacks) => {
@@ -15396,6 +15457,8 @@ const isGameActiveRef = React.useRef(true);
 const gameTimerRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
+// [CHUẨN HÓA ANTI-STREAK] Trí nhớ lưu vết vị trí đáp án đúng 2 lượt gần nhất
+const streakTrackerRef = React.useRef([]);
 // Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
@@ -15434,6 +15497,33 @@ const handleSaveAndBack = () => {
 if (onBack) {
 onBack({ imageQuizState: latestStateRef.current });
 }
+};
+// ==================================================================================
+// HÀM TIỆN ÍCH ANTI-STREAK (BẺ GÃY CHUỖI ĐÁP ÁN TRÙNG LẶP)
+// ==================================================================================
+const applyAntiStreak = (data) => {
+if (data && Array.isArray(data.options)) {
+const options = data.options;
+let correctIdx = options.findIndex(o => o.isCorrect === true || String(o.isCorrect).toLowerCase() === 'true');
+if (correctIdx !== -1 && options.length > 1) {
+const streak = streakTrackerRef.current;
+let shuffleCount = 0;
+while (streak.length >= 2 && streak[0] === correctIdx && streak[1] === correctIdx && shuffleCount < 5) {
+let swapIdx = Math.floor(Math.random() * options.length);
+while (swapIdx === correctIdx) {
+swapIdx = Math.floor(Math.random() * options.length);
+}
+const temp = options[correctIdx];
+options[correctIdx] = options[swapIdx];
+options[swapIdx] = temp;
+correctIdx = swapIdx;
+shuffleCount++;
+console.log(`[Anti-Streak] Image Quiz: Bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
+}
+streakTrackerRef.current = [correctIdx, ...streak].slice(0, 2);
+}
+}
+return data;
 };
 // ==================================================================================
 // [CORE] BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
@@ -15615,6 +15705,7 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
+streakTrackerRef.current = []; // Reset trí nhớ vị trí
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
 let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
@@ -15667,7 +15758,7 @@ const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('imagequiz', safeLang, config?.level || level, config) : null;
 }
 if (isGameActiveRef.current && firstData) {
-setCurrentQuestion(firstData);
+setCurrentQuestion(applyAntiStreak(firstData));
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 15);
@@ -15688,6 +15779,7 @@ hasStartedRef.current = true;
 isGameActiveRef.current = true;
 if (savedState && savedState.imageQuizState) {
 const st = savedState.imageQuizState;
+// Khi phục hồi từ session, ta tải nguyên trạng mà không apply AntiStreak để giữ đúng phiên cũ
 setCurrentQuestion(st.currentQuestion);
 setSelectedIndex(st.selectedIndex !== undefined ? st.selectedIndex : null);
 setCheckStatus(st.checkStatus || 'idle');
@@ -15730,7 +15822,7 @@ setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
-setCurrentQuestion(nextData);
+setCurrentQuestion(applyAntiStreak(nextData));
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setTimeLeft(timeLimit || 15);
 } else {
@@ -15745,7 +15837,7 @@ const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('imagequiz', safeLang, config?.level || level, config) : null;
 }
 if (data) {
-setCurrentQuestion(data); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 15);
+setCurrentQuestion(applyAntiStreak(data)); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 15);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -16244,10 +16336,10 @@ window.Block5_19_PronunciationSetup = PronunciationSetup;
 window.PronunciationSetup = PronunciationSetup;
 window.Block5_19_PronunciationPlayScreen = PronunciationPlayScreen;
 window.PronunciationPlayScreen = PronunciationPlayScreen;
-// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.07
-// Last Updated: 2026-05-15 03:14
+// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.08
+// Last Updated: 2026-05-15 22:32
 // Nhiệm vụ: Controller chính của Game Ngữ Âm (Pronunciation). Quản lý luồng AI, State và kết nối UI.
-// Cập nhật: [CHIẾN DỊCH TẬP TRUNG HÓA LOGIC] Hút mỡ triệt để các State rác (aiCountdown, aiWaitTime). Cắm cáp thẳng vào Máy Trộn Đề Vạn Năng (ExamEngine.hydrateQuestion) cho chế độ AI Pure. Giao phó việc block thời gian cho QueueEngine, dập tắt hoàn toàn lỗi Auto-next đè vạch thời gian. Chế độ Hybrid giữ nguyên hạt giống. Tuân thủ Điều 3 & 5.
+// Cập nhật: [KHÔI PHỤC UI COOLDOWN] Phục sinh biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng cách ép đồng bộ thời gian xem đáp án với thời gian làm nguội còn lại. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const usePronunciationLogic = (cards, config, callbacks) => {
@@ -16269,8 +16361,9 @@ const [isGenerating, setIsGenerating] = React.useState(false);
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
 const [timeLeft, setTimeLeft] = React.useState(timeLimit || 20);
-// Biến đếm đạn
+// [NEW V1.08] Biến đếm đạn và Phanh UI (UI Cooldown)
 const [queueLength, setQueueLength] = React.useState(0);
+const [aiWaitTime, setAiWaitTime] = React.useState(0);
 // Động cơ
 const historyQueueRef = React.useRef(window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : []);
 const coordinatorRef = React.useRef(null);
@@ -16294,9 +16387,9 @@ const latestStateRef = React.useRef({});
 React.useEffect(() => {
 latestStateRef.current = {
 currentQuestion, selectedIndex, checkStatus, attempts,
-score, combo, playedCount, time, correctCount, wrongCount, timeLeft, deck: deckRef.current
+score, combo, playedCount, time, correctCount, wrongCount, timeLeft, deck: deckRef.current, aiWaitTime
 };
-}, [currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft]);
+}, [currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime]);
 const triggerAutoSave = React.useCallback(() => {
 if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 onAutoSave({ pronunciationState: latestStateRef.current });
@@ -16315,6 +16408,14 @@ setQueueLength(coordinatorRef.current.length());
 }, 500);
 return () => clearInterval(queueScanner);
 }, []);
+// [VÁ LỖI DEADLOCK] ĐỒNG HỒ LÀM NGUỘI UI (UI COOLDOWN TIMER)
+React.useEffect(() => {
+let cdTimer = null;
+if (aiWaitTime > 0 && !isGenerating && !isResultPaused) {
+cdTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
+}
+return () => { if (cdTimer) clearTimeout(cdTimer); };
+}, [aiWaitTime, isGenerating, isResultPaused]);
 const handleSaveAndBack = () => {
 if (onBack) {
 onBack({ pronunciationState: latestStateRef.current });
@@ -16518,6 +16619,13 @@ setCurrentQuestion(firstData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setIsGenerating(false); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 20);
+// Kích hoạt UI Cooldown cho vòng đầu tiên
+let currentCooldown = 0;
+if (sourceMode === 'ai_pure' || true) {
+currentCooldown = 9;
+try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
+}
+setAiWaitTime(currentCooldown);
 safeShowToast(`Hoàn tất! Bắt đầu luyện phát âm.`, "success");
 } else if (isGameActiveRef.current) {
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu AI. Buộc kết thúc.", "error");
@@ -16546,6 +16654,7 @@ setTime(st.time || 0);
 setCorrectCount(st.correctCount || 0);
 setWrongCount(st.wrongCount || 0);
 setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 20));
+setAiWaitTime(st.aiWaitTime !== undefined ? st.aiWaitTime : 0);
 if (st.deck) {
 deckRef.current = [...st.deck];
 }
@@ -16576,6 +16685,13 @@ const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData);
 setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0);
 setTimeLeft(timeLimit || 20);
+// Kích hoạt UI Cooldown cho vòng mới
+let currentCooldown = 0;
+if (sourceMode === 'ai_pure' || true) {
+currentCooldown = 9;
+try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
+}
+setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
 coordinatorRef.current.maintain().then(() => {
@@ -16596,6 +16712,13 @@ isAiGenerated: false, _isRescued: true
 }
 if (data) {
 setCurrentQuestion(data); setSelectedIndex(null); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); setTimeLeft(timeLimit || 20);
+// Kích hoạt UI Cooldown
+let currentCooldown = 0;
+if (sourceMode === 'ai_pure' || true) {
+currentCooldown = 9;
+try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
+}
+setAiWaitTime(currentCooldown);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -16605,6 +16728,17 @@ if (onEndGame) onEndGame({ correct: latestStateRef.current.correctCount, time: l
 });
 }
 setTimeout(() => triggerAutoSave(), 150);
+};
+// [BỊT LỖ HỔNG AUTO-NEXT] Thuật toán đồng bộ thời gian chờ với Phanh AI
+const proceedToNext = (defaultDelaySec) => {
+if (isGameActiveRef.current) {
+let delaySec = defaultDelaySec;
+if (aiWaitTime > delaySec) {
+delaySec = aiWaitTime;
+}
+if (delaySec < 1) delaySec = 1;
+setResultTimer(delaySec);
+}
 };
 // --- TƯƠNG TÁC NGƯỜI DÙNG ---
 const handleOptionClick = (idx) => {
@@ -16619,14 +16753,14 @@ localRemoveFromRetryBag(currentQuestion.term);
 setCheckStatus('correct'); setCorrectCount(p => p + 1);
 setScore(p => p + (15 * combo)); setCombo(p => p + 1);
 safeShowToast("Xuất sắc!", "success");
-setResultTimer(5);
+proceedToNext(5);
 } else {
 const newAttempts = attempts + 1;
 setAttempts(newAttempts); setCombo(1); setScore(p => Math.max(0, p - 5));
 if (newAttempts >= 2) {
 localPushToRetryBag(currentQuestion);
 setCheckStatus('failed'); setWrongCount(p => p + 1); safeShowToast("Đã hết lượt!", "error");
-logMistake(currentQuestion); setResultTimer(7);
+logMistake(currentQuestion); proceedToNext(7);
 } else {
 setCheckStatus('wrong_retry'); safeShowToast(`Chưa đúng! Còn ${2 - newAttempts} lượt.`, "warning");
 setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
@@ -16638,7 +16772,7 @@ const handleSkip = () => {
 if (checkStatus === 'correct' || checkStatus === 'failed' || isGenerating) return;
 localPushToRetryBag(currentQuestion);
 setCombo(1); setCheckStatus('failed'); setWrongCount(p => p + 1); setAttempts(2);
-safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); setResultTimer(7);
+safeShowToast("Đã bỏ qua!", "error"); logMistake(currentQuestion); proceedToNext(7);
 setTimeout(() => triggerAutoSave(), 150);
 };
 // ĐỘNG CƠ ĐẾM NGƯỢC THỜI GIAN
@@ -16667,7 +16801,7 @@ setCheckStatus('failed');
 setWrongCount(p => p + 1);
 safeShowToast("Hết giờ! Xem đáp án nhé.", "error");
 logMistake(currentQuestion);
-setResultTimer(7);
+proceedToNext(7);
 setTimeout(() => triggerAutoSave(), 150);
 }
 }, [timeLeft, timerMode, checkStatus, currentQuestion, logMistake, safeShowToast, triggerAutoSave, localPushToRetryBag]);
@@ -16686,7 +16820,7 @@ currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount
 isGenerating, aiCountdown: 0, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
 handleOptionClick, handleSkip, nextRound, handleSaveAndBack,
-aiWaitTime: 0
+aiWaitTime
 };
 };
 // --- 2. GAME WRAPPER ---
@@ -17118,10 +17252,10 @@ window.Block5_21_ListeningSetup = ListeningSetup;
 window.ListeningSetup = ListeningSetup;
 window.Block5_21_ListeningPlayScreen = ListeningPlayScreen;
 window.ListeningPlayScreen = ListeningPlayScreen;
-// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.04
-// Last Updated: 2026-05-15 03:21
+// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.05
+// Last Updated: 2026-05-15 22:59
 // Nhiệm vụ: Controller chính của Game Đôi Tai Vàng (Listening Comprehension). Quản lý luồng AI sinh kịch bản nghe, Audio Controller và kết nối UI.
-// Cập nhật: [CHIẾN DỊCH TẬP TRUNG HÓA LOGIC] Hút mỡ triệt để các State rác (aiCountdown, aiWaitTime). Cắm cáp thẳng vào Máy Trộn Đề Vạn Năng (ExamEngine.hydrateQuestion) cho chế độ AI Pure. Giao phó việc block thời gian cho QueueEngine, dập tắt hoàn toàn lỗi Auto-next đè vạch thời gian. Tuân thủ Điều 3.
+// Cập nhật: [CHUẨN HÓA ANTI-STREAK - PHASE 3] Cấy ghép thuật toán "Trộn có trí nhớ" để chống hiện tượng ảo giác cụm (đáp án đúng liên tục rơi vào cùng 1 vị trí). Bẻ gãy chuỗi nếu lặp lại quá 2 lần. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useListeningLogic = (config, callbacks) => {
@@ -17156,6 +17290,8 @@ const gameTimerRef = React.useRef(null);
 const audioTimeoutRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
+// [CHUẨN HÓA ANTI-STREAK] Trí nhớ lưu vết vị trí đáp án đúng 2 lượt gần nhất
+const streakTrackerRef = React.useRef([]);
 // Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
@@ -17193,6 +17329,33 @@ stopAudio();
 if (onBack) {
 onBack({ listeningState: latestStateRef.current });
 }
+};
+// ==================================================================================
+// HÀM TIỆN ÍCH ANTI-STREAK (BẺ GÃY CHUỖI ĐÁP ÁN TRÙNG LẶP)
+// ==================================================================================
+const applyAntiStreak = (data) => {
+if (data && Array.isArray(data.options)) {
+const options = data.options;
+let correctIdx = options.findIndex(o => o.isCorrect === true || String(o.isCorrect).toLowerCase() === 'true');
+if (correctIdx !== -1 && options.length > 1) {
+const streak = streakTrackerRef.current;
+let shuffleCount = 0;
+while (streak.length >= 2 && streak[0] === correctIdx && streak[1] === correctIdx && shuffleCount < 5) {
+let swapIdx = Math.floor(Math.random() * options.length);
+while (swapIdx === correctIdx) {
+swapIdx = Math.floor(Math.random() * options.length);
+}
+const temp = options[correctIdx];
+options[correctIdx] = options[swapIdx];
+options[swapIdx] = temp;
+correctIdx = swapIdx;
+shuffleCount++;
+console.log(`[Anti-Streak] Listening: Bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
+}
+streakTrackerRef.current = [correctIdx, ...streak].slice(0, 2);
+}
+}
+return data;
 };
 // ==================================================================================
 // AUDIO CONTROLLER (XỬ LÝ ÂM THANH)
@@ -17343,6 +17506,7 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
+streakTrackerRef.current = []; // Reset trí nhớ vị trí
 // Đánh lừa trình duyệt để chuẩn bị phát âm thanh
 if (window.speechSynthesis) {
 const silentUtterance = new SpeechSynthesisUtterance('');
@@ -17372,7 +17536,7 @@ audioScript: "Hello, my name is John. I like to eat apples and play football in 
 }
 }
 if (isGameActiveRef.current && firstData) {
-setCurrentQuestion(firstData);
+setCurrentQuestion(applyAntiStreak(firstData));
 setSelectedOptionIndex(null); setCheckStatus('idle'); setAttempts(0); setPlayCount(0);
 setIsGenerating(false); isInitializingRef.current = false;
 setTimeLeft(timeLimit || 45);
@@ -17393,6 +17557,7 @@ hasStartedRef.current = true;
 isGameActiveRef.current = true;
 if (savedState && savedState.listeningState) {
 const st = savedState.listeningState;
+// Khi phục hồi từ session, tải nguyên trạng mà không apply AntiStreak để giữ đúng phiên cũ
 setCurrentQuestion(st.currentQuestion);
 setSelectedOptionIndex(st.selectedOptionIndex !== undefined ? st.selectedOptionIndex : null);
 setCheckStatus(st.checkStatus || 'idle');
@@ -17431,7 +17596,7 @@ setResultTimer(0); setIsResultPaused(false);
 setPlayedCount(prev => prev + 1);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
-setCurrentQuestion(nextData);
+setCurrentQuestion(applyAntiStreak(nextData));
 setSelectedOptionIndex(null); setCheckStatus('idle'); setAttempts(0); setPlayCount(0);
 setTimeLeft(timeLimit || 45);
 } else {
@@ -17451,7 +17616,7 @@ audioScript: "Hello...", term: "What does John like to eat?", options: window.Ut
 }
 }
 if (data) {
-setCurrentQuestion(data); setSelectedOptionIndex(null); setCheckStatus('idle'); setAttempts(0); setPlayCount(0);
+setCurrentQuestion(applyAntiStreak(data)); setSelectedOptionIndex(null); setCheckStatus('idle'); setAttempts(0); setPlayCount(0);
 setIsGenerating(false); setTimeLeft(timeLimit || 45);
 } else {
 safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
@@ -20537,10 +20702,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.19
-// Last Updated: 2026-05-02 13:30
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.20
+// Last Updated: 2026-05-15 22:38
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, tự động lưu Snapshot và Xuất dữ liệu.
-// Cập nhật: [ANTI-STREAK SHUFFLER] Bơm thuật toán "Trộn bài có trí nhớ" vào hàm loadQuestion. Cưỡng chế hoán đổi đáp án nếu phát hiện đáp án đúng nằm ở một vị trí quá 2 lần liên tiếp (Ví dụ: D, D, D). Ngoại trừ dạng bài TFNG. Tuân thủ Điều 3.
+// Cập nhật: [CHUẨN HÓA ANTI-STREAK] Cấy ghép mã nguồn tiêu chuẩn của thuật toán "Trộn có trí nhớ". Đổi biến answerPositionHistoryRef thành streakTrackerRef để đồng bộ kiến trúc với các Game khác. Cài đặt cầu dao chống treo trình duyệt. Tuân thủ Điều 3.
 // ==================================================================================
 window.useExamLogic = function(apiKey, handleAutoHarvestToPool) {
 const [examState, setExamState] = React.useState({
@@ -20560,14 +20725,14 @@ const [isHydrating, setIsHydrating] = React.useState(false);
 const [cachedCount, setCachedCount] = React.useState(0); // Biến đếm đạn AI
 const [examCooldown, setExamCooldown] = React.useState(0);
 // ============================================================================
-// [NEW V1.27] KIẾN TRÚC QUEUE ENGINE & BLUEPRINT POINTER
+// KIẾN TRÚC QUEUE ENGINE & BLUEPRINT POINTER
 // ============================================================================
 const coordinatorRef = React.useRef(null);
 const currentBlueprintRef = React.useRef([]);
 const blueprintIndexRef = React.useRef(0);
 const uiIndexRef = React.useRef(0); // [PHASE-GATED] Đồng bộ tức thời Index của UI để FetchTask dò đường
-// [ANTI-STREAK] Bộ nhớ lưu vết vị trí đáp án đúng
-const answerPositionHistoryRef = React.useRef([]);
+// [CHUẨN HÓA ANTI-STREAK] Trí nhớ lưu vết vị trí đáp án đúng 2 lượt gần nhất
+const streakTrackerRef = React.useRef([]);
 const timerRef = React.useRef(null);
 const isExamActiveRef = React.useRef(false); // Cờ trạng thái sinh tồn của bài thi
 const isTransitioningRef = React.useRef(false); // Khóa luồng submit chống Rage-click
@@ -20770,31 +20935,31 @@ qData.id = meta.id;
 qData.metadata = meta;
 }
 // ============================================================================
-// [VÁ LỖI ANTI-STREAK] KÍCH HOẠT THUẬT TOÁN "TRỘN CÓ TRÍ NHỚ"
+// [CHUẨN HÓA ANTI-STREAK] KÍCH HOẠT THUẬT TOÁN "TRỘN CÓ TRÍ NHỚ"
 // ============================================================================
 if (qData && qData.content && Array.isArray(qData.content.options) && qData.metadata && !qData.metadata.type.includes('tfng')) {
 const options = qData.content.options;
 let correctIdx = options.findIndex(o => o.isCorrect === true || String(o.isCorrect).toLowerCase() === 'true');
-if (correctIdx !== -1) {
-const history = answerPositionHistoryRef.current;
-// Kiểm tra nếu 2 câu liên tiếp trước đó có cùng vị trí đáp án với câu hiện tại
-if (history.length >= 2 && history[history.length - 1] === correctIdx && history[history.length - 2] === correctIdx) {
-// KẺ HỦY DIỆT CHUỖI LÊN TIẾNG: Buộc phải hoán đổi đáp án đúng sang một ô sai ngẫu nhiên
+if (correctIdx !== -1 && options.length > 1) {
+const streak = streakTrackerRef.current;
+let shuffleCount = 0;
+// Kích hoạt nều 2 câu liên tiếp trước đó có cùng vị trí đáp án
+while (streak.length >= 2 && streak[0] === correctIdx && streak[1] === correctIdx && shuffleCount < 5) {
 let swapIdx = Math.floor(Math.random() * options.length);
 while (swapIdx === correctIdx) {
 swapIdx = Math.floor(Math.random() * options.length);
 }
-// Tráo đổi phần tử
+// Hoán đổi phần tử
 const temp = options[correctIdx];
 options[correctIdx] = options[swapIdx];
 options[swapIdx] = temp;
 // Cập nhật lại Index mới
 correctIdx = swapIdx;
-console.log(`[Anti-Streak] Đã bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
+shuffleCount++;
+console.log(`[Anti-Streak] Mock Test: Bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
 }
-// Ghi vào lịch sử, giữ lại tối đa 5 bước
-history.push(correctIdx);
-if (history.length > 5) history.shift();
+// Ghi vào lịch sử, giữ lại 2 bước
+streakTrackerRef.current = [correctIdx, ...streak].slice(0, 2);
 }
 }
 setCurrentQuestion(qData);
@@ -20824,7 +20989,7 @@ isTransitioningRef.current = false;
 setCurrentQuestion(null);
 setCachedCount(0);
 setExamCooldown(0);
-answerPositionHistoryRef.current = []; // Reset trí nhớ Anti-Streak
+streakTrackerRef.current = []; // Reset trí nhớ Anti-Streak
 // Tẩy não AI triệt để ngay khi bắt đầu bài thi mới
 localStorage.setItem('fc_ai_memory', '[]');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
@@ -21034,7 +21199,7 @@ isTransitioningRef.current = false;
 setExamState(prev => ({ ...prev, status: 'loading', preloadCountdown: 30 }));
 setCurrentQuestion(null);
 setExamCooldown(0);
-answerPositionHistoryRef.current = []; // Reset trí nhớ Anti-Streak
+streakTrackerRef.current = []; // Reset trí nhớ Anti-Streak
 try {
 if (window.FcDB) {
 const savedState = await window.FcDB.get(sessionId, 'exam_sessions');
@@ -21072,7 +21237,7 @@ isTransitioningRef.current = false;
 setExamState({ status: 'idle', sessionId: null, profile: null, blueprint: [], currentIndex: 0, answers: [], timeRemaining: 0, score: 0, isTransitioning: false, preloadCountdown: 30 });
 setCurrentQuestion(null);
 setExamCooldown(0);
-answerPositionHistoryRef.current = []; // Reset trí nhớ
+streakTrackerRef.current = []; // Reset trí nhớ
 localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 setCachedCount(0);
