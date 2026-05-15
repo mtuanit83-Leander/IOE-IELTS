@@ -2094,14 +2094,24 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.05
-// Last Updated: 2026-05-14 18:18
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.06
+// Last Updated: 2026-05-15 14:06
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật: [VÁ LỖI RACE CONDITION] Khắc phục triệt để bug "Kẻ nói dối". Bổ sung cờ `_isResolved` để nhận diện Promise cũ đã hết hạn. Ép QueueEngine tạo Promise mới nếu băng đạn rỗng, buộc UI phải thực sự CHỜ AI nặn xong đạn. Tuân thủ Điều 3.
+// Cập nhật: [BƯỚC 3 - AI CONFIG] Hút cấu hình aiConfig từ LocalStorage. Thay thế thời gian tản nhiệt cứng (2500ms) bằng delayMs và băng đạn tối đa cứng bằng maxAmmo tùy chỉnh của người dùng. Tuân thủ Điều 3.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Sequential Early Resolve - Boomerang Principle)
-createQueueCoordinator: function(fetchDataFn, maxConcurrent = 4) {
+createQueueCoordinator: function(fetchDataFn, defaultMaxConcurrent = 4) {
+// Hút cấu hình AI từ LocalStorage (Fallback nếu chưa có)
+let aiConfig = { delayMs: 2500, maxAmmo: defaultMaxConcurrent };
+try {
+const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (cfg) {
+if (cfg.delayMs) aiConfig.delayMs = cfg.delayMs;
+if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
+}
+} catch (e) { console.warn("Lỗi đọc fc_ai_config", e); }
+const maxConcurrent = aiConfig.maxAmmo;
 return {
 queue: [],
 isFetching: false,
@@ -2155,10 +2165,10 @@ this.queue.push(data);
 }
 // Nhịp 3: Mở khóa UI ngay lập tức khi nạp thành công 1 viên đạn đầu tiên
 if (this.queue.length >= 1 && this._resolveEarly) this._resolveEarly();
-// Nhịp 4: Thời gian tản nhiệt (Boomerang Cool-down 2500ms)
+// Nhịp 4: Thời gian tản nhiệt (Boomerang Cool-down theo Cấu hình AI)
 // Đảm bảo chỉ delay nếu CẦN nạp thêm đạn
 if (this.queue.length < maxConcurrent && this.isActive) {
-await new Promise(r => setTimeout(r, 2500));
+await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
 } else {
 // Gặp lỗi nặng hoặc cạn dữ liệu -> Mở khóa UI để báo lỗi và ngừng nạp
@@ -2192,7 +2202,17 @@ length: function() { return this.queue.length; }
 };
 },
 // ĐỘNG CƠ BATCH COORDINATOR (Dành cho Match Game - Kiến trúc Boomerang)
-createBatchQueueCoordinator: function(fetchDataFn, maxConcurrent = 2) {
+createBatchQueueCoordinator: function(fetchDataFn, defaultMaxConcurrent = 2) {
+// Hút cấu hình AI từ LocalStorage
+let aiConfig = { delayMs: 2500, maxAmmo: defaultMaxConcurrent };
+try {
+const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (cfg) {
+if (cfg.delayMs) aiConfig.delayMs = cfg.delayMs;
+if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
+}
+} catch (e) { console.warn("Lỗi đọc fc_ai_config", e); }
+const maxConcurrent = aiConfig.maxAmmo;
 return {
 queue: [],
 isFetching: false,
@@ -2232,9 +2252,9 @@ if (data) {
 // Nhịp 2 & 3: Bắt và mở khóa UI
 this.queue.push(data);
 if (this._resolveEarly) this._resolveEarly();
-// Nhịp 4: Boomerang Cool-down 2500ms
+// Nhịp 4: Boomerang Cool-down theo Cấu hình AI
 if (this.queue.length < maxConcurrent && this.isActive) {
-await new Promise(r => setTimeout(r, 2500));
+await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
 } else {
 if (this._resolveEarly) this._resolveEarly();
@@ -4075,11 +4095,11 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.02
-// Last Updated: 2026-05-14 22:43
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.03
+// Last Updated: 2026-05-15 14:08
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
 // Quy tắc: Tuân thủ tuyệt đối quy tắc 3 chống SyntaxError. KHÔNG MINIFY CODE quá đà.
-// Cập nhật: [CHIẾN DỊCH TẬP TRUNG HÓA] Cấy ghép GlobalLoadingScreen vào kho vũ khí Tầng 3. Component này sẽ đảm nhận toàn bộ việc hiển thị đếm ngược 22s/10s, vẽ UI vòng xoay và báo cáo số đạn AI đã nạp cho TẤT CẢ 10 Mini-games. Giữ nguyên vẹn 100% các Component cũ.
+// Cập nhật: [BƯỚC 4 - AI CONFIG & VÁ LỖI SỐ 0] Xây dựng lớp giáp phòng thủ cho GlobalLoadingScreen. Tự động lấy aiConfig.loadingTime nếu duration truyền vào bị lỗi (<= 0). Dập tắt hoàn toàn lỗi treo màn hình Loading ở số 0. Tuân thủ Điều 3.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
@@ -4527,7 +4547,15 @@ const BottomNav = ({ onNavigate, onApiKey, onOpenAiChat, t, mainColor, currentMo
 );
 // 1. MÀN HÌNH CHỜ TOÀN CỤC (GLOBAL LOADING SCREEN) - [NEW]
 const GlobalLoadingScreen = ({ duration = 22, onComplete, onCancel, queueLength = 0, text = "Hệ thống đang đúc dữ liệu...", subText = "Vui lòng đợi trong giây lát", mainColor = "blue", levelStr = "" }) => {
-const [timeLeft, setTimeLeft] = React.useState(duration);
+// [BƯỚC 4 - AI CONFIG & VÁ LỖI SỐ 0]
+const getSafeDuration = () => {
+if (duration > 0) return duration;
+try {
+const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+return cfg && cfg.loadingTime ? cfg.loadingTime : 22;
+} catch(e) { return 22; }
+};
+const [timeLeft, setTimeLeft] = React.useState(getSafeDuration);
 const Icons = window.Icons || {};
 React.useEffect(() => {
 if (timeLeft <= 0) {
@@ -5839,11 +5867,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.03
-// Last Updated: 2026-05-02 18:00
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.04
+// Last Updated: 2026-05-15 13:47
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
-// Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal
-// Cập nhật: [QUÉT RADAR KHO ĐẠN] Nâng cấp ApiKeyModal thành Dashboard Mini. Cho phép Test hàng loạt các API Key và hiển thị màu sắc trạng thái (200, 429, 400). Tuân thủ Điều 3.
+// Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
+// Cập nhật: [BƯỚC 1 - AI CONFIG] Bổ sung Component AiConfigModal để người dùng tuỳ chỉnh thông số nạp đạn của QueueEngine và Loading Screen. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
@@ -6277,10 +6305,92 @@ return (
 </div>
 );
 };
+// [NEW v1.04] AiConfigModal
+const AiConfigModal = ({ isOpen, onClose, aiConfig, setAiConfig, mainColor = 'purple' }) => {
+const [localConfig, setLocalConfig] = React.useState(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4 });
+React.useEffect(() => {
+if (isOpen) {
+setLocalConfig(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4 });
+}
+}, [isOpen, aiConfig]);
+if (!isOpen) return null;
+const handleChange = (key, val) => {
+setLocalConfig(prev => ({ ...prev, [key]: Number(val) }));
+};
+const handleSave = () => {
+setAiConfig(localConfig);
+if (window.globalShowToast) window.globalShowToast("Đã lưu cấu hình Lõi AI!", "success");
+onClose();
+};
+const handleReset = () => {
+const def = { loadingTime: 22, delayMs: 2500, maxAmmo: 4 };
+setLocalConfig(def);
+};
+return (
+<div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+<div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[90vh]">
+<div className={`p-4 border-b bg-${mainColor}-50 flex justify-between items-center shrink-0`}>
+<h3 className={`font-bold text-${mainColor}-700 flex items-center gap-2 text-lg`}>
+<window.Icons.Sparkles size={24} /> Bảng Điều Khiển Lõi AI
+</h3>
+<button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition-colors">
+<window.Icons.X size={24} />
+</button>
+</div>
+<div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 bg-gray-50/50">
+<div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-xs text-yellow-800 font-medium">
+Cảnh báo: Thay đổi các thông số này có thể ảnh hưởng đến trải nghiệm game hoặc gây lỗi giới hạn API (Rate Limit).
+</div>
+{/* Loading Time */}
+<div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+<div className="flex justify-between items-center">
+<label className="text-sm font-bold text-gray-700">Thời gian đếm ngược (Loading)</label>
+<span className={`text-sm font-mono font-bold text-${mainColor}-600`}>{localConfig.loadingTime}s</span>
+</div>
+<p className="text-[10px] text-gray-500">Đồng hồ đếm lùi giả lập trong lúc chờ nạp đạn AI (Mặc định: 22s).</p>
+<input type="range" min="5" max="60" step="1" value={localConfig.loadingTime} onChange={(e) => handleChange('loadingTime', e.target.value)} className={`w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-${mainColor}-500`} />
+</div>
+{/* Delay Ms */}
+<div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+<div className="flex justify-between items-center">
+<label className="text-sm font-bold text-gray-700">Thời gian tản nhiệt (Delay)</label>
+<span className={`text-sm font-mono font-bold text-${mainColor}-600`}>{localConfig.delayMs}ms</span>
+</div>
+<p className="text-[10px] text-gray-500">Khoảng nghỉ giữa 2 lần gọi API để tránh lỗi Spam 429 (Mặc định: 2500ms).</p>
+<input type="range" min="1500" max="10000" step="500" value={localConfig.delayMs} onChange={(e) => handleChange('delayMs', e.target.value)} className={`w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-${mainColor}-500`} />
+</div>
+{/* Max Ammo */}
+<div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+<div className="flex justify-between items-center">
+<label className="text-sm font-bold text-gray-700">Băng đạn tối đa (Max Ammo)</label>
+<span className={`text-sm font-mono font-bold text-${mainColor}-600`}>{localConfig.maxAmmo} viên</span>
+</div>
+<p className="text-[10px] text-gray-500">Số lượng câu hỏi được AI tải sẵn dưới nền (Mặc định: 4 viên).</p>
+<input type="range" min="2" max="6" step="1" value={localConfig.maxAmmo} onChange={(e) => handleChange('maxAmmo', e.target.value)} className={`w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-${mainColor}-500`} />
+</div>
+</div>
+<div className="p-4 border-t bg-white shrink-0 rounded-b-xl flex justify-between gap-3">
+<button onClick={handleReset} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold hover:bg-gray-200 transition-colors">
+Mặc định
+</button>
+<div className="flex gap-2">
+<button onClick={onClose} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition-colors">
+Hủy
+</button>
+<button onClick={handleSave} className={`px-6 py-2 bg-${mainColor}-600 text-white rounded-lg font-bold shadow-md hover:bg-${mainColor}-700 transition-all active:scale-95 flex items-center gap-2`}>
+<window.Icons.Check size={18} /> Lưu
+</button>
+</div>
+</div>
+</div>
+</div>
+);
+};
 // EXPORT GLOBAL
 window.ApiKeyModal = ApiKeyModal;
 window.LinkManagerModal = LinkManagerModal;
 window.ManualInputModal = ManualInputModal;
+window.AiConfigModal = AiConfigModal;
 // Block4.7: TẦNG 4: CÁC TÍNH NĂNG & MODALS (In-game Helper Modals) - Version 1.01
 // Last Updated: 2026-04-17 11:35
 // Nhiệm vụ: Chuyên trách các công cụ phụ trợ bật lên trong quá trình học.
@@ -9836,10 +9946,10 @@ queueLength={queueLength} config={configRef.current}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block 5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.04
-// Last Updated: 2026-04-26 08:15
+// Block 5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.05
+// Last Updated: 2026-05-15 13:52
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [A/B TESTING] Cấy nút gạt "Dev Mode" vào góc trên Menu để dễ dàng bật/tắt Cờ tính năng `fc_debug_legacy_ai`. Giúp QA so sánh hiệu năng trực tiếp giữa kiến trúc 2-Shot (cũ) và 1-Shot (mới). Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [BƯỚC 2 - AI CONFIG] Gắn nút "Cài đặt Lõi AI" vào góc phải trên cùng của Menu Game (kế bên nút Dev Mode) và mở luồng prop `onOpenAiConfig`. Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 // --- BẢN VÁ LỖI ICON TOÀN CỤC (ICON POLYFILL) ---
 // Chạy ngay lập tức để bọc lót cho toàn bộ các Block phía sau
@@ -9871,7 +9981,7 @@ const GameMenu = ({
 t, mainColor, lang, cards, dataMode, gameSessions,
 onSelectQuiz, onStartMatch, onStartScramble, onStartFillBlank, onStartSpotMistake, onStartOddOneOut,
 onStartImageQuiz, onStartPronunciation, onStartListening, onStartReading,
-onResume, onStartMockTest, onResumeMockTest, onOpenExamPoolManager
+onResume, onStartMockTest, onResumeMockTest, onOpenExamPoolManager, onOpenAiConfig
 }) => {
 const [matchAiMode, setMatchAiMode] = React.useState(false);
 const [pendingResumeGame, setPendingResumeGame] = React.useState(null);
@@ -9931,15 +10041,25 @@ const handleListeningClick = () => { if (gameSessions?.['listening']) setPending
 const handleReadingClick = () => { if (gameSessions?.['reading']) setPendingResumeGame('reading'); else onStartReading(); };
 return (
 <div className="flex flex-col items-center w-full max-w-5xl mx-auto text-center animate-in fade-in z-10 relative px-2 sm:px-6">
-{/* [A/B TESTING TOGGLE] */}
-<div className="w-full flex justify-end mb-2">
+{/* [BƯỚC 2 - AI CONFIG & A/B TESTING TOGGLE] */}
+<div className="w-full flex justify-end gap-2 mb-2">
+{onOpenAiConfig && (
+<button
+onClick={onOpenAiConfig}
+className={`text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded border flex items-center gap-1.5 transition-all shadow-sm bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100`}
+title="Cài đặt thông số cho Động cơ AI (Loading, Delay, Băng đạn)"
+>
+<window.Icons.Sparkles size={12} />
+Cài đặt Lõi AI
+</button>
+)}
 <button
 onClick={handleToggleLegacyAi}
 className={`text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded border flex items-center gap-1.5 transition-all shadow-sm ${useLegacyAi ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600'}`}
 title="Chuyển đổi giữa kiến trúc Lắp ráp cũ và Đúc nguyên khối mới"
 >
 <window.Icons.Settings size={12} />
-Dev: Legacy 2-Shot ({useLegacyAi ? 'ON' : 'OFF'})
+Dev: Legacy ({useLegacyAi ? 'ON' : 'OFF'})
 </button>
 </div>
 <div className={`w-14 h-14 sm:w-16 sm:h-16 bg-${mainColor}-50 rounded-full flex items-center justify-center mb-3 sm:mb-4 shadow-inner`}>
@@ -10039,7 +10159,7 @@ title="Bật/Tắt AI tạo nhiễu khó"
 <window.Icons.Image size={20} />
 </div>
 <div className="text-center mt-0.5">
-<div className="font-bold text-gray-800 text-xs sm:text-sm">Đoán Hình</div>
+<div className="font-bold text-gray-800 text-xs sm:text-sm">Đoạn Hình</div>
 <div className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">Nhìn chữ chọn ảnh</div>
 </div>
 </button>
@@ -10257,7 +10377,7 @@ t, mainColor, isAiMode, setAiMode, onMissingKey, isLoading, cards, lang,
 onPlay, onBookmark, notebook, showToast, onLogWrong, setIsGamePlaying,
 gameSessions, setGameSessions, settings, onUpdateCards, onSaveToHarvest,
 dataMode, currentLevel, currentTopic, globalRetryBag, addToRetryBag, removeFromRetryBag,
-onOpenIncorrect, onOpenExamPoolManager, examLogic
+onOpenIncorrect, onOpenExamPoolManager, examLogic, onOpenAiConfig
 }) => {
 const [gameState, setGameState] = React.useState('menu');
 const [gameType, setGameType] = React.useState(null);
@@ -10462,6 +10582,7 @@ onSelectQuiz={handleSelectQuiz} onStartMatch={handleStartMatch} onStartScramble=
 onStartFillBlank={handleStartFillBlank} onStartSpotMistake={handleStartSpotMistake} onStartOddOneOut={handleStartOddOneOut}
 onStartImageQuiz={handleStartImageQuiz} onStartPronunciation={handleStartPronunciation} onStartListening={handleStartListening} onStartReading={handleStartReading}
 onResume={handleResumeSession} onStartMockTest={handleStartMockTest} onResumeMockTest={handleResumeMockTest} onOpenExamPoolManager={onOpenExamPoolManager}
+onOpenAiConfig={onOpenAiConfig}
 />
 </div>
 )}
@@ -18219,11 +18340,11 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.02
-// Last Updated: 2026-05-14 13:35
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.03
+// Last Updated: 2026-05-15 13:44
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật: [HỘP ĐEN SỰ KIỆN - BƯỚC 1] Bổ sung State `systemLogs` và cơ chế đồng bộ ổ cứng để lưu trữ nhật ký lỗi hệ thống. Tuân thủ Điều 3.
+// Cập nhật: [BƯỚC 1 - AI CONFIG] Khai báo State `aiConfig` và cờ UI `showAiConfigModal` phục vụ bảng điều khiển lõi AI. Tuân thủ Điều 3.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -18248,6 +18369,7 @@ srsHard: '2d',
 srsGood: '4d',
 srsEasy: '7d'
 };
+const DEFAULT_AI_CONFIG = { loadingTime: 22, delayMs: 2500, maxAmmo: 4 };
 // --- STATE DEFINITIONS ---
 const [viewMode, setViewMode] = useState('learn');
 const [lang, setLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.LANG, 'en') || 'en');
@@ -18283,6 +18405,7 @@ const [systemLogs, setSystemLogs] = useState(() => window.Utils?.safeJsonParse('
 // Config & Token
 const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '');
 const [totalTokens, setTotalTokens] = useState(() => parseInt(localStorage.getItem('fc_total_tokens') || '0', 10));
+const [aiConfig, setAiConfig] = useState(() => window.Utils?.safeJsonParse('fc_ai_config', DEFAULT_AI_CONFIG) || DEFAULT_AI_CONFIG);
 // UI Toggles
 const [showSettings, setShowSettings] = useState(false);
 const [showApiKeyModal, setShowApiKeyModal] = useState(false);
@@ -18295,7 +18418,8 @@ const [showAiChat, setShowAiChat] = useState(false);
 const [showIncorrectModal, setShowIncorrectModal] = useState(false);
 const [showHelp, setShowHelp] = useState(false);
 const [showSaveLoadModal, setShowSaveLoadModal] = useState(false);
-const [showExamPoolManager, setShowExamPoolManager] = useState(false); // [NEW v1.10] State Quản trị Khảo thí
+const [showExamPoolManager, setShowExamPoolManager] = useState(false);
+const [showAiConfigModal, setShowAiConfigModal] = useState(false);
 // Hanzi Toggles
 const [showHanziSelector, setShowHanziSelector] = useState(false);
 const [showHanziWriter, setShowHanziWriter] = useState(false);
@@ -18457,11 +18581,15 @@ useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.API_KEY, apiKey); }, [apiKey]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_game_sessions', globalGameSessions); }, [globalGameSessions]);
-// [NEW v1.02] SYSTEM LOGS PERSISTENCE
+// SYSTEM LOGS PERSISTENCE
 useEffect(() => {
 window.Utils?.safeLocalStorageSet('fc_system_logs', systemLogs);
 }, [systemLogs]);
-// [NEW v1.8] LƯU TRỮ TRÊN INDEXEDDB (ASYNC)
+// AI CONFIG PERSISTENCE
+useEffect(() => {
+window.Utils?.safeLocalStorageSet('fc_ai_config', aiConfig);
+}, [aiConfig]);
+// LƯU TRỮ TRÊN INDEXEDDB (ASYNC)
 useEffect(() => {
 if (isDbReady && window.FcDB) window.FcDB.set('fc_ai_harvest_pool', aiHarvestPool);
 }, [aiHarvestPool, isDbReady]);
@@ -18500,23 +18628,23 @@ return {
 // State
 viewMode, lang, uiLang, cards, notebook, mastered, masteredCount: mastered.length, isStudyingNotebook,
 incorrectList, studySourceName, apiKey, totalTokens, aiHarvestPool, globalRetryBag, systemLogs,
-isDbReady, // Báo cáo tình trạng DB cho App Component
+isDbReady, aiConfig,
 // Multi-dimensional State
 dataMode, setDataMode,
 currentLevel, setCurrentLevel,
 currentTopic, setCurrentTopic,
 // UI Toggles
 showSettings, showApiKeyModal, showNotebook, showManual, showLinkManager, showWordSelect, showMastered, showIncorrectModal,
-showAiChat, showHelp, showSaveLoadModal, showHanziSelector, showHanziWriter, currentHanziChar, showExamPoolManager,
+showAiChat, showHelp, showSaveLoadModal, showHanziSelector, showHanziWriter, currentHanziChar, showExamPoolManager, showAiConfigModal,
 wordSelectTarget, toast, isAiLoading, isAiModeLearn, isAiModeGame, resetPending,
 importUrl, defaultUrl, exportUrl, apiKeySheetUrl,
 currentCardIndex, isFlipped, isAutoPlaying, isShuffle, isAutoMode, isFlipLocked,
 isMuted, isGamePlaying, settings, voices, DEFAULT_SETTINGS, isContentHidden, isBatterySaverMode, gameSessions,
 // Setters
 setViewMode, setLang, setUiLang, setCards, setNotebook, setMastered, setIsStudyingNotebook,
-setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag, setSystemLogs,
+setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag, setSystemLogs, setAiConfig,
 setShowSettings, setShowApiKeyModal, setShowNotebook, setShowManual, setShowLinkManager, setShowWordSelect, setShowMastered, setShowIncorrectModal,
-setShowAiChat, setShowHelp, setShowSaveLoadModal, setShowHanziSelector, setShowHanziWriter, setCurrentHanziChar, setShowExamPoolManager,
+setShowAiChat, setShowHelp, setShowSaveLoadModal, setShowHanziSelector, setShowHanziWriter, setCurrentHanziChar, setShowExamPoolManager, setShowAiConfigModal,
 setWordSelectTarget, setToast, setIsAiLoading, setIsAiModeLearn, setIsAiModeGame, setResetPending,
 setImportUrl, setDefaultUrl, setExportUrl, setApiKeySheetUrl,
 setCurrentCardIndex, setIsFlipped, setIsAutoPlaying, setIsShuffle, setIsAutoMode, setIsFlipLocked,
@@ -19428,10 +19556,10 @@ secureCopy
 window.Block6_3_useDataIO = useDataIO;
 window.Block15_useDataLogic = useDataIO; // Fallback
 window.useDataLogic = useDataIO;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.02
-// Last Updated: 2026-04-25 14:45
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.03
+// Last Updated: 2026-05-15 13:58
 // Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5), AI Curator (6.6), Mock Test Logic (6.7) và Exam Pool Logic (6.8).
-// Cập nhật: [VÁ LỖI ĐỨT CÁP THU HOẠCH] Cắm cáp truyền hàm `handleAutoHarvestToPool` từ ExamPoolLogic (Block 6.8) vào `useExamLogic` (Block 6.7) thông qua Proxy Pattern để tránh lỗi Circular Dependency. Tuân thủ Điều 3.
+// Cập nhật: [BƯỚC 1.5 - NỐI CÁP AI CONFIG] Bổ sung hàm handleOpenAiConfig vào mảng actions để truyền lệnh mở Modal xuống Tầng 5. Tuân thủ Điều 3.
 // ==================================================================================
 const useAppLogic = (core) => {
 // 1. LẤY CORE STATE
@@ -19825,7 +19953,7 @@ const handleCloseHanziWriter = () => core.setShowHanziWriter(false);
 React.useEffect(() => {
 const handleKeyDown = (e) => {
 if (viewMode !== 'learn') return; // Chặn phím tắt tác động vào Exam Mode (Chỉ chạy ở Learn Mode)
-if (core.showSettings || core.showApiKeyModal || core.showNotebook || core.showManual || core.showLinkManager || core.showWordSelect || core.showMastered || core.showIncorrectModal || core.showHelp || core.showHanziSelector || core.showHanziWriter || core.showSaveLoadModal || core.showAiChat || core.showExamPoolManager) return;
+if (core.showSettings || core.showApiKeyModal || core.showNotebook || core.showManual || core.showLinkManager || core.showWordSelect || core.showMastered || core.showIncorrectModal || core.showHelp || core.showHanziSelector || core.showHanziWriter || core.showSaveLoadModal || core.showAiChat || core.showExamPoolManager || core.showAiConfigModal) return;
 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 switch (e.key) {
 case 'ArrowRight': case 'd': case 'D': handleNext(); break;
@@ -19849,7 +19977,7 @@ break;
 };
 window.addEventListener('keydown', handleKeyDown);
 return () => window.removeEventListener('keydown', handleKeyDown);
-}, [viewMode, core.showSettings, core.showApiKeyModal, core.showNotebook, core.showManual, core.showLinkManager, core.showWordSelect, core.showMastered, core.showIncorrectModal, core.showHelp, core.showHanziSelector, core.showHanziWriter, core.showSaveLoadModal, core.showAiChat, core.showExamPoolManager, handleNext, handlePrev, cards, currentCardIndex, speak, toggleAutoPlay, handleStopAutoPlay, handleToggleMute, handleToggleShuffle]);
+}, [viewMode, core.showSettings, core.showApiKeyModal, core.showNotebook, core.showManual, core.showLinkManager, core.showWordSelect, core.showMastered, core.showIncorrectModal, core.showHelp, core.showHanziSelector, core.showHanziWriter, core.showSaveLoadModal, core.showAiChat, core.showExamPoolManager, core.showAiConfigModal, handleNext, handlePrev, cards, currentCardIndex, speak, toggleAutoPlay, handleStopAutoPlay, handleToggleMute, handleToggleShuffle]);
 // 8. RETURN MERGED ACTIONS (Lắp ráp API cho Tầng 7)
 return {
 // [MOCK TEST ERA] Bơm examLogic ra ngoài state tổng để GameView truy cập được
@@ -19862,6 +19990,7 @@ handleJumpToCard,
 handleOpenSettings: () => core.setShowSettings(true),
 handleCloseSettings: () => core.setShowSettings(false),
 handleCancelSettings: () => core.setShowSettings(false),
+handleOpenAiConfig: () => core.setShowAiConfigModal(true),
 onMissingKey: () => { showToast("Cần Google Gemini API Key", "warning"); core.setShowApiKeyModal(true); },
 handleOpenWordSelector: (payload) => {
 let targetData;
@@ -21356,10 +21485,10 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.05
-// Last Updated: 2026-05-14 14:27
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.07
+// Last Updated: 2026-05-15 14:00
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [HỘP ĐEN SỰ KIỆN - MŨI NHỌN 1] Bơm API toàn cục `window.logSystemEvent` (Deep-Logging) để bắt các lỗi kỹ thuật sâu bên trong Lò đúc AI và QueueEngine mà không làm phiền người dùng bằng Toast. Tuân thủ Điều 3.
+// Cập nhật: [BƯỚC 2 - NỐI CÁP AI CONFIG] Cắm dây onOpenAiConfig vào GameView để kích hoạt nút Cài đặt ở Tầng 5. Tuân thủ Điều 3 Hiến pháp.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -21372,8 +21501,8 @@ const maxAttempts = 100; // Giới hạn 10 giây (100 * 100ms)
 let timeoutId;
 const checkDependencies = () => {
 if (isIdle) return; // Dừng check nếu đang ở trạng thái chờ
-// [QA FIX V1.08] Gộp chung trên 1 dòng để tuyệt đối tuân thủ Hiến pháp Điều 3.2
-const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB', 'useAppLogic', 'useAiLogic', 'useDataLogic', 'useExamLogic', 'ExamUIShell', 'ExamPoolManagerModal', 'useExamPoolLogic', 'ImageQuizSetup', 'ImageQuizPlayScreen', 'ImageQuizGame', 'useImageQuizLogic', 'PronunciationSetup', 'PronunciationPlayScreen', 'PronunciationGame', 'usePronunciationLogic', 'ListeningSetup', 'ListeningPlayScreen', 'ListeningGame', 'useListeningLogic', 'ReadingSetup', 'ReadingPlayScreen', 'ReadingGame', 'useReadingLogic'];
+// [QA FIX V1.08] Gộp chung trên 1 dòng để tuyệt đối tuân thủ Hiến pháp Điều 3.2. Đã bổ sung AiConfigModal.
+const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB', 'useAppLogic', 'useAiLogic', 'useDataLogic', 'useExamLogic', 'ExamUIShell', 'ExamPoolManagerModal', 'useExamPoolLogic', 'ImageQuizSetup', 'ImageQuizPlayScreen', 'ImageQuizGame', 'useImageQuizLogic', 'PronunciationSetup', 'PronunciationPlayScreen', 'PronunciationGame', 'usePronunciationLogic', 'ListeningSetup', 'ListeningPlayScreen', 'ListeningGame', 'useListeningLogic', 'ReadingSetup', 'ReadingPlayScreen', 'ReadingGame', 'useReadingLogic', 'AiConfigModal'];
 const missing = required.filter(dep => !window[dep]);
 if (missing.length === 0) {
 setIsReady(true);
@@ -21571,7 +21700,8 @@ currentLevel: coreState.currentLevel,
 currentTopic: coreState.currentTopic, // Cắm cáp Topic cho AI
 dataMode: coreState.dataMode,
 onOpenExamPoolManager: logic.actions?.handleOpenExamPoolManager,
-examLogic: logic.state?.examLogic // [VÁ LỖI CẮM CÁP MOCK TEST] Truyền Core Logic xuống
+examLogic: logic.state?.examLogic, // [VÁ LỖI CẮM CÁP MOCK TEST] Truyền Core Logic xuống
+onOpenAiConfig: logic.actions?.handleOpenAiConfig // [NEW v1.07] Nối cáp mở cài đặt AI
 });
 } else {
 // B. Màn hình Học (Flashcard) - Mặc định
@@ -21827,6 +21957,14 @@ isOpen: true,
 onClose: logic.actions?.handleCloseExamPoolManager,
 mainColor: appMainColor,
 examPoolData: logic.examPoolData
+}),
+// [BƯỚC 1 - AI CONFIG] Rendering Modal Cài đặt AI vào Tầng 7
+coreState.showAiConfigModal && renderComponent('AiConfigModal', {
+isOpen: true,
+onClose: () => coreState.setShowAiConfigModal(false),
+aiConfig: coreState.aiConfig,
+setAiConfig: coreState.setAiConfig,
+mainColor: appMainColor
 }),
 coreState.toast && React.createElement('div', {
 className: `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[300] font-bold text-white animate-in slide-in-from-top-4 fade-in duration-300 flex items-center gap-2 ${coreState.toast.type === 'error' ? 'bg-red-500' : coreState.toast.type === 'success' ? 'bg-green-500' : coreState.toast.type === 'warning' ? 'bg-orange-500' : 'bg-gray-800'}`
