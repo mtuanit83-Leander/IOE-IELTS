@@ -9065,10 +9065,10 @@ queueLength={queueLength}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.05
-// Last Updated: 2026-05-15 16:30
+// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.06
+// Last Updated: 2026-05-15 16:45
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật: [BẢO TRÌ SUB-REPORT] Phục sinh hiển thị Phanh AI (UI Cooldown) ở các nút bấm. Vá lỗ hổng rò rỉ đáp án của nút Bookmark ở chế độ Đảo ngược. Dọn dẹp nút chuyển đổi Nghe/Nhìn thừa thãi. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI CRASH GAME] Sửa lỗi ReferenceError do gọi nhầm tên biến (handleSkip -> onSkip) ở nút Bỏ qua câu hỏi. Tuân thủ Điều 3.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -9423,10 +9423,8 @@ Không nghe được? (Chấp nhận sai để xem chữ)
 const btnClass = getOptionClass(opt, i);
 const isListenLocked = gameMode === 'listen' && !hasStartedListening;
 const isLastAndOdd = isOddOptions && (i === totalOptions - 1);
-const icon = isChecking ? (
-opt.isCorrect ? <Icons.CheckCircle size={20} className="text-green-700" /> :
-(i === selectedOptionIndex && !opt.isCorrect ? <Icons.X size={20} className="text-red-700" /> : null)
-) : (clickedWrongIndices.has(i) ? <Icons.X size={20} className="text-red-300" /> : null);
+const icon = (isChecking && opt.isCorrect) ? <Icons.CheckCircle size={20} className="text-green-700" /> :
+((isChecking && i === selectedOptionIndex && !opt.isCorrect) || clickedWrongIndices.has(i)) ? <Icons.X size={20} className={clickedWrongIndices.has(i) ? "text-red-300" : "text-red-700"} /> : null;
 return (
 <button key={i} onClick={() => handleAnswer(i, opt.isCorrect)} disabled={isChecking || clickedWrongIndices.has(i) || isListenLocked} className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left flex items-center justify-between ${btnClass} ${isLastAndOdd ? 'sm:col-span-2' : ''}`}>
 <div className="flex items-center w-full">
@@ -9453,7 +9451,7 @@ return (
 </button>
 </div>
 ) : (
-<button onClick={handleSkip} disabled={aiWaitTime > 0} className={`w-full max-w-md py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all border border-gray-200 flex items-center justify-center gap-2 ${aiWaitTime > 0 ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
+<button onClick={onSkip} disabled={aiWaitTime > 0} className={`w-full max-w-md py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all border border-gray-200 flex items-center justify-center gap-2 ${aiWaitTime > 0 ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
 {aiWaitTime > 0 ? `Chờ AI (${aiWaitTime}s)` : <>Bỏ qua câu này <Icons.SkipForward size={20} /></>}
 </button>
 )}
@@ -9466,6 +9464,8 @@ window.Block5_5_QuizSetup = QuizSetup;
 window.QuizSetup = QuizSetup;
 window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
+window.Block5_5_GamePlayScreen = GamePlayScreen;
+window.GamePlayScreen = GamePlayScreen;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
 // Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.06
