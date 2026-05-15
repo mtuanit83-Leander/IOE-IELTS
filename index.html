@@ -9065,10 +9065,10 @@ queueLength={queueLength}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.06
-// Last Updated: 2026-05-15 16:45
+// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.07
+// Last Updated: 2026-05-15 16:59
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật: [VÁ LỖI CRASH GAME] Sửa lỗi ReferenceError do gọi nhầm tên biến (handleSkip -> onSkip) ở nút Bỏ qua câu hỏi. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI CRASH GAME NGHIÊM TRỌNG] Bổ sung các props bị khuyết (resultTimer, isResultPaused, toggleResultPause) vào GamePlayScreen để sửa lỗi ReferenceError làm sập ứng dụng khi chuyển câu. Tuân thủ Điều 3.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -9210,7 +9210,8 @@ showChanceToast, isGenerating, timerMode, timeLeft, totalTime, isRoundStarted,
 onStartRound, onEndGame, onPause, onBack, feedbackType, isPaused,
 correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode,
 hardMode, listenPlayCount, sourceMode, queueLength, config,
-aiWaitTime // [NHẬN CÁP] Prop điều khiển Phanh AI
+aiWaitTime,
+resultTimer, isResultPaused, toggleResultPause // [VÁ LỖI V1.07] Phục hồi các props bị mất
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
@@ -9389,6 +9390,13 @@ title="Lưu vào Sổ tay"
 </span>
 </div>
 <div className={`w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative min-h-[160px] flex items-center justify-center animate-in transition-all duration-300 ${isLocked ? 'blur-md' : ''}`}>
+{gameMode === 'read' && (
+<button
+className={`absolute top-3 right-3 p-2 rounded-full transition-all ${isInNotebook ? 'text-yellow-500 bg-yellow-50 shadow-sm' : 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50'}`}
+onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark({ isSmartTarget: true, display: currentQuestionData.question.term, save: currentQuestionData.question.term, analysis: currentQuestionData.question.definition }); }}
+title={t('addToNotebook')}
+><Icons.Bookmark size={22} fill={isInNotebook ? "currentColor" : "none"} /></button>
+)}
 <div className="text-center w-full px-6">
 {(gameMode === 'read' || isChecking) ? (
 <div className="flex flex-col gap-2 animate-in fade-in items-center">
@@ -9446,7 +9454,7 @@ return (
 <button onClick={() => toggleResultPause && toggleResultPause()} className={`flex-1 py-4 font-bold text-sm rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${isResultPaused ? 'bg-yellow-50 text-yellow-700 border-yellow-300 shadow-inner' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
 {isResultPaused ? <><Icons.Play size={18} fill="currentColor" /> Đã dừng</> : <><Icons.Pause size={18} fill="currentColor" /> Đợi ({resultTimer}s)</>}
 </button>
-<button onClick={handleNext} disabled={isGenerating || aiWaitTime > 0} className={`flex-[2] py-4 bg-${checkStatus === 'correct' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform ${(isGenerating || aiWaitTime > 0) ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'correct' ? 'green-600' : mainColor + '-700'}`}`}>
+<button onClick={onSkip} disabled={isGenerating || aiWaitTime > 0} className={`flex-[2] py-4 bg-${checkStatus === 'correct' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform ${(isGenerating || aiWaitTime > 0) ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'correct' ? 'green-600' : mainColor + '-700'}`}`}>
 {isGenerating ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang tải...</> : (aiWaitTime > 0 ? <>Chờ AI ({aiWaitTime}s)</> : <>Tiếp theo <Icons.ChevronRight size={24} /></>)}
 </button>
 </div>
@@ -9464,8 +9472,6 @@ window.Block5_5_QuizSetup = QuizSetup;
 window.QuizSetup = QuizSetup;
 window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
-window.Block5_5_GamePlayScreen = GamePlayScreen;
-window.GamePlayScreen = GamePlayScreen;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
 // Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.06
