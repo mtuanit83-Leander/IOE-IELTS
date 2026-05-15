@@ -9065,10 +9065,10 @@ queueLength={queueLength}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.07
-// Last Updated: 2026-05-15 16:59
+// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.08
+// Last Updated: 2026-05-15 17:15
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật: [VÁ LỖI CRASH GAME NGHIÊM TRỌNG] Bổ sung các props bị khuyết (resultTimer, isResultPaused, toggleResultPause) vào GamePlayScreen để sửa lỗi ReferenceError làm sập ứng dụng khi chuyển câu. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI CRASH KHI CHUYỂN CÂU] Sửa lỗi ReferenceError do copy-paste nhầm biến `checkStatus` (đổi thành `feedbackType`) và `handleNext` (đổi thành prop `onNext`) ở thanh Footer. Tuân thủ Điều 3.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -9211,7 +9211,7 @@ onStartRound, onEndGame, onPause, onBack, feedbackType, isPaused,
 correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode,
 hardMode, listenPlayCount, sourceMode, queueLength, config,
 aiWaitTime,
-resultTimer, isResultPaused, toggleResultPause // [VÁ LỖI V1.07] Phục hồi các props bị mất
+resultTimer, isResultPaused, toggleResultPause, onNext // [VÁ LỖI V1.08] Bổ sung onNext
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
@@ -9339,7 +9339,7 @@ Thoát ngay
 )}
 </div>
 <div className="flex items-center gap-1 sm:gap-2">
-{/* [VÁ LỖI C] Bọc điều kiện thông minh cho nút Bookmark */}
+{/* Bọc điều kiện thông minh cho nút Bookmark */}
 {!(askMode === 'def' && !isChecking) ? (
 <button
 onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark({ isSmartTarget: true, display: currentQuestionData.question.term, save: currentQuestionData.question.term, analysis: currentQuestionData.question.definition }); }}
@@ -9448,13 +9448,14 @@ return (
 </div>
 </div>
 </div>
+{/* [VÁ LỖI V1.08] Sửa lại thanh Footer: Sử dụng feedbackType thay cho checkStatus và truyền vào prop onNext */}
 <div className="w-full p-4 bg-white border-t border-gray-200 shrink-0 flex justify-center gap-4 z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 {isChecking ? (
 <div className="w-full max-w-md flex gap-3">
 <button onClick={() => toggleResultPause && toggleResultPause()} className={`flex-1 py-4 font-bold text-sm rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${isResultPaused ? 'bg-yellow-50 text-yellow-700 border-yellow-300 shadow-inner' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
 {isResultPaused ? <><Icons.Play size={18} fill="currentColor" /> Đã dừng</> : <><Icons.Pause size={18} fill="currentColor" /> Đợi ({resultTimer}s)</>}
 </button>
-<button onClick={onSkip} disabled={isGenerating || aiWaitTime > 0} className={`flex-[2] py-4 bg-${checkStatus === 'correct' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform ${(isGenerating || aiWaitTime > 0) ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${checkStatus === 'correct' ? 'green-600' : mainColor + '-700'}`}`}>
+<button onClick={onNext} disabled={isGenerating || aiWaitTime > 0} className={`flex-[2] py-4 bg-${feedbackType === 'correct' ? 'green-500' : mainColor + '-600'} text-white font-bold text-lg rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform ${(isGenerating || aiWaitTime > 0) ? 'opacity-70 cursor-not-allowed' : `active:scale-95 hover:bg-${feedbackType === 'correct' ? 'green-600' : mainColor + '-700'}`}`}>
 {isGenerating ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang tải...</> : (aiWaitTime > 0 ? <>Chờ AI ({aiWaitTime}s)</> : <>Tiếp theo <Icons.ChevronRight size={24} /></>)}
 </button>
 </div>
