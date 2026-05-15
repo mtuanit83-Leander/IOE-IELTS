@@ -4129,11 +4129,11 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.04
-// Last Updated: 2026-05-15 14:55
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.05
+// Last Updated: 2026-05-15 15:35
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
 // Quy tắc: Tuân thủ tuyệt đối quy tắc 3 chống SyntaxError. KHÔNG MINIFY CODE quá đà.
-// Cập nhật: [BƯỚC 4 - RADAR ĐẾM ĐẠN] Nâng cấp GlobalLoadingScreen. Tích hợp Heartbeat Polling để tự động lấy số đạn từ engine (nếu được truyền). Nâng cấp UI vòng tròn đếm lùi và bộ đếm đạn giống hệt màn hình Mock Test. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI LỆCH PHA ĐẾM NGƯỢC] Đảo ngược thứ tự ưu tiên trong getSafeDuration. Ưu tiên đọc cấu hình fc_ai_config từ LocalStorage lên hàng đầu để đảm bảo đồng hồ UI luôn khớp với cài đặt của người dùng. Tuân thủ Điều 3.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
@@ -4580,14 +4580,15 @@ const BottomNav = ({ onNavigate, onApiKey, onOpenAiChat, t, mainColor, currentMo
 </div>
 );
 // 1. MÀN HÌNH CHỜ TOÀN CỤC (GLOBAL LOADING SCREEN) - [NEW]
-const GlobalLoadingScreen = ({ duration = 22, onComplete, onCancel, queueLength = 0, text = "Hệ thống đang đúc dữ liệu...", subText = "Vui lòng đợi trong giây lát", mainColor = "blue", levelStr = "", engine = null }) => {
-// [BƯỚC 4 - AI CONFIG & VÁ LỖI SỐ 0] Lớp phòng thủ
+const GlobalLoadingScreen = ({ duration = 0, onComplete, onCancel, queueLength = 0, text = "Hệ thống đang đúc dữ liệu...", subText = "Vui lòng đợi trong giây lát", mainColor = "blue", levelStr = "", engine = null }) => {
+// [VÁ LỖI LỆCH PHA ĐẾM NGƯỢC] Lớp phòng thủ v2
 const getSafeDuration = () => {
-if (duration > 0) return duration;
 try {
 const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
-return cfg && cfg.loadingTime ? cfg.loadingTime : 22;
-} catch(e) { return 22; }
+if (cfg && cfg.loadingTime) return Number(cfg.loadingTime);
+} catch(e) {}
+if (duration > 0) return Number(duration);
+return 22;
 };
 const [timeLeft, setTimeLeft] = React.useState(getSafeDuration);
 const [localQueueLength, setLocalQueueLength] = React.useState(queueLength);
