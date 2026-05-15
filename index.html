@@ -2094,19 +2094,20 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.06
-// Last Updated: 2026-05-15 14:06
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.07
+// Last Updated: 2026-05-15 14:51
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật: [BƯỚC 3 - AI CONFIG] Hút cấu hình aiConfig từ LocalStorage. Thay thế thời gian tản nhiệt cứng (2500ms) bằng delayMs và băng đạn tối đa cứng bằng maxAmmo tùy chỉnh của người dùng. Tuân thủ Điều 3.
+// Cập nhật: [BƯỚC 3 - AI CONFIG] Đại tu thuật toán Early Resolve. Áp dụng Promise.all để bắt buộc UI chờ đúng thời gian loadingTime của Cấu hình AI khi nạp đạn vòng đầu tiên, đảm bảo background có dư thời gian nạp căng băng đạn. Tuân thủ Điều 3.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Sequential Early Resolve - Boomerang Principle)
 createQueueCoordinator: function(fetchDataFn, defaultMaxConcurrent = 4) {
 // Hút cấu hình AI từ LocalStorage (Fallback nếu chưa có)
-let aiConfig = { delayMs: 2500, maxAmmo: defaultMaxConcurrent };
+let aiConfig = { loadingTime: 22, delayMs: 2500, maxAmmo: defaultMaxConcurrent };
 try {
 const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
 if (cfg) {
+if (cfg.loadingTime) aiConfig.loadingTime = cfg.loadingTime;
 if (cfg.delayMs) aiConfig.delayMs = cfg.delayMs;
 if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
 }
@@ -2121,6 +2122,7 @@ _isResolved: false, // [NEW] Cờ theo dõi trạng thái Promise
 maintain: function(isInitial = false, timeoutMs = 22000) {
 if (!this.isActive) return Promise.resolve();
 if (this.queue.length >= maxConcurrent) return Promise.resolve();
+const isQueueEmptyStart = this.queue.length === 0;
 if (this.isFetching) {
 // [VÁ LỖI ĐIỂM CHẾT RACE CONDITION]
 // Nếu vòng lặp ngầm đang chạy nhưng Promise trước đó ĐÃ RESOLVE (do đạn cũ)
@@ -2135,6 +2137,7 @@ this._isResolved = true;
 resolve();
 }
 };
+// [VÁ LỖI EARLY RESOLVE] Ngay cả khi bị Race Condition, UI cũng nên đợi
 setTimeout(() => { if (this._resolveEarly) this._resolveEarly(); }, timeoutMs);
 });
 }
@@ -2163,8 +2166,7 @@ this.queue.push(...data);
 } else {
 this.queue.push(data);
 }
-// Nhịp 3: Mở khóa UI ngay lập tức khi nạp thành công 1 viên đạn đầu tiên
-if (this.queue.length >= 1 && this._resolveEarly) this._resolveEarly();
+// NHỊP 3 CŨ (Đã bị gỡ bỏ): if (this.queue.length >= 1 && this._resolveEarly) this._resolveEarly();
 // Nhịp 4: Thời gian tản nhiệt (Boomerang Cool-down theo Cấu hình AI)
 // Đảm bảo chỉ delay nếu CẦN nạp thêm đạn
 if (this.queue.length < maxConcurrent && this.isActive) {
@@ -2172,22 +2174,38 @@ await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
 } else {
 // Gặp lỗi nặng hoặc cạn dữ liệu -> Mở khóa UI để báo lỗi và ngừng nạp
-if (this._resolveEarly) this._resolveEarly();
 break;
 }
 }
 } catch (e) {
 console.warn("Queue Worker Error:", e);
 } finally {
-if (this._resolveEarly) this._resolveEarly();
 this.isFetching = false;
 }
 };
 runBackground();
-// Cầu dao an toàn (Safety Timeout) trong trường hợp kẹt Loop
+// [VÁ LỖI EARLY RESOLVE] Áp dụng chiến thuật Promise.all kết hợp hàm đếm thời gian
+const ammoPromise = new Promise((resolveAmmo) => {
+const checkAmmo = () => {
+// Hoàn thành nếu có đạn HOẶC tiến trình background đã dừng (cạn dữ liệu/lỗi)
+if (this.queue.length >= 1 || !this.isFetching) {
+resolveAmmo();
+} else {
+setTimeout(checkAmmo, 200);
+}
+};
+checkAmmo();
+});
+const enforcedWaitMs = isQueueEmptyStart ? (aiConfig.loadingTime * 1000) : 0;
+const timerPromise = new Promise(r => setTimeout(r, enforcedWaitMs));
+// Mở khóa UI khi CẢ 2 điều kiện đều thỏa mãn: Có đạn VÀ Đã hết thời gian ép chờ
+Promise.all([ammoPromise, timerPromise]).then(() => {
+if (this._resolveEarly) this._resolveEarly();
+});
+// Cầu dao an toàn (Safety Timeout) cộng thêm thời gian ép chờ
 setTimeout(() => {
 if (this._resolveEarly) this._resolveEarly();
-}, timeoutMs);
+}, enforcedWaitMs + timeoutMs);
 });
 return this._currentPromise;
 },
@@ -2204,10 +2222,11 @@ length: function() { return this.queue.length; }
 // ĐỘNG CƠ BATCH COORDINATOR (Dành cho Match Game - Kiến trúc Boomerang)
 createBatchQueueCoordinator: function(fetchDataFn, defaultMaxConcurrent = 2) {
 // Hút cấu hình AI từ LocalStorage
-let aiConfig = { delayMs: 2500, maxAmmo: defaultMaxConcurrent };
+let aiConfig = { loadingTime: 22, delayMs: 2500, maxAmmo: defaultMaxConcurrent };
 try {
 const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
 if (cfg) {
+if (cfg.loadingTime) aiConfig.loadingTime = cfg.loadingTime;
 if (cfg.delayMs) aiConfig.delayMs = cfg.delayMs;
 if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
 }
@@ -2222,6 +2241,7 @@ _isResolved: false,
 maintain: function() {
 if (!this.isActive) return Promise.resolve();
 if (this.queue.length >= maxConcurrent) return Promise.resolve();
+const isQueueEmptyStart = this.queue.length === 0;
 if (this.isFetching) {
 // [VÁ LỖI ĐIỂM CHẾT RACE CONDITION]
 if (this.queue.length === 0 && this._isResolved) {
@@ -2249,29 +2269,43 @@ try {
 const data = await fetchDataFn();
 if (!this.isActive) break;
 if (data) {
-// Nhịp 2 & 3: Bắt và mở khóa UI
+// Nhịp 2: Bắt và lưu trữ
 this.queue.push(data);
-if (this._resolveEarly) this._resolveEarly();
+// NHỊP 3 CŨ (Đã bị gỡ bỏ): if (this._resolveEarly) this._resolveEarly();
 // Nhịp 4: Boomerang Cool-down theo Cấu hình AI
 if (this.queue.length < maxConcurrent && this.isActive) {
 await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
 } else {
-if (this._resolveEarly) this._resolveEarly();
 break;
 }
 } catch (e) {
 console.warn("BatchCoordinator fetch error:", e);
-if (this._resolveEarly) this._resolveEarly();
 break;
 }
 }
 } finally {
-if (this._resolveEarly) this._resolveEarly();
 this.isFetching = false;
 }
 };
 runBackground();
+// [VÁ LỖI EARLY RESOLVE] Áp dụng chiến thuật Promise.all kết hợp hàm đếm thời gian
+const ammoPromise = new Promise((resolveAmmo) => {
+const checkAmmo = () => {
+if (this.queue.length >= 1 || !this.isFetching) resolveAmmo();
+else setTimeout(checkAmmo, 200);
+};
+checkAmmo();
+});
+const enforcedWaitMs = isQueueEmptyStart ? (aiConfig.loadingTime * 1000) : 0;
+const timerPromise = new Promise(r => setTimeout(r, enforcedWaitMs));
+Promise.all([ammoPromise, timerPromise]).then(() => {
+if (this._resolveEarly) this._resolveEarly();
+});
+// Cầu dao an toàn (Safety Timeout) cộng thêm thời gian ép chờ
+setTimeout(() => {
+if (this._resolveEarly) this._resolveEarly();
+}, enforcedWaitMs + 22000);
 });
 return this._currentPromise;
 },
@@ -4095,11 +4129,11 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.03
-// Last Updated: 2026-05-15 14:08
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.04
+// Last Updated: 2026-05-15 14:55
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
 // Quy tắc: Tuân thủ tuyệt đối quy tắc 3 chống SyntaxError. KHÔNG MINIFY CODE quá đà.
-// Cập nhật: [BƯỚC 4 - AI CONFIG & VÁ LỖI SỐ 0] Xây dựng lớp giáp phòng thủ cho GlobalLoadingScreen. Tự động lấy aiConfig.loadingTime nếu duration truyền vào bị lỗi (<= 0). Dập tắt hoàn toàn lỗi treo màn hình Loading ở số 0. Tuân thủ Điều 3.
+// Cập nhật: [BƯỚC 4 - RADAR ĐẾM ĐẠN] Nâng cấp GlobalLoadingScreen. Tích hợp Heartbeat Polling để tự động lấy số đạn từ engine (nếu được truyền). Nâng cấp UI vòng tròn đếm lùi và bộ đếm đạn giống hệt màn hình Mock Test. Tuân thủ Điều 3.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
@@ -4546,8 +4580,8 @@ const BottomNav = ({ onNavigate, onApiKey, onOpenAiChat, t, mainColor, currentMo
 </div>
 );
 // 1. MÀN HÌNH CHỜ TOÀN CỤC (GLOBAL LOADING SCREEN) - [NEW]
-const GlobalLoadingScreen = ({ duration = 22, onComplete, onCancel, queueLength = 0, text = "Hệ thống đang đúc dữ liệu...", subText = "Vui lòng đợi trong giây lát", mainColor = "blue", levelStr = "" }) => {
-// [BƯỚC 4 - AI CONFIG & VÁ LỖI SỐ 0]
+const GlobalLoadingScreen = ({ duration = 22, onComplete, onCancel, queueLength = 0, text = "Hệ thống đang đúc dữ liệu...", subText = "Vui lòng đợi trong giây lát", mainColor = "blue", levelStr = "", engine = null }) => {
+// [BƯỚC 4 - AI CONFIG & VÁ LỖI SỐ 0] Lớp phòng thủ
 const getSafeDuration = () => {
 if (duration > 0) return duration;
 try {
@@ -4556,7 +4590,17 @@ return cfg && cfg.loadingTime ? cfg.loadingTime : 22;
 } catch(e) { return 22; }
 };
 const [timeLeft, setTimeLeft] = React.useState(getSafeDuration);
+const [localQueueLength, setLocalQueueLength] = React.useState(queueLength);
 const Icons = window.Icons || {};
+// Tự động Polling số lượng đạn nếu nhận được Động cơ (engine)
+React.useEffect(() => {
+if (engine && typeof engine.length === 'function') {
+const id = setInterval(() => setLocalQueueLength(engine.length()), 500);
+return () => clearInterval(id);
+} else {
+setLocalQueueLength(queueLength);
+}
+}, [engine, queueLength]);
 React.useEffect(() => {
 if (timeLeft <= 0) {
 if (onComplete) onComplete();
@@ -4567,15 +4611,19 @@ return () => clearTimeout(timer);
 }, [timeLeft, onComplete]);
 return (
 <div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in p-6 text-center absolute inset-0 z-50">
-<div className="flex flex-col items-center animate-in zoom-in">
-<div className={`text-7xl font-black text-${mainColor}-500 mb-6 drop-shadow-md`}>{timeLeft}</div>
-<p className={`text-${mainColor}-600 font-bold animate-pulse text-lg`}>{text}</p>
-<p className="text-gray-400 text-xs mt-2 italic">{subText}</p>
+<div className="relative mb-6 flex items-center justify-center">
+<div className={`absolute w-24 h-24 border-4 border-${mainColor}-100 rounded-full`}></div>
+<div className={`absolute w-24 h-24 border-4 border-${mainColor}-500 border-t-transparent rounded-full animate-spin`}></div>
+<div className={`relative z-10 font-black text-3xl text-${mainColor}-600 drop-shadow-sm`}>
+{timeLeft}
 </div>
-{queueLength > 0 && (
-<div className="px-4 py-2 mt-6 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2 shadow-sm animate-in slide-in-from-bottom-2">
-{Icons.Database && <Icons.Database size={16} className="text-blue-500 animate-bounce" />}
-<span className="text-xs font-black text-blue-700 uppercase tracking-widest">Đã nạp sẵn: {queueLength} câu</span>
+</div>
+<h2 className="text-xl font-black text-gray-800 mb-2 tracking-wide uppercase">{text}</h2>
+<p className={`text-${mainColor}-600 text-sm font-bold animate-pulse mb-6`}>{subText}</p>
+{localQueueLength > 0 && (
+<div className={`px-5 py-2.5 bg-white border border-${mainColor}-200 rounded-full flex items-center gap-2.5 shadow-sm animate-in slide-in-from-bottom-4`}>
+<Icons.Database size={18} className={`text-${mainColor}-500 animate-bounce`} />
+<span className={`text-sm font-black text-${mainColor}-700 uppercase tracking-widest`}>Đã nạp sẵn: {localQueueLength} câu AI</span>
 </div>
 )}
 {levelStr && <p className="text-gray-400 text-xs mt-4 italic">(Cấp độ: {levelStr})</p>}
@@ -9007,13 +9055,13 @@ queueLength={queueLength}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.03
-// Last Updated: 2026-05-15 02:22
+// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.04
+// Last Updated: 2026-05-15 15:06
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật: [CHIẾN DỊCH TẬP TRUNG HÓA] Hút mỡ UI Loading, xóa bỏ các khối HTML tự vẽ thủ công. Thay thế toàn bộ bằng vũ khí <window.GlobalLoadingScreen /> dùng chung từ Tầng 3.2. Tuân thủ Điều 3.
+// Cập nhật: [DỌN RÁC & CẢI THIỆN UX] Xóa sạch tàn dư aiCountdown/duration=0 ở GlobalLoadingScreen để hiển thị chuẩn xác Radar Đếm đạn. Bổ sung nút Cài đặt Lõi AI vào góc màn hình Setup. Tuân thủ Điều 3.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
-const QuizSetup = ({ t, mainColor, onStart, onBack }) => {
+const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
 const [sourceMode, setSourceMode] = React.useState('card');
 const [timerMode, setTimerMode] = React.useState(false);
 const [listenMode, setListenMode] = React.useState(false);
@@ -9056,7 +9104,13 @@ return (
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500"><Icons.ChevronLeft size={24} /></button>
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Trắc Nghiệm</h2>
+{onOpenAiConfig ? (
+<button onClick={onOpenAiConfig} className={`p-2 rounded-full hover:bg-${mainColor}-50 text-${mainColor}-600 transition-colors shadow-sm border border-${mainColor}-100`} title="Cài đặt Lõi AI (Tốc độ, Băng đạn)">
+<Icons.Sparkles size={20} />
+</button>
+) : (
 <div className="w-10"></div>
+)}
 </div>
 <div className="w-full space-y-3 flex-1 overflow-y-auto custom-scrollbar p-1 pb-4">
 {/* Bảng chọn Nguồn dữ liệu */}
@@ -9143,9 +9197,9 @@ isAudioPlaying, playSequence, onBookmark, isInNotebook, onPlay,
 selectedOptionIndex, isChecking, clickedWrongIndices, hasStartedListening,
 handleAnswer, AiModeSwitch, isAiMode, setAiMode, onMissingKey, isLoading,
 showChanceToast, isGenerating, timerMode, timeLeft, totalTime, isRoundStarted,
-onStartRound, onEndGame, onPause, onBack, feedbackType, aiCountdown, isPaused,
+onStartRound, onEndGame, onPause, onBack, feedbackType, isPaused,
 correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode,
-hardMode, listenPlayCount, sourceMode, aiWaitTime, queueLength
+hardMode, listenPlayCount, sourceMode, queueLength, config
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
@@ -9155,16 +9209,15 @@ if (ratio > 0.6) return 'text-green-600';
 if (ratio > 0.3) return 'text-orange-500';
 return 'text-red-600 animate-pulse';
 };
-// [CHIẾN DỊCH HÚT MỠ UI] Sử dụng GlobalLoadingScreen thay thế
+// [CHIẾN DỊCH HÚT MỠ UI] Sử dụng GlobalLoadingScreen (đã dọn sạch duration cứng)
 if (isGenerating && !currentQuestionData) {
 return (
 <window.GlobalLoadingScreen
-duration={aiCountdown > 0 ? aiCountdown : 0}
 onCancel={() => onEndGame()}
 queueLength={queueLength}
-text={aiCountdown > 0 ? "AI đang phân tích dữ liệu..." : (sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : (t('aiGenerating') || 'Đang chuẩn bị dữ liệu...'))}
-subText={aiCountdown > 0 ? "(Vui lòng đợi giây lát để có câu hỏi hay)" : ""}
+text={sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : (t('aiGenerating') || 'Đang thiết lập trò chơi...')}
 mainColor={mainColor}
+levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
 );
 }
@@ -9308,13 +9361,8 @@ Thoát ngay
 </span>
 )}
 {queueLength > 0 && (
-<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} câu`}>
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} vòng`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
-</span>
-)}
-{(aiWaitTime || 0) > 0 && (
-<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-500 text-white border border-indigo-600" title="Thời gian tản nhiệt AI">
-<Icons.Clock size={12} /> {aiWaitTime}s
 </span>
 )}
 <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider cursor-default ${hardMode?'bg-red-100 text-red-700 border border-red-200':'bg-green-100 text-green-700 border border-green-200'}`}>
@@ -9382,8 +9430,8 @@ return (
 </div>
 <div className="p-3 bg-white border-t flex justify-between items-center gap-4">
 <button onClick={() => setShowConfirmEnd(true)} className="px-4 py-2 text-red-500 font-bold hover:bg-red-50 rounded-lg text-sm flex items-center gap-1"><Icons.X size={18} /> {t('endGame')}</button>
-<button onClick={onSkip} disabled={isChecking || (aiWaitTime || 0) > 0 || isGenerating} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg text-sm flex items-center gap-1 disabled:opacity-50">
-{(aiWaitTime || 0) > 0 ? `Chờ AI (${aiWaitTime}s)` : t('skip')} <Icons.SkipForward size={18} />
+<button onClick={onSkip} disabled={isChecking || isGenerating} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg text-sm flex items-center gap-1 disabled:opacity-50">
+{t('skip')} <Icons.SkipForward size={18} />
 </button>
 </div>
 </div>
@@ -9396,10 +9444,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.04
-// Last Updated: 2026-05-15 02:26
+window.GamePlayScreen = GamePlayScreen;
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.05
+// Last Updated: 2026-05-15 15:12
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: [CHIẾN DỊCH TẬP TRUNG HÓA LOGIC] Hút mỡ triệt để các State rác (aiCountdown, aiWaitTime). Cắm cáp thẳng vào Máy Trộn Đề Vạn Năng (ExamEngine.hydrateQuestion) cho chế độ AI Pure. Giao phó việc block thời gian cho QueueEngine, dập tắt hoàn toàn lỗi Auto-next đè vạch thời gian. Tuân thủ Điều 3.
+// Cập nhật: [DỌN RÁC TẦNG 5] Xóa sổ hoàn toàn các tham số rác `aiCountdown` và `aiWaitTime` khi truyền xuống GamePlayScreen. Bàn giao 100% trách nhiệm quản lý thời gian chờ cho Tầng 2 và 3. Tuân thủ Điều 3.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -9703,7 +9752,7 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-// [HÚT MỠ] Chờ QueueEngine nạp đạn mà không cần Promise.race hay đếm ngược giả lập
+// [HÚT MỠ] Chờ QueueEngine nạp đạn mà không cần vòng lặp đếm ngược của UI
 await coordinatorRef.current.maintain();
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
@@ -9933,12 +9982,12 @@ isInNotebook={notebook?.some(n => n.term === currentQuestionData?.question?.term
 selectedOptionIndex={selectedOptionIndex} isChecking={isChecking} clickedWrongIndices={clickedWrongIndices}
 hasStartedListening={hasStartedListening} handleAnswer={handleAnswer} onSkip={handleSkip}
 AiModeSwitch={AiModeSwitch} isAiMode={isAiMode} setAiMode={() => {}} isLoading={isLoading}
-isGenerating={isGenerating} aiCountdown={0} showChanceToast={showChanceToast}
+isGenerating={isGenerating} showChanceToast={showChanceToast}
 feedbackType={feedbackType} timerMode={timerMode} timeLeft={timeLeft} totalTime={timeLimit}
 isRoundStarted={isRoundStarted} onStartRound={() => { setIsRoundStarted(true); if (gameMode === 'listen') triggerAudio(); }}
 isPaused={isPaused} onPause={() => setIsPaused(!isPaused)} onBack={handleSaveAndBack}
 onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={settings} askMode={askMode} showPronun={showPronun} listenMode={listenMode} hardMode={hardMode} listenPlayCount={listenPlayCount} sourceMode={sourceMode}
-aiWaitTime={0} resultTimer={resultTimer} isResultPaused={isResultPaused} toggleResultPause={() => setIsResultPaused(p => !p)}
+resultTimer={resultTimer} isResultPaused={isResultPaused} toggleResultPause={() => setIsResultPaused(p => !p)}
 queueLength={queueLength} config={configRef.current}
 />
 );
