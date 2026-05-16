@@ -2094,10 +2094,10 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.07
-// Last Updated: 2026-05-15 14:51
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.08
+// Last Updated: 2026-05-16 13:16
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật: [BƯỚC 3 - AI CONFIG] Đại tu thuật toán Early Resolve. Áp dụng Promise.all để bắt buộc UI chờ đúng thời gian loadingTime của Cấu hình AI khi nạp đạn vòng đầu tiên, đảm bảo background có dư thời gian nạp căng băng đạn. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Bổ sung tham số isOfflineFastTrack vào hàm maintain(). Bỏ qua thời gian ép chờ (enforcedWaitMs) nếu đang chơi ở chế độ thẻ Offline, giúp mở khóa UI ngay lập tức khi đạn đã nạp xong. Tuân thủ Điều 3.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Sequential Early Resolve - Boomerang Principle)
@@ -2118,8 +2118,8 @@ queue: [],
 isFetching: false,
 isActive: true,
 _currentPromise: null,
-_isResolved: false, // [NEW] Cờ theo dõi trạng thái Promise
-maintain: function(isInitial = false, timeoutMs = 22000) {
+_isResolved: false, // Cờ theo dõi trạng thái Promise
+maintain: function(isInitial = false, timeoutMs = 22000, isOfflineFastTrack = false) {
 if (!this.isActive) return Promise.resolve();
 if (this.queue.length >= maxConcurrent) return Promise.resolve();
 const isQueueEmptyStart = this.queue.length === 0;
@@ -2137,7 +2137,7 @@ this._isResolved = true;
 resolve();
 }
 };
-// [VÁ LỖI EARLY RESOLVE] Ngay cả khi bị Race Condition, UI cũng nên đợi
+// Ngay cả khi bị Race Condition, UI cũng nên đợi
 setTimeout(() => { if (this._resolveEarly) this._resolveEarly(); }, timeoutMs);
 });
 }
@@ -2166,7 +2166,6 @@ this.queue.push(...data);
 } else {
 this.queue.push(data);
 }
-// NHỊP 3 CŨ (Đã bị gỡ bỏ): if (this.queue.length >= 1 && this._resolveEarly) this._resolveEarly();
 // Nhịp 4: Thời gian tản nhiệt (Boomerang Cool-down theo Cấu hình AI)
 // Đảm bảo chỉ delay nếu CẦN nạp thêm đạn
 if (this.queue.length < maxConcurrent && this.isActive) {
@@ -2184,7 +2183,7 @@ this.isFetching = false;
 }
 };
 runBackground();
-// [VÁ LỖI EARLY RESOLVE] Áp dụng chiến thuật Promise.all kết hợp hàm đếm thời gian
+// [VÁ LỖI EARLY RESOLVE & OFFLINE TRAP] Áp dụng chiến thuật Promise.all
 const ammoPromise = new Promise((resolveAmmo) => {
 const checkAmmo = () => {
 // Hoàn thành nếu có đạn HOẶC tiến trình background đã dừng (cạn dữ liệu/lỗi)
@@ -2196,7 +2195,8 @@ setTimeout(checkAmmo, 200);
 };
 checkAmmo();
 });
-const enforcedWaitMs = isQueueEmptyStart ? (aiConfig.loadingTime * 1000) : 0;
+// Bỏ qua thời gian ép chờ nếu đang chơi ở chế độ Offline (isOfflineFastTrack === true)
+const enforcedWaitMs = (isQueueEmptyStart && !isOfflineFastTrack) ? (aiConfig.loadingTime * 1000) : 0;
 const timerPromise = new Promise(r => setTimeout(r, enforcedWaitMs));
 // Mở khóa UI khi CẢ 2 điều kiện đều thỏa mãn: Có đạn VÀ Đã hết thời gian ép chờ
 Promise.all([ammoPromise, timerPromise]).then(() => {
@@ -2238,7 +2238,7 @@ isFetching: false,
 isActive: true,
 _currentPromise: null,
 _isResolved: false,
-maintain: function() {
+maintain: function(isInitial = false, timeoutMs = 22000, isOfflineFastTrack = false) {
 if (!this.isActive) return Promise.resolve();
 if (this.queue.length >= maxConcurrent) return Promise.resolve();
 const isQueueEmptyStart = this.queue.length === 0;
@@ -2271,7 +2271,6 @@ if (!this.isActive) break;
 if (data) {
 // Nhịp 2: Bắt và lưu trữ
 this.queue.push(data);
-// NHỊP 3 CŨ (Đã bị gỡ bỏ): if (this._resolveEarly) this._resolveEarly();
 // Nhịp 4: Boomerang Cool-down theo Cấu hình AI
 if (this.queue.length < maxConcurrent && this.isActive) {
 await new Promise(r => setTimeout(r, aiConfig.delayMs));
@@ -2289,7 +2288,7 @@ this.isFetching = false;
 }
 };
 runBackground();
-// [VÁ LỖI EARLY RESOLVE] Áp dụng chiến thuật Promise.all kết hợp hàm đếm thời gian
+// [VÁ LỖI EARLY RESOLVE & OFFLINE TRAP]
 const ammoPromise = new Promise((resolveAmmo) => {
 const checkAmmo = () => {
 if (this.queue.length >= 1 || !this.isFetching) resolveAmmo();
@@ -2297,7 +2296,8 @@ else setTimeout(checkAmmo, 200);
 };
 checkAmmo();
 });
-const enforcedWaitMs = isQueueEmptyStart ? (aiConfig.loadingTime * 1000) : 0;
+// Bỏ qua thời gian ép chờ nếu đang chơi ở chế độ Offline (isOfflineFastTrack === true)
+const enforcedWaitMs = (isQueueEmptyStart && !isOfflineFastTrack) ? (aiConfig.loadingTime * 1000) : 0;
 const timerPromise = new Promise(r => setTimeout(r, enforcedWaitMs));
 Promise.all([ammoPromise, timerPromise]).then(() => {
 if (this._resolveEarly) this._resolveEarly();
@@ -6932,10 +6932,10 @@ return (
 );
 };
 window.ExamPoolManagerModal = ExamPoolManagerModal;
-// Sheet 5.1: Tầng 5-Nối Ô (Match UI) - Version 1.04
-// Last Updated: 2026-05-16 11:15
+// Sheet 5.1: Tầng 5-Nối Ô (Match UI) - Version 1.05
+// Last Updated: 2026-05-16 14:25
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 2] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng, dẹp bỏ Floating Header và dời Nút Kết Thúc xuống góc trái. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -7049,15 +7049,17 @@ x2: endRect.left - containerRect.left,
 y2: endRect.top + endRect.height / 2 - containerRect.top
 };
 };
-// [CHIẾN DỊCH HÚT MỠ] Sử dụng GlobalLoadingScreen thay thế các khối HTML tự vẽ
+// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
 if (isGenerating && (!matchState.pairs || matchState.pairs.length === 0)) {
+if (config?.sourceMode === 'card' && !isAiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
-duration={aiCountdown > 0 ? aiCountdown : 0}
 onCancel={() => onEndGame(gameStats)}
 queueLength={queueLength}
-text={aiCountdown > 0 ? "AI đang phân tích dữ liệu..." : (config?.sourceMode === 'ai_pure' ? 'AI đang tạo các cặp từ...' : (t('aiGenerating') || 'Đang chuẩn bị dữ liệu...'))}
-subText={aiCountdown > 0 ? "(Vui lòng đợi giây lát để có vòng đấu hay)" : ""}
+text={config?.sourceMode === 'ai_pure' ? 'AI đang tạo các cặp từ...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
 levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
@@ -7091,19 +7093,21 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH HÚT MỠ] Chuyển vòng (Mini Overlay) */}
+{/* [CHIẾN DỊCH SILENT OFFLINE] Chuyển vòng (Mini Overlay) */}
 {isGenerating && matchState.pairs && matchState.pairs.length > 0 && (
+(config?.sourceMode === 'card' && !isAiMode) ? (
+<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
+) : (
 <window.GlobalLoadingScreen
-duration={0}
 queueLength={queueLength}
-text={t('aiGenerating') || "AI đang thiết lập..."}
+text="Đang thiết lập..."
 mainColor={mainColor}
 />
+)
 )}
-{/* [CHIẾN DỊCH HÚT MỠ] Loading chung (Nếu có) */}
+{/* Loading chung (Nếu có) */}
 {isLoading && !isGenerating && (
 <window.GlobalLoadingScreen
-duration={0}
 queueLength={queueLength}
 text="Đang thiết lập..."
 mainColor={mainColor}
@@ -7152,12 +7156,13 @@ Nối Ô <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(isAiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} vòng`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* [NEW V1.04] ĐỒNG HỒ PHANH AI GÓC PHẢI */}
+{/* ĐỒNG HỒ PHANH AI GÓC PHẢI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse hidden sm:flex" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
@@ -7329,10 +7334,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Sheet 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.08
-// Last Updated: 2026-05-16 11:25
+// Sheet 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.09
+// Last Updated: 2026-05-16 14:30
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 2] Phục hồi biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng cách ép đồng bộ thời gian xem đáp án với thời gian làm nguội còn lại. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
@@ -7686,7 +7691,7 @@ safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "
 }
 }
 if (sourceMode === 'card') {
-let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 const neededCards = difficulty === 'hard' ? 4 : 5;
 if (validCards.length < neededCards) {
 safeShowToast(`Bộ thẻ không đủ ${neededCards} thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...`, "warning");
@@ -7695,11 +7700,7 @@ const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRe
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
 const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
-if (fbItems && fbItems.length > 0) {
-const existingTerms = new Set(validCards.map(c => c.term));
-const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
-validCards = [...validCards, ...newFbs];
-}
+if (fbItems && fbItems.length >= targetCount) validCards = fbItems;
 }
 if (validCards.length < neededCards) {
 const defaults = [{ term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" }, { term: "Cat", definition: "Con mèo" }, { term: "Dog", definition: "Con chó" }, { term: "Bird", definition: "Con chim" }];
@@ -7708,7 +7709,7 @@ const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
 validCards = [...validCards, ...neededDefaults];
 }
 }
-deckRef.current = window.Utils.shuffleArray(validCards);
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
 } else {
 deckRef.current = [];
 }
@@ -7719,8 +7720,9 @@ coordinatorRef.current = window.QueueEngine.createBatchQueueCoordinator(fetchTas
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-// [HÚT MỠ] Chờ QueueEngine nạp đạn mà không cần vòng lặp đếm ngược của UI
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Nối Ô", "Kích hoạt Hard Fallback");
@@ -7748,7 +7750,8 @@ if (savedState.deck) deckRef.current = [...savedState.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createBatchQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createBatchQueueCoordinator(fetchTask, 4);
-coordinatorRef.current.maintain();
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 setIsLoading(false);
 setIsGenerating(false);
@@ -7866,7 +7869,8 @@ applyMatchData(nextData);
 } else {
 setIsGenerating(true);
 if (coordinatorRef.current) {
-await coordinatorRef.current.maintain();
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 let fresh = coordinatorRef.current.pop();
 if (!fresh) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Nối Ô", "Kích hoạt Hard Fallback");
@@ -7909,10 +7913,10 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 };
 window.MatchGame = MatchGame;
 window.Block5_2_MatchGame = MatchGame;
-// Sheet 5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.04
-// Last Updated: 2026-05-16 09:15
+// Sheet 5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.05
+// Last Updated: 2026-05-16 14:10
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Ghép Câu (Scramble Game).
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 1] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng và bổ sung Nút Kết Thúc ở góc trái. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng hoàn toàn GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp 0.1s). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // 1. SCRAMBLE SETUP (Màn hình cấu hình)
 const ScrambleSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -8047,15 +8051,17 @@ return (
 </div>
 );
 };
-// [CHIẾN DỊCH HÚT MỠ UI] Sử dụng GlobalLoadingScreen
+// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
 if (isGenerating && (!gameState.origin || aiCountdown > 0)) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
-duration={aiCountdown > 0 ? aiCountdown : 0}
 onCancel={() => onEndGame(stats)}
 queueLength={queueLength}
-text={aiCountdown > 0 ? "AI đang phân tích dữ liệu..." : (config?.sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : (t('aiGenerating') || 'Đang tải dữ liệu...'))}
-subText={aiCountdown > 0 ? "(Vui lòng đợi giây lát để có câu hỏi hay)" : ""}
+text={config?.sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
 levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
@@ -8096,14 +8102,17 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH HÚT MỠ UI] Overlay chuyển vòng */}
+{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng */}
 {isGenerating && gameState.origin && (
+(config?.sourceMode === 'card' && !config?.aiMode) ? (
+<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
+) : (
 <window.GlobalLoadingScreen
-duration={0}
 queueLength={queueLength}
-text={t('aiGenerating') || "AI đang thiết lập..."}
+text="Đang tải câu tiếp theo..."
 mainColor={mainColor}
 />
+)
 )}
 {isPaused && (
 <div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in">
@@ -8150,8 +8159,8 @@ mainColor={mainColor}
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{/* Queue Badge */}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} vòng`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
@@ -8351,10 +8360,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.06
-// Last Updated: 2026-05-16 09:30
+// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.07
+// Last Updated: 2026-05-16 14:20
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 1] Phục hồi biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng hàm proceedToNext đồng bộ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 const safeShowToast = React.useCallback((msg, type = 'success') => {
@@ -8686,8 +8695,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-// [CHIẾN DỊCH HÚT MỠ] Chờ đạn mà không cần Promise.race hay đếm ngược giả lập
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 // [MẸO ĐÁNH LỪA TRÌNH DUYỆT] Tránh lỗi chặn Audio trên iOS
 if (window.speechSynthesis) {
 const silentUtterance = new SpeechSynthesisUtterance('');
@@ -8741,7 +8751,8 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 // ĐỒNG BỘ: Nâng mức trần nạp đạn lên 4 khi Resume
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
-coordinatorRef.current.maintain();
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 setIsGenerating(false);
 isInitializingRef.current = false;
@@ -8840,7 +8851,9 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -9181,10 +9194,10 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.11
-// Last Updated: 2026-05-15 21:46
+// Sheet 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.13
+// Last Updated: 2026-05-16 13:50
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật: [KHÔI PHỤC NÚT KẾT THÚC] Bổ sung nút Kết thúc ở góc trái Footer để người chơi có đường thoát và lưu kết quả. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng hoàn toàn GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp 0.1s). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -9336,13 +9349,17 @@ if (ratio > 0.6) return 'text-green-600';
 if (ratio > 0.3) return 'text-orange-500';
 return 'text-red-600 animate-pulse';
 };
-// [SỬ DỤNG GLOBAL LOADING SCREEN]
+// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
 if (isGenerating && !currentQuestionData) {
+if (sourceMode === 'card' && !isAiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
 onCancel={() => onEndGame()}
 queueLength={queueLength}
-text={sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : (t('aiGenerating') || 'Đang thiết lập trò chơi...')}
+text={sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
 levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
@@ -9454,7 +9471,6 @@ Thoát ngay
 )}
 </div>
 <div className="flex items-center gap-1 sm:gap-2">
-{/* Bọc điều kiện thông minh cho nút Bookmark ở Header */}
 {!(askMode === 'def' && !isChecking) ? (
 <button
 onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark({ isSmartTarget: true, display: currentQuestionData.question.term, save: currentQuestionData.question.term, analysis: currentQuestionData.question.definition }); }}
@@ -9495,7 +9511,8 @@ title="Lưu vào Sổ tay"
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(isAiMode || sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} vòng`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
@@ -9587,7 +9604,7 @@ return (
 </button>
 </div>
 ) : (
-<button onClick={onSkip} disabled={aiWaitTime > 0 || isGenerating} className={`w-full py-3 sm:py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all border border-gray-200 flex items-center justify-center gap-2 ${(aiWaitTime > 0 || isGenerating) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
+<button onClick={onSkip} disabled={aiWaitTime > 0 || isGenerating} className={`w-full py-3 sm:py-4 bg-gray-100 text-gray-600 font-bold text-xs sm:text-sm rounded-xl hover:bg-gray-200 transition-all border border-gray-200 flex items-center justify-center gap-2 ${(aiWaitTime > 0 || isGenerating) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
 Bỏ qua câu này <Icons.SkipForward size={18} className="sm:w-5 sm:h-5" />
 </button>
 )}
@@ -9603,10 +9620,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.09
-// Last Updated: 2026-05-15 22:43
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.10
+// Last Updated: 2026-05-16 13:40
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: [CHUẨN HÓA ANTI-STREAK - PHASE 2] Cấy ghép thuật toán "Trộn có trí nhớ" để chống hiện tượng ảo giác cụm (đáp án đúng liên tục rơi vào B hoặc D). Bẻ gãy chuỗi nếu lặp lại quá 2 lần. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -9939,7 +9956,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Trắc nghiệm", "Kích hoạt Hard Fallback");
@@ -10060,7 +10079,9 @@ setAiWaitTime(currentCooldown);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let qData = coordinatorRef.current.pop();
 if (!qData) {
@@ -10893,10 +10914,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 1.04
-// Last Updated: 2026-05-16 09:40
+// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 1.05
+// Last Updated: 2026-05-16 14:35
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 1] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng và dời Nút Kết Thúc xuống góc trái. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -11056,8 +11077,12 @@ save: cleanSentence,      // Sạch 100% để gọi AI an toàn
 analysis: currentQuestion.hint || currentQuestion.explanation || ""
 });
 };
-// [CHIẾN DỊCH HÚT MỠ UI] Sử dụng GlobalLoadingScreen thay thế
+// [CHIẾN DỊCH SILENT OFFLINE] Sử dụng GlobalLoadingScreen thay thế
 if (isGenerating && !currentQuestion) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
@@ -11156,12 +11181,13 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* [NEW V1.04] ĐỒNG HỒ PHANH AI GÓC PHẢI */}
+{/* ĐỒNG HỒ PHANH AI GÓC PHẢI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
@@ -11283,10 +11309,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.05
-// Last Updated: 2026-05-16 09:45
+// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.06
+// Last Updated: 2026-05-16 14:26
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý dữ liệu và luồng kiểm tra đáp án.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 1] Phục hồi biến aiWaitTime để khóa UI chống Spam gõ phím. Vá lỗ hổng Auto-next bằng hàm proceedToNext đồng bộ thời gian nghỉ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -11571,8 +11597,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-// [HÚT MỠ] Giao phó hoàn toàn việc đợi đạn cho QueueEngine, không cần đếm ngược giả lập
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let data = coordinatorRef.current.pop();
 if (!data) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Điền Từ", "Kích hoạt Hard Fallback");
@@ -11631,7 +11658,8 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 // ĐỒNG BỘ: Nâng mức trần nạp đạn lên 4 khi Resume Session
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
-coordinatorRef.current.maintain();
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
@@ -11676,7 +11704,8 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -11822,10 +11851,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Sheet5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 1.05
-// Last Updated: 2026-05-16 09:50
+// Sheet5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 1.06
+// Last Updated: 2026-05-16 14:32
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 1] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng và dời Nút Kết Thúc xuống góc trái. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -11985,15 +12014,17 @@ save: cleanCorrectSentence || currentQuestion.wrongSentence, // Chuỗi sạch 1
 analysis: currentQuestion.explanation || ""
 });
 };
-// [CHIẾN DỊCH HÚT MỠ UI] Sử dụng GlobalLoadingScreen thay thế
+// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
 if (isGenerating && !currentQuestion) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
-duration={aiCountdown > 0 ? aiCountdown : 0}
 onCancel={onBack}
 queueLength={queueLength}
-text={aiCountdown > 0 ? "AI đang phân tích dữ liệu..." : (config?.sourceMode === 'ai_pure' ? 'AI đang sáng tác thử thách...' : 'Đang thiết lập trò chơi...')}
-subText={aiCountdown > 0 ? "(Vui lòng đợi giây lát để có thử thách hay)" : ""}
+text={config?.sourceMode === 'ai_pure' ? 'AI đang sáng tác thử thách...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
 levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
@@ -12094,12 +12125,13 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* [NEW V1.05] ĐỒNG HỒ PHANH AI GÓC PHẢI */}
+{/* ĐỒNG HỒ PHANH AI GÓC PHẢI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
@@ -12299,10 +12331,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Sheet5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.05
-// Last Updated: 2026-05-16 10:06
+// Sheet5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.06
+// Last Updated: 2026-05-16 14:38
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 1] Phục hồi biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng hàm proceedToNext đồng bộ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -12618,7 +12650,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Tìm Lỗi Sai", "Kích hoạt Hard Fallback");
@@ -12680,7 +12714,8 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 // [ĐỒNG BỘ] Nâng mức trần nạp đạn lên 4 viên khi Phục hồi Session
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
-coordinatorRef.current.maintain();
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
@@ -12722,7 +12757,8 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -12892,10 +12928,10 @@ window.Block5_11_useSpotMistakeLogic = useSpotMistakeLogic;
 window.useSpotMistakeLogic = useSpotMistakeLogic;
 window.Block5_11_SpotMistakeGame = SpotMistakeGame;
 window.SpotMistakeGame = SpotMistakeGame;
-// Sheet5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.05
-// Last Updated: 2026-05-16 10:17
+// Sheet5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.06
+// Last Updated: 2026-05-16 15:58
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Từ Khác Loại (Odd One Out).
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 2] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng và bổ sung Nút Kết Thúc xuống góc trái. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const OddOneOutSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -12997,8 +13033,12 @@ const m = Math.floor(seconds / 60);
 const s = seconds % 60;
 return `${m}:${s.toString().padStart(2, '0')}`;
 };
-// [CHIẾN DỊCH HÚT MỠ UI] Sử dụng GlobalLoadingScreen thay thế
+// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
 if (isGenerating && !currentQuestion) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
@@ -13071,14 +13111,18 @@ return (
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH HÚT MỠ UI] Overlay chuyển vòng */}
+{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng */}
 {isGenerating && currentQuestion && (
+(config?.sourceMode === 'card' && !config?.aiMode) ? (
+<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
+) : (
 <window.GlobalLoadingScreen
 duration={0}
 queueLength={queueLength}
 text="Đang tải vòng tiếp theo..."
 mainColor={mainColor}
 />
+)
 )}
 {/* Header */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10 relative">
@@ -13119,12 +13163,13 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} vòng`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* [NEW V1.05] ĐỒNG HỒ PHANH AI GÓC PHẢI */}
+{/* ĐỒNG HỒ PHANH AI GÓC PHẢI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse hidden sm:flex" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
@@ -13270,10 +13315,10 @@ window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.08
-// Last Updated: 2026-05-16 10:20
+// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.09
+// Last Updated: 2026-05-16 16:15
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 2] Phục hồi biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng hàm proceedToNext đồng bộ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -13588,7 +13633,7 @@ const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
 validCards = [...validCards, ...neededDefaults];
 }
 }
-deckRef.current = window.Utils.shuffleArray(validCards);
+deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
 } else {
 deckRef.current = [];
 }
@@ -13599,7 +13644,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Từ Khác Loại", "Kích hoạt Hard Fallback");
@@ -13659,7 +13706,9 @@ deckRef.current = [...st.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
-coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi phục hồi Session
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
@@ -13703,7 +13752,9 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi next round
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -15343,10 +15394,10 @@ className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 trans
 };
 window.Block5_16_ExamReviewModal = ExamReviewModal;
 window.ExamReviewModal = ExamReviewModal;
-// Sheet5.17: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Setup & PlayScreen UI) - Version 1.05
-// Last Updated: 2026-05-16 10:10
+// Sheet5.17: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Setup & PlayScreen UI) - Version 1.06
+// Last Updated: 2026-05-16 16:25
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Hình Ảnh. Tuân thủ Quiz Sample.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 2] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng và dời Nút Kết Thúc xuống góc trái. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const ImageQuizSetup = ({ t, mainColor = 'purple', onStart, onBack }) => {
@@ -15463,8 +15514,12 @@ display: currentQuestion.term,
 analysis: currentQuestion.definition || currentQuestion.explanation || ""
 });
 };
-// [CHIẾN DỊCH HÚT MỠ UI] Sử dụng GlobalLoadingScreen thay thế Loading thủ công
+// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
 if (isGenerating && !currentQuestion) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
@@ -15544,14 +15599,18 @@ return (
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH HÚT MỠ UI] Overlay chuyển vòng */}
+{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng */}
 {isGenerating && currentQuestion && (
+(config?.sourceMode === 'card' && !config?.aiMode) ? (
+<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
+) : (
 <window.GlobalLoadingScreen
 duration={0}
 queueLength={queueLength}
 text="Đang tải ảnh tiếp theo..."
 mainColor={mainColor}
 />
+)
 )}
 {/* HEADER */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10 relative">
@@ -15577,7 +15636,8 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} />
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
@@ -15705,10 +15765,10 @@ window.Block5_17_ImageQuizSetup = ImageQuizSetup;
 window.ImageQuizSetup = ImageQuizSetup;
 window.Block5_17_ImageQuizPlayScreen = ImageQuizPlayScreen;
 window.ImageQuizPlayScreen = ImageQuizPlayScreen;
-// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.08
-// Last Updated: 2026-05-16 10:20
+// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.09
+// Last Updated: 2026-05-16 16:26
 // Nhiệm vụ: Controller chính của Game Hình Ảnh (Image Quiz). Quản lý luồng AI, tạo nhiễu ảnh và liên kết UI.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 2] Phục hồi biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng hàm proceedToNext đồng bộ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useImageQuizLogic = (cards, config, callbacks) => {
@@ -16045,7 +16105,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Đoán Hình", "Kích hoạt Hard Fallback");
@@ -16105,7 +16167,9 @@ deckRef.current = [...st.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
-coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi phục hồi Session
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
@@ -16149,7 +16213,9 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi next round
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -16294,10 +16360,10 @@ window.Block5_18_useImageQuizLogic = useImageQuizLogic;
 window.useImageQuizLogic = useImageQuizLogic;
 window.Block5_18_ImageQuizGame = ImageQuizGame;
 window.ImageQuizGame = ImageQuizGame;
-// Sheet 5.19: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Setup & PlayScreen UI) - Version 1.06
-// Last Updated: 2026-05-16 11:20
+// Sheet 5.19: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Setup & PlayScreen UI) - Version 1.07
+// Last Updated: 2026-05-16 16:35
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Ngữ Âm. Tuân thủ Quiz Sample.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 3] Tái cấu trúc Footer tĩnh lặng, dời Nút Kết Thúc từ Header xuống góc trái Footer. Đảm bảo khóa nút bấm khi aiWaitTime > 0. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const PronunciationSetup = ({ t, mainColor = 'indigo', onStart, onBack }) => {
@@ -16413,8 +16479,12 @@ display: cleanWord,
 analysis: currentQuestion.definition || currentQuestion.explanation || ""
 });
 };
-// MÀN HÌNH CHỜ (LOADING) ĐÃ ĐƯỢC HÚT MỠ
+// MÀN HÌNH CHỜ (LOADING)
 if (isGenerating && !currentQuestion) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
@@ -16499,14 +16569,18 @@ return (
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH HÚT MỠ UI] Overlay chuyển vòng */}
+{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng */}
 {isGenerating && currentQuestion && (
+(config?.sourceMode === 'card' && !config?.aiMode) ? (
+<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
+) : (
 <window.GlobalLoadingScreen
 duration={0}
 queueLength={queueLength}
 text="Đang tải câu tiếp theo..."
 mainColor={mainColor}
 />
+)
 )}
 {/* HEADER */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10 relative">
@@ -16544,7 +16618,8 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
@@ -16676,14 +16751,14 @@ window.Block5_19_PronunciationSetup = PronunciationSetup;
 window.PronunciationSetup = PronunciationSetup;
 window.Block5_19_PronunciationPlayScreen = PronunciationPlayScreen;
 window.PronunciationPlayScreen = PronunciationPlayScreen;
-// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.09
-// Last Updated: 2026-05-16 11:35
+// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.10
+// Last Updated: 2026-05-16 16:36
 // Nhiệm vụ: Controller chính của Game Ngữ Âm (Pronunciation). Quản lý luồng AI, State và kết nối UI.
-// Cập nhật: [CHUẨN HÓA ANTI-STREAK] Đồng bộ hóa hàm applyAntiStreak ra toàn cục để bẻ gãy chuỗi trùng lặp vị trí cho mọi luồng dữ liệu (AI, Fallback). Củng cố cơ chế Phanh AI. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const usePronunciationLogic = (cards, config, callbacks) => {
-const { apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag } = config;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag } = config;
 const { onFinish, showToast, onLogWrong, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag, onEndGame } = callbacks;
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [selectedIndex, setSelectedIndex] = React.useState(null);
@@ -16954,7 +17029,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Ngữ Âm", "Kích hoạt Hard Fallback");
@@ -17016,7 +17093,9 @@ deckRef.current = [...st.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
-coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi phục hồi Session
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
@@ -17049,7 +17128,9 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi next round
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -17182,7 +17263,7 @@ aiWaitTime
 const PronunciationGame = ({ cards, t, onFinish, onQuit, mainColor, lang, apiKey, onBookmark, notebook, onLogWrong, settings, config, onUpdateCards, onSaveToHarvest, savedState, onAutoSave, onPlay, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong) };
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'ai_pure' };
-const logic = usePronunciationLogic(cards, { ...safeConfig, isAiMode: true, apiKey, lang, timeLimit: safeConfig.timeLimit || 20, savedState, globalRetryBag }, hookCallbacks);
+const logic = usePronunciationLogic(cards, { ...safeConfig, isAiMode: safeConfig.sourceMode === 'ai_pure' || safeConfig.aiMode || false, apiKey, lang, timeLimit: safeConfig.timeLimit || 20, savedState, globalRetryBag }, hookCallbacks);
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: logic.handleSaveAndBack,
@@ -17215,10 +17296,10 @@ window.Block5_20_usePronunciationLogic = usePronunciationLogic;
 window.usePronunciationLogic = usePronunciationLogic;
 window.Block5_20_PronunciationGame = PronunciationGame;
 window.PronunciationGame = PronunciationGame;
-// Block 5.21: TẦNG 5: TRÒ CHƠI HÓA (Listening Setup & PlayScreen UI) - Version 1.04
-// Last Updated: 2026-05-16 10:28
+// Block 5.21: TẦNG 5: TRÒ CHƠI HÓA (Listening Setup & PlayScreen UI) - Version 1.05
+// Last Updated: 2026-05-16 16:40
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Đôi Tai Vàng (Listening). Tuân thủ Quiz Sample.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 3] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng và dời Nút Kết Thúc xuống góc trái. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const ListeningSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
@@ -17361,8 +17442,12 @@ if ((checkStatus === 'correct' || checkStatus === 'failed' || checkStatus === 'w
 return 'bg-white text-gray-500 border border-gray-100';
 };
 const labels = ['A', 'B', 'C', 'D'];
-// MÀN HÌNH CHỜ (LOADING) ĐÃ ĐƯỢC HÚT MỠ UI
+// MÀN HÌNH CHỜ (LOADING) ĐÃ ĐƯỢC SILENT OFFLINE
 if (isGenerating && !currentQuestion) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
@@ -17452,14 +17537,18 @@ return (
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH HÚT MỠ UI] Overlay chuyển vòng mỏng */}
+{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng mỏng */}
 {isGenerating && currentQuestion && (
+(config?.sourceMode === 'card' && !config?.aiMode) ? (
+<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
+) : (
 <window.GlobalLoadingScreen
 duration={0}
 queueLength={queueLength}
 text="Đang tải kịch bản tiếp theo..."
 mainColor={mainColor}
 />
+)
 )}
 {/* HEADER */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10">
@@ -17485,12 +17574,13 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} />
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{queueLength > 0 && (
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* [NEW V1.04] ĐỒNG HỒ PHANH AI GÓC PHẢI */}
+{/* ĐỒNG HỒ PHANH AI GÓC PHẢI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse hidden sm:flex" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
@@ -17620,14 +17710,14 @@ window.Block5_21_ListeningSetup = ListeningSetup;
 window.ListeningSetup = ListeningSetup;
 window.Block5_21_ListeningPlayScreen = ListeningPlayScreen;
 window.ListeningPlayScreen = ListeningPlayScreen;
-// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.06
-// Last Updated: 2026-05-16 10:41
+// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.07
+// Last Updated: 2026-05-16 16:45
 // Nhiệm vụ: Controller chính của Game Đôi Tai Vàng (Listening Comprehension). Quản lý luồng AI sinh kịch bản nghe, Audio Controller và kết nối UI.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 3] Phục hồi biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng hàm proceedToNext đồng bộ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useListeningLogic = (config, callbacks) => {
-const { apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, maxPlays, globalRetryBag } = config;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, maxPlays, globalRetryBag } = config;
 const { onFinish, showToast, onLogWrong, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag, onEndGame, onPlay } = callbacks;
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [selectedOptionIndex, setSelectedOptionIndex] = React.useState(null);
@@ -17890,7 +17980,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 3)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine", "error");
 return;
 }
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Đôi Tai Vàng", "Kích hoạt Hard Fallback");
@@ -17948,7 +18040,9 @@ if (st.aiWaitTime !== undefined) setAiWaitTime(st.aiWaitTime);
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 3);
-coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi phục hồi Session
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
@@ -17994,7 +18088,9 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi next round
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -18112,7 +18208,7 @@ aiWaitTime
 const ListeningGame = ({ t, onFinish, onQuit, mainColor, lang, apiKey, onBookmark, notebook, onLogWrong, settings, config, onSaveToHarvest, savedState, onAutoSave, onPlay, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong), onPlay };
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'ai_pure', maxPlays: 3 };
-const logic = useListeningLogic({ ...safeConfig, apiKey, lang, timeLimit: safeConfig.timeLimit || 45, savedState, globalRetryBag }, hookCallbacks);
+const logic = useListeningLogic({ ...safeConfig, isAiMode: safeConfig.sourceMode === 'ai_pure' || safeConfig.aiMode || false, apiKey, lang, timeLimit: safeConfig.timeLimit || 45, savedState, globalRetryBag }, hookCallbacks);
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: logic.handleSaveAndBack,
@@ -18142,10 +18238,10 @@ window.Block5_22_useListeningLogic = useListeningLogic;
 window.useListeningLogic = useListeningLogic;
 window.Block5_22_ListeningGame = ListeningGame;
 window.ListeningGame = ListeningGame;
-// Block 5.23: TẦNG 5: TRÒ CHƠI HÓA (Reading Setup & PlayScreen UI) - Version 1.03
-// Last Updated: 2026-05-16 10:43
+// Block 5.23: TẦNG 5: TRÒ CHƠI HÓA (Reading Setup & PlayScreen UI) - Version 1.04
+// Last Updated: 2026-05-16 16:45
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Đọc Hiểu (Reading Passage). Áp dụng Split View. Tuân thủ Quiz Sample.
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 3] Cấy ghép UI Phanh AI (Badge đồng hồ + Khóa nút Footer). Tái cấu trúc Footer tĩnh lặng và dời Nút Kết Thúc xuống góc trái của Split View. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const ReadingSetup = ({ t, mainColor = 'slate', onStart, onBack }) => {
@@ -18266,8 +18362,12 @@ return "bg-red-50 border-red-300 text-red-400 opacity-80 cursor-not-allowed anim
 return `bg-white border-gray-200 text-gray-700 hover:bg-${mainColor}-50 hover:border-${mainColor}-300 hover:shadow-md active:scale-95`;
 };
 const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-// MÀN HÌNH CHỜ (LOADING TỔ KÉN) - ĐÃ HÚT MỠ
+// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
 if (isGenerating && !passageData) {
+if (config?.sourceMode === 'card' && !config?.aiMode) {
+// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+}
 return (
 <window.GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
@@ -18355,14 +18455,18 @@ return (
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH HÚT MỠ UI] Overlay chuyển tổ kén */}
+{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển tổ kén */}
 {isGenerating && passageData && (
+(config?.sourceMode === 'card' && !config?.aiMode) ? (
+<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
+) : (
 <window.GlobalLoadingScreen
 duration={0}
 queueLength={queueLength}
 text="Đang chuyển sang tổ kén mới..."
 mainColor={mainColor}
 />
+)
 )}
 {/* HEADER TỔNG */}
 <div className="flex justify-between items-center p-2 sm:p-3 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10">
@@ -18382,14 +18486,23 @@ mainColor={mainColor}
 )}
 </div>
 <div className="flex items-center gap-1">
-{passageData.isAiGenerated ? (
-<span className="text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 shadow-sm hidden sm:flex">
-<Icons.Sparkles size={12} /> AI
-{queueLength !== undefined && <span className="bg-indigo-500 text-white px-1 rounded-[4px] ml-0.5">{"+" + queueLength}</span>}
+{passageData._isRescued ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
+</span>
+) : passageData.isAiGenerated ? (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-indigo-100 text-indigo-700 shadow-sm hidden sm:flex" title="Câu hỏi được tạo bởi AI">
+<Icons.Sparkles size={12} className="text-indigo-500" /> Nguồn: AI
 </span>
 ) : (
-<span className="text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 shadow-sm hidden sm:flex">
-<Icons.Layers size={12} /> Thẻ
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-slate-100 text-slate-600 shadow-sm hidden sm:flex" title="Trích xuất từ Bộ thẻ">
+<Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
+</span>
+)}
+{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} đoạn văn`}>
+<Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
 {/* [NEW V1.03] ĐỒNG HỒ PHANH AI GÓC PHẢI */}
@@ -18558,14 +18671,14 @@ window.Block5_23_ReadingSetup = ReadingSetup;
 window.ReadingSetup = ReadingSetup;
 window.Block5_23_ReadingPlayScreen = ReadingPlayScreen;
 window.ReadingPlayScreen = ReadingPlayScreen;
-// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.05
-// Last Updated: 2026-05-16 10:50
+// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.06
+// Last Updated: 2026-05-16 16:49
 // Nhiệm vụ: Controller chính của Game Đọc Hiểu (Reading Passage). Quản lý kiến trúc Tổ kén (1 Đoạn văn - Nhiều câu hỏi con).
-// Cập nhật: [TIÊU CHUẨN VÀNG - ĐỢT 3] Phục hồi biến aiWaitTime để khóa UI chống Spam click. Vá lỗ hổng Auto-next bằng hàm proceedToNext đồng bộ. Tuân thủ Điều 3 & 5.
+// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Tính toán cờ isOfflineFastTrack và truyền vào QueueEngine.maintain() để bỏ qua thời gian ép chờ nếu chơi bằng thẻ Offline không dùng AI. Tuân thủ Điều 3.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useReadingLogic = (config, callbacks) => {
-const { apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag } = config;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag } = config;
 const { onFinish, showToast, onLogWrong, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag, onEndGame } = callbacks;
 // State cấp Tổ kén (Passage)
 const [passageData, setPassageData] = React.useState(null);
@@ -18767,7 +18880,7 @@ isInitializingRef.current = false;
 setTimeLeft(timeLimit || 300); // 5 phút mặc định cho 1 đoạn
 // Kích hoạt UI Cooldown khi tải đoạn văn mới
 let currentCooldown = 0;
-if (sourceMode === 'ai_pure' || true) {
+if (sourceMode === 'ai_pure' || isAiMode) {
 currentCooldown = 9;
 try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
 }
@@ -18791,8 +18904,9 @@ coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 2)
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine", "error");
 return;
 }
-// [HÚT MỠ] Chờ đạn trực tiếp từ QueueEngine
-await coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+await coordinatorRef.current.maintain(true, 30000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Đọc Hiểu", "Kích hoạt Hard Fallback");
@@ -18836,7 +18950,9 @@ if (st.aiWaitTime !== undefined) setAiWaitTime(st.aiWaitTime);
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 2);
-coordinatorRef.current.maintain();
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi phục hồi Session
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 30000, isOfflineFastTrack);
 }
 if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 gameTimerRef.current = setInterval(() => { setTime(prev => prev + 1); }, 1000);
@@ -18879,7 +18995,7 @@ setCheckStatus('idle');
 setAttempts(0);
 // Kích hoạt UI Cooldown cho câu hỏi con mới
 let currentCooldown = 0;
-if (sourceMode === 'ai_pure' || true) {
+if (sourceMode === 'ai_pure' || isAiMode) {
 currentCooldown = 9;
 try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
 }
@@ -18897,7 +19013,9 @@ const nextCocoon = coordinatorRef.current.pop();
 applyCocoonData(nextCocoon);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack khi next round
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 30000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -18998,7 +19116,8 @@ const nextCocoon = coordinatorRef.current.pop();
 applyCocoonData(nextCocoon);
 } else {
 setIsGenerating(true);
-coordinatorRef.current.maintain().then(() => {
+const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
+coordinatorRef.current.maintain(false, 30000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
 if (!data) {
@@ -19041,7 +19160,7 @@ handleOptionClick, handleFillSubmit, handleSkip, nextRound, handleSaveAndBack
 const ReadingGame = ({ t, onFinish, onQuit, mainColor, lang, apiKey, onBookmark, notebook, onLogWrong, settings, config, onSaveToHarvest, savedState, onAutoSave, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong) };
 const safeConfig = config || { level: 'level_8_academic', sourceMode: 'ai_pure', timeLimit: 300 };
-const logic = useReadingLogic({ ...safeConfig, apiKey, lang, savedState, globalRetryBag }, hookCallbacks);
+const logic = useReadingLogic({ ...safeConfig, isAiMode: safeConfig.sourceMode === 'ai_pure' || safeConfig.aiMode || false, apiKey, lang, savedState, globalRetryBag }, hookCallbacks);
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 onBack: logic.handleSaveAndBack,
