@@ -4129,10 +4129,10 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.06
-// Last Updated: 2026-05-16 21:45
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.08
+// Last Updated: 2026-05-16 22:25
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
-// Cập nhật: [VÁ LỖI PHÌNH TO THẺ] Khóa cứng chiều cao thẻ 3D (height cố định) và kích hoạt thanh cuộn dọc (overflow-y-auto) cho nội dung bên trong mặt thẻ. Giải quyết triệt để lỗi thẻ bị kéo giãn làm biến dạng UI khi tăng cỡ chữ. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI DỊCH CHUYỂN KHUNG HÌNH] Chính thức tiêm vắc-xin scrollbar-gutter: stable vào CSS toàn cục để triệt tiêu hiện tượng layout shift khi thẻ 3D phình to lúc lật. Tuân thủ Điều 3.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
@@ -4308,8 +4308,11 @@ const cardStyle = { '--fc-scale': scale, transform: isFlipped ? 'rotateY(180deg)
 const inputGroupStyle = { '--fc-scale': scale };
 return (
 <div className="w-full flex flex-col items-center shrink-0 my-auto py-2">
-{/* [VÁ LỖI PHÌNH TO THẺ] Cập nhật CSS để ép khung chiều cao tĩnh và kích hoạt overflow-hidden */}
 <style>{`
+/* [VÁ LỖI GIẬT MÀN HÌNH] Giữ chỗ thanh cuộn cho khung App chính, chống layout shift khi lật thẻ 3D */
+div.max-w-7xl.custom-scrollbar {
+scrollbar-gutter: stable;
+}
 .fc-card {
 display: grid;
 width: calc(100% * var(--fc-scale));
@@ -4419,7 +4422,6 @@ title={isAutoPlaying ? "Đang chạy tự động" : "Nhập số để chuyển
 </button>
 )}
 </div>
-{/* [VÁ LỖI PHÌNH TO THẺ] Cập nhật overflow-y-auto cho khung mặt trước */}
 <div className={`flex-1 flex flex-col md:flex-row items-center justify-center w-full relative min-h-[150px]`}>
 {!delayedHidden ? (
 <>
