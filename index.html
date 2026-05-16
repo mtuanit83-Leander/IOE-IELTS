@@ -4129,11 +4129,10 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.05
-// Last Updated: 2026-05-15 15:35
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.06
+// Last Updated: 2026-05-16 21:45
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
-// Quy tắc: Tuân thủ tuyệt đối quy tắc 3 chống SyntaxError. KHÔNG MINIFY CODE quá đà.
-// Cập nhật: [VÁ LỖI LỆCH PHA ĐẾM NGƯỢC] Đảo ngược thứ tự ưu tiên trong getSafeDuration. Ưu tiên đọc cấu hình fc_ai_config từ LocalStorage lên hàng đầu để đảm bảo đồng hồ UI luôn khớp với cài đặt của người dùng. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI PHÌNH TO THẺ] Khóa cứng chiều cao thẻ 3D (height cố định) và kích hoạt thanh cuộn dọc (overflow-y-auto) cho nội dung bên trong mặt thẻ. Giải quyết triệt để lỗi thẻ bị kéo giãn làm biến dạng UI khi tăng cỡ chữ. Tuân thủ Điều 3.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
@@ -4309,14 +4308,14 @@ const cardStyle = { '--fc-scale': scale, transform: isFlipped ? 'rotateY(180deg)
 const inputGroupStyle = { '--fc-scale': scale };
 return (
 <div className="w-full flex flex-col items-center shrink-0 my-auto py-2">
+{/* [VÁ LỖI PHÌNH TO THẺ] Cập nhật CSS để ép khung chiều cao tĩnh và kích hoạt overflow-hidden */}
 <style>{`
 .fc-card {
 display: grid;
 width: calc(100% * var(--fc-scale));
 max-width: 100%;
 margin: 0 auto;
-min-height: calc(360px * var(--fc-scale));
-height: auto;
+height: calc(360px * var(--fc-scale));
 will-change: transform;
 transform-style: preserve-3d;
 transition: transform 0.7s;
@@ -4329,6 +4328,8 @@ border-radius: 1rem;
 box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 background-color: white;
 width: 100%;
+height: 100%;
+overflow: hidden;
 }
 .fc-back {
 transform: rotateY(180deg);
@@ -4418,11 +4419,12 @@ title={isAutoPlaying ? "Đang chạy tự động" : "Nhập số để chuyển
 </button>
 )}
 </div>
-<div className={`flex-1 flex flex-col md:flex-row items-center justify-center w-full relative md:overflow-hidden min-h-[150px]`}>
+{/* [VÁ LỖI PHÌNH TO THẺ] Cập nhật overflow-y-auto cho khung mặt trước */}
+<div className={`flex-1 flex flex-col md:flex-row items-center justify-center w-full relative min-h-[150px]`}>
 {!delayedHidden ? (
 <>
 <div
-className={`text-center break-words w-full order-2 md:order-1 ${hasImage ? 'md:pr-40' : 'px-4'} flex-1 flex flex-col justify-center md:overflow-y-auto md:custom-scrollbar`}
+className={`text-center break-words w-full order-2 md:order-1 ${hasImage ? 'md:pr-40' : 'px-4'} flex-1 flex flex-col justify-center overflow-y-auto custom-scrollbar`}
 style={{ ...getCardStyle(false), fontWeight: settings?.fontWeight || 'bold', fontFamily: isDefFirst ? 'inherit' : getFontFamily() }}
 >
 {isDefFirst ? currentCard?.definition : currentCard?.term}
@@ -4434,7 +4436,7 @@ style={{ ...getCardStyle(false), fontWeight: settings?.fontWeight || 'bold', fon
 )}
 </>
 ) : (
-<div className="flex flex-col items-center gap-3 animate-pulse text-gray-300">
+<div className="flex flex-col items-center gap-3 animate-pulse text-gray-300 w-full justify-center">
 <window.Icons.Eye size={64} className="opacity-20" />
 <div className="flex flex-col items-center">
 <span className="text-xs font-bold uppercase tracking-[0.2em] opacity-40">Kiểm tra trí nhớ</span>
