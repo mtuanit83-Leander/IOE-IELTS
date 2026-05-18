@@ -5171,13 +5171,78 @@ return (
 };
 // EXPORT TO WINDOW
 window.SettingsModal = SettingsModal;
-// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.01
-// Last Updated: 2026-04-08 19:50
+// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.02
+// Last Updated: 2026-05-18 10:20
 // Nhiệm vụ: Chuyên trách dữ liệu học tập & Tiến độ của người dùng (Sổ tay, Lỗi sai, Đã thuộc).
-// Cập nhật: Bổ sung trường Chủ đề (Topic) vào Sổ tay. Nắn lại Grid 12 cột. Mở luồng data cho AI tự điền Topic. Tuân thủ tuyệt đối Điều 3.
+// Cập nhật: [NÂNG CẤP MENU ÔN TẬP - BƯỚC 3] Loại bỏ các nút Game tĩnh rườm rà. Xây dựng Component ReviewDropdown vạn năng, chứa toàn bộ 10 Mini-games + 1 Flashcard để người dùng thỏa sức lựa chọn hình thức ôn tập Sổ tay/Lỗi sai. Tuân thủ Điều 3.
 // ==================================================================================
+// --- COMPONENT NỘI BỘ: REVIEW DROPDOWN (MENU ÔN TẬP VẠN NĂNG) ---
+const ReviewDropdown = ({ onSelect, dataLength, mainColor = 'blue' }) => {
+const [isOpen, setIsOpen] = React.useState(false);
+const Icons = window.Icons;
+const games = [
+{ id: 'flashcard', name: 'Học Thẻ Lật', min: 1, icon: 'BookOpen' },
+{ id: 'quiz', name: 'Trắc Nghiệm', min: 2, icon: 'Layers' },
+{ id: 'match', name: 'Nối Ô', min: 2, icon: 'Link' },
+{ id: 'scramble', name: 'Ghép Câu', min: 1, icon: 'Shuffle' },
+{ id: 'fillblank', name: 'Điền Từ', min: 1, icon: 'Keyboard' },
+{ id: 'spotmistake', name: 'Tìm Lỗi Sai', min: 1, icon: 'Brain' },
+{ id: 'oddoneout', name: 'Từ Khác Loại', min: 4, icon: 'Eye' },
+{ id: 'imagequiz', name: 'Đoán Hình', min: 2, icon: 'Image' },
+{ id: 'pronunciation', name: 'Vua Ngữ Âm', min: 1, icon: 'Mic' },
+{ id: 'listening', name: 'Đôi Tai Vàng', min: 1, icon: 'Headphones' },
+{ id: 'reading', name: 'Đọc Hiểu', min: 1, icon: 'BookOpen' }
+];
+return (
+<div className="relative inline-block text-left">
+<button
+onClick={() => setIsOpen(!isOpen)}
+disabled={dataLength === 0}
+className={`px-3 sm:px-4 py-2 bg-${mainColor}-600 text-white font-bold rounded-lg shadow-md hover:bg-${mainColor}-700 flex items-center justify-center gap-2 disabled:opacity-50 text-xs sm:text-base transition-all active:scale-95 h-full`}
+>
+<Icons.Gamepad2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+<span>Ôn tập lại</span>
+<Icons.ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+</button>
+{isOpen && (
+<div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
+)}
+{isOpen && (
+<div className="absolute bottom-full right-0 sm:left-0 sm:right-auto mb-2 w-[220px] bg-white border border-gray-100 rounded-xl shadow-2xl z-50 py-2 animate-in fade-in slide-in-from-bottom-2 max-h-[50vh] overflow-y-auto custom-scrollbar">
+<div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 mb-1 sticky top-0 bg-white/90 backdrop-blur-sm z-10">
+Chọn chế độ ôn tập
+</div>
+{games.map(game => {
+const IconComp = Icons[game.icon] || Icons.Gamepad2;
+const isDisabled = dataLength < game.min;
+return (
+<button
+key={game.id}
+onClick={() => {
+if (!isDisabled) {
+onSelect(game.id);
+setIsOpen(false);
+}
+}}
+disabled={isDisabled}
+className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors ${isDisabled ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' : `text-gray-700 hover:bg-${mainColor}-50 hover:text-${mainColor}-700`}`}
+title={isDisabled ? `Cần ít nhất ${game.min} từ để chơi` : ''}
+>
+<IconComp size={16} className={isDisabled ? "text-gray-400" : `text-${mainColor}-500`} />
+<div className="flex flex-col">
+<span className="font-bold text-sm leading-tight">{game.name}</span>
+{isDisabled && <span className="text-[9px] text-red-400 font-medium leading-tight mt-0.5">Cần {game.min} từ</span>}
+</div>
+</button>
+);
+})}
+</div>
+)}
+</div>
+);
+};
 // 1. SỔ TAY TỪ VỰNG (NOTEBOOK)
-const NotebookModal = ({ isOpen, onClose, data, onSave, onPlay, t, mainColor, onStudy, onDelete, apiKey, lang, onCopy, sourceData, onQuiz, onScramble, onOpenHanzi }) => {
+const NotebookModal = ({ isOpen, onClose, data, onSave, onPlay, t, mainColor, onDelete, apiKey, lang, onCopy, sourceData, onOpenHanzi, onReviewGame }) => {
 const [editingData, setEditingData] = React.useState([]);
 const [fillingIndices, setFillingIndices] = React.useState(new Set());
 const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
@@ -5392,29 +5457,22 @@ Xóa hết
 </div>
 </div>
 </div>
-<div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between gap-3">
-<div className="grid grid-cols-4 sm:flex gap-2 w-full sm:w-auto">
-<button onClick={() => onStudy()} disabled={data.length === 0} title={t('studyFlashcard')} className={`px-2 sm:px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 text-xs sm:text-base`}>
-<Icons.Book size={16} className="sm:w-[18px] sm:h-[18px]" /> {t('studyFlashcard')}
-</button>
-<button onClick={onQuiz} disabled={data.length < 2} title="Ôn tập bằng Game Trắc nghiệm" className={`px-2 sm:px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow hover:bg-purple-700 flex items-center justify-center gap-2 text-xs sm:text-base`}>
-<Icons.Gamepad2 size={16} className="sm:w-[18px] sm:h-[18px]" /> Quiz
-</button>
-<button onClick={onScramble} disabled={data.length < 1} title="Ôn tập bằng Game Ghép câu" className={`px-2 sm:px-4 py-2 bg-orange-500 text-white font-bold rounded-lg shadow hover:bg-orange-600 flex items-center justify-center gap-2 text-xs sm:text-base`}>
-<Icons.Shuffle size={16} className="sm:w-[18px] sm:h-[18px]" /> Scramble
-</button>
-<button onClick={handleAiFillAll} disabled={data.length === 0} title="AI Tự điền" className={`px-2 sm:px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-lg hover:bg-purple-200 flex items-center justify-center gap-2 text-xs sm:text-base`}>
+<div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative z-10">
+<div className="flex gap-2 w-full sm:w-auto">
+{/* [NEW v1.02] Tích hợp Dropdown Ôn tập Vạn năng */}
+<ReviewDropdown onSelect={(type) => onReviewGame && onReviewGame(type, data, 'Sổ tay từ vựng')} dataLength={data.length} mainColor={mainColor} />
+<button onClick={handleAiFillAll} disabled={data.length === 0} title="AI Tự điền" className={`px-2 sm:px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-lg hover:bg-purple-200 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm transition-all active:scale-95`}>
 <Icons.Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" /> AI
 </button>
-<button onClick={handleDeleteAllClick} disabled={editingData.filter(i => i.term).length === 0} title="Xóa toàn bộ" className={`px-2 sm:px-4 py-2 bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 text-xs sm:text-base`}>
+<button onClick={handleDeleteAllClick} disabled={editingData.filter(i => i.term).length === 0} title="Xóa toàn bộ" className={`px-2 sm:px-4 py-2 bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm transition-all active:scale-95`}>
 <Icons.Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /> Xóa
 </button>
 </div>
 <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-<button onClick={() => onCopy && onCopy(editingData.filter(i => i.term))} disabled={data.length === 0} title="Copy Sheet" className={`px-2 sm:px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 font-bold rounded-lg hover:bg-teal-100 flex items-center justify-center gap-2 text-xs sm:text-base`}>
-<Icons.ExternalLink size={16} className="sm:w-[18px] sm:h-[18px]" />
+<button onClick={() => onCopy && onCopy(editingData.filter(i => i.term))} disabled={data.length === 0} title="Copy Sheet" className={`px-2 sm:px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 font-bold rounded-lg hover:bg-teal-100 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm active:scale-95 transition-all`}>
+<Icons.ExternalLink size={16} className="sm:w-[18px] sm:h-[18px]" /> Copy
 </button>
-<button onClick={handleSave} className={`px-2 sm:px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700 flex items-center justify-center gap-2 text-xs sm:text-base`}>
+<button onClick={handleSave} className={`px-2 sm:px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 flex items-center justify-center gap-2 text-xs sm:text-base active:scale-95 transition-all`}>
 <Icons.Save size={16} className="sm:w-[18px] sm:h-[18px]" /> {t('saveChanges')}
 </button>
 </div>
@@ -5456,23 +5514,23 @@ return (
 )}
 </div>
 <div className="p-4 border-t bg-gray-50 flex gap-2">
-<button onClick={onRestoreAll} disabled={data.length === 0} title="Khôi phục toàn bộ về danh sách đang học" className="px-4 py-2 bg-red-100 text-red-600 font-bold rounded-lg hover:bg-red-200 border border-red-200 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap">
+<button onClick={onRestoreAll} disabled={data.length === 0} title="Khôi phục toàn bộ về danh sách đang học" className="px-4 py-2 bg-red-100 text-red-600 font-bold rounded-lg hover:bg-red-200 border border-red-200 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap transition-colors active:scale-95 shadow-sm">
 <Icons.RotateCcw size={18} /> Khôi phục tất cả
 </button>
-<button onClick={onClose} className="flex-1 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300">{t('close')}</button>
+<button onClick={onClose} className="flex-1 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-colors active:scale-95 shadow-sm">{t('close')}</button>
 </div>
 </div>
 </div>
 );
 };
 // 3. SỔ TAY CẦN NHỚ / LỖI SAI (INCORRECT LIST)
-const IncorrectModal = ({ isOpen, onClose, data, onRemove, onRemoveAll, onStudy, onQuiz, onScramble, onOpenHanzi, t, mainColor }) => {
+const IncorrectModal = ({ isOpen, onClose, data, onRemove, onRemoveAll, onOpenHanzi, t, mainColor, onReviewGame }) => {
 if (!isOpen) return null;
 const Icons = window.Icons;
 return (
 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
 <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
-<div className={`p-4 border-b bg-${mainColor}-50 flex justify-between items-center`}>
+<div className={`p-4 border-b bg-${mainColor}-50 flex justify-between items-center shrink-0`}>
 <h2 className={`font-bold flex gap-2 text-${mainColor}-700 text-lg items-center`}>
 <Icons.Brain size={24} className="text-red-500" /> Sổ tay cần nhớ ({data.length})
 </h2>
@@ -5517,23 +5575,16 @@ return (
 </div>
 )}
 </div>
-<div className="p-4 border-t bg-white flex justify-between items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div className="p-4 border-t bg-white flex justify-between items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative z-10">
 <div className="flex gap-2">
-<button onClick={onRemoveAll} disabled={data.length === 0} className="px-4 py-2 text-red-500 font-bold border border-red-100 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 flex items-center gap-2">
-<Icons.Trash2 size={18} /> Xóa hết
+<button onClick={onRemoveAll} disabled={data.length === 0} className="px-4 py-2 text-red-500 font-bold border border-red-100 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 flex items-center gap-2 transition-colors active:scale-95 shadow-sm">
+<Icons.Trash2 size={18} /> <span className="hidden sm:inline">Xóa hết</span>
 </button>
 </div>
 <div className="flex gap-2">
-<button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Đóng</button>
-<button onClick={() => onStudy(data)} disabled={data.length === 0} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-<Icons.BookOpen size={18} /> Học ngay
-</button>
-<button onClick={() => onQuiz(data)} disabled={data.length < 2} title="Trắc nghiệm" className="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2">
-<Icons.Gamepad2 size={18} /> Quiz
-</button>
-<button onClick={() => onScramble(data)} disabled={data.length < 1} title="Ghép câu" className="px-4 py-2 bg-orange-500 text-white font-bold rounded-lg shadow hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2">
-<Icons.Shuffle size={18} /> Scramble
-</button>
+<button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg transition-colors active:scale-95">Đóng</button>
+{/* [NEW V1.02] Tích hợp Dropdown Ôn tập Vạn năng */}
+<ReviewDropdown onSelect={(type) => onReviewGame && onReviewGame(type, data, 'Sổ tay cần nhớ')} dataLength={data.length} mainColor={mainColor} />
 </div>
 </div>
 </div>
@@ -20410,10 +20461,10 @@ secureCopy
 window.Block6_3_useDataIO = useDataIO;
 window.Block15_useDataLogic = useDataIO; // Fallback
 window.useDataLogic = useDataIO;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.03
-// Last Updated: 2026-05-15 13:58
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.05
+// Last Updated: 2026-05-18 10:30
 // Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5), AI Curator (6.6), Mock Test Logic (6.7) và Exam Pool Logic (6.8).
-// Cập nhật: [BƯỚC 1.5 - NỐI CÁP AI CONFIG] Bổ sung hàm handleOpenAiConfig vào mảng actions để truyền lệnh mở Modal xuống Tầng 5. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖI SYNTAX] Sửa lỗi cú pháp do vi phạm Điều 3.2 Hiến pháp ở object gameNames trong hàm handleReviewWithGame. Tuân thủ Điều 3.
 // ==================================================================================
 const useAppLogic = (core) => {
 // 1. LẤY CORE STATE
@@ -20716,7 +20767,7 @@ const examPoolLogic = ExamPoolLogicHook ? ExamPoolLogicHook(core, sharedCallback
 // Đồng bộ hàm thu hoạch vào Ref Proxy
 handleAutoHarvestToPoolRef.current = examPoolLogic.handleAutoHarvestToPool;
 // ==================================================================================
-// 6. UI ORCHESTRATION (HÀM ĐIỀU PHỐI GIAO DIỆN)
+// 6. UI ORCHESTRATION & ROUTER (HÀM ĐIỀU PHỐI GIAO DIỆN & ÔN TẬP)
 // ==================================================================================
 const handleOpenIncorrect = () => core.setShowIncorrectModal(true);
 const handleCloseIncorrect = () => core.setShowIncorrectModal(false);
@@ -20726,46 +20777,37 @@ if(window.FcDB) window.FcDB.set(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang,
 showToast("Đã xóa toàn bộ danh sách cần nhớ", "success");
 core.setShowIncorrectModal(false);
 };
-const handleStudyIncorrect = () => {
-if (core.incorrectList.length === 0) return;
-let targetList = [...core.incorrectList];
+// [NEW V1.04] ROUTER ÔN TẬP VẠN NĂNG (UNIVERSAL REVIEW ROUTER)
+const handleReviewWithGame = (gameType, sourceData, sourceName) => {
+if (!sourceData || sourceData.length === 0) {
+showToast("Không có dữ liệu để ôn tập!", "warning");
+return;
+}
+let targetList = [...sourceData];
 if (core.isShuffle) targetList = window.Utils.shuffleArray(targetList);
 core.setCards(targetList);
-core.setIsStudyingNotebook(false);
-core.setStudySourceName("Sổ tay cần nhớ");
-core.setViewMode('learn');
+core.setIsStudyingNotebook(true);
+// Đóng các Modal
+core.setShowNotebook(false);
 core.setShowIncorrectModal(false);
+if (gameType === 'flashcard') {
+core.setStudySourceName(sourceName);
+core.setViewMode('learn');
 core.setCurrentCardIndex(0);
-showToast(core.isShuffle ? "Đã trộn ngẫu nhiên danh sách!" : "Đang học danh sách cần nhớ!");
+showToast(core.isShuffle ? `Đã trộn ngẫu nhiên ${sourceName}!` : `Đang học ${sourceName}!`);
+} else {
+const gameNames = {
+match: 'Nối Ô', scramble: 'Ghép Câu', quiz: 'Trắc Nghiệm',
+fillblank: 'Điền Từ', spotmistake: 'Tìm Lỗi Sai', oddoneout: 'Từ Khác Loại',
+imagequiz: 'Đoán Hình', pronunciation: 'Ngữ Âm', listening: 'Nghe Hiểu', reading: 'Đọc Hiểu'
 };
-const handleStudyNotebook = () => {
-if (core.notebook.length === 0) return;
-let targetList = [...core.notebook];
-if (core.isShuffle) targetList = window.Utils.shuffleArray(targetList);
-core.setCards(targetList);
-core.setIsStudyingNotebook(true);
-core.setStudySourceName("Sổ tay từ vựng");
-core.setShowNotebook(false);
-core.setCurrentCardIndex(0);
-showToast(core.isShuffle ? "Đã trộn ngẫu nhiên sổ tay!" : "Đang học từ Sổ tay!");
-};
-const handleQuizNotebook = () => {
-if (core.notebook.length < 2) { showToast("Cần ít nhất 2 từ để chơi Trắc nghiệm!", "warning"); return; }
-core.setCards(core.notebook);
-core.setStudySourceName("Sổ tay từ vựng (Quiz)");
-core.setIsStudyingNotebook(true);
+const suffix = gameNames[gameType] || gameType;
+core.setStudySourceName(`${sourceName} (${suffix})`);
 core.setViewMode('game');
-core.setShowNotebook(false);
-showToast("Chuyển sang Game để ôn tập Sổ tay!");
-};
-const handleScrambleNotebook = () => {
-if (core.notebook.length < 1) { showToast("Cần ít nhất 1 từ/câu để chơi Ghép câu!", "warning"); return; }
-core.setCards(core.notebook);
-core.setStudySourceName("Sổ tay từ vựng (Scramble)");
-core.setIsStudyingNotebook(true);
-core.setViewMode('game');
-core.setShowNotebook(false);
-showToast("Chuyển sang Game để ôn tập Sổ tay!");
+// Đặt cờ toàn cục để Tầng 5 (GameView) có thể bắt được và nhảy thẳng vào Setup
+window.__pendingGameRoute = `${gameType}_setup`;
+showToast(`Chuyển sang Game để ôn tập ${sourceName}!`);
+}
 };
 const handleExitStudyMode = () => {
 const savedData = window.Utils?.safeJsonParse('fc_data_' + core.lang, []);
@@ -20776,22 +20818,6 @@ core.setStudySourceName(null);
 core.setIsStudyingNotebook(false);
 core.setCurrentCardIndex(0);
 showToast("Đã thoát chế độ ôn tập, quay lại danh sách gốc", "info");
-};
-const handleQuizIncorrect = () => {
-if (core.incorrectList.length < 2) { showToast("Cần ít nhất 2 từ để chơi Trắc nghiệm!", "warning"); return; }
-core.setCards(core.incorrectList);
-core.setStudySourceName("Sổ tay cần nhớ (Quiz)");
-core.setViewMode('game');
-core.setShowIncorrectModal(false);
-showToast("Chuyển sang Game để ôn tập lỗi sai!");
-};
-const handleScrambleIncorrect = () => {
-if (core.incorrectList.length < 1) { showToast("Cần ít nhất 1 từ/câu để chơi Ghép câu!", "warning"); return; }
-core.setCards(core.incorrectList);
-core.setStudySourceName("Sổ tay cần nhớ (Scramble)");
-core.setViewMode('game');
-core.setShowIncorrectModal(false);
-showToast("Chuyển sang Game để ôn tập lỗi sai!");
 };
 const handleOpenHelp = () => core.setShowHelp(true);
 const handleCloseHelp = () => core.setShowHelp(false);
@@ -20865,12 +20891,7 @@ handleToggleMute,
 handleOpenIncorrect,
 handleCloseIncorrect,
 handleRemoveAllIncorrect,
-handleStudyIncorrect,
-handleQuizIncorrect,
-handleScrambleIncorrect,
-handleStudyNotebook,
-handleQuizNotebook,
-handleScrambleNotebook,
+handleReviewWithGame, // [NEW v1.04] Router ôn tập vạn năng
 handleExitStudyMode,
 handleOpenHelp,
 handleCloseHelp,
@@ -22339,10 +22360,10 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.07
-// Last Updated: 2026-05-15 14:00
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.08
+// Last Updated: 2026-05-18 09:58
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [BƯỚC 2 - NỐI CÁP AI CONFIG] Cắm dây onOpenAiConfig vào GameView để kích hoạt nút Cài đặt ở Tầng 5. Tuân thủ Điều 3 Hiến pháp.
+// Cập nhật: [NÂNG CẤP MENU ÔN TẬP - BƯỚC 2] Xóa cáp nối tĩnh (onStudy, onQuiz, onScramble) trong NotebookModal và IncorrectModal. Cắm cáp định tuyến vạn năng `onReviewGame` để hỗ trợ gọi 10 Mini-games. Tuân thủ Điều 3 Hiến pháp.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -22695,15 +22716,13 @@ onSave: logic.actions?.handleNotebookSave,
 onPlay: logic.actions?.speak,
 t: logic.actions?.t,
 mainColor: appMainColor,
-onStudy: logic.actions?.handleStudyNotebook,
 onDelete: (idx) => { },
 apiKey: coreState.apiKey,
 lang: coreState.lang,
 onCopy: logic.actions?.handleCopyForSheet,
 sourceData: coreState.cards,
-onQuiz: logic.actions?.handleQuizNotebook,
-onScramble: logic.actions?.handleScrambleNotebook,
-onOpenHanzi: logic.actions?.handleOpenHanziStudy
+onOpenHanzi: logic.actions?.handleOpenHanziStudy,
+onReviewGame: logic.actions?.handleReviewWithGame
 }),
 coreState.showLinkManager && renderComponent('LinkManagerModal', {
 isOpen: true,
@@ -22745,12 +22764,10 @@ onClose: logic.actions?.handleCloseIncorrect,
 data: coreState.incorrectList,
 onRemove: logic.actions?.handleRemoveWrong,
 onRemoveAll: logic.actions?.handleRemoveAllIncorrect,
-onStudy: logic.actions?.handleStudyIncorrect,
-onQuiz: logic.actions?.handleQuizIncorrect,
-onScramble: logic.actions?.handleScrambleIncorrect,
 onOpenHanzi: logic.actions?.handleOpenHanziStudy,
 t: logic.actions?.t,
-mainColor: appMainColor
+mainColor: appMainColor,
+onReviewGame: logic.actions?.handleReviewWithGame
 }),
 coreState.showMastered && renderComponent('MasteredModal', {
 isOpen: true,
