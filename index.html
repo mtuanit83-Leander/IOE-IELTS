@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.03
-// Last Updated: 2026-05-02 17:25
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.04
+// Last Updated: 2026-05-21 10:45
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [QUÉT RADAR KHO ĐẠN] Bổ sung hàm pingGeminiKey để thăm dò và kiểm tra sức khỏe của từng API Key (200 OK, 429 Hết Quota, 400 Lỗi). Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật: [VÁ LỖI ẢO GIÁC HÁN VIỆT] Siết chặt Prompt lò đúc enrich_word và tiêm màng lọc Regex vệ sinh dữ liệu ở hàm fillCardWithAi.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -89,7 +89,7 @@ vi: { dataKey: 'fc_data_vi', noteKey: 'fc_notebook_vi' }
 // HỆ THỐNG PROMPT TÁCH BIỆT (TỐI ƯU HÓA)
 window.DEFAULT_PROMPTS = {
 // --- 1. ENRICH (Làm giàu thẻ) ---
-enrich_word: `Phân tích "{term}" ({lang}->Vi). QUY TẮC QUAN TRỌNG:Nếu là tiếng Trung, dịch sát nghĩa HSK3. Nếu là Tiếng Anh, CHỈ lấy nghĩa thông dụng nhất (A1-A2). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa/translate cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt: Danh từ, Động từ, Tính từ, Trạng từ, Giới từ, Đại từ, Liên từ), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals, Daily Life...), analysis(Giải thích ý nghĩa, cách dùng chi tiết), sinoViet(Hán Việt nếu là Trung/Việt, hoặc Dịch chi tiết/Giải thích thêm nếu là Anh), example(câu chứa từ + dịch), image_keyword(English).`,
+enrich_word: `Phân tích "{term}" ({lang}->Vi). QUY TẮC QUAN TRỌNG:Nếu là tiếng Trung, dịch sát nghĩa HSK3. Nếu là Tiếng Anh, CHỈ lấy nghĩa thông dụng nhất (A1-A2). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa/translate cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt: Danh từ, Động từ, Tính từ, Trạng từ, Giới từ, Đại từ, Liên từ), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals, Daily Life...), analysis(Giải thích ý nghĩa, cách dùng chi tiết), sinoViet(Nếu là tiếng Trung: CRITICAL CHỈ XUẤT ÂM HÁN VIỆT THUẦN TÚY, TUYỆT ĐỐI KHÔNG DỊCH NGHĨA, KHÔNG DÙNG DẤU NGOẶC ĐƠN. Nếu là tiếng Anh: Dịch chi tiết/Giải thích thêm), example(câu chứa từ + dịch), image_keyword(English).`,
 enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt)(Sát nghĩa nhất), partOfSpeech(Ghi là "Câu văn" hoặc "Thành ngữ"), topic(Phân loại chủ đề Tiếng Anh, VD: Weather, Work, Relationships...), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English).`,
 // --- 2. QUIZ (Trắc nghiệm - Agnostic & Tối ưu Token) ---
 quiz_word: `The original word is "{term}". Generate exactly 4 tricky distractors for its translation "{definition}". CRITICAL: The distractors MUST be in the SAME LANGUAGE as "{definition}". Distractors MUST belong to the SAME topic/semantic field. Do NOT use spelling errors or homophones. Make them plausible misconceptions.`,
@@ -445,6 +445,11 @@ console.log("SmartFill: Auto-switched to working key:", successKey.slice(-5));
 const text = finalResult.candidates?.[0]?.content?.parts?.[0]?.text;
 if (!text) throw new Error("AI không trả về kết quả");
 const parsed = JSON.parse(text);
+// --- VỆ SINH DỮ LIỆU (CẠO RÁC ẢO GIÁC HÁN VIỆT) ---
+if (lang === 'zh' && parsed.sinoViet) {
+// Regex xóa mọi nội dung nằm trong ngoặc đơn (cả ngoặc nửa chiều và ngoặc toàn chiều của Hán ngữ)
+parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
+}
 let imgUrl = "";
 if (parsed.image_keyword) {
 imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
@@ -6149,11 +6154,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.05
-// Last Updated: 2026-05-15 16:10
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.06
+// Last Updated: 2026-05-21 11:15
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
-// Cập nhật: [KHÔI PHỤC PHANH AI] Bổ sung thanh trượt cài đặt Thời gian làm nguội (UI Cooldown) vào AiConfigModal. Mặc định 9s, giới hạn 5s-15s. Tuân thủ Điều 3.
+// Cập nhật: [UX/UI] Cố định Header (Sticky) và thêm tính năng Kéo thả (Draggable) cho LinkManagerModal.
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
@@ -6324,6 +6329,9 @@ aiHarvestPool = {}, onExportHarvestToExcel, onClearHarvestPool
 const fileInputRef = React.useRef(null);
 const [notebookUrl, setNotebookUrl] = React.useState('');
 const [showPreview, setShowPreview] = React.useState(false);
+// [UX] State Kéo thả (Draggable)
+const [position, setPosition] = React.useState({ x: 0, y: 0 });
+const dragRef = React.useRef({ isDragging: false, startX: 0, startY: 0, initialX: 0, initialY: 0 });
 // Master Links State
 const defaultVocabKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_vocab';
 const defaultSentenceKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_sentence';
@@ -6334,17 +6342,69 @@ if (isOpen) {
 setVocabUrl(localStorage.getItem(defaultVocabKey) || window.DEFAULT_SHEETS?.[lang]?.vocab || '');
 setSentenceUrl(localStorage.getItem(defaultSentenceKey) || window.DEFAULT_SHEETS?.[lang]?.sentence || '');
 setShowPreview(false);
+// Reset tọa độ kéo thả mỗi lần mở
+setPosition({ x: 0, y: 0 });
 }
 }, [isOpen, lang]);
+React.useEffect(() => {
+const handleMouseMove = (e) => {
+if (!dragRef.current.isDragging) return;
+const dx = e.clientX - dragRef.current.startX;
+const dy = e.clientY - dragRef.current.startY;
+setPosition({
+x: dragRef.current.initialX + dx,
+y: dragRef.current.initialY + dy
+});
+};
+const handleMouseUp = () => {
+dragRef.current.isDragging = false;
+};
+document.addEventListener('mousemove', handleMouseMove);
+document.addEventListener('mouseup', handleMouseUp);
+return () => {
+document.removeEventListener('mousemove', handleMouseMove);
+document.removeEventListener('mouseup', handleMouseUp);
+};
+}, []);
+const handleMouseDown = (e) => {
+if (e.target.closest('button') || e.target.closest('input')) return;
+dragRef.current.isDragging = true;
+dragRef.current.startX = e.clientX;
+dragRef.current.startY = e.clientY;
+dragRef.current.initialX = position.x;
+dragRef.current.initialY = position.y;
+};
 const totalHarvested = Object.values(aiHarvestPool).reduce((sum, arr) => sum + (arr?.length || 0), 0);
 if (!isOpen) return null;
 return (
 <div className="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 animate-in fade-in">
-<div className="bg-white rounded-xl w-full max-w-md p-6 overflow-y-auto max-h-[90vh] custom-scrollbar">
-<div className="flex justify-between mb-4">
-<h2 className="font-bold flex gap-2 text-green-700"><window.Icons.Link /> {t('importTitle')}</h2>
-<button onClick={onClose} data-tooltip={t('ttClose')}><window.Icons.X /></button>
+<div
+className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden"
+onClick={e => e.stopPropagation()}
+style={{
+transform: `translate(${position.x}px, ${position.y}px)`,
+transition: dragRef.current.isDragging ? 'none' : 'transform 0.1s ease-out'
+}}
+>
+{/* Header Cố định & Draggable */}
+<div
+className="flex justify-between items-center p-4 border-b bg-green-50 shrink-0 rounded-t-xl cursor-move select-none"
+onMouseDown={handleMouseDown}
+>
+<h3 className="font-bold text-lg flex items-center gap-2 text-green-700 pointer-events-none">
+<window.Icons.Link /> {t('importTitle')}
+</h3>
+<button
+onClick={onClose}
+onMouseDown={e => e.stopPropagation()}
+data-tooltip={t('ttClose')}
+className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1.5 rounded transition-colors"
+>
+<window.Icons.X />
+</button>
 </div>
+{/* Vùng Nội dung Cuộn được */}
+<div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-white">
 <div className="mb-4 bg-purple-50 p-3 rounded-lg border border-purple-100">
 <label className="block text-sm font-bold text-purple-700 mb-1">{t('apiKeySheetLabel')}</label>
 <div className="flex gap-2">
@@ -6471,6 +6531,7 @@ return (
 <button onClick={onExportExcel} className="flex-1 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 flex items-center justify-center gap-2" title={t('ttExport')}>
 <window.Icons.Download size={16} /> Xuất Excel
 </button>
+</div>
 </div>
 </div>
 </div>
@@ -17081,11 +17142,6 @@ display: cleanWord,
 analysis: currentQuestion.definition || currentQuestion.explanation || ""
 });
 };
-// Nhận diện ngôn ngữ để hiển thị UI phù hợp
-const isChinese = React.useMemo(() => {
-if (!currentQuestion || !currentQuestion.term) return false;
-return /[\u4e00-\u9fa5]/.test(currentQuestion.term);
-}, [currentQuestion]);
 // MÀN HÌNH CHỜ (LOADING)
 if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
@@ -17245,18 +17301,17 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 {/* KHU VỰC CHÍNH */}
 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col items-center justify-center relative">
 {/* Câu hỏi (Tiêu đề tùy biến theo ngôn ngữ) */}
+// [ĐOẠN CODE MỚI / ĐÃ CHỈNH SỬA]
+{/* Câu hỏi */}
 <div className="w-full max-w-lg mb-8 text-center animate-in slide-in-from-top-4">
 <div className={`inline-flex items-center gap-2 bg-${mainColor}-50 text-${mainColor}-600 px-4 py-2 rounded-full border border-${mainColor}-200 text-sm font-bold uppercase tracking-widest mb-4`}>
-<Icons.Volume2 size={18} /> {isChinese ? 'Phân biệt thanh điệu / Pinyin' : 'Phân biệt phát âm'}
+<Icons.Volume2 size={18} /> Phân biệt phát âm
 </div>
 <h2 className="text-xl md:text-2xl font-bold text-gray-700">
-{isChinese ? (
-<>Chọn từ có <span className="text-red-500 font-black">thanh điệu / vận mẫu</span> khác biệt</>
-) : (
-<>Chọn từ có <span className="text-red-500 font-black">phát âm</span> khác biệt</>
-)}
+Chọn từ có <span className="text-red-500 font-black">phát âm</span> khác biệt
 </h2>
 </div>
+// [2 DÒNG CODE CŨ PHÍA DƯỚI LÀM MỎ NEO]
 {/* Lưới 4 từ (2x2) */}
 <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
 {currentQuestion.options.map((opt, idx) => {
@@ -17317,7 +17372,7 @@ title="Nghe phát âm"
 </div>
 </div>
 <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-900 text-sm font-medium leading-relaxed">
-{currentQuestion.definition || currentQuestion.explanation || (isChinese ? "Từ này có thanh điệu hoặc Pinyin khác với các từ còn lại." : "Từ này có phiên âm quốc tế (IPA) khác với các từ còn lại.")}
+{currentQuestion.definition || currentQuestion.explanation || "Từ này có phiên âm quốc tế (IPA) khác với các từ còn lại."}
 </div>
 </div>
 )}
@@ -17360,10 +17415,10 @@ window.Block5_19_PronunciationSetup = PronunciationSetup;
 window.PronunciationSetup = PronunciationSetup;
 window.Block5_19_PronunciationPlayScreen = PronunciationPlayScreen;
 window.PronunciationPlayScreen = PronunciationPlayScreen;
-// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.14
-// Last Updated: 2026-05-18 17:01
+// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.15
+// Last Updated: 2026-05-21 08:34
 // Nhiệm vụ: Controller chính của Game Ngữ Âm (Pronunciation). Quản lý luồng AI, State và kết nối UI.
-// Cập nhật: [VÁ LỖI AI HÁN NGỮ SẬP NGUỒN] Tiêm kháng sinh Override Prompt trực tiếp tại Tầng 5 để sửa Schema Mismatch (chuyển explanation thành definition). Cắt nhỏ từ ghép trong Hybrid mode để giải phóng nhận thức cho AI. Tuân thủ Điều 3.
+// Cập nhật: Dọn dẹp toàn bộ tàn dư logic xử lý tiếng Trung (Dead code) theo yêu cầu. Tối ưu file.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const usePronunciationLogic = (cards, config, callbacks) => {
@@ -17488,13 +17543,13 @@ const mistakeCard = {
 id: `mistake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 type: 'mistake',
 term: question.options.map(o => o.text).join(' • '),
-definition: lang === 'zh' ? `Khác loại: ${cleanTerm}` : `Phát âm khác: ${cleanTerm}`,
+definition: `Phát âm khác: ${cleanTerm}`,
 analysis: question.definition || "Câu hỏi phân biệt ngữ âm",
 tags: ['pronunciation', level, sourceMode],
 timestamp: Date.now()
 };
 onLogWrong(mistakeCard);
-}, [onLogWrong, level, sourceMode, lang]);
+}, [onLogWrong, level, sourceMode]);
 const handleSaveAndBack = () => {
 const currentData = latestStateRef.current;
 let finalWrongCount = currentData.wrongCount;
@@ -17542,8 +17597,8 @@ const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 const canCallAi = currentApiKey;
 // 2. AI PURE MODE: Tự động sinh thử thách Ngữ Âm
 if (isPureMode && canCallAi) {
-if (lang !== 'zh' && window.ExamEngine) {
-// Luồng cũ (Tiếng Anh): Đi qua ExamEngine để tận dụng bộ lọc chặt chẽ
+if (window.ExamEngine) {
+// Luồng tiếng Anh/Mặc định: Đi qua ExamEngine
 try {
 const meta = { id: `pronunciation_${Date.now()}`, type: 'ioe_pronunciation', level: config?.level || level || 'level_4_discovery_basic', topic: config?.topic || '', dataMode: 'vocab', mode: 'minigame' };
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
@@ -17554,28 +17609,6 @@ if (isInitializingRef.current && showToast) { aiGeneratedCountRef.current += 1; 
 return qData.content;
 }
 } catch (e) { console.warn("AI Pronunciation Pure Fallback:", e.message); if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Máy Trộn Đề Pronunciation AI", e); }
-} else if (lang === 'zh' && window.AiFactoryEngine) {
-// Luồng mới (Tiếng Trung): Chạy thẳng Lò đúc bỏ qua ExamEngine để vá lỗi Schema
-try {
-const safeLevel = config?.level || level || 'level_4_discovery_basic';
-let historyPrompt = window.AiFactoryEngine.getHistoryPrompt(historyQueueRef.current);
-// [VÁ LỖI SCHEMA] Ép giải thích vào definition, chống output explanation
-let injectPrompt = "\n[CRITICAL SCHEMA FIX] 1. Put the 4 characters separated by commas in the 'term' field. 2. Put your detailed Vietnamese explanation (including Pinyin and Tones) in the 'definition' field. 3. STRICTLY generate SINGLE characters (1 Hanzi). 4. Do NOT output an 'explanation' field.";
-const parsed = await window.AiFactoryEngine.forgeMatrix('pronunciation', safeLevel, lang, currentApiKey, config?.topic, historyPrompt + injectPrompt, 'vocab');
-if (parsed && parsed.options && parsed.options.length === 4) {
-parsed.options.forEach(opt => { if (opt && opt.text) historyQueueRef.current.push(opt.text.toLowerCase().trim()); });
-while (historyQueueRef.current.length > 400) historyQueueRef.current.shift();
-try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.current)); } catch(e) {}
-if (parsed._tokenUsage) {
-const used = parsed._tokenUsage.totalTokenCount || 0;
-const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
-localStorage.setItem('fc_total_tokens', currentTotal + used);
-}
-if (onSaveToHarvest) onSaveToHarvest(safeLevel, { displaySentence: parsed.term, targetWord: parsed.options.find(o => o.isCorrect)?.text || "", hint: parsed.definition }, 'ioe_pronunciation');
-if (isInitializingRef.current && showToast) { aiGeneratedCountRef.current += 1; safeShowToast(`Đã nạp xong câu ${aiGeneratedCountRef.current} bằng AI...`, "success"); }
-return { ...parsed, isAiGenerated: true, type: 'pronunciation' };
-}
-} catch (e) { console.warn("AI Pronunciation ZH Pure Fallback:", e.message); if (window.logSystemEvent) window.logSystemEvent("Lỗi Lò Đúc Pronunciation ZH", e); }
 }
 }
 // 2.5 HYBRID AI MODE (Thử thách AI với Thẻ gốc)
@@ -17589,19 +17622,8 @@ deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray([...vali
 poppedCard = deckRef.current.shift();
 if (poppedCard) {
 let historyPrompt = window.AiFactoryEngine.getHistoryPrompt(historyQueueRef.current);
-let hybridPrompt = "";
+let hybridPrompt = historyPrompt + `\nCRITICAL REQUIREMENT: You MUST include the exact word "${poppedCard.term}" as one of the 4 items. It can be the one with different pronunciation or not.`;
 const safeLevel = config?.level || level || 'level_4_discovery_basic';
-if (lang === 'zh') {
-// [GIẢI PHÓNG NHẬN THỨC] Chẻ nhỏ từ ghép để tránh làm AI bị lú
-let targetChar = poppedCard.term.replace(/[^\u4e00-\u9fa5]/g, '');
-if (!targetChar) targetChar = poppedCard.term;
-if (targetChar.length > 1) {
-targetChar = targetChar.charAt(Math.floor(Math.random() * targetChar.length));
-}
-hybridPrompt = historyPrompt + `\nCRITICAL REQUIREMENT: You MUST include the exact character "${targetChar}" (extracted from the word ${poppedCard.term}) as one of the 4 items. \n[CRITICAL SCHEMA FIX] 1. Put the 4 characters separated by commas in the 'term' field. 2. Put your detailed Vietnamese explanation (including Pinyin and Tones) in the 'definition' field. 3. STRICTLY generate SINGLE characters (1 Hanzi). 4. Do NOT output an 'explanation' field.`;
-} else {
-hybridPrompt = historyPrompt + `\nCRITICAL REQUIREMENT: You MUST include the exact word "${poppedCard.term}" as one of the 4 items. It can be the one with different pronunciation or not.`;
-}
 const parsed = await window.AiFactoryEngine.forgeMatrix('pronunciation', safeLevel, lang, currentApiKey, config?.topic, hybridPrompt, 'vocab');
 if (parsed && parsed.options && parsed.options.length === 4) {
 parsed.options.forEach(opt => { if (opt && opt.text) historyQueueRef.current.push(opt.text.toLowerCase().trim()); });
@@ -17666,22 +17688,13 @@ let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Ngữ Âm", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', safeLang, config?.level || level, config) : null;
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', 'en', config?.level || level, config) : null;
 if (!firstData || firstData.term?.includes("Lỗi hệ thống")) {
-if (lang === 'zh') {
-firstData = {
-term: "妈, 吧, 哥, 喝", definition: "Chữ 吧 (ba) là thanh nhẹ, các chữ còn lại đều là thanh 1.",
-options: window.Utils.shuffleArray([{ text: "妈", isCorrect: false }, { text: "哥", isCorrect: false }, { text: "吧", isCorrect: true }, { text: "喝", isCorrect: false }]),
-isAiGenerated: false, _isRescued: true
-};
-} else {
 firstData = {
 term: "cat, bat, tall, map", definition: "Từ tall có âm /ɔː/ khác với âm /æ/.",
 options: window.Utils.shuffleArray([{ text: "cat", isCorrect: false }, { text: "bat", isCorrect: false }, { text: "tall", isCorrect: true }, { text: "map", isCorrect: false }]),
 isAiGenerated: false, _isRescued: true
 };
-}
 }
 }
 if (isGameActiveRef.current && firstData) {
@@ -17745,22 +17758,13 @@ let data = coordinatorRef.current.pop();
 if (!data) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game Ngữ Âm", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', safeLang, config?.level || level, config) : null;
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', 'en', config?.level || level, config) : null;
 if (!data || data.term?.includes("Lỗi hệ thống")) {
-if (lang === 'zh') {
-data = {
-term: "妈, 吧, 哥, 喝", definition: "Chữ 吧 (ba) là thanh nhẹ, các chữ còn lại đều là thanh 1.",
-options: window.Utils.shuffleArray([{ text: "妈", isCorrect: false }, { text: "哥", isCorrect: false }, { text: "吧", isCorrect: true }, { text: "喝", isCorrect: false }]),
-isAiGenerated: false, _isRescued: true
-};
-} else {
 data = {
 term: "cat, bat, tall, map", definition: "Từ tall có âm /ɔː/ khác với âm /æ/.",
 options: window.Utils.shuffleArray([{ text: "cat", isCorrect: false }, { text: "bat", isCorrect: false }, { text: "tall", isCorrect: true }, { text: "map", isCorrect: false }]),
 isAiGenerated: false, _isRescued: true
 };
-}
 }
 }
 if (data) {
@@ -17828,22 +17832,13 @@ let data = coordinatorRef.current.pop();
 if (!data) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Ngữ Âm", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', safeLang, config?.level || level, config) : null;
+data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('pronunciation', 'en', config?.level || level, config) : null;
 if (!data || data.term?.includes("Lỗi hệ thống")) {
-if (lang === 'zh') {
-data = {
-term: "妈, 吧, 哥, 喝", definition: "Chữ 吧 (ba) là thanh nhẹ, các chữ còn lại đều là thanh 1.",
-options: window.Utils.shuffleArray([{ text: "妈", isCorrect: false }, { text: "哥", isCorrect: false }, { text: "吧", isCorrect: true }, { text: "喝", isCorrect: false }]),
-isAiGenerated: false, _isRescued: true
-};
-} else {
 data = {
 term: "cat, bat, tall, map", definition: "Từ tall có âm /ɔː/ khác với âm /æ/.",
 options: window.Utils.shuffleArray([{ text: "cat", isCorrect: false }, { text: "bat", isCorrect: false }, { text: "tall", isCorrect: true }, { text: "map", isCorrect: false }]),
 isAiGenerated: false, _isRescued: true
 };
-}
 }
 }
 if (data) {
@@ -17983,7 +17978,7 @@ const safeOnPlay = onPlay || ((text) => {
 if (!window.speechSynthesis) return;
 window.speechSynthesis.cancel();
 const u = new SpeechSynthesisUtterance(text);
-u.lang = lang === 'en' ? 'en-US' : (lang === 'zh' ? 'zh-CN' : 'vi-VN');
+u.lang = lang === 'en' ? 'en-US' : 'vi-VN';
 window.speechSynthesis.speak(u);
 });
 // Gộp props gọi Component để tránh rớt dòng
