@@ -55,10 +55,10 @@ background-position: center;
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.04
-// Last Updated: 2026-05-21 10:45
+// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.05
+// Last Updated: 2026-05-27 16:10
 // Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [VÁ LỖI ẢO GIÁC HÁN VIỆT] Siết chặt Prompt lò đúc enrich_word và tiêm màng lọc Regex vệ sinh dữ liệu ở hàm fillCardWithAi.
+// Cập nhật: [KIẾN TRÚC LÕI] Bổ sung hàm rút thẻ có Khóa nguyên tử (Atomic Lock) 'pullRetryCardWithLock' để xử lý triệt để bug bóng ma đa luồng cho toàn bộ 10 Mini-games.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -102,7 +102,7 @@ grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, sú
 };
 // UI TEXT
 window.UI_TEXT = {
-vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Hoặc nhập link trực tiếp:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "定义", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "停止", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
+vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Or input link directly:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "定义", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "停止", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
@@ -347,6 +347,48 @@ bigrams1.set(bg, count - 1);
 return (2.0 * intersection) / (clean1.length - 1 + clean2.length - 1);
 }
 };
+// ============================================================================
+// [NEW - KIẾN TRÚC LÕI] ĐỘNG CƠ RÚT THẺ CÓ KHÓA NGUYÊN TỬ (ATOMIC RETRY PULLER)
+// Xử lý triệt để lỗi bốc trùng 1 thẻ lỗi nhiều lần khi QueueEngine chạy đa luồng.
+// ============================================================================
+window.__retryMutexLock = false; // Biến cờ khóa toàn cục
+window.Utils.pullRetryCardWithLock = (gameType, retryBagObject) => {
+// 1. Kiểm tra khóa đa luồng (Bị luồng khác khóa thì bỏ qua ngay)
+if (window.__retryMutexLock) return null;
+// 2. Kiểm tra tính hợp lệ của túi nháp
+if (!retryBagObject || !retryBagObject[gameType] || retryBagObject[gameType].length === 0) return null;
+// 3. Đổ xúc xắc 30% (Chỉ lấy khi ngẫu nhiên < 0.3)
+if (Math.random() >= 0.3) return null;
+// 4. KHÓA LUỒNG VÀ THỰC THI RÚT THẺ
+window.__retryMutexLock = true;
+try {
+const validCards = retryBagObject[gameType].filter(c => c && c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+if (validCards.length === 0) {
+window.__retryMutexLock = false;
+return null;
+}
+// Bốc thẻ ngẫu nhiên
+const randIdx = Math.floor(Math.random() * validCards.length);
+const selectedCard = validCards[randIdx];
+// RÚT RA KHỎI TÚI NGAY LẬP TỨC ĐỂ CÁC LUỒNG SAU KHÔNG THẤY NỮA (Mặc dù nó chưa lên UI)
+const actualIndex = retryBagObject[gameType].findIndex(c => c.term === selectedCard.term);
+if(actualIndex > -1) {
+retryBagObject[gameType].splice(actualIndex, 1);
+// Ép lưu xuống DB ngầm để đồng bộ chéo
+if (window.FcDB) {
+window.FcDB.set('fc_global_retry_bag', retryBagObject).catch(() => {});
+}
+}
+// Tự động mở khóa sau 50ms (Đủ thời gian cho các vi luồng async khác chạy qua chặn)
+setTimeout(() => { window.__retryMutexLock = false; }, 50);
+return selectedCard;
+} catch (e) {
+console.error("Atomic Lock Error:", e);
+window.__retryMutexLock = false;
+return null;
+}
+};
+// ============================================================================
 // ============================================================================
 // HÀM LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ENRICH CARD)
 // ============================================================================
@@ -8912,10 +8954,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.08
-// Last Updated: 2026-05-18 12:47
+// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.09
+// Last Updated: 2026-05-27 16:10
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa hoàn thành ghép câu. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp câu tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế khối logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 const safeShowToast = React.useCallback((msg, type = 'success') => {
@@ -9043,18 +9085,12 @@ let isAiGenerated = false;
 const currentDataMode = config?.dataMode || 'vocab';
 const isPureMode = sourceMode === 'ai_pure';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['scramble'] && bag['scramble'].length > 0) {
-const validRetryCards = bag['scramble'].filter(c => c && c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-card = validRetryCards[randIdx];
-}
-}
-} catch(e) {}
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+card = window.Utils.pullRetryCardWithLock('scramble', globalRetryBagRef.current);
 }
 // 2. AI PURE MODE: Cắm cáp Máy Trộn Đề Vạn Năng (ExamEngine)
 if (!card && isPureMode) {
