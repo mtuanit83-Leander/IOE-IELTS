@@ -2393,10 +2393,10 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.08
-// Last Updated: 2026-05-16 13:16
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.09
+// Last Updated: 2026-05-28 13:50
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật: [VÁ LỖI OFFLINE WAIT TRAP] Bổ sung tham số isOfflineFastTrack vào hàm maintain(). Bỏ qua thời gian ép chờ (enforcedWaitMs) nếu đang chơi ở chế độ thẻ Offline, giúp mở khóa UI ngay lập tức khi đạn đã nạp xong. Tuân thủ Điều 3.
+// Cập nhật: [VÁ LỖ HỔNG AUTO-SAVE] Bổ sung hàm getPendingItems() xuất bản sao băng đạn RAM ra ngoài để lưu tiến độ chống mất câu hỏi khi reload. Tuân thủ Hiến Pháp 3.0.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Sequential Early Resolve - Boomerang Principle)
@@ -2515,7 +2515,8 @@ return item;
 },
 peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
 destroy: function() { this.isActive = false; this.queue = []; },
-length: function() { return this.queue.length; }
+length: function() { return this.queue.length; },
+getPendingItems: function() { return [...this.queue]; } // [VÁ LỖ HỔNG AUTO-SAVE]
 };
 },
 // ĐỘNG CƠ BATCH COORDINATOR (Dành cho Match Game - Kiến trúc Boomerang)
@@ -2615,7 +2616,8 @@ return item;
 },
 peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
 destroy: function() { this.isActive = false; this.queue = []; },
-length: function() { return this.queue.length; }
+length: function() { return this.queue.length; },
+getPendingItems: function() { return [...this.queue]; } // [VÁ LỖ HỔNG AUTO-SAVE]
 };
 },
 // ĐỘNG CƠ NẠP ĐỢT CHO BÀI THI TỔNG HỢP (MOCK TEST CHUNKING)
@@ -2661,7 +2663,8 @@ return item;
 peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
 destroy: function() { this.isActive = false; this.queue = []; },
 length: function() { return this.queue.length; },
-getTotalLoaded: function() { return this.totalLoaded; }
+getTotalLoaded: function() { return this.totalLoaded; },
+getPendingItems: function() { return [...this.queue]; } // [VÁ LỖ HỔNG AUTO-SAVE]
 };
 }
 };
@@ -9120,10 +9123,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.09
-// Last Updated: 2026-05-27 16:10
+// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.10
+// Last Updated: 2026-05-28 14:00
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế khối logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.10: [VÁ LỖ HỔNG AUTO-SAVE] Tích hợp thu hồi đạn RAM từ QueueEngine. Ép kiểu bóc tách thuộc tính `origin` để bảo toàn cấu trúc thẻ nguyên thủy khi khôi phục ván chơi.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 const safeShowToast = React.useCallback((msg, type = 'success') => {
@@ -9190,11 +9193,20 @@ const triggerAutoSave = React.useCallback(() => {
 // [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
 if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
 const currentData = latestStateRef.current;
+// [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
+let pendingCards = [];
+if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
+const pendingTasks = coordinatorRef.current.getPendingItems();
+// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
+pendingCards = pendingTasks.map(task => task.origin).filter(Boolean);
+}
+// Gộp đạn RAM lên đầu bộ bài lưu trữ
+const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
 onAutoSave({
 gameState: currentData.gameState,
 stats: currentData.stats,
 difficulty: currentData.difficulty,
-deck: currentData.deck,
+deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
 timeLeft: currentData.timeLeft,
 aiWaitTime: currentData.aiWaitTime
 });
