@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<title>Flashcard Lite (Final Version)</title>
+<title>Flashcard Lite (Single-File Edition)</title>
 <meta name="theme-color" content="#0284c7">
 <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/10609/10609025.png">
 <!-- Libraries & CSS -->
@@ -13,9 +13,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- [NEW] Thư viện Hanzi Writer cho tính năng tập viết -->
+<!-- Hanzi Writer cho tính năng tập viết -->
 <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
-<!-- Fonts: Thêm 'Long Cang' cho chế độ Thư Pháp -->
+<!-- Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
 <style>
 body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
@@ -31,7 +31,6 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 #emergency-reset { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-family: sans-serif; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; }
-/* Style cho Hanzi Writer Modal */
 .hanzi-grid-bg {
 background-image:
 linear-gradient(to right, #fca5a5 1px, transparent 1px),
@@ -49,16 +48,48 @@ background-position: center;
 </div>
 </div>
 <button id="emergency-reset" onclick="localStorage.clear(); window.location.reload();">⚠️ Reset Ứng dụng</button>
-<script>setTimeout(() => { const root = document.getElementById('root'); if (root && root.innerText.includes('Đang khởi tạo')) document.getElementById('emergency-reset').style.display = 'block'; }, 5000);</script>
+<script>
+setTimeout(() => {
+const root = document.getElementById('root');
+if (root && root.innerText.includes('Đang khởi tạo')) document.getElementById('emergency-reset').style.display = 'block';
+}, 5000);
+</script>
 <script type="text/babel">
 // React Imports
 const { useState, useEffect, useRef, useCallback, Component } = window.React;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // ==================================================================================
-// Block2.1: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Core Utils & Constants) - Version 1.05
-// Last Updated: 2026-05-27 16:10
-// Nhiệm vụ: Khai báo biến toàn cục (window.*), hằng số, cấu hình mặc định và các hàm tiện ích xử lý dữ liệu thô.
-// Cập nhật: [KIẾN TRÚC LÕI] Bổ sung hàm rút thẻ có Khóa nguyên tử (Atomic Lock) 'pullRetryCardWithLock' để xử lý triệt để bug bóng ma đa luồng cho toàn bộ 10 Mini-games.
+// KIẾN TRÚC GỘP 1 FILE: DÁN CODE LẦN LƯỢT THEO ĐÚNG THỨ TỰ SAU
+// (Chú ý: KHÔNG đảo lộn thứ tự của Block 2.1 và 2.7 để tránh lỗi Namespace)
+// ==================================================================================
+// --- KHỐI TẦNG 2 ---
+// 1. Dán Block 2.1a (Global Constants & i18n)
+// 2. Dán Block 2.1b (Core Data Utilities)
+// 3. Dán Block 2.1d (Database & Memory Sync)
+// 4. Dán Block 2.1c (Network & API Agent)
+// 5. Dán Block 2.2 (IoeDataEngine)
+// 6. Dán Block 2.3 (GameAlgoEngine)
+// 7. Dán Block 2.4 (FallbackDataEngine)
+// 8. Dán Block 2.5 (QueueEngine)
+// 9. Dán Block 2.6 (AiFactoryEngine)
+// 10. Dán Block 2.7a (Exam Memory & QA Guards)
+// 11. Dán Block 2.7b (Exam Fallback Agent)
+// 12. Dán Block 2.7c (Data Normalizer Pipeline)
+// 13. Dán Block 2.7d (The Core Hydrator)
+// 14. Dán Block 2.8 (ExamProfiles)
+// --- KHỐI TẦNG 3, 4, 5 ---
+// 15. Dán Tầng 3 (Shared UI - Block 3.1 & 3.2)
+// 16. Dán Tầng 4 (Modals - Block 4.1 đến 4.9)
+// 17. Dán Tầng 5 (Mini Games - Block 5.1 đến 5.24)
+// --- KHỐI TẦNG 6, 7 ---
+// 18. Dán Tầng 6 (App Logic Hooks - Block 6.1 đến 6.8)
+// 19. Dán Tầng 7 (Lắp ráp & Render - Block 7.1)
+// ==================================================================================
+// Bắt đầu dán mã nguồn từ đây...
+// ==================================================================================
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.0
+// Last Updated: 2026-05-28 11:00
+// Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -106,7 +137,10 @@ vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "H�
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
-// CÁC HÀM TIỆN ÍCH (UTILS)
+// Block 2.1b: TẦNG 2: TIỆN ÍCH LÕI (Core Data Utilities) - Version 2.0
+// Last Updated: 2026-05-28 11:05
+// Nhiệm vụ: Khởi tạo đối tượng window.Utils. Chứa các hàm xử lý chuỗi, mảng, thời gian thuần túy (Không gọi API, không gọi DB) và Thuật toán tĩnh.
+// ==================================================================================
 window.Utils = {
 safeJsonParse: (key, f) => { try { const i = localStorage.getItem(key); return i ? JSON.parse(i) : f; } catch { return f; } },
 getFontFamily: (settings) => {
@@ -196,93 +230,6 @@ window.Utils.wakeLock = null;
 console.log("Wake Lock released.");
 }
 },
-// [NEW v1.03] THĂM DÒ XUNG KÍCH (HEURISTIC PROBING)
-pingGeminiKey: async (apiKey) => {
-try {
-const k = apiKey.replace(/["'\s]/g, "");
-const body = { contents: [{ parts: [{ text: "Reply 'OK'" }] }] };
-const controller = new AbortController();
-const timeoutId = setTimeout(() => controller.abort(), 10000);
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify(body),
-signal: controller.signal
-});
-clearTimeout(timeoutId);
-return { status: res.status, ok: res.ok };
-} catch (e) {
-return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message };
-}
-},
-callGeminiApi: async (prompt, schema = null, apiKeyOverride = null) => {
-let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-if (currentKey && !keyPool.includes(currentKey)) { keyPool.unshift(currentKey); } else if (currentKey) { keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)]; }
-if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Vui lòng cấu hình trong Settings)");
-let resultText = null; let tokenMetadata = null; let successKey = null; let lastError = null;
-for (let i = 0; i < keyPool.length; i++) {
-const rawK = keyPool[i]; if (!rawK || rawK.length < 10) continue;
-const k = rawK.replace(/["'\s]/g, "");
-try {
-const body = { contents: [{ parts: [{ text: prompt }] }] };
-const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
-body.generationConfig = { temperature: randomTemp };
-if (schema) {
-body.generationConfig.responseMimeType = "application/json";
-body.generationConfig.responseSchema = schema;
-}
-const controller = new AbortController();
-const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify(body),
-signal: controller.signal
-});
-const timeoutPromise = new Promise((_, reject) => {
-setTimeout(() => {
-controller.abort();
-reject(new Error("API Timeout (15s)"));
-}, 15000);
-});
-const res = await Promise.race([fetchPromise, timeoutPromise]);
-const d = await res.json();
-if (d.error) throw new Error(d.error.message);
-if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
-resultText = d.candidates[0].content.parts[0].text;
-if (d.usageMetadata) tokenMetadata = d.usageMetadata;
-successKey = k;
-break;
-} catch (e) {
-console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message);
-lastError = e;
-}
-}
-if (!resultText) throw new Error(`Tất cả ${keyPool.length} API Key đều lỗi. (Lỗi cuối: ${lastError?.message})`);
-if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) { localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey); console.log("Updated primary API Key to working key."); }
-return { text: resultText, tokenMetadata };
-},
-fetchWithFallback: async (url) => {
-if (!url) throw new Error("URL is empty");
-let finalUrl = url.includes('docs.google.com') ? url.replace(/\/edit.*$/, '/export?format=csv').replace(/gid=0/, `gid=${(url.match(/gid=(\d+)/) || ['', '0'])[1]}`) : url;
-const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
-const strategies = [
-{ name: "Direct", url: finalUrl },
-{ name: "CorsProxyIO", url: `https://corsproxy.io/?${encodeURIComponent(finalUrl + cacheBuster)}` },
-{ name: "CodeTabs", url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(finalUrl)}` },
-{ name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(finalUrl + cacheBuster)}` }
-];
-let err;
-for (const s of strategies) {
-try {
-const res = await fetch(s.url);
-if (res.ok) return res;
-} catch (e) {
-err = e;
-}
-}
-throw new Error("Lỗi tải dữ liệu mạng");
-},
 convertRawRowsToCards: (rows) => {
 if (!rows || rows.length === 0) return [];
 return rows.slice(1).map(row => {
@@ -345,52 +292,320 @@ bigrams1.set(bg, count - 1);
 }
 }
 return (2.0 * intersection) / (clean1.length - 1 + clean2.length - 1);
+},
+generateQuizQuestion: (cards, correctIndex, lang) => {
+const correctCard = cards[correctIndex];
+const options = [correctCard];
+const pool = cards.filter((_, i) => i !== correctIndex && cards[i].term !== correctCard.term);
+while (options.length < 5 && pool.length > 0) {
+const rand = Math.floor(Math.random() * pool.length);
+options.push(pool[rand]);
+pool.splice(rand, 1);
+}
+return {
+question: correctCard,
+options: window.Utils.shuffleArray(options).map(opt => ({
+definition: opt.definition,
+isCorrect: opt.term === correctCard.term
+}))
+};
+},
+parseSrsTime: (str) => {
+if (!str) return 0;
+let d = 0, h = 0, m = 0;
+const matchD = str.match(/(\d+)d/); if (matchD) d = parseInt(matchD[1]);
+const matchH = str.match(/(\d+)h/); if (matchH) h = parseInt(matchH[1]);
+const matchM = str.match(/(\d+)m/); if (matchM) m = parseInt(matchM[1]);
+return d + (h / 24) + (m / 1440);
+},
+calculateSRS: (card, grade, settings) => {
+let prevInterval = card.srs_interval || 0;
+let prevRep = card.srs_repetition || 0;
+let prevEase = card.srs_ease || 2.5;
+let internalGrade = 0;
+if (grade === 'again') internalGrade = 0;
+else if (grade === 'hard') internalGrade = 3;
+else if (grade === 'good') internalGrade = 4;
+else if (grade === 'easy') internalGrade = 5;
+let nextInterval, nextRep, nextEase;
+if (internalGrade >= 3) {
+if (prevRep === 0) {
+if (grade === 'hard') nextInterval = window.Utils.parseSrsTime(settings?.srsHard) || 2;
+else if (grade === 'good') nextInterval = window.Utils.parseSrsTime(settings?.srsGood) || 4;
+else if (grade === 'easy') nextInterval = window.Utils.parseSrsTime(settings?.srsEasy) || 7;
+else nextInterval = 1;
+if (nextInterval <= 0) nextInterval = 1;
+} else if (prevRep === 1) {
+nextInterval = Math.round(prevInterval * prevEase);
+} else {
+nextInterval = Math.round(prevInterval * prevEase);
+}
+nextRep = prevRep + 1;
+} else {
+nextInterval = 0.007;
+nextRep = 0;
+}
+nextEase = prevEase + (0.1 - (5 - internalGrade) * (0.08 + (5 - internalGrade) * 0.02));
+if (nextEase < 1.3) nextEase = 1.3;
+const now = new Date();
+const dueDate = new Date(now.getTime() + nextInterval * 24 * 60 * 60 * 1000).getTime();
+return {
+srs_interval: nextInterval,
+srs_repetition: nextRep,
+srs_ease: parseFloat(nextEase.toFixed(2)),
+srs_due: dueDate
+};
+},
+getSrsTimeLabel: (days) => {
+if (!days) return "New";
+if (days < 1) {
+const minutes = Math.round(days * 24 * 60);
+if (minutes < 60) return `${minutes}m`;
+const hours = Math.round(days * 24);
+return `${hours}h`;
+}
+return `${Math.round(days)}d`;
+},
+generateTrickyVariant: (correctText, otherCards) => {
+if (!correctText || !otherCards || otherCards.length === 0) return correctText;
+let words = correctText.split(' ');
+const isChinese = !correctText.includes(' ');
+if (isChinese) words = correctText.split('');
+if (words.length <= 1) {
+const randomCard = otherCards[Math.floor(Math.random() * otherCards.length)];
+const randomSource = isChinese ? randomCard.definition.split('') : randomCard.definition.split(' ');
+const randomWord = randomSource[Math.floor(Math.random() * randomSource.length)];
+return correctText + (isChinese ? "" : " ") + randomWord;
+}
+const strategy = Math.random();
+const lastIdx = words.length - 1;
+if (strategy < 0.33) {
+[words[lastIdx], words[lastIdx - 1]] = [words[lastIdx - 1], words[lastIdx]];
+}
+else if (strategy < 0.66) {
+const randomCard = otherCards[Math.floor(Math.random() * otherCards.length)];
+const randomSource = isChinese ? randomCard.definition.split('') : randomCard.definition.split(' ');
+const randomWord = randomSource[Math.floor(Math.random() * randomSource.length)];
+words.push(randomWord);
+}
+else {
+const randomCard = otherCards[Math.floor(Math.random() * otherCards.length)];
+const randomSource = isChinese ? randomCard.definition.split('') : randomCard.definition.split(' ');
+const randomWord = randomSource[Math.floor(Math.random() * randomSource.length)];
+words[lastIdx] = randomWord;
+}
+return words.join(isChinese ? '' : ' ');
 }
 };
+// BỘ MÁY GÂY NHIỄU DỰ PHÒNG (OFFLINE DISTRACTOR ENGINE)
+window.OfflineDistractorEngine = {
+generate: (correctAnswer, deck, lang, askMode) => {
+const distractors = new Set();
+const hasLogographic = /[\u4e00-\u9fa5]/.test(correctAnswer);
+const hasSpace = /\s/.test(correctAnswer.trim());
+const isLogographic = hasLogographic && !hasSpace;
+const getTokens = (str) => isLogographic ? Array.from(str) : str.split(/\s+/);
+const joinTokens = (arr) => isLogographic ? arr.join('') : arr.join(' ');
+const extractWord = (str) => str.replace(/[^\p{L}\p{N}]/gu, '');
+const correctTokens = getTokens(correctAnswer);
+const pool = [];
+deck.forEach(c => {
+const text = askMode === 'def' ? c.term : c.definition;
+if (text && text !== correctAnswer) {
+getTokens(text).forEach(t => {
+const cleaned = extractWord(t);
+if (cleaned.length > 0) pool.push(cleaned);
+});
+}
+});
+const validPool = pool;
+const getRandToken = () => validPool.length > 0 ? validPool[Math.floor(Math.random() * validPool.length)] : (isLogographic ? "的" : "the");
+const validTargetIndices = [];
+correctTokens.forEach((t, i) => {
+if (extractWord(t).length > 0) validTargetIndices.push(i);
+});
+let attempts = 0;
+while(distractors.size < 4 && attempts < 100) {
+attempts++;
+let newD = "";
+let method = Math.floor(Math.random() * 3) + 1;
+let tokens = [...correctTokens];
+if (validTargetIndices.length <= 1) {
+newD = getRandToken();
+} else {
+let anchorCount = validTargetIndices.length > 4 ? 2 : 1;
+let mutableIndices = validTargetIndices.slice(anchorCount);
+if (mutableIndices.length === 0) mutableIndices = validTargetIndices;
+if (method === 1) {
+let startIdx = mutableIndices[0];
+let removedLength = tokens.length - startIdx;
+tokens = tokens.slice(0, startIdx);
+let tokensToAdd = Math.max(1, removedLength + Math.floor(Math.random() * 3) - 1);
+for(let k=0; k < tokensToAdd; k++) {
+tokens.push(getRandToken());
+}
+newD = joinTokens(tokens);
+} else if (method === 2) {
+let tIdx = mutableIndices[Math.floor(Math.random() * mutableIndices.length)];
+if (Math.random() > 0.5) {
+tokens.splice(tIdx, 1);
+} else {
+tokens[tIdx] = getRandToken();
+}
+newD = joinTokens(tokens);
+} else {
+let tIdx = mutableIndices[Math.floor(Math.random() * mutableIndices.length)];
+let word = tokens[tIdx];
+let cleanW = extractWord(word);
+if (isLogographic) {
+tokens[tIdx] = getRandToken();
+} else {
+if (cleanW && cleanW.length > 3) {
+let arr = Array.from(cleanW);
+let charIdx = Math.floor(Math.random() * (arr.length - 2)) + 1;
+let temp = arr[charIdx]; arr[charIdx] = arr[charIdx+1]; arr[charIdx+1] = temp;
+tokens[tIdx] = word.replace(cleanW, arr.join(''));
+} else {
+tokens[tIdx] = getRandToken();
+}
+}
+newD = joinTokens(tokens);
+}
+}
+newD = newD.trim();
+if (newD && newD !== correctAnswer && newD !== joinTokens(correctTokens)) {
+distractors.add(newD);
+}
+}
+const fallbackDeck = window.Utils.shuffleArray([...deck]).filter(c => {
+const text = askMode === 'def' ? c.term : c.definition;
+return text !== correctAnswer;
+});
+let fIdx = 0;
+while(distractors.size < 4 && fIdx < fallbackDeck.length) {
+const text = askMode === 'def' ? fallbackDeck[fIdx].term : fallbackDeck[fIdx].definition;
+if (text && text.trim()) distractors.add(text.trim());
+fIdx++;
+}
+return Array.from(distractors).slice(0, 4);
+}
+};
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.0
+// Last Updated: 2026-05-28 11:20
+// Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, và kết nối Gemini API. Chứa toàn bộ AI Business Logic.
+// Cập nhật: Phân rã từ Block 2.1 nguyên khối, sử dụng kỹ thuật gán nối tiếp (Mutation) để bảo toàn Namespace.
+// ==================================================================================
+// Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
+window.Utils = window.Utils || {};
 // ============================================================================
-// [NEW - KIẾN TRÚC LÕI] ĐỘNG CƠ RÚT THẺ CÓ KHÓA NGUYÊN TỬ (ATOMIC RETRY PULLER)
-// Xử lý triệt để lỗi bốc trùng 1 thẻ lỗi nhiều lần khi QueueEngine chạy đa luồng.
+// 1. TẢI DỮ LIỆU TỪ GOOGLE SHEETS QUA PROXY
 // ============================================================================
-window.__retryMutexLock = false; // Biến cờ khóa toàn cục
-window.Utils.pullRetryCardWithLock = (gameType, retryBagObject) => {
-// 1. Kiểm tra khóa đa luồng (Bị luồng khác khóa thì bỏ qua ngay)
-if (window.__retryMutexLock) return null;
-// 2. Kiểm tra tính hợp lệ của túi nháp
-if (!retryBagObject || !retryBagObject[gameType] || retryBagObject[gameType].length === 0) return null;
-// 3. Đổ xúc xắc 30% (Chỉ lấy khi ngẫu nhiên < 0.3)
-if (Math.random() >= 0.3) return null;
-// 4. KHÓA LUỒNG VÀ THỰC THI RÚT THẺ
-window.__retryMutexLock = true;
+window.Utils.fetchWithFallback = async (url) => {
+if (!url) throw new Error("URL is empty");
+let finalUrl = url.includes('docs.google.com') ? url.replace(/\/edit.*$/, '/export?format=csv').replace(/gid=0/, `gid=${(url.match(/gid=(\d+)/) || ['', '0'])[1]}`) : url;
+const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
+const strategies = [
+{ name: "Direct", url: finalUrl },
+{ name: "CorsProxyIO", url: `https://corsproxy.io/?${encodeURIComponent(finalUrl + cacheBuster)}` },
+{ name: "CodeTabs", url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(finalUrl)}` },
+{ name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(finalUrl + cacheBuster)}` }
+];
+let err;
+for (const s of strategies) {
 try {
-const validCards = retryBagObject[gameType].filter(c => c && c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
-if (validCards.length === 0) {
-window.__retryMutexLock = false;
-return null;
-}
-// Bốc thẻ ngẫu nhiên
-const randIdx = Math.floor(Math.random() * validCards.length);
-const selectedCard = validCards[randIdx];
-// RÚT RA KHỎI TÚI NGAY LẬP TỨC ĐỂ CÁC LUỒNG SAU KHÔNG THẤY NỮA (Mặc dù nó chưa lên UI)
-const actualIndex = retryBagObject[gameType].findIndex(c => c.term === selectedCard.term);
-if(actualIndex > -1) {
-retryBagObject[gameType].splice(actualIndex, 1);
-// Ép lưu xuống DB ngầm để đồng bộ chéo
-if (window.FcDB) {
-window.FcDB.set('fc_global_retry_bag', retryBagObject).catch(() => {});
-}
-}
-// Tự động mở khóa sau 50ms (Đủ thời gian cho các vi luồng async khác chạy qua chặn)
-setTimeout(() => { window.__retryMutexLock = false; }, 50);
-return selectedCard;
+const res = await fetch(s.url);
+if (res.ok) return res;
 } catch (e) {
-console.error("Atomic Lock Error:", e);
-window.__retryMutexLock = false;
-return null;
+err = e;
+}
+}
+throw new Error("Lỗi tải dữ liệu mạng");
+};
+// ============================================================================
+// 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING)
+// ============================================================================
+window.Utils.pingGeminiKey = async (apiKey) => {
+try {
+const k = apiKey.replace(/["'\s]/g, "");
+const body = { contents: [{ parts: [{ text: "Reply 'OK'" }] }] };
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 10000); // Ngắt sau 10s
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(body),
+signal: controller.signal
+});
+clearTimeout(timeoutId);
+return { status: res.status, ok: res.ok };
+} catch (e) {
+return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message };
 }
 };
 // ============================================================================
+// 3. GỌI API GEMINI VẠN NĂNG (CÓ QUẢN LÝ KEY POOL)
 // ============================================================================
-// HÀM LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ENRICH CARD)
+window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
+let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
+let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
+// Đẩy Key hiện tại lên đầu Pool
+if (currentKey && !keyPool.includes(currentKey)) {
+keyPool.unshift(currentKey);
+} else if (currentKey) {
+keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)];
+}
+if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Vui lòng cấu hình trong Settings)");
+let resultText = null;
+let tokenMetadata = null;
+let successKey = null;
+let lastError = null;
+for (let i = 0; i < keyPool.length; i++) {
+const rawK = keyPool[i];
+if (!rawK || rawK.length < 10) continue;
+const k = rawK.replace(/["'\s]/g, "");
+try {
+const body = { contents: [{ parts: [{ text: prompt }] }] };
+const randomTemp = Math.random() * (1.1 - 0.7) + 0.7; // Nhiệt độ linh hoạt chống cached
+body.generationConfig = { temperature: randomTemp };
+if (schema) {
+body.generationConfig.responseMimeType = "application/json";
+body.generationConfig.responseSchema = schema;
+}
+const controller = new AbortController();
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(body),
+signal: controller.signal
+});
+const timeoutPromise = new Promise((_, reject) => {
+setTimeout(() => {
+controller.abort();
+reject(new Error("API Timeout (15s)"));
+}, 15000);
+});
+const res = await Promise.race([fetchPromise, timeoutPromise]);
+const d = await res.json();
+if (d.error) throw new Error(d.error.message);
+if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
+resultText = d.candidates[0].content.parts[0].text;
+if (d.usageMetadata) tokenMetadata = d.usageMetadata;
+successKey = k;
+break; // Thoát vòng lặp ngay khi có key thành công
+} catch (e) {
+console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message);
+lastError = e;
+}
+}
+if (!resultText) throw new Error(`Tất cả ${keyPool.length} API Key đều lỗi. (Lỗi cuối: ${lastError?.message})`);
+if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
+localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey);
+console.log("Updated primary API Key to working key.");
+}
+return { text: resultText, tokenMetadata };
+};
+// ============================================================================
+// 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ENRICH CARD)
 // ============================================================================
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null) => {
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
@@ -489,7 +704,6 @@ if (!text) throw new Error("AI không trả về kết quả");
 const parsed = JSON.parse(text);
 // --- VỆ SINH DỮ LIỆU (CẠO RÁC ẢO GIÁC HÁN VIỆT) ---
 if (lang === 'zh' && parsed.sinoViet) {
-// Regex xóa mọi nội dung nằm trong ngoặc đơn (cả ngoặc nửa chiều và ngoặc toàn chiều của Hán ngữ)
 parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
 }
 let imgUrl = "";
@@ -505,7 +719,7 @@ image: imgUrl,
 };
 };
 // ============================================================================
-// HÀM TẠO NHIỄU CHO GAME (QUIZ / MATCH)
+// 5. TẠO NHIỄU CHO GAME (QUIZ / MATCH)
 // ============================================================================
 window.Utils.fetchAiDistractors = async (baseText, targetText, lang) => {
 const cleanTarget = targetText ? targetText.replace(/\u0332/g, '') : '';
@@ -544,7 +758,7 @@ return [];
 }
 };
 // ============================================================================
-// HÀM GIẢI THÍCH NGỮ PHÁP (GRAMMAR EXPLAIN)
+// 6. GIẢI THÍCH NGỮ PHÁP (GRAMMAR EXPLAIN)
 // ============================================================================
 window.Utils.explainSentenceGrammar = async (sentence, lang, apiKey) => {
 const cleanSentence = sentence ? sentence.replace(/\u0332/g, '') : '';
@@ -552,203 +766,82 @@ const prompt = window.Utils.getPrompt('grammar', { sentence: cleanSentence, lang
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, null, apiKey);
 return { text: window.Utils.cleanText(text), _tokenUsage: tokenMetadata };
 };
-window.Utils.generateQuizQuestion = (cards, correctIndex, lang) => {
-const correctCard = cards[correctIndex];
-const options = [correctCard];
-const pool = cards.filter((_, i) => i !== correctIndex && cards[i].term !== correctCard.term);
-while (options.length < 5 && pool.length > 0) {
-const rand = Math.floor(Math.random() * pool.length);
-options.push(pool[rand]);
-pool.splice(rand, 1);
-}
-return {
-question: correctCard,
-options: window.Utils.shuffleArray(options).map(opt => ({
-definition: opt.definition,
-isCorrect: opt.term === correctCard.term
-}))
-};
-};
-window.Utils.parseSrsTime = (str) => {
-if (!str) return 0;
-let d = 0, h = 0, m = 0;
-const matchD = str.match(/(\d+)d/); if (matchD) d = parseInt(matchD[1]);
-const matchH = str.match(/(\d+)h/); if (matchH) h = parseInt(matchH[1]);
-const matchM = str.match(/(\d+)m/); if (matchM) m = parseInt(matchM[1]);
-return d + (h / 24) + (m / 1440);
-};
-window.Utils.calculateSRS = (card, grade, settings) => {
-let prevInterval = card.srs_interval || 0;
-let prevRep = card.srs_repetition || 0;
-let prevEase = card.srs_ease || 2.5;
-let internalGrade = 0;
-if (grade === 'again') internalGrade = 0;
-else if (grade === 'hard') internalGrade = 3;
-else if (grade === 'good') internalGrade = 4;
-else if (grade === 'easy') internalGrade = 5;
-let nextInterval, nextRep, nextEase;
-if (internalGrade >= 3) {
-if (prevRep === 0) {
-if (grade === 'hard') nextInterval = window.Utils.parseSrsTime(settings?.srsHard) || 2;
-else if (grade === 'good') nextInterval = window.Utils.parseSrsTime(settings?.srsGood) || 4;
-else if (grade === 'easy') nextInterval = window.Utils.parseSrsTime(settings?.srsEasy) || 7;
-else nextInterval = 1;
-if (nextInterval <= 0) nextInterval = 1;
-} else if (prevRep === 1) {
-nextInterval = Math.round(prevInterval * prevEase);
-} else {
-nextInterval = Math.round(prevInterval * prevEase);
-}
-nextRep = prevRep + 1;
-} else {
-nextInterval = 0.007;
-nextRep = 0;
-}
-nextEase = prevEase + (0.1 - (5 - internalGrade) * (0.08 + (5 - internalGrade) * 0.02));
-if (nextEase < 1.3) nextEase = 1.3;
-const now = new Date();
-const dueDate = new Date(now.getTime() + nextInterval * 24 * 60 * 60 * 1000).getTime();
-return {
-srs_interval: nextInterval,
-srs_repetition: nextRep,
-srs_ease: parseFloat(nextEase.toFixed(2)),
-srs_due: dueDate
-};
-};
-window.Utils.getSrsTimeLabel = (days) => {
-if (!days) return "New";
-if (days < 1) {
-const minutes = Math.round(days * 24 * 60);
-if (minutes < 60) return `${minutes}m`;
-const hours = Math.round(days * 24);
-return `${hours}h`;
-}
-return `${Math.round(days)}d`;
-};
-window.Utils.generateTrickyVariant = (correctText, otherCards) => {
-if (!correctText || !otherCards || otherCards.length === 0) return correctText;
-let words = correctText.split(' ');
-const isChinese = !correctText.includes(' ');
-if (isChinese) words = correctText.split('');
-if (words.length <= 1) {
-const randomCard = otherCards[Math.floor(Math.random() * otherCards.length)];
-const randomSource = isChinese ? randomCard.definition.split('') : randomCard.definition.split(' ');
-const randomWord = randomSource[Math.floor(Math.random() * randomSource.length)];
-return correctText + (isChinese ? "" : " ") + randomWord;
-}
-const strategy = Math.random();
-const lastIdx = words.length - 1;
-if (strategy < 0.33) {
-[words[lastIdx], words[lastIdx - 1]] = [words[lastIdx - 1], words[lastIdx]];
-}
-else if (strategy < 0.66) {
-const randomCard = otherCards[Math.floor(Math.random() * otherCards.length)];
-const randomSource = isChinese ? randomCard.definition.split('') : randomCard.definition.split(' ');
-const randomWord = randomSource[Math.floor(Math.random() * randomSource.length)];
-words.push(randomWord);
-}
-else {
-const randomCard = otherCards[Math.floor(Math.random() * otherCards.length)];
-const randomSource = isChinese ? randomCard.definition.split('') : randomCard.definition.split(' ');
-const randomWord = randomSource[Math.floor(Math.random() * randomSource.length)];
-words[lastIdx] = randomWord;
-}
-return words.join(isChinese ? '' : ' ');
-};
-// BỘ MÁY GÂY NHIỄU
-window.OfflineDistractorEngine = {
-generate: (correctAnswer, deck, lang, askMode) => {
-const distractors = new Set();
-const hasLogographic = /[\u4e00-\u9fa5]/.test(correctAnswer);
-const hasSpace = /\s/.test(correctAnswer.trim());
-const isLogographic = hasLogographic && !hasSpace;
-const getTokens = (str) => isLogographic ? Array.from(str) : str.split(/\s+/);
-const joinTokens = (arr) => isLogographic ? arr.join('') : arr.join(' ');
-const extractWord = (str) => str.replace(/[^\p{L}\p{N}]/gu, '');
-const correctTokens = getTokens(correctAnswer);
-const pool = [];
-deck.forEach(c => {
-const text = askMode === 'def' ? c.term : c.definition;
-if (text && text !== correctAnswer) {
-getTokens(text).forEach(t => {
-const cleaned = extractWord(t);
-if (cleaned.length > 0) pool.push(cleaned);
-});
+// Block 2.1d: TẦNG 2: CƠ SỞ DỮ LIỆU & ĐỒNG BỘ (Database & Memory Sync) - Version 2.0
+// Last Updated: 2026-05-28 11:30
+// Nhiệm vụ: Khởi tạo IndexedDB (FcDB) siêu tốc, quản lý lưu trữ offline và Động cơ Khóa nguyên tử Đa luồng (Atomic Lock).
+// Cập nhật: Phân rã từ Block 2.1 nguyên khối. Tích hợp Schema-Agnostic Validator hỗ trợ 10/10 Mini-games.
+// ==================================================================================
+// Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
+window.Utils = window.Utils || {};
+// ============================================================================
+// 1. ĐỘNG CƠ RÚT THẺ CÓ KHÓA NGUYÊN TỬ (ATOMIC RETRY PULLER)
+// Xử lý triệt để lỗi bốc trùng 1 thẻ lỗi nhiều lần khi QueueEngine chạy đa luồng.
+// Tích hợp Validator Đa cấu trúc hỗ trợ 100% 10/10 Mini-games.
+// ============================================================================
+window.__retryMutexLock = false;
+window.Utils.pullRetryCardWithLock = (gameType, retryBagObject) => {
+// 1. Kiểm tra khóa đa luồng
+if (window.__retryMutexLock) return null;
+// 2. Kiểm tra tính hợp lệ của túi nháp
+if (!retryBagObject || !retryBagObject[gameType] || retryBagObject[gameType].length === 0) return null;
+// 3. Đổ xúc xắc 30%
+if (Math.random() >= 0.3) return null;
+// 4. KHÓA LUỒNG VÀ THỰC THI RÚT THẺ
+window.__retryMutexLock = true;
+try {
+// [SCHEMA-AGNOSTIC VALIDATOR] Lọc thẻ lỗi hợp lệ theo từng Game
+const validCards = retryBagObject[gameType].filter(c => {
+if (!c) return false;
+switch(gameType) {
+case 'oddoneout': return c.words && c.oddWord;
+case 'fillblank': return c.targetWord && c.displaySentence;
+case 'spotmistake': return c.wrongSentence && c.correction;
+case 'pronunciation': return c.term && c.options && c.options.length === 4;
+case 'listening': return c.audioScript && c.options;
+case 'reading': return c.passageContext && c.questionText;
+default: return c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '';
 }
 });
-const validPool = pool;
-const getRandToken = () => validPool.length > 0 ? validPool[Math.floor(Math.random() * validPool.length)] : (isLogographic ? "的" : "the");
-const validTargetIndices = [];
-correctTokens.forEach((t, i) => {
-if (extractWord(t).length > 0) validTargetIndices.push(i);
+if (validCards.length === 0) {
+window.__retryMutexLock = false;
+return null;
+}
+// Bốc thẻ ngẫu nhiên
+const randIdx = Math.floor(Math.random() * validCards.length);
+const selectedCard = validCards[randIdx];
+// Tìm Index gốc để xóa bằng thuật toán nhận diện đa cấu trúc
+const actualIndex = retryBagObject[gameType].findIndex(c => {
+if(!c) return false;
+switch(gameType) {
+case 'oddoneout': return c.oddWord === selectedCard.oddWord;
+case 'fillblank': return c.targetWord === selectedCard.targetWord;
+case 'spotmistake': return c.wrongSentence === selectedCard.wrongSentence;
+case 'pronunciation': return c.term === selectedCard.term && c.options && c.options.length === 4;
+case 'listening': return c.audioScript === selectedCard.audioScript;
+case 'reading': return c.questionText === selectedCard.questionText && c.passageContext === selectedCard.passageContext;
+default: return c.term === selectedCard.term;
+}
 });
-let attempts = 0;
-while(distractors.size < 4 && attempts < 100) {
-attempts++;
-let newD = "";
-let method = Math.floor(Math.random() * 3) + 1;
-let tokens = [...correctTokens];
-if (validTargetIndices.length <= 1) {
-newD = getRandToken();
-} else {
-let anchorCount = validTargetIndices.length > 4 ? 2 : 1;
-let mutableIndices = validTargetIndices.slice(anchorCount);
-if (mutableIndices.length === 0) mutableIndices = validTargetIndices;
-if (method === 1) {
-let startIdx = mutableIndices[0];
-let removedLength = tokens.length - startIdx;
-tokens = tokens.slice(0, startIdx);
-let tokensToAdd = Math.max(1, removedLength + Math.floor(Math.random() * 3) - 1);
-for(let k=0; k < tokensToAdd; k++) {
-tokens.push(getRandToken());
-}
-newD = joinTokens(tokens);
-} else if (method === 2) {
-let tIdx = mutableIndices[Math.floor(Math.random() * mutableIndices.length)];
-if (Math.random() > 0.5) {
-tokens.splice(tIdx, 1);
-} else {
-tokens[tIdx] = getRandToken();
-}
-newD = joinTokens(tokens);
-} else {
-let tIdx = mutableIndices[Math.floor(Math.random() * mutableIndices.length)];
-let word = tokens[tIdx];
-let cleanW = extractWord(word);
-if (isLogographic) {
-tokens[tIdx] = getRandToken();
-} else {
-if (cleanW && cleanW.length > 3) {
-let arr = Array.from(cleanW);
-let charIdx = Math.floor(Math.random() * (arr.length - 2)) + 1;
-let temp = arr[charIdx]; arr[charIdx] = arr[charIdx+1]; arr[charIdx+1] = temp;
-tokens[tIdx] = word.replace(cleanW, arr.join(''));
-} else {
-tokens[tIdx] = getRandToken();
+if (actualIndex > -1) {
+// Rút vĩnh viễn khỏi túi nháp RAM
+retryBagObject[gameType].splice(actualIndex, 1);
+// Ép lưu xuống DB ngầm để đồng bộ chéo
+if (window.FcDB) {
+window.FcDB.set('fc_global_retry_bag', retryBagObject).catch(() => {});
 }
 }
-newD = joinTokens(tokens);
-}
-}
-newD = newD.trim();
-if (newD && newD !== correctAnswer && newD !== joinTokens(correctTokens)) {
-distractors.add(newD);
-}
-}
-const fallbackDeck = window.Utils.shuffleArray([...deck]).filter(c => {
-const text = askMode === 'def' ? c.term : c.definition;
-return text !== correctAnswer;
-});
-let fIdx = 0;
-while(distractors.size < 4 && fIdx < fallbackDeck.length) {
-const text = askMode === 'def' ? fallbackDeck[fIdx].term : fallbackDeck[fIdx].definition;
-if (text && text.trim()) distractors.add(text.trim());
-fIdx++;
-}
-return Array.from(distractors).slice(0, 4);
+// Tự động mở khóa sau 50ms (Nhường đường cho các vi luồng async khác)
+setTimeout(() => { window.__retryMutexLock = false; }, 50);
+return selectedCard;
+} catch (e) {
+console.error("Atomic Lock Error:", e);
+window.__retryMutexLock = false;
+return null;
 }
 };
-// KHỞI TẠO ĐỘNG CƠ FcDB (Flashcard Database) SỬ DỤNG INDEXEDDB API
+// ============================================================================
+// 2. KHỞI TẠO ĐỘNG CƠ CSDL IndexedDB (FcDB)
+// ============================================================================
 window.FcDB = {
 dbName: 'FlashcardLiteDB',
 defaultStore: 'keyvaluepairs',
@@ -771,6 +864,7 @@ db.createObjectStore(storeName);
 };
 request.onsuccess = async (event) => {
 this.db = event.target.result;
+// MIGRATION SCRIPT: Dọn rác LocalStorage cũ sang IndexedDB
 try {
 const oldHarvestPoolStr = localStorage.getItem('fc_ai_harvest_pool');
 if (oldHarvestPoolStr) {
@@ -2887,25 +2981,26 @@ throw e;
 }
 }
 };
-// Block2.7: TẦNG 2: BỘ TỔNG THAM MƯU (Atomic Exam Engine) - Version 1.23
-// Last Updated: 2026-05-19 15:03
-// Nhiệm vụ: Động cơ sinh và nạp đề thi nguyên tử. Hydration Logic & Constraint Check.
-// Cập nhật: [CHIẾN DỊCH VÔ HIỆU HÓA] Dọn dẹp Hard-fallback Tiếng Trung (HSK) của Game Ngữ âm khỏi _generateFallbackData để loại bỏ rác hệ thống (Dead code). Tuân thủ Điều 3.
+// Block 2.7a: TẦNG 2: TRẠM GÁC & BỘ NHỚ (Exam Memory & QA Guards) - Version 2.0
+// Last Updated: 2026-05-28 11:30
+// Nhiệm vụ: Quản lý bộ nhớ tạm (Volatile RAM) và lưới lọc sư phạm (Sanitizer) cho Máy trộn đề ExamEngine.
+// Cập nhật: Phân rã từ Block 2.7 nguyên khối. Sử dụng kỹ thuật gán nối tiếp (Mutation) bảo toàn Namespace.
 // ==================================================================================
-window.ExamEngine = {
+// Khởi tạo Base Object nếu chưa tồn tại
+window.ExamEngine = window.ExamEngine || {};
 // Bộ nhớ tạm để khóa các cuộc gọi AI trùng lặp cho cùng 1 Tổ kén (Passage Group)
-_passageLocks: {},
+window.ExamEngine._passageLocks = {};
 // Bộ nhớ RAM siêu tốc: Đồng bộ hóa ngay lập tức các từ vừa được AI sinh ra trong cùng 1 Batch/Sliding Window.
-_volatileMemory: [],
+window.ExamEngine._volatileMemory = [];
 // Công tắc dọn dẹp RAM cho Tầng 6 (Chuyển Phase)
-clearVolatileMemory: function() {
+window.ExamEngine.clearVolatileMemory = function() {
 this._volatileMemory = [];
 console.log("[ExamEngine] Volatile memory cleared for new phase.");
-},
+};
 // ============================================================================
-// [INTERNAL UTILS] CÁC HÀM TIỆN ÍCH NỘI BỘ
+// [INTERNAL UTILS] CÁC HÀM TIỆN ÍCH NỘI BỘ (LƯU TRỮ VÀ LỌC)
 // ============================================================================
-_syncMemory: function(content, type) {
+window.ExamEngine._syncMemory = function(content, type) {
 if (!content) return;
 let termToSave = "";
 if (type.includes('spot_mistake')) termToSave = content.wrongSentence;
@@ -2934,8 +3029,8 @@ if (this._volatileMemory.length > 50) this._volatileMemory.shift();
 }
 }
 }
-},
-_extractTermsToCheck: function(data, type) {
+};
+window.ExamEngine._extractTermsToCheck = function(data, type) {
 let terms = [];
 if (!data) return terms;
 if (type.includes('spot_mistake')) terms.push(data.wrongSentence);
@@ -2953,8 +3048,8 @@ terms.push(data.passage);
 terms.push(data.term);
 }
 return terms;
-},
-_isDuplicate: function(termsToCheck, history) {
+};
+window.ExamEngine._isDuplicate = function(termsToCheck, history) {
 const volatile = this._volatileMemory || [];
 // Cắt giảm tầm nhìn xuống 40 để bớt khắt khe và giảm chi phí
 const combinedHistory = [...(history || []), ...volatile].slice(-40);
@@ -2999,8 +3094,8 @@ return false;
 if (hasMatch) return true;
 }
 return false;
-},
-_sanitizeAiItem: function(parsedData, expectedType, track, level) {
+};
+window.ExamEngine._sanitizeAiItem = function(parsedData, expectedType, track, level) {
 if (!parsedData) return false;
 // Gom nhóm các dạng bài sử dụng Options
 const isOptionsType = expectedType.includes('multiple_choice') || expectedType.includes('match') || expectedType.includes('listening') || expectedType.includes('image_quiz') || expectedType.includes('pronunciation') || expectedType.includes('reading') || expectedType === 'quiz';
@@ -3054,11 +3149,18 @@ return false;
 }
 }
 return true; // Dữ liệu sạch
-},
+};
+// Block 2.7b: TẦNG 2: KHO CỨU HỘ NỘI BỘ (Exam Fallback Agent) - Version 2.0
+// Last Updated: 2026-05-28 12:05
+// Nhiệm vụ: Chứa dữ liệu tĩnh và logic sinh câu hỏi dự phòng đồng cấp (Tiered Fallback) cho Máy trộn đề Mock Test khi AI mất kết nối.
+// Cập nhật: Phân rã từ Block 2.7 nguyên khối. Sử dụng kỹ thuật gán nối tiếp (Mutation) bảo toàn Namespace.
+// ==================================================================================
+// Khởi tạo Base Object nếu chưa tồn tại (Kế thừa từ Block 2.7a)
+window.ExamEngine = window.ExamEngine || {};
 // ============================================================================
 // 0. HÀM CỨU HỘ ĐỒNG CẤP (TIERED FALLBACK DATA ENGINE CHO MOCK TEST)
 // ============================================================================
-_generateFallbackData: function(type, level, track, index = 0) {
+window.ExamEngine._generateFallbackData = function(type, level, track, index = 0) {
 const lang = track === 'hsk' ? 'zh' : 'en';
 let fallbackCards = [];
 // Nâng cấp kho cứu hộ học thuật cho IELTS
@@ -3101,9 +3203,9 @@ const optEng1 = fallbackCards[(safeIndex + 1) % fallbackCards.length]?.term || "
 const optEng2 = fallbackCards[(safeIndex + 2) % fallbackCards.length]?.term || "Worm";
 const optEng3 = fallbackCards[(safeIndex + 3) % fallbackCards.length]?.term || "Bee";
 switch(type) {
-case window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_MULTIPLE_CHOICE || 'ioe_multiple_choice':
 case 'ioe_multiple_choice':
-case window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_MATCH || 'ioe_match':
 case 'ioe_match':
 case 'ielts_reading_mcq':
 return {
@@ -3117,7 +3219,7 @@ options: window.Utils.shuffleArray([
 ]),
 isAiGenerated: false
 };
-case window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_SPOT_MISTAKE || 'ioe_spot_mistake':
 case 'ioe_spot_mistake':
 return {
 wrongSentence: baseCard.term + "s",
@@ -3127,7 +3229,7 @@ explanation: "Lỗi hình thái từ (Hệ thống dự phòng tự động).",
 origin: baseCard,
 isAiGenerated: false
 };
-case window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_FILL_BLANK || 'ioe_fill_blank':
 case 'ioe_fill_blank':
 case 'ielts_listening_fill':
 return {
@@ -3137,14 +3239,14 @@ hint: baseCard.definition,
 origin: baseCard,
 isAiGenerated: false
 };
-case window.IoeDataEngine.QUESTION_TYPES.IOE_SCRAMBLE:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_SCRAMBLE || 'ioe_scramble':
 case 'ioe_scramble':
 return {
 term: baseCard.term,
 definition: baseCard.definition,
 isAiGenerated: false
 };
-case window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_ODD_ONE_OUT || 'ioe_odd_one_out':
 case 'ioe_odd_one_out':
 return {
 words: window.Utils.shuffleArray([baseCard.term, fallbackCards[(safeIndex + 1) % fallbackCards.length]?.term || 'A', fallbackCards[(safeIndex + 2) % fallbackCards.length]?.term || 'B', "Lạc loài"]),
@@ -3153,7 +3255,7 @@ explanation: "Từ khác loại do hệ thống dự phòng cung cấp.",
 originCards: [baseCard],
 isAiGenerated: false
 };
-case window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_PRONUNCIATION || 'ioe_pronunciation':
 case 'ioe_pronunciation':
 return {
 term: "cat, bat, tall, map",
@@ -3166,7 +3268,7 @@ options: window.Utils.shuffleArray([
 ]),
 isAiGenerated: false
 };
-case window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_IMAGE_QUIZ || 'ioe_image_quiz':
 case 'ioe_image_quiz':
 return {
 term: baseCard.term,
@@ -3179,7 +3281,7 @@ options: window.Utils.shuffleArray([
 ]),
 isAiGenerated: false
 };
-case window.IoeDataEngine.QUESTION_TYPES.IOE_LISTENING:
+case window.IoeDataEngine?.QUESTION_TYPES?.IOE_LISTENING || 'ioe_listening':
 case 'ioe_listening':
 if (lang === 'zh') {
 const zhListeningFallbacks = [
@@ -3245,11 +3347,158 @@ isAiGenerated: false
 default:
 return { term: "Lỗi mạng", definition: "Câu hỏi dự phòng", isAiGenerated: false };
 }
-},
+};
+// Block 2.7c: TẦNG 2: DÂY CHUYỀN LẮP RÁP (Data Normalizer Pipeline) - Version 2.0
+// Last Updated: 2026-05-28 12:15
+// Nhiệm vụ: Xử lý dữ liệu AI thô, bóp méo, thêm nhiễu (Scramble) và chuẩn hóa (Normalize) thành cấu trúc dữ liệu tương thích cho từng Mini-game ở Tầng 5.
+// Cập nhật: Phân rã từ Block 2.7 nguyên khối. Sử dụng kỹ thuật gán nối tiếp (Mutation) bảo toàn Namespace.
+// ==================================================================================
+// Khởi tạo Base Object nếu chưa tồn tại (Kế thừa từ Block 2.7a và 2.7b)
+window.ExamEngine = window.ExamEngine || {};
+// ============================================================================
+// HÀM CHUẨN HÓA DỮ LIỆU ĐẦU RA CHO MINI-GAMES (NORMALIZER)
+// ============================================================================
+window.ExamEngine._normalizeForMinigame = async function(tempGeneratedData, tType, metadata, targetLang, level, topic, apiKey) {
+if (!tempGeneratedData) return null;
+// 1. BƠM NHIỄU CHO GAME GHÉP CÂU (SCRAMBLE NOISE INJECTION)
+if (tType.includes('scramble') && tempGeneratedData.term) {
+try {
+let parts = [];
+const isZh = targetLang === 'zh';
+const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(tempGeneratedData.term) : tempGeneratedData.term.includes(' ');
+const dataType = metadata.dataMode || (isSentence ? 'sentence' : 'word');
+const cleanAndLower = (textArr) => textArr.map(p => {
+let cleaned = p.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+if (!isZh) cleaned = cleaned.toLowerCase();
+return cleaned;
+}).filter(p => p.trim() !== "");
+if (isZh) {
+parts = tempGeneratedData.term.split('');
+} else {
+parts = isSentence ? tempGeneratedData.term.split(' ') : tempGeneratedData.term.split('');
+}
+parts = cleanAndLower(parts);
+let targetCount = 2;
+const len = parts.length;
+if (len >= 5 && len <= 10) targetCount = Math.floor(Math.random() * 2) + 4;
+else if (len > 10) targetCount = Math.floor(Math.random() * 3) + 5;
+let noiseWords = [];
+if (apiKey && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine && window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise) {
+try {
+await new Promise(r => setTimeout(r, 2000));
+const aiCallPromise = window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise(tempGeneratedData.term, targetLang, dataType, apiKey, targetCount, level, topic);
+const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Noise Timeout")), 15000));
+noiseWords = await Promise.race([aiCallPromise, timeoutPromise]);
+} catch(e) {
+console.warn("Scramble AI Noise Fallback:", e.message);
+}
+}
+if ((!noiseWords || noiseWords.length === 0) && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise) {
+const cleanDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : [];
+noiseWords = window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise(tempGeneratedData.term, cleanDeck, targetLang, dataType, targetCount);
+}
+if (noiseWords && noiseWords.length > 0) {
+let finalNoiseWords = [];
+if (isZh || dataType === 'word') {
+noiseWords.forEach(w => {
+const cleanW = String(w).replace(/\s/g, '');
+finalNoiseWords.push(...cleanW.split(''));
+});
+} else {
+finalNoiseWords = noiseWords;
+}
+finalNoiseWords = window.Utils.shuffleArray ? window.Utils.shuffleArray(cleanAndLower(finalNoiseWords)).slice(0, targetCount) : cleanAndLower(finalNoiseWords).slice(0, targetCount);
+parts.push(...finalNoiseWords);
+}
+tempGeneratedData.parts = window.Utils.shuffleArray ? window.Utils.shuffleArray(parts) : parts;
+} catch (err) {
+const basicParts = tempGeneratedData.term.split(targetLang === 'zh' ? '' : ' ').filter(w => w.trim() !== "");
+tempGeneratedData.parts = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(basicParts) : basicParts;
+}
+}
+// 2. CHUẨN HÓA CẤU TRÚC CHO TỪNG DẠNG MINI-GAME
+let formattedData = tempGeneratedData;
+if (tType.includes('quiz') || tType === 'ioe_multiple_choice') {
+formattedData = { question: tempGeneratedData, options: tempGeneratedData.options, origin: tempGeneratedData, isAiGenerated: true };
+}
+else if (tType.includes('image_quiz') || tType.includes('imagequiz')) {
+formattedData = { question: tempGeneratedData, term: tempGeneratedData.term, options: tempGeneratedData.options, origin: tempGeneratedData, isAiGenerated: true };
+}
+else if (tType.includes('scramble')) {
+formattedData = { origin: tempGeneratedData, parts: tempGeneratedData.parts, isAiGenerated: true };
+}
+else if (tType.includes('fill_blank') || tType.includes('fillblank')) {
+formattedData = { ...tempGeneratedData, origin: tempGeneratedData, isAiGenerated: true };
+}
+else if (tType.includes('spot_mistake') || tType.includes('spotmistake')) {
+formattedData = { ...tempGeneratedData, origin: tempGeneratedData, isAiGenerated: true };
+}
+else if (tType === 'match' || tType === 'ioe_match') {
+let realCards = [];
+let trapCards = [];
+if (tempGeneratedData.correctPairs) {
+realCards = tempGeneratedData.correctPairs.map(p => ({ term: p.term, definition: p.definition }));
+if (tempGeneratedData.trapPairs) {
+trapCards = tempGeneratedData.trapPairs.map(p => ({
+term: p.wrongSentence || p.wrongWord || "Trap",
+distortedTerm: p.wrongSentence || p.wrongWord || "Trap",
+definition: p.definition,
+explanation: p.explanation,
+originalTerm: p.correction || p.wrongWord
+}));
+}
+} else if (tempGeneratedData.items) {
+realCards = tempGeneratedData.items.map(p => ({ term: p.term, definition: p.definition }));
+} else {
+realCards = [{ term: tempGeneratedData.term || 'Error', definition: tempGeneratedData.definition || 'Error' }];
+}
+const leftItems = [...realCards, ...trapCards].map((c, i) => ({
+id: `left_${i}_${Date.now()}`,
+term: c.term,
+definition: c.definition,
+isTrap: trapCards.some(t => t.term === c.term),
+origin: c
+}));
+const rightItems = [];
+realCards.forEach((c, i) => { rightItems.push({ id: `right_real_${i}_${Date.now()}`, term: c.term, isTrap: false }); });
+trapCards.forEach((t, i) => { rightItems.push({ id: `right_trap_${i}_${Date.now()}`, term: t.distortedTerm || t.term, isTrap: true, originalTerm: t.originalTerm, explanation: t.explanation }); });
+const shuffleNoAdjacent = (arr) => {
+if (!window.Utils || !window.Utils.shuffleArray) return arr;
+let res = [...arr]; let valid = false; let tries = 0;
+while (!valid && tries < 50) {
+res = window.Utils.shuffleArray(res);
+valid = true;
+for (let j = 0; j < res.length - 1; j++) {
+if (res[j].isTrap && res[j+1].isTrap) { valid = false; break; }
+}
+tries++;
+}
+return res;
+};
+formattedData = { pairs: realCards, leftItems: shuffleNoAdjacent(leftItems), rightItems: shuffleNoAdjacent(rightItems), isAiGenerated: true };
+}
+else if (tType.includes('odd_one_out') || tType.includes('oddoneout')) {
+formattedData = { ...tempGeneratedData, isAiGenerated: true };
+}
+else if (tType.includes('pronunciation')) {
+formattedData = { ...tempGeneratedData, isAiGenerated: true };
+}
+else if (tType.includes('listening')) {
+formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' };
+}
+return formattedData;
+};
+// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.0
+// Last Updated: 2026-05-28 12:20
+// Nhiệm vụ: Động cơ nạp đề thi nguyên tử (hydrateQuestion). Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer và Fallback.
+// Cập nhật: Phân rã từ Block 2.7 nguyên khối. Lột xác hàm hydrateQuestion trở nên thanh thoát nhờ ủy quyền xử lý cho các module 2.7a, 2.7b, 2.7c.
+// ==================================================================================
+// Khởi tạo Base Object nếu chưa tồn tại
+window.ExamEngine = window.ExamEngine || {};
 // ============================================================================
 // 1. HYDRATION LOGIC (CỖ MÁY NẠP ĐẠN NGUYÊN TỬ ĐỘC TÔN)
 // ============================================================================
-hydrateQuestion: async function(metadata, apiKey, passedHistory = []) {
+window.ExamEngine.hydrateQuestion = async function(metadata, apiKey, passedHistory = []) {
 const { id, track, level, type, topic, passageGroup, questionIndexInPassage, index, mode } = metadata;
 let questionData = null;
 const isMinigame = mode === 'minigame' || !['ioe', 'ielts', 'hsk'].includes(track);
@@ -3490,8 +3739,8 @@ console.warn("[ExamEngine] Retry Attempt " + (attempt + 1) + "/" + MAX_ATTEMPTS 
 const finalHistoryPrompt = baseHistoryPrompt + retryPrompt;
 let tempGeneratedData = null;
 const tType = type.toLowerCase();
-const isMatch = tType === window.IoeDataEngine.QUESTION_TYPES.IOE_MATCH || tType === 'ioe_match';
-const isImageQuiz = tType === window.IoeDataEngine.QUESTION_TYPES.IOE_IMAGE_QUIZ || tType === 'ioe_image_quiz';
+const isMatch = tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_MATCH || tType === 'ioe_match';
+const isImageQuiz = tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_IMAGE_QUIZ || tType === 'ioe_image_quiz';
 const isQuizType = tType.includes('quiz') || tType.includes('multiple_choice') || isMatch;
 const useLegacyAi = window.localStorage ? window.localStorage.getItem('fc_debug_legacy_ai') === 'true' : false;
 // ====================================================================
@@ -3574,13 +3823,13 @@ return {
 // KHỐI LOGIC 3: CÁC DẠNG BÀI ĐẶC THÙ (MINI-GAMES & OTHERS)
 // ====================================================================
 else {
-if (tType === window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE || tType === 'ioe_multiple_choice') {
+if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_MULTIPLE_CHOICE || tType === 'ioe_multiple_choice') {
 tempGeneratedData = await window.AiFactoryEngine.forgeContext('grammar_mcq', level, targetLang, apiKey, topic, finalHistoryPrompt);
 }
-else if (tType === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || tType === 'ioe_spot_mistake' || tType === 'spotmistake') {
+else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_SPOT_MISTAKE || tType === 'ioe_spot_mistake' || tType === 'spotmistake') {
 tempGeneratedData = await window.AiFactoryEngine.forgeContext('spot_mistake', level, targetLang, apiKey, topic, finalHistoryPrompt);
 }
-else if (tType === window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK || tType === 'ioe_fill_blank' || tType === 'fillblank') {
+else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_FILL_BLANK || tType === 'ioe_fill_blank' || tType === 'fillblank') {
 tempGeneratedData = await window.AiFactoryEngine.forgeContext('fill_blank', level, targetLang, apiKey, topic, finalHistoryPrompt);
 if (tempGeneratedData && tempGeneratedData.displaySentence && tempGeneratedData.targetWord && !tempGeneratedData.displaySentence.includes('[__________]')) {
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -3597,16 +3846,16 @@ tempGeneratedData.displaySentence += ' [__________]';
 }
 }
 }
-else if (tType === window.IoeDataEngine.QUESTION_TYPES.IOE_SCRAMBLE || tType === 'ioe_scramble' || tType === 'scramble') {
+else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_SCRAMBLE || tType === 'ioe_scramble' || tType === 'scramble') {
 tempGeneratedData = await window.AiFactoryEngine.forgeBaseCard(level, targetLang, apiKey, topic, finalHistoryPrompt, 'sentence');
 }
-else if (tType === window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT || tType === 'ioe_odd_one_out' || tType === 'oddoneout') {
+else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_ODD_ONE_OUT || tType === 'ioe_odd_one_out' || tType === 'oddoneout') {
 tempGeneratedData = await window.AiFactoryEngine.forgeMatrix('odd_one_out', level, targetLang, apiKey, topic, finalHistoryPrompt, metadata.dataMode || 'vocab');
 }
-else if (tType === window.IoeDataEngine.QUESTION_TYPES.IOE_PRONUNCIATION || tType === 'ioe_pronunciation' || tType === 'pronunciation') {
+else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_PRONUNCIATION || tType === 'ioe_pronunciation' || tType === 'pronunciation') {
 tempGeneratedData = await window.AiFactoryEngine.forgeMatrix('pronunciation', level, targetLang, apiKey, topic, finalHistoryPrompt, 'vocab');
 }
-else if (tType === window.IoeDataEngine.QUESTION_TYPES.IOE_LISTENING || tType === 'ioe_listening' || tType === 'listening') {
+else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_LISTENING || tType === 'ioe_listening' || tType === 'listening') {
 tempGeneratedData = await window.AiFactoryEngine.forgeContext('listening', level, targetLang, apiKey, topic, finalHistoryPrompt);
 if (tempGeneratedData && tempGeneratedData.question) {
 tempGeneratedData.term = tempGeneratedData.question;
@@ -3627,104 +3876,18 @@ throw new Error("[Duplicate Detected] Lưới lọc phát hiện từ khóa trù
 }
 this._syncMemory(tempGeneratedData, type);
 }
-// Bơm Nhiễu cho Scramble
-if (tType.includes('scramble') && tempGeneratedData && tempGeneratedData.term) {
-try {
-let parts = [];
-const isZh = targetLang === 'zh';
-const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(tempGeneratedData.term) : tempGeneratedData.term.includes(' ');
-const dataType = metadata.dataMode || (isSentence ? 'sentence' : 'word');
-const cleanAndLower = (textArr) => textArr.map(p => { let cleaned = p.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""); if (!isZh) cleaned = cleaned.toLowerCase(); return cleaned; }).filter(p => p.trim() !== "");
-if (isZh) { parts = tempGeneratedData.term.split(''); } else { parts = isSentence ? tempGeneratedData.term.split(' ') : tempGeneratedData.term.split(''); }
-parts = cleanAndLower(parts);
-let targetCount = 2; const len = parts.length;
-if (len >= 5 && len <= 10) targetCount = Math.floor(Math.random() * 2) + 4;
-else if (len > 10) targetCount = Math.floor(Math.random() * 3) + 5;
-let noiseWords = [];
-if (apiKey && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine && window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise) {
-try {
-await new Promise(r => setTimeout(r, 2000));
-const aiCallPromise = window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise(tempGeneratedData.term, targetLang, dataType, apiKey, targetCount, level, topic);
-const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Noise Timeout")), 15000));
-noiseWords = await Promise.race([aiCallPromise, timeoutPromise]);
-} catch(e) { console.warn("Scramble AI Noise Fallback:", e.message); }
-}
-if ((!noiseWords || noiseWords.length === 0) && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise) {
-const cleanDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : [];
-noiseWords = window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise(tempGeneratedData.term, cleanDeck, targetLang, dataType, targetCount);
-}
-if (noiseWords && noiseWords.length > 0) {
-let finalNoiseWords = [];
-if (isZh || dataType === 'word') { noiseWords.forEach(w => { const cleanW = String(w).replace(/\s/g, ''); finalNoiseWords.push(...cleanW.split('')); }); }
-else { finalNoiseWords = noiseWords; }
-finalNoiseWords = window.Utils.shuffleArray ? window.Utils.shuffleArray(cleanAndLower(finalNoiseWords)).slice(0, targetCount) : cleanAndLower(finalNoiseWords).slice(0, targetCount);
-parts.push(...finalNoiseWords);
-}
-tempGeneratedData.parts = window.Utils.shuffleArray ? window.Utils.shuffleArray(parts) : parts;
-} catch (err) {
-const basicParts = tempGeneratedData.term.split(targetLang === 'zh' ? '' : ' ').filter(w => w.trim() !== "");
-tempGeneratedData.parts = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(basicParts) : basicParts;
-}
-}
 if (tempGeneratedData._tokenUsage) {
 const used = tempGeneratedData._tokenUsage.totalTokenCount || 0;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + used);
 }
 // ====================================================================
-// [BƯỚC CHUẨN HÓA] NORMALIZATION CHO TẦNG 5 (MINI-GAMES)
+// [BƯỚC CHUẨN HÓA] NORMALIZATION BẰNG DATA PIPELINE TỪ BLOCK 2.7c
 // ====================================================================
-if (isMinigame) {
-let formattedData = tempGeneratedData;
-if (tType.includes('quiz') || tType === 'ioe_multiple_choice') {
-formattedData = { question: tempGeneratedData, options: tempGeneratedData.options, origin: tempGeneratedData, isAiGenerated: true };
-} else if (tType.includes('image_quiz') || tType.includes('imagequiz')) {
-formattedData = { question: tempGeneratedData, term: tempGeneratedData.term, options: tempGeneratedData.options, origin: tempGeneratedData, isAiGenerated: true };
-} else if (tType.includes('scramble')) {
-formattedData = { origin: tempGeneratedData, parts: tempGeneratedData.parts, isAiGenerated: true };
-} else if (tType.includes('fill_blank') || tType.includes('fillblank')) {
-formattedData = { ...tempGeneratedData, origin: tempGeneratedData, isAiGenerated: true };
-} else if (tType.includes('spot_mistake') || tType.includes('spotmistake')) {
-formattedData = { ...tempGeneratedData, origin: tempGeneratedData, isAiGenerated: true };
-} else if (tType === 'match' || tType === 'ioe_match') {
-let realCards = [];
-let trapCards = [];
-if (tempGeneratedData.correctPairs) {
-realCards = tempGeneratedData.correctPairs.map(p => ({ term: p.term, definition: p.definition }));
-if (tempGeneratedData.trapPairs) {
-trapCards = tempGeneratedData.trapPairs.map(p => ({ term: p.wrongSentence || p.wrongWord || "Trap", distortedTerm: p.wrongSentence || p.wrongWord || "Trap", definition: p.definition, explanation: p.explanation, originalTerm: p.correction || p.wrongWord }));
+if (isMinigame && this._normalizeForMinigame) {
+tempGeneratedData = await this._normalizeForMinigame(tempGeneratedData, tType, metadata, targetLang, level, safeTopic, apiKey);
 }
-} else if (tempGeneratedData.items) {
-realCards = tempGeneratedData.items.map(p => ({ term: p.term, definition: p.definition }));
-} else {
-realCards = [{ term: tempGeneratedData.term || 'Error', definition: tempGeneratedData.definition || 'Error' }];
-}
-const leftItems = [...realCards, ...trapCards].map((c, i) => ({ id: `left_${i}_${Date.now()}`, term: c.term, definition: c.definition, isTrap: trapCards.some(t => t.term === c.term), origin: c }));
-const rightItems = [];
-realCards.forEach((c, i) => { rightItems.push({ id: `right_real_${i}_${Date.now()}`, term: c.term, isTrap: false }); });
-trapCards.forEach((t, i) => { rightItems.push({ id: `right_trap_${i}_${Date.now()}`, term: t.distortedTerm || t.term, isTrap: true, originalTerm: t.originalTerm, explanation: t.explanation }); });
-const shuffleNoAdjacent = (arr) => {
-if (!window.Utils || !window.Utils.shuffleArray) return arr;
-let res = [...arr]; let valid = false; let tries = 0;
-while (!valid && tries < 50) {
-res = window.Utils.shuffleArray(res);
-valid = true;
-for (let j = 0; j < res.length - 1; j++) { if (res[j].isTrap && res[j+1].isTrap) { valid = false; break; } }
-tries++;
-}
-return res;
-};
-formattedData = { pairs: realCards, leftItems: shuffleNoAdjacent(leftItems), rightItems: shuffleNoAdjacent(rightItems), isAiGenerated: true };
-} else if (tType.includes('odd_one_out') || tType.includes('oddoneout')) {
-formattedData = { ...tempGeneratedData, isAiGenerated: true };
-} else if (tType.includes('pronunciation')) {
-formattedData = { ...tempGeneratedData, isAiGenerated: true };
-} else if (tType.includes('listening')) {
-formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' };
-}
-tempGeneratedData = formattedData;
-}
-const isOptionsBased = tType === window.IoeDataEngine.QUESTION_TYPES.IOE_MULTIPLE_CHOICE || tType === 'ioe_multiple_choice' || isMatch || isImageQuiz || tType === 'ioe_pronunciation' || tType === 'ioe_listening' || tType.includes('quiz');
+const isOptionsBased = tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_MULTIPLE_CHOICE || tType === 'ioe_multiple_choice' || isMatch || isImageQuiz || tType === 'ioe_pronunciation' || tType === 'ioe_listening' || tType.includes('quiz');
 if (isOptionsBased && !isMinigame) {
 if (!tempGeneratedData.term || !tempGeneratedData.options || !Array.isArray(tempGeneratedData.options) || tempGeneratedData.options.length === 0) {
 throw new Error("Ảo giác AI: Thiếu trường 'term' hoặc mảng 'options' bị rỗng.");
@@ -3732,15 +3895,15 @@ throw new Error("Ảo giác AI: Thiếu trường 'term' hoặc mảng 'options'
 if (tType === 'ioe_listening' && !tempGeneratedData.audioScript) {
 throw new Error("Ảo giác AI: Thiếu kịch bản âm thanh 'audioScript'.");
 }
-} else if ((tType === window.IoeDataEngine.QUESTION_TYPES.IOE_SPOT_MISTAKE || tType === 'ioe_spot_mistake') && !isMinigame) {
+} else if ((tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_SPOT_MISTAKE || tType === 'ioe_spot_mistake') && !isMinigame) {
 if (!tempGeneratedData.wrongSentence || !tempGeneratedData.wrongWord || !tempGeneratedData.correction) {
 throw new Error("Ảo giác AI: Thiếu trường 'wrongSentence', 'wrongWord' hoặc 'correction'.");
 }
-} else if ((tType === window.IoeDataEngine.QUESTION_TYPES.IOE_FILL_BLANK || tType === 'ioe_fill_blank') && !isMinigame) {
+} else if ((tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_FILL_BLANK || tType === 'ioe_fill_blank') && !isMinigame) {
 if (!tempGeneratedData.displaySentence || !tempGeneratedData.targetWord) {
 throw new Error("Ảo giác AI: Thiếu trường 'displaySentence' hoặc 'targetWord'.");
 }
-} else if ((tType === window.IoeDataEngine.QUESTION_TYPES.IOE_ODD_ONE_OUT || tType === 'ioe_odd_one_out') && !isMinigame) {
+} else if ((tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_ODD_ONE_OUT || tType === 'ioe_odd_one_out') && !isMinigame) {
 if (!tempGeneratedData.words || !Array.isArray(tempGeneratedData.words) || !tempGeneratedData.oddWord) {
 throw new Error("Ảo giác AI: Thiếu trường 'words' hoặc 'oddWord'.");
 }
@@ -3783,7 +3946,10 @@ rescuedData = window.FallbackDataEngine.getGameReadyFallback(fbType, targetLang,
 } else {
 console.log("[ExamEngine] Kéo cáp cứu hộ từ FallbackDataEngine cho dạng bài: " + (metadata.type || type));
 const rescueIndex = index || 0;
+// Gọi Fallback từ Block 2.7b
+if (this._generateFallbackData) {
 rescuedData = this._generateFallbackData(metadata.type || type, level, track, rescueIndex);
+}
 }
 if (rescuedData) {
 generatedData = rescuedData;
@@ -3806,7 +3972,6 @@ metadata: metadata,
 timestamp: Date.now()
 };
 return atomicQuestion;
-}
 };
 // Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.09
 // Last Updated: 2026-05-02 16:15
@@ -7881,10 +8046,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Sheet 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.10
-// Last Updated: 2026-05-18 11:51
+// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.11
+// Last Updated: 2026-05-27 16:17
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa hoàn thành vòng nối. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp vòng tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
@@ -8020,13 +8185,14 @@ const currentDataMode = configRef.current?.dataMode || 'vocab';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 const targetCount = currentDiff === 'hard' ? 4 : 5;
 let retryCards = [];
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['match'] && bag['match'].length > 0) {
-const maxRetry = Math.ceil(targetCount * 0.3);
-retryCards = window.Utils.shuffleArray([...bag['match']]).slice(0, maxRetry);
+// [QA FIX] Sử dụng Động cơ Khóa nguyên tử thay vì bốc thủ công
+// Match Game cần 4-5 cặp. Chúng ta cho phép 1 thẻ lỗi chen vào mỗi vòng để khớp với tỷ lệ ~25-30%
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+const pulledCard = window.Utils.pullRetryCardWithLock('match', globalRetryBagRef.current);
+if (pulledCard) {
+retryCards.push(pulledCard);
 }
-} catch(e) {}
+}
 // 1. AI PURE MODE: Cắm cáp Máy Trộn Đề Vạn Năng (ExamEngine)
 if (currentSourceMode === 'ai_pure') {
 try {
@@ -10252,10 +10418,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.11
-// Last Updated: 2026-05-18 10:59
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.12
+// Last Updated: 2026-05-27 16:22
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa chọn đáp án. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp câu hỏi tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -10398,17 +10564,9 @@ onLogWrong(mistakeCard);
 const fetchTask = async () => {
 let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['quiz'] && bag['quiz'].length > 0) {
-const validRetryCards = bag['quiz'].filter(c => c && c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-card = validRetryCards[randIdx];
-}
-}
-} catch(e) {}
+// [QA FIX] Sử dụng Động cơ Khóa nguyên tử thay vì bốc thủ công
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+card = window.Utils.pullRetryCardWithLock('quiz', globalRetryBagRef.current);
 }
 if (sourceMode === 'ai_pure' && !card) {
 if (!currentApiKey) {
@@ -11990,10 +12148,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.07
-// Last Updated: 2026-05-18 13:10
+// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.08
+// Last Updated: 2026-05-27 16:30
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý dữ liệu và luồng kiểm tra đáp án.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa điền xong đáp án. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp câu tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -12135,18 +12293,14 @@ _needsNextOnResume: needsNext
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['fillblank'] && bag['fillblank'].length > 0) {
-const validRetryCards = bag['fillblank'].filter(c => c && c.targetWord && c.displaySentence);
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-return validRetryCards[randIdx]; // Trả về nguyên cục Dữ liệu đã lưu, không cần sinh lại
-}
-}
-} catch(e) {}
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+const pulledCard = window.Utils.pullRetryCardWithLock('fillblank', globalRetryBagRef.current);
+// FillBlank đẩy toàn bộ Object đã đục lỗ vào túi nháp, nên ta return thẳng ra luôn không cần sinh lại
+if (pulledCard) return pulledCard;
 }
 const isPureMode = sourceMode === 'ai_pure';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -13065,10 +13219,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Sheet5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.07
-// Last Updated: 2026-05-18 12:55
+// Sheet5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.08
+// Last Updated: 2026-05-27 16:57
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa hoàn thành câu hỏi. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp câu tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -13201,18 +13355,14 @@ onLogWrong(mistakeCard);
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['spotmistake'] && bag['spotmistake'].length > 0) {
-const validRetryCards = bag['spotmistake'].filter(c => c && c.wrongSentence && c.wrongWord);
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-return validRetryCards[randIdx]; // Trả về cục Data trọn vẹn, không cần qua bước bóp méo
-}
-}
-} catch(e) {}
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+const pulledCard = window.Utils.pullRetryCardWithLock('spotmistake', globalRetryBagRef.current);
+// SpotMistake đẩy toàn bộ Object đã bị bóp méo vào túi nháp, return thẳng ra luôn
+if (pulledCard) return pulledCard;
 }
 const isPureMode = sourceMode === 'ai_pure';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -14108,10 +14258,10 @@ window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.10
-// Last Updated: 2026-05-18 13:20
+// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.11
+// Last Updated: 2026-05-27 17:05
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa hoàn thành câu hỏi. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp câu tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -14274,18 +14424,13 @@ _needsNextOnResume: needsNext
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Tiết kiệm Token AI)
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['oddoneout'] && bag['oddoneout'].length > 0) {
-const validRetryCards = bag['oddoneout'].filter(c => c && c.words && c.oddWord && c.explanation);
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-return validRetryCards[randIdx];
-}
-}
-} catch(e) {}
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+const pulledCard = window.Utils.pullRetryCardWithLock('oddoneout', globalRetryBagRef.current);
+if (pulledCard) return pulledCard;
 }
 const isPureMode = sourceMode === 'ai_pure';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -16617,10 +16762,10 @@ window.Block5_17_ImageQuizSetup = ImageQuizSetup;
 window.ImageQuizSetup = ImageQuizSetup;
 window.Block5_17_ImageQuizPlayScreen = ImageQuizPlayScreen;
 window.ImageQuizPlayScreen = ImageQuizPlayScreen;
-// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.10
-// Last Updated: 2026-05-18 13:00
+// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.11
+// Last Updated: 2026-05-27 17:20
 // Nhiệm vụ: Controller chính của Game Hình Ảnh (Image Quiz). Quản lý luồng AI, tạo nhiễu ảnh và liên kết UI.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa hoàn thành câu hỏi. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp câu tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useImageQuizLogic = (cards, config, callbacks) => {
@@ -16782,18 +16927,12 @@ _needsNextOnResume: needsNext
 // ==================================================================================
 const fetchTask = async () => {
 let card = null;
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['image_quiz'] && bag['image_quiz'].length > 0) {
-const validRetryCards = bag['image_quiz'].filter(c => c && c.term && c.term.trim() !== '');
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-card = validRetryCards[randIdx];
-}
-}
-} catch(e) {}
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+card = window.Utils.pullRetryCardWithLock('image_quiz', globalRetryBagRef.current);
 }
 const isPureMode = sourceMode === 'ai_pure';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -17662,10 +17801,10 @@ window.Block5_19_PronunciationSetup = PronunciationSetup;
 window.PronunciationSetup = PronunciationSetup;
 window.Block5_19_PronunciationPlayScreen = PronunciationPlayScreen;
 window.PronunciationPlayScreen = PronunciationPlayScreen;
-// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.15
-// Last Updated: 2026-05-21 08:34
+// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.16
+// Last Updated: 2026-05-27 17:30
 // Nhiệm vụ: Controller chính của Game Ngữ Âm (Pronunciation). Quản lý luồng AI, State và kết nối UI.
-// Cập nhật: Dọn dẹp toàn bộ tàn dư logic xử lý tiếng Trung (Dead code) theo yêu cầu. Tối ưu file.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const usePronunciationLogic = (cards, config, callbacks) => {
@@ -17826,18 +17965,13 @@ _needsNextOnResume: needsNext
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['pronunciation'] && bag['pronunciation'].length > 0) {
-const validRetryCards = bag['pronunciation'].filter(c => c && c.options && c.options.length === 4);
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-return validRetryCards[randIdx];
-}
-}
-} catch(e) {}
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+const pulledCard = window.Utils.pullRetryCardWithLock('pronunciation', globalRetryBagRef.current);
+if (pulledCard) return pulledCard;
 }
 const isPureMode = sourceMode === 'ai_pure';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -18652,10 +18786,10 @@ window.Block5_21_ListeningSetup = ListeningSetup;
 window.ListeningSetup = ListeningSetup;
 window.Block5_21_ListeningPlayScreen = ListeningPlayScreen;
 window.ListeningPlayScreen = ListeningPlayScreen;
-// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.08
-// Last Updated: 2026-05-18 13:05
+// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.09
+// Last Updated: 2026-05-28 10:00
 // Nhiệm vụ: Controller chính của Game Đôi Tai Vàng (Listening Comprehension). Quản lý luồng AI sinh kịch bản nghe, Audio Controller và kết nối UI.
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa hoàn thành câu hỏi. Tiêm cờ _needsNextOnResume vào Session và ép QueueEngine nạp câu tiếp theo khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useListeningLogic = (config, callbacks) => {
@@ -18848,17 +18982,13 @@ _needsNextOnResume: needsNext
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
-if (Math.random() < 0.3) {
-try {
-const bag = globalRetryBagRef.current || {};
-if (bag['listening'] && bag['listening'].length > 0) {
-const validRetryCards = bag['listening'].filter(c => c && c.audioScript && c.options && c.options.length > 0);
-if (validRetryCards.length > 0) {
-const randIdx = Math.floor(Math.random() * validRetryCards.length);
-return validRetryCards[randIdx];
-}
-}
-} catch(e) {}
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+const pulledCard = window.Utils.pullRetryCardWithLock('listening', globalRetryBagRef.current);
+if (pulledCard) return pulledCard;
 }
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if (currentApiKey && window.ExamEngine) {
@@ -19680,10 +19810,10 @@ window.Block5_23_ReadingSetup = ReadingSetup;
 window.ReadingSetup = ReadingSetup;
 window.Block5_23_ReadingPlayScreen = ReadingPlayScreen;
 window.ReadingPlayScreen = ReadingPlayScreen;
-// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.07
-// Last Updated: 2026-05-18 13:35
+// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.08
+// Last Updated: 2026-05-28 10:25
 // Nhiệm vụ: Controller chính của Game Đọc Hiểu (Reading Passage). Quản lý kiến trúc Tổ kén (1 Đoạn văn - Nhiều câu hỏi con).
-// Cập nhật: [BÍT LỖ HỔNG THOÁT NGANG] Trừng phạt hành vi thoát game khi chưa hoàn thành câu hỏi con. Tiêm cờ _needsNextOnResume vào Session và tiến lên câu con tiếp theo (hoặc nạp tổ kén mới) khi Resume. Tuân thủ Điều 3.
+// Cập nhật: [KIẾN TRÚC LÕI] Tích hợp Động cơ Khóa nguyên tử (Atomic Retry Puller) và giải pháp "Tổ kén Mini" để kích hoạt tính năng Bù lỗi sai cho Game Đọc hiểu.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useReadingLogic = (config, callbacks) => {
@@ -19849,8 +19979,21 @@ _needsNextOnResume: needsNext
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
-// Reading tốn rất nhiều Token và thời gian đọc, không ưu tiên xào lại câu lẻ trong lúc đang chơi nguyên đoạn
-// Nên sẽ bỏ qua logic RetryBag ở fetchTask (Người dùng sẽ xem lại ở sổ tay lỗi sai sau)
+// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
+// Kiến trúc Tổ kén Mini: Bao bọc lại thẻ câu hỏi rời rạc thành 1 kén hoàn chỉnh.
+// =====================================================================
+if (window.Utils && window.Utils.pullRetryCardWithLock) {
+const pulledCard = window.Utils.pullRetryCardWithLock('reading', globalRetryBagRef.current);
+if (pulledCard) {
+return {
+passage: pulledCard.passageContext || "No passage context available.",
+questions: [pulledCard],
+isAiGenerated: false,
+_isRescued: false
+};
+}
+}
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 // 2. AI GENERATION (Luôn dùng AI vì cần đoạn văn liên kết)
 if (currentApiKey && window.ExamEngine) {
