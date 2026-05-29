@@ -8049,10 +8049,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.11
-// Last Updated: 2026-05-27 16:17
+// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.12
+// Last Updated: 2026-05-29 15:15
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.12: [VÁ LỖ HỔNG AUTO-SAVE] Đồng bộ biến matchState/gameStats và áp dụng thuật toán "Giải nén Tổ hợp" (Chunk Decompilation) để phục hồi thẻ gốc từ Batch Queue.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
@@ -8126,28 +8126,38 @@ return () => { isGameActiveRef.current = false; };
 React.useEffect(() => {
 latestStateRef.current = { matchState, difficulty, gameStats, timeLeft, deck: deckRef.current, aiWaitTime };
 }, [matchState, difficulty, gameStats, timeLeft, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Phiên bản riêng cho Game Nối Ô)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [VÁ LỖI SILENT FAILURE] Game Nối ô dùng matchState và đánh giá tiến độ qua mảng pairs
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.matchState && latestStateRef.current.matchState.pairs.length > 0) {
 const currentData = latestStateRef.current;
-// [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
-pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
+// [THUẬT TOÁN GIẢI NÉN BĂNG ĐẠN]
+// Ở Match Game, pendingTasks là 1 mảng các Chunk (Tổ hợp vòng chơi).
+// Ta phải phân rã Chunk này thành các thẻ con trước khi đẩy vào deckRef
+pendingTasks.forEach(task => {
+if (task && Array.isArray(task.pairs)) {
+pendingCards.push(...task.pairs); // Bóc tách thẻ từ cặp nối chuẩn
+} else if (task && task.origin) {
+pendingCards.push(task.origin);
 }
-// Gộp đạn RAM lên đầu bộ bài lưu trữ
+});
+}
+// Nối đạn và Lọc thẻ trùng lặp (tránh nhân bản ID cứng)
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+const uniqueMergedDeck = mergedDeck.filter((v, i, a) => a.findIndex(t => (t.term === v.term)) === i);
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
+matchState: currentData.matchState,
+gameStats: currentData.gameStats, // Dùng đúng biến gameStats
 difficulty: currentData.difficulty,
-deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
+deck: uniqueMergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn dạng Flat
 timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+aiWaitTime: currentData.aiWaitTime,
+_needsNextOnResume: false
 });
 }
 }, [onAutoSave]);
@@ -12203,10 +12213,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.08
-// Last Updated: 2026-05-27 16:30
+// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.09
+// Last Updated: 2026-05-29 15:25
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý dữ liệu và luồng kiểm tra đáp án.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.09: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa biến currentQuestion (khắc phục Silent Failure) và định dạng payload fillBlankState cho tiến trình khôi phục.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -12259,28 +12269,29 @@ score, combo, playedCount, time, correctCount, wrongCount,
 deck: deckRef.current, timeLeft, aiWaitTime
 };
 }, [currentQuestion, inputBuffer, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Chuẩn hóa cho FillBlank)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra currentQuestion thay vì gameState
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 const currentData = latestStateRef.current;
 // [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
+// Bóc tách vỏ đạn, lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
 pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game FillBlank
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
-difficulty: currentData.difficulty,
+fillBlankState: {
+...currentData,
 deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
-timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+_needsNextOnResume: false
+}
 });
 }
 }, [onAutoSave]);
@@ -13287,10 +13298,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Sheet5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.08
-// Last Updated: 2026-05-27 16:57
+// Sheet5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.09
+// Last Updated: 2026-05-29 15:35
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.09: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa điều kiện currentQuestion (trị Silent Failure) và định dạng payload spotMistakeState để phục hồi tiến trình chuẩn xác.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -13346,11 +13357,12 @@ score, combo, playedCount, time, correctCount, wrongCount, deck: deckRef.current
 timeLeft, aiWaitTime
 };
 }, [currentQuestion, chunks, stage, selectedIndex, inputBuffer, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Chuẩn hóa cho SpotMistake)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra currentQuestion thay vì gameState
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 const currentData = latestStateRef.current;
 // [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
@@ -13361,13 +13373,13 @@ pendingCards = pendingTasks.map(task => task.origin || task.question || task).fi
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game SpotMistake
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
-difficulty: currentData.difficulty,
+spotMistakeState: {
+...currentData,
 deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
-timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+_needsNextOnResume: false
+}
 });
 }
 }, [onAutoSave]);
@@ -14346,10 +14358,10 @@ window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.11
-// Last Updated: 2026-05-27 17:05
+// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.12
+// Last Updated: 2026-05-29 15:30
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.12: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa biến currentQuestion, định dạng payload oddOneOutState, và nâng cấp bộ giải nén băng đạn RAM nhận diện được thuộc tính dị biệt `originCards`.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -14403,28 +14415,38 @@ score, combo, playedCount, time, correctCount, wrongCount, timeLeft, deck: deckR
 aiWaitTime
 };
 }, [currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Phiên bản chống đạn toàn năng)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra currentQuestion thay vì gameState
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 const currentData = latestStateRef.current;
 // [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
-pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
+// [BỘ GIẢI NÉN TOÀN NĂNG] Nhận diện mọi biến thể bọc thẻ gốc của cả 10 Game
+pendingCards = pendingTasks.map(task => {
+// 1. Nhận diện cấu trúc dị biệt của OddOneOut (Hybrid Mode)
+if (task.originCards && task.originCards.length > 0) return task.originCards[0];
+// 2. Cấu trúc chuẩn Scramble/Match/FillBlank
+if (task.origin) return task.origin;
+// 3. Cấu trúc chuẩn Quiz
+if (task.question) return task.question;
+// 4. Các trường hợp không rút thẻ từ deckRef (Offline/Pure AI) thì trả về null để lọc bỏ, không làm rác deckRef
+return null;
+}).filter(Boolean);
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game Từ Khác Loại
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
-difficulty: currentData.difficulty,
+oddOneOutState: {
+...currentData,
 deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
-timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+_needsNextOnResume: false
+}
 });
 }
 }, [onAutoSave]);
@@ -16869,10 +16891,10 @@ window.Block5_17_ImageQuizSetup = ImageQuizSetup;
 window.ImageQuizSetup = ImageQuizSetup;
 window.Block5_17_ImageQuizPlayScreen = ImageQuizPlayScreen;
 window.ImageQuizPlayScreen = ImageQuizPlayScreen;
-// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.11
-// Last Updated: 2026-05-27 17:20
+// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.12
+// Last Updated: 2026-05-29 15:35
 // Nhiệm vụ: Controller chính của Game Hình Ảnh (Image Quiz). Quản lý luồng AI, tạo nhiễu ảnh và liên kết UI.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.12: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa biến currentQuestion, định dạng payload imageQuizState, và nâng cấp bộ giải nén băng đạn RAM chuẩn Toàn Năng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useImageQuizLogic = (cards, config, callbacks) => {
@@ -16926,28 +16948,38 @@ currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount
 correctCount, wrongCount, timeLeft, deck: deckRef.current, aiWaitTime
 };
 }, [currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Phiên bản chống đạn toàn năng)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra currentQuestion thay vì gameState
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 const currentData = latestStateRef.current;
 // [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
-pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
+// [BỘ GIẢI NÉN TOÀN NĂNG] Nhận diện mọi biến thể bọc thẻ gốc của cả 10 Game
+pendingCards = pendingTasks.map(task => {
+// 1. Nhận diện cấu trúc dị biệt của OddOneOut (Hybrid Mode)
+if (task.originCards && task.originCards.length > 0) return task.originCards[0];
+// 2. Cấu trúc chuẩn Scramble/Match/FillBlank/ImageQuiz
+if (task.origin) return task.origin;
+// 3. Cấu trúc chuẩn Quiz
+if (task.question) return task.question;
+// 4. Các trường hợp lỗi hoặc chưa chuẩn hóa
+return null;
+}).filter(Boolean);
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game Đoán Hình
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
-difficulty: currentData.difficulty,
+imageQuizState: {
+...currentData,
 deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
-timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+_needsNextOnResume: false
+}
 });
 }
 }, [onAutoSave]);
@@ -17183,6 +17215,7 @@ finalOptions.splice(correctPos, 0, correctOpt);
 // BƠM LINK ẢNH VÀO TẤT CẢ OPTIONS VỚI IMAGE_KEYWORD CHÍNH XÁC
 const optionsWithImages = finalOptions.map(opt => {
 let query = opt.text + " isolated clipart";
+// Nếu từ đang xét là đáp án đúng, ưu tiên từ khóa của người dùng nhập
 if (opt.isCorrect && card.image_keyword) {
 query = card.image_keyword;
 }
@@ -17237,6 +17270,7 @@ deckRef.current = [];
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
+// [ĐỒNG BỘ] Nâng mức trần nạp đạn lên 4 viên
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 } else {
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
@@ -17927,10 +17961,10 @@ window.Block5_19_PronunciationSetup = PronunciationSetup;
 window.PronunciationSetup = PronunciationSetup;
 window.Block5_19_PronunciationPlayScreen = PronunciationPlayScreen;
 window.PronunciationPlayScreen = PronunciationPlayScreen;
-// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.16
-// Last Updated: 2026-05-27 17:30
+// Block 5.20: TẦNG 5: TRÒ CHƠI HÓA (Pronunciation Logic & Wrapper) - Version 1.17
+// Last Updated: 2026-05-29 15:40
 // Nhiệm vụ: Controller chính của Game Ngữ Âm (Pronunciation). Quản lý luồng AI, State và kết nối UI.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.17: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa cờ currentQuestion, định dạng payload pronunciationState, và áp dụng bộ giải nén băng đạn RAM Toàn Năng (bắt được originCards của Hybrid AI).
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const usePronunciationLogic = (cards, config, callbacks) => {
@@ -17981,28 +18015,38 @@ currentQuestion, selectedIndex, checkStatus, attempts,
 score, combo, playedCount, time, correctCount, wrongCount, timeLeft, deck: deckRef.current, aiWaitTime
 };
 }, [currentQuestion, selectedIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Phiên bản chống đạn toàn năng)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra currentQuestion thay vì gameState
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 const currentData = latestStateRef.current;
 // [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
-pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
+// [BỘ GIẢI NÉN TOÀN NĂNG] Nhận diện mọi biến thể bọc thẻ gốc của cả 10 Game
+pendingCards = pendingTasks.map(task => {
+// 1. Nhận diện cấu trúc dị biệt của OddOneOut/Pronunciation (Hybrid Mode)
+if (task.originCards && task.originCards.length > 0) return task.originCards[0];
+// 2. Cấu trúc chuẩn Scramble/Match/FillBlank/ImageQuiz
+if (task.origin) return task.origin;
+// 3. Cấu trúc chuẩn Quiz
+if (task.question) return task.question;
+// 4. Các trường hợp không rút thẻ từ deckRef (Offline/Pure AI) thì trả về null
+return null;
+}).filter(Boolean);
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game Ngữ Âm
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
-difficulty: currentData.difficulty,
+pronunciationState: {
+...currentData,
 deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
-timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+_needsNextOnResume: false
+}
 });
 }
 }, [onAutoSave]);
@@ -18932,10 +18976,10 @@ window.Block5_21_ListeningSetup = ListeningSetup;
 window.ListeningSetup = ListeningSetup;
 window.Block5_21_ListeningPlayScreen = ListeningPlayScreen;
 window.ListeningPlayScreen = ListeningPlayScreen;
-// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.09
-// Last Updated: 2026-05-28 10:00
+// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.10
+// Last Updated: 2026-05-29 15:50
 // Nhiệm vụ: Controller chính của Game Đôi Tai Vàng (Listening Comprehension). Quản lý luồng AI sinh kịch bản nghe, Audio Controller và kết nối UI.
-// Cập nhật: [KIẾN TRÚC LÕI] Thay thế logic rút túi nháp thủ công bằng Động cơ Khóa nguyên tử (Atomic Retry Puller) từ Tầng 2. Chống triệt để Bug bóng ma đa luồng.
+// Cập nhật V1.10: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa cờ currentQuestion, định dạng payload listeningState và đồng bộ thuật toán "Giải nén Băng Đạn Toàn Năng".
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useListeningLogic = (config, callbacks) => {
@@ -18986,31 +19030,42 @@ React.useEffect(() => {
 latestStateRef.current = {
 currentQuestion, selectedOptionIndex, checkStatus, attempts,
 score, combo, playedCount, time, correctCount, wrongCount, timeLeft, playCount,
-aiWaitTime
+aiWaitTime, deck: deckRef.current // Dù Game nghe ít dùng deck nội bộ, vẫn gắn để thống nhất cấu trúc
 };
 }, [currentQuestion, selectedOptionIndex, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, playCount, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+const deckRef = React.useRef([]);
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Phiên bản chống đạn toàn năng)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra currentQuestion thay vì gameState
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 const currentData = latestStateRef.current;
 // [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
-pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
+// [BỘ GIẢI NÉN TOÀN NĂNG] Nhận diện mọi biến thể bọc thẻ gốc của cả 10 Game
+pendingCards = pendingTasks.map(task => {
+// 1. Nhận diện cấu trúc dị biệt của Hybrid Mode (Phòng hờ nâng cấp AI)
+if (task.originCards && task.originCards.length > 0) return task.originCards[0];
+// 2. Cấu trúc chuẩn Scramble/Match/FillBlank/ImageQuiz/Pronunciation
+if (task.origin) return task.origin;
+// 3. Cấu trúc chuẩn Quiz/Listening
+if (task.question) return task.question;
+// 4. Các trường hợp không hợp lệ thì trả về null
+return null;
+}).filter(Boolean);
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game Listening
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
-difficulty: currentData.difficulty,
+listeningState: {
+...currentData,
 deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
-timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+_needsNextOnResume: false
+}
 });
 }
 }, [onAutoSave]);
@@ -19292,6 +19347,8 @@ setWrongCount(st.wrongCount || 0);
 setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 45));
 setPlayCount(st.playCount || 0);
 if (st.aiWaitTime !== undefined) setAiWaitTime(st.aiWaitTime);
+// Phục hồi deck (Mặc dù Listening ít dùng, nhưng tuân thủ chuẩn form)
+if (st.deck) deckRef.current = [...st.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 3);
@@ -19976,10 +20033,10 @@ window.Block5_23_ReadingSetup = ReadingSetup;
 window.ReadingSetup = ReadingSetup;
 window.Block5_23_ReadingPlayScreen = ReadingPlayScreen;
 window.ReadingPlayScreen = ReadingPlayScreen;
-// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.08
-// Last Updated: 2026-05-28 10:25
+// Block 5.24: TẦNG 5: TRÒ CHƠI HÓA (Reading Logic & Wrapper) - Version 1.09
+// Last Updated: 2026-05-29 16:00
 // Nhiệm vụ: Controller chính của Game Đọc Hiểu (Reading Passage). Quản lý kiến trúc Tổ kén (1 Đoạn văn - Nhiều câu hỏi con).
-// Cập nhật: [KIẾN TRÚC LÕI] Tích hợp Động cơ Khóa nguyên tử (Atomic Retry Puller) và giải pháp "Tổ kén Mini" để kích hoạt tính năng Bù lỗi sai cho Game Đọc hiểu.
+// Cập nhật V1.09: [VÁ LỖ HỔNG AUTO-SAVE] Bổ sung deckRef, chuẩn hóa cờ passageData, định dạng payload readingState và đồng bộ thuật toán "Giải nén Băng Đạn Toàn Năng".
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useReadingLogic = (config, callbacks) => {
@@ -20020,6 +20077,7 @@ const gameTimerRef = React.useRef(null);
 const typeInputRef = React.useRef(null);
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
+const deckRef = React.useRef([]); // [QA FIX] Bổ sung deckRef để đồng bộ cấu trúc lưu Session
 // Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
@@ -20031,31 +20089,43 @@ const latestStateRef = React.useRef({});
 React.useEffect(() => {
 latestStateRef.current = {
 passageData, subIndex, currentSubQuestion, selectedOptionIndex, inputBuffer, checkStatus, attempts,
-score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime
+score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime, deck: deckRef.current
 };
 }, [passageData, subIndex, currentSubQuestion, selectedOptionIndex, inputBuffer, checkStatus, attempts, score, combo, playedCount, time, correctCount, wrongCount, timeLeft, aiWaitTime]);
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// ==================================================================================
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Phiên bản chống đạn toàn năng)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
-if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
+// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra passageData thay vì gameState
+if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.passageData) {
 const currentData = latestStateRef.current;
 // [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
-pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
+// [BỘ GIẢI NÉN TOÀN NĂNG] Nhận diện mọi biến thể bọc thẻ gốc của cả 10 Game
+pendingCards = pendingTasks.map(task => {
+// 1. Nhận diện cấu trúc dị biệt của Hybrid Mode (Phòng hờ nâng cấp AI)
+if (task.originCards && task.originCards.length > 0) return task.originCards[0];
+// 2. Cấu trúc chuẩn Scramble/Match/FillBlank/ImageQuiz/Pronunciation
+if (task.origin) return task.origin;
+// 3. Cấu trúc chuẩn Quiz/Listening/Reading
+if (task.question) return task.question;
+// 4. Tổ kén Reading nguyên vẹn
+if (task.passage && task.questions) return task;
+// 5. Các trường hợp không hợp lệ thì trả về null
+return null;
+}).filter(Boolean);
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
+// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game Đọc Hiểu
 onAutoSave({
-gameState: currentData.gameState,
-stats: currentData.stats,
-difficulty: currentData.difficulty,
+readingState: {
+...currentData,
 deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
-timeLeft: currentData.timeLeft,
-aiWaitTime: currentData.aiWaitTime
+_needsNextOnResume: false
+}
 });
 }
 }, [onAutoSave]);
@@ -20298,6 +20368,7 @@ setCorrectCount(st.correctCount || 0);
 setWrongCount(st.wrongCount || 0);
 setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 300));
 if (st.aiWaitTime !== undefined) setAiWaitTime(st.aiWaitTime);
+if (st.deck) deckRef.current = [...st.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 2);
