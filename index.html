@@ -1318,10 +1318,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.03
-// Last Updated: 2026-05-30 10:30
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.04
+// Last Updated: 2026-05-30 13:15
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật V1.03: [ĐẠI PHẪU CLOZE ENGINE] Nâng cấp offline_mask lên thuật toán Random Center Masking (Đục lỗ ngẫu nhiên thân câu, sinh 3 đáp án nhiễu). Nâng cấp ai_mask tích hợp lệnh bài Prompt từ Tầng 2.1a để sinh 4 đáp án thông minh.
+// Cập nhật V1.04: [VÁ LỖI LOGIC ĐÁP ÁN NHIỄU] Đập đi xây lại hệ thống sinh nhiễu nội bộ cho ClozeEngine.offline_mask ở chế độ Câu văn. Sử dụng thuật toán Cửa sổ trượt (Sliding Window) quét c.term để trích xuất các cụm ký tự đồng dạng thay vì gọi nhầm c.definition (tiếng Việt).
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1777,10 +1777,12 @@ return parsed.noise || [];
 // ============================================================================
 ClozeEngine: {
 offline_mask: function(text, lang, type, deck = []) {
+// NẾU LÀ TỪ VỰNG: Giữ nguyên logic gọi OptionsEngine
 if (type === 'word') {
 const dists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(text, deck, lang, 'word', 3);
 return { targetWord: text, displaySentence: '[__________]', hint: "Từ vựng", distractors: dists };
 }
+// NẾU LÀ CÂU VĂN: Áp dụng thuật toán Đục lỗ Random Center
 const isZh = lang === 'zh';
 let targetWord = "";
 let displaySentence = "";
@@ -1791,7 +1793,6 @@ const idx = chars.length > 1 ? 1 : 0;
 targetWord = chars[idx];
 displaySentence = chars.slice(0, idx).join('') + '[__________]' + chars.slice(idx + 1).join('');
 } else {
-// Random Center Masking: Tránh 2 đầu câu, khoét 1-2 ký tự giữa
 const start = Math.floor(Math.random() * (chars.length - 2)) + 1;
 let k = Math.floor(Math.random() * 2) + 1;
 if (start + k > chars.length - 1) k = 1;
@@ -1805,7 +1806,6 @@ const idx = words.length > 1 ? 1 : 0;
 targetWord = words[idx];
 displaySentence = words.slice(0, idx).join(' ') + (idx > 0 ? ' ' : '') + '[__________]' + (idx < words.length - 1 ? ' ' : '') + words.slice(idx + 1).join(' ');
 } else {
-// Random Center Masking: Tránh 2 đầu câu, khoét 1-2 từ giữa
 const start = Math.floor(Math.random() * (words.length - 2)) + 1;
 let k = Math.floor(Math.random() * 2) + 1;
 if (start + k > words.length - 1) k = 1;
@@ -1813,9 +1813,64 @@ targetWord = words.slice(start, start + k).join(' ');
 displaySentence = words.slice(0, start).join(' ') + ' [__________] ' + words.slice(start + k).join(' ');
 }
 }
-// Cạo sạch dấu câu bám vào từ khóa để tạo đáp án sạch
+// Cạo sạch dấu câu bám vào từ khóa mục tiêu
 targetWord = targetWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
-const distractors = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(targetWord, deck, lang, 'word', 3);
+// --- THUẬT TOÁN SINH NHIỄU NỘI BỘ (INTERNAL DISTRACTOR GENERATOR) ---
+let distractorSet = new Set();
+const targetLen = isZh ? Array.from(targetWord).length : targetWord.length;
+const cleanToken = (t) => t ? t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim() : '';
+// 1. Quét qua các câu khác trong bộ bài để băm từ
+const shuffledDeck = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...deck]) : deck;
+for (const card of shuffledDeck) {
+if (distractorSet.size >= 3) break;
+if (card.term && card.term !== text) {
+if (isZh) {
+const chars = Array.from(card.term);
+// Tiếng Trung: Dùng Sliding Window cắt mảng ký tự bằng đúng độ dài targetWord
+for (let i = 0; i <= chars.length - targetLen; i++) {
+let chunk = chars.slice(i, i + targetLen).join('');
+chunk = cleanToken(chunk);
+if (chunk && Array.from(chunk).length === targetLen && chunk !== targetWord) {
+distractorSet.add(chunk);
+}
+}
+} else {
+// Tiếng Việt/Anh: Tách theo khoảng trắng
+const words = card.term.split(/[\s]+/);
+for (const w of words) {
+const cw = cleanToken(w);
+// Lấy các từ sai lệch độ dài không quá 2 ký tự
+if (cw && cw !== targetWord && Math.abs(cw.length - targetLen) <= 2) {
+distractorSet.add(cw);
+}
+}
+}
+}
+}
+// 2. Fallback 1: Bơm rác mặc định nếu bộ bài quá mỏng
+if (distractorSet.size < 3) {
+const fbZh = ['怎么', '什么', '那个', '这个', '很多', '一点', '非常', '比较', '知道', '觉得'];
+const fbEn = ['other', 'different', 'another', 'some', 'many', 'much', 'very', 'really', 'that', 'this'];
+const fbVi = ['những', 'các', 'một', 'được', 'đang', 'sẽ', 'rất', 'nhiều', 'khá', 'hơi'];
+let fbPool = isZh ? fbZh : (lang === 'vi' ? fbVi : fbEn);
+fbPool = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...fbPool]) : fbPool;
+for (const fw of fbPool) {
+if (distractorSet.size >= 3) break;
+let adjustedFw = fw;
+// Nếu tiếng Trung, ép cắt ngắn chuỗi cho bằng targetWord
+if (isZh && Array.from(fw).length > targetLen) {
+adjustedFw = Array.from(fw).slice(0, targetLen).join('');
+}
+if (adjustedFw && adjustedFw !== targetWord) distractorSet.add(adjustedFw);
+}
+}
+// 3. Fallback 2: Chống cháy khẩn cấp
+let fallbackCounter = 1;
+while (distractorSet.size < 3) {
+distractorSet.add(targetWord + fallbackCounter);
+fallbackCounter++;
+}
+const distractors = Array.from(distractorSet).slice(0, 3);
 return {
 targetWord: targetWord,
 displaySentence: displaySentence.trim(),
