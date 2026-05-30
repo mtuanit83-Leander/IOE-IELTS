@@ -11853,10 +11853,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.0
-// Last Updated: 2026-05-30 11:15
+// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.1
+// Last Updated: 2026-05-30 11:45
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật V2.0: [ĐẠI PHẪU UI] Thêm Toggle Độ khó (Khóa/Mở gợi ý). Thêm Nút Bóng đèn. Render 4 đáp án tĩnh (Read-only) ép gõ phím. Bổ sung Placeholder hỗ trợ Pinyin.
+// Cập nhật V2.1: [VÁ LỖI CRASH UI & BỔ SUNG AI CHALLENGE TOGGLE] Thay thế các Icon undefined gây lỗi 130. Bổ sung nút gạt "Thử thách AI đục lỗ" cho chế độ Thẻ gốc.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -11864,7 +11864,8 @@ const MenuToggle = window.MenuToggle;
 const [mode, setMode] = React.useState('ai');
 const [timerMode, setTimerMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(30);
-const [difficulty, setDifficulty] = React.useState('easy'); // State độ khó mới
+const [difficulty, setDifficulty] = React.useState('easy');
+const [aiChallenge, setAiChallenge] = React.useState(false); // State cho nhánh Thử thách AI đục lỗ
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_fillblank_config');
@@ -11874,16 +11875,19 @@ setMode(config.sourceMode === 'ai_pure' ? 'ai' : 'cards');
 setTimerMode(config.timerMode ?? false);
 setTimeLimit(config.timeLimit ?? 30);
 setDifficulty(config.difficulty || 'easy');
+setAiChallenge(config.aiChallenge || false);
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
 const handleStart = () => {
 const config = {
 sourceMode: mode === 'ai' ? 'ai_pure' : 'card',
-aiMode: mode === 'ai',
+// Tự động bật aiMode nếu người dùng chọn mode 'ai' HOẶC bật thử thách AI ở chế độ thẻ gốc
+aiMode: mode === 'ai' || (mode === 'cards' && aiChallenge),
 timerMode,
 timeLimit,
-difficulty // Truyền độ khó vào config
+difficulty,
+aiChallenge
 };
 localStorage.setItem('fc_fillblank_config', JSON.stringify(config));
 onStart(config);
@@ -11896,7 +11900,7 @@ return (
 <div className="w-10"></div>
 </div>
 <div className={`w-20 h-20 shrink-0 bg-${mainColor}-50 rounded-full flex items-center justify-center mb-4 shadow-inner border-4 border-${mainColor}-100`}>
-<Icons.Keyboard size={40} className={`text-${mainColor}-500`} />
+<Icons.Edit3 size={40} className={`text-${mainColor}-500`} />
 </div>
 <h2 className="text-2xl md:text-3xl font-black text-gray-800 mb-2 text-center shrink-0">Luyện Điền Từ</h2>
 <p className="text-gray-500 text-sm mb-6 text-center px-4 shrink-0">Luyện tập gõ chính xác từ vựng trong ngữ cảnh câu hoàn chỉnh.</p>
@@ -11927,13 +11931,26 @@ className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 transition-a
 </div>
 {mode === 'cards' && <Icons.CheckCircle size={20} className="text-gray-800" />}
 </button>
+{/* TÍNH NĂNG THỬ THÁCH AI ĐỤC LỖ (Chỉ hiện ở mode Thẻ Gốc) */}
+{mode === 'cards' && (
+<div className="animate-in fade-in slide-in-from-top-2">
+<MenuToggle
+active={aiChallenge}
+setActive={setAiChallenge}
+icon={Icons.Sparkles}
+color="indigo"
+title="Thử Thách AI Đục Lỗ"
+subtitle="AI tự chọn từ cốt lõi để đục lỗ thay vì chọn ngẫu nhiên."
+/>
+</div>
+)}
 {/* CẦU DAO ĐỘ KHÓ (EASY / HARD) */}
 <div className="w-full flex gap-3 pt-2">
 <button
 onClick={() => setDifficulty('easy')}
 className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'easy' ? `border-green-500 bg-green-50 shadow-md text-green-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
 >
-<Icons.Unlock size={20} className="mb-1" />
+<Icons.Eye size={20} className="mb-1" />
 <span className="font-bold text-sm">Chế độ Dễ</span>
 <span className="text-[10px] opacity-70">Mở bóng đèn gợi ý</span>
 </button>
@@ -11941,7 +11958,7 @@ className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-c
 onClick={() => setDifficulty('hard')}
 className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'hard' ? `border-red-500 bg-red-50 shadow-md text-red-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
 >
-<Icons.Lock size={20} className="mb-1" />
+<Icons.EyeOff size={20} className="mb-1" />
 <span className="font-bold text-sm">Chế độ Khó</span>
 <span className="text-[10px] opacity-70">Khóa gợi ý</span>
 </button>
@@ -12131,7 +12148,7 @@ return (
 <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
 <div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">LEVEL {(config?.level || 'level_4_discovery_basic').split('_')[1]?.toUpperCase()}</div>
 <div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1">
-Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
+Câu {playedCount + 1} <span className="font-serif text-lg leading-none text-gray-400 ml-0.5">∞</span>
 </div>
 <div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
 <span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1"><Icons.Check size={14}/> {correctCount || 0}</span>
@@ -12187,7 +12204,7 @@ disabled={isHardMode}
 className={`p-3 rounded-full flex items-center justify-center transition-all shadow-sm ${isHardMode ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200' : (showHint ? 'bg-yellow-100 text-yellow-600 border border-yellow-300' : 'bg-white border border-gray-200 text-gray-400 hover:text-yellow-500 hover:border-yellow-300 hover:shadow-md active:scale-95')}`}
 title={isHardMode ? "Gợi ý bị khóa ở chế độ Khó" : "Bật/Tắt gợi ý dịch nghĩa"}
 >
-<Icons.Lightbulb size={24} className={showHint && !isHardMode ? 'animate-pulse' : ''} />
+<Icons.Info size={24} className={showHint && !isHardMode ? 'animate-pulse' : ''} />
 </button>
 {showHint && !isHardMode && currentQuestion.hint && (
 <div className="absolute top-14 z-20 px-6 py-3 bg-yellow-50 rounded-2xl text-sm md:text-base text-yellow-800 italic font-medium border border-yellow-200 text-center shadow-lg max-w-2xl w-full animate-in slide-in-from-top-2">
