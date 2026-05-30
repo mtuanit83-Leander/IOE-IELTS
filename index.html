@@ -10456,10 +10456,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.13
-// Last Updated: 2026-05-29 15:05
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.15
+// Last Updated: 2026-05-30 08:35
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.13: [VÁ LỖI FATAL] Sửa lỗi ReferenceError do khác biệt biến Ref (stateRef) và chuẩn hóa định dạng xuất SessionData của Auto-save riêng cho Game Quiz.
+// Cập nhật V1.15: [CẠO SẠCH SILENT UTTERANCE] Loại bỏ hoàn toàn mã "phát âm câm" gây kẹt luồng TTS trên trình duyệt Edge. Giao phó 100% trọng trách đánh thức âm thanh cho Tầng 6.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -10752,11 +10752,8 @@ return { question: card, options: finalOptions, isAiGenerated };
 };
 const handleStartGame = async () => {
 if (sourceMode === 'card' && (!cards || cards.length < 2)) return;
-if (window.speechSynthesis && gameMode === 'listen') {
-const silentUtterance = new SpeechSynthesisUtterance('');
-silentUtterance.volume = 0;
-window.speechSynthesis.speak(silentUtterance);
-}
+// [CẠO SẠCH BÓNG MA] Đã gỡ bỏ block silentUtterance ở đây để tránh gây tắc nghẽn Edge TTS.
+// Chỉ gọi resume đánh thức AudioContext cứng của Tầng 6
 if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
 window.fc_audioCtx.resume();
 }
@@ -10956,11 +10953,7 @@ onBack({ ...sessionData, timerMode, listenMode, hardMode, timeLimit });
 };
 const handleNext = async () => {
 if (!isGameActiveRef.current || isGenerating) return;
-if (window.speechSynthesis && gameMode === 'listen') {
-const silentUtterance = new SpeechSynthesisUtterance('');
-silentUtterance.volume = 0;
-window.speechSynthesis.speak(silentUtterance);
-}
+// [CẠO SẠCH BÓNG MA] Đã gỡ bỏ block silentUtterance ở đây để tránh gây tắc nghẽn Edge TTS.
 setSelectedOptionIndex(null); setIsChecking(false); setFeedbackType(null); setClickedWrongIndices(new Set());
 setShowChanceToast(false); setIsAudioPlaying(false); setHasStartedListening(false);
 setTimeLeft(timeLimit); setIsRoundStarted(!timerMode); setListenPlayCount(0); cleanupTimers();
@@ -15033,10 +15026,10 @@ window.Block5_13_useOddOneOutLogic = useOddOneOutLogic;
 window.useOddOneOutLogic = useOddOneOutLogic;
 window.Block5_13_OddOneOutGame = OddOneOutGame;
 window.OddOneOutGame = OddOneOutGame;
-// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.06
-// Last Updated: 2026-04-26 00:50
+// Block5.14: TẦNG 5: TRÒ CHƠI HÓA (Exam UI Shell & Renderers) - Version 1.07
+// Last Updated: 2026-05-30 08:45
 // Nhiệm vụ: Khung giao diện bài thi tổng hợp. Bao gồm Header, Timer, SplitView và các Renderers nguyên tử.
-// Cập nhật: [UX UPGRADE] Tích hợp Bộ đếm đạn (Queue Counter) vào màn hình Loading 30s và màn hình Chuyển chặng 20s. Hiển thị minh bạch tiến trình nạp đạn của AI để giải quyết hiệu ứng "Bóng mờ thời gian". Tuân thủ Điều 3.
+// Cập nhật: [CẠO SẠCH AUDIO RÁC] Loại bỏ hoàn toàn các lệnh gọi trực tiếp `window.speechSynthesis` (cả lệnh cancel bạo lực và lệnh fallback speak) bên trong ListeningRenderer để giao phó 100% quyền kiểm soát âm thanh cho Tầng 6 (AppLogic), chống lỗi kẹt luồng trên Edge. Tuân thủ Hiến pháp.
 // ==================================================================================
 // --- 1. CÁC ATOMIC RENDERERS (GIAO DIỆN TỐI GIẢN CHO TỪNG DẠNG BÀI) ---
 const MultipleChoiceRenderer = ({ content, onAnswer }) => {
@@ -15066,7 +15059,7 @@ className={`p-5 border-2 border-gray-200 rounded-2xl text-lg font-medium transit
 </div>
 );
 };
-// LISTENING RENDERER (Chống kẹt UI iOS và Bắt Voice chuẩn)
+// LISTENING RENDERER (Chỉ giao tiếp qua Tầng 6, loại bỏ các hàm gọi trực tiếp WebSpeech API)
 const ListeningRenderer = ({ content, onAnswer, onPlay, lang }) => {
 const [isSubmitted, setIsSubmitted] = React.useState(false);
 const [isPlaying, setIsPlaying] = React.useState(false);
@@ -15076,15 +15069,10 @@ const timeoutRef = React.useRef(null);
 const audioScript = content?.audioScript || "";
 const term = content?.term || "Lỗi tải dữ liệu câu hỏi";
 React.useEffect(() => {
-if (window.speechSynthesis) {
-window.speechSynthesis.getVoices();
-}
 return () => {
-if (window.speechSynthesis) window.speechSynthesis.cancel();
 if (timeoutRef.current) clearTimeout(timeoutRef.current);
-if (onPlay) onPlay('');
 };
-}, [onPlay]);
+}, []);
 const handlePlay = () => {
 if (isPlaying || playCount >= maxPlays || !audioScript) return;
 setIsPlaying(true);
@@ -15099,33 +15087,17 @@ if (timeoutRef.current) clearTimeout(timeoutRef.current);
 };
 const durationMs = Math.max(10000, audioScript.length * 150);
 timeoutRef.current = setTimeout(() => {
-if (window.speechSynthesis) window.speechSynthesis.cancel();
 finishPlay();
 }, durationMs);
 if (onPlay) {
 onPlay(audioScript, 0.9, null, finishPlay);
 } else {
-if (window.speechSynthesis) {
-window.speechSynthesis.cancel();
-const u = new SpeechSynthesisUtterance(audioScript);
-const detectedLang = lang === 'zh' ? 'zh-CN' : (lang === 'vi' ? 'vi-VN' : 'en-US');
-u.lang = detectedLang;
-const voices = window.speechSynthesis.getVoices();
-const voice = voices.find(v => v.lang === detectedLang) || voices.find(v => v.lang.startsWith(detectedLang.split('-')[0]));
-if (voice) u.voice = voice;
-u.rate = 0.9;
-u.onend = finishPlay;
-u.onerror = finishPlay;
-window.speechSynthesis.speak(u);
-} else {
-finishPlay();
-}
+finishPlay(); // Fallback an toàn nếu không có Tầng 6
 }
 };
 const handleSelect = (opt) => {
 if (isSubmitted) return;
 setIsSubmitted(true);
-if (window.speechSynthesis) window.speechSynthesis.cancel();
 onAnswer(opt, opt.isCorrect);
 };
 return (
@@ -18976,10 +18948,10 @@ window.Block5_21_ListeningSetup = ListeningSetup;
 window.ListeningSetup = ListeningSetup;
 window.Block5_21_ListeningPlayScreen = ListeningPlayScreen;
 window.ListeningPlayScreen = ListeningPlayScreen;
-// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.10
-// Last Updated: 2026-05-29 15:50
+// Sheet5.22: TẦNG 5: TRÒ CHƠI HÓA (Listening Logic & Wrapper) - Version 1.11
+// Last Updated: 2026-05-30 08:46
 // Nhiệm vụ: Controller chính của Game Đôi Tai Vàng (Listening Comprehension). Quản lý luồng AI sinh kịch bản nghe, Audio Controller và kết nối UI.
-// Cập nhật V1.10: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa cờ currentQuestion, định dạng payload listeningState và đồng bộ thuật toán "Giải nén Băng Đạn Toàn Năng".
+// Cập nhật V1.11: [CẠO SẠCH AUDIO RÁC] Loại bỏ hoàn toàn mã "phát âm câm" (silentUtterance) và lệnh cancel bạo lực gây kẹt luồng TTS trên trình duyệt Edge. Giao phó 100% trọng trách đánh thức âm thanh cho Tầng 6.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useListeningLogic = (config, callbacks) => {
@@ -19123,7 +19095,7 @@ return data;
 const stopAudio = React.useCallback(() => {
 setIsAudioPlaying(false);
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
-if (window.speechSynthesis) window.speechSynthesis.cancel();
+// [CẠO SẠCH AUDIO RÁC] Gỡ bỏ window.speechSynthesis.cancel() bạo lực để chống lỗi kẹt Edge
 }, []);
 const handlePlayAudio = () => {
 if (isAudioPlaying || playCount >= maxPlays || !currentQuestion?.audioScript || checkStatus === 'correct' || checkStatus === 'failed') return;
@@ -19139,7 +19111,7 @@ if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 };
 const durationMs = Math.max(10000, currentQuestion.audioScript.length * 150);
 audioTimeoutRef.current = setTimeout(() => {
-if (window.speechSynthesis) window.speechSynthesis.cancel();
+// [CẠO SẠCH AUDIO RÁC] Gỡ bỏ window.speechSynthesis.cancel()
 finishPlay();
 }, durationMs);
 if (onPlay) {
@@ -19281,10 +19253,10 @@ setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); set
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
 streakTrackerRef.current = [];
-if (window.speechSynthesis) {
-const silentUtterance = new SpeechSynthesisUtterance('');
-silentUtterance.volume = 0;
-window.speechSynthesis.speak(silentUtterance);
+// [CẠO SẠCH BÓNG MA] Đã gỡ bỏ block silentUtterance ở đây để tránh gây tắc nghẽn Edge TTS.
+// Chỉ gọi resume đánh thức AudioContext cứng của Tầng 6
+if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
+window.fc_audioCtx.resume();
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
@@ -22723,10 +22695,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.20
-// Last Updated: 2026-05-15 22:38
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.21
+// Last Updated: 2026-05-30 08:55
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, tự động lưu Snapshot và Xuất dữ liệu.
-// Cập nhật: [CHUẨN HÓA ANTI-STREAK] Cấy ghép mã nguồn tiêu chuẩn của thuật toán "Trộn có trí nhớ". Đổi biến answerPositionHistoryRef thành streakTrackerRef để đồng bộ kiến trúc với các Game khác. Cài đặt cầu dao chống treo trình duyệt. Tuân thủ Điều 3.
+// Cập nhật V1.21: [ĐÁNH THỨC AUDIO AN TOÀN] Cấy ghép chốt chặn `window.fc_audioCtx.resume()` vào `startExam` và `resumeExam` để mở khóa loa phần cứng an toàn trên iOS/Edge, thay thế hoàn toàn cho `silentUtterance` độc hại.
 // ==================================================================================
 window.useExamLogic = function(apiKey, handleAutoHarvestToPool) {
 const [examState, setExamState] = React.useState({
@@ -23007,6 +22979,10 @@ return;
 }
 isExamActiveRef.current = true;
 isTransitioningRef.current = false;
+// [ĐÁNH THỨC AUDIO PHẦN CỨNG] Mở khóa loa cho iOS/Safari/Edge ngay khi bắt đầu bài thi
+if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
+window.fc_audioCtx.resume();
+}
 setCurrentQuestion(null);
 setCachedCount(0);
 setExamCooldown(0);
@@ -23217,6 +23193,10 @@ window.ExamEngine.clearVolatileMemory();
 const resumeExam = async (sessionId) => {
 isExamActiveRef.current = true;
 isTransitioningRef.current = false;
+// [ĐÁNH THỨC AUDIO PHẦN CỨNG] Mở khóa loa khi tiếp tục bài thi
+if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
+window.fc_audioCtx.resume();
+}
 setExamState(prev => ({ ...prev, status: 'loading', preloadCountdown: 30 }));
 setCurrentQuestion(null);
 setExamCooldown(0);
