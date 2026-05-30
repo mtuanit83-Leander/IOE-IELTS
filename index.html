@@ -87,9 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.0
-// Last Updated: 2026-05-28 11:00
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.1
+// Last Updated: 2026-05-30 09:45
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
+// Cập nhật V2.1: Bổ sung Prompt chuyên biệt `fillblank_sentence` phục vụ nhánh Thử thách AI đục lỗ Câu văn.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -128,7 +129,9 @@ quiz_sentence: `The original sentence is "{term}". Generate exactly 4 tricky dis
 // --- 3. MATCH (Nối ô) ---
 match_word: `Tạo 1 nghĩa sai (Tiếng Việt) cho MỖI từ sau: {itemsText}. QUY TẮC: Nghĩa sai PHẢI thuộc cùng chủ đề/lĩnh vực với từ gốc nhưng khác nghĩa hoàn toàn. TUYỆT ĐỐI KHÔNG dùng từ sai chính tả tiếng Việt (Ví dụ: KHÔNG dùng 'đôi gáy' cho 'đôi giày'). Bẫy phải đánh lừa được tư duy logic.`,
 match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {itemsText}. QUY TẮC: Bản dịch sai phải đọc CỰC KỲ XUÔI TAI bằng tiếng Việt, nhưng bị sai lệch về: Chủ thể (Anh ấy/Cô ấy), Thời gian (Đã/Sẽ), hoặc tính từ bị đảo ngược. TUYỆT ĐỐI KHÔNG viết sai chính tả.`,
-// --- 4. GRAMMAR ---
+// --- 4. FILL BLANK (Điền từ) ---
+fillblank_sentence: `Đóng vai một giáo viên ngôn ngữ, phân tích câu "{term}" ({lang}). CHỈ THỊ: 1. Chọn ra 1 từ vựng CỐT LÕI nhất trong câu (Danh từ, Động từ, hoặc Tính từ quan trọng) để đục lỗ. 2. Thay thế từ đó trong câu bằng chuỗi "[__________]". 3. Sinh ra chính xác 3 đáp án nhiễu (distractors) bằng {lang}. Các đáp án nhiễu phải cùng từ loại, hợp cấu trúc ngữ pháp với vị trí đục lỗ nhưng SAI VỀ NGỮ CẢNH để bẫy học viên. 4. Trả về định dạng JSON nghiêm ngặt gồm các key: "displaySentence" (câu đã đục lỗ), "targetWord" (từ đúng đã bị đục), "distractors" (mảng 3 từ sai), "hint" (Dịch nghĩa câu gốc tiếng Việt: "{definition}"). TUYỆT ĐỐI KHÔNG giải thích ngoài JSON.`,
+// --- 5. GRAMMAR ---
 grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, súc tích, Plain text."
 };
 // UI TEXT
@@ -137,9 +140,10 @@ vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "H�
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
-// Block 2.1b: TẦNG 2: TIỆN ÍCH LÕI (Core Data Utilities) - Version 2.0
-// Last Updated: 2026-05-28 11:05
+// Block 2.1b: TẦNG 2: TIỆN ÍCH LÕI (Core Data Utilities) - Version 2.1
+// Last Updated: 2026-05-30 09:46
 // Nhiệm vụ: Khởi tạo đối tượng window.Utils. Chứa các hàm xử lý chuỗi, mảng, thời gian thuần túy (Không gọi API, không gọi DB) và Thuật toán tĩnh.
+// Cập nhật V2.1: Bổ sung hàm comparePinyin hỗ trợ cơ chế "Hấp thụ Pinyin" (Pinyin Auto-Acceptance) cho Game Điền từ.
 // ==================================================================================
 window.Utils = {
 safeJsonParse: (key, f) => { try { const i = localStorage.getItem(key); return i ? JSON.parse(i) : f; } catch { return f; } },
@@ -292,6 +296,14 @@ bigrams1.set(bg, count - 1);
 }
 }
 return (2.0 * intersection) / (clean1.length - 1 + clean2.length - 1);
+},
+comparePinyin: (input, targetPinyin) => {
+if (!input || !targetPinyin) return false;
+// Cạo sạch: Chuyển Unicode sang dạng NFD để tách dấu thanh điệu, xóa dấu, xóa số, xóa khoảng trắng và ký tự đặc biệt
+const cleanStr = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase();
+const cleanInput = cleanStr(input);
+const cleanTarget = cleanStr(targetPinyin);
+return cleanInput.length > 0 && cleanInput === cleanTarget;
 },
 generateQuizQuestion: (cards, correctIndex, lang) => {
 const correctCard = cards[correctIndex];
@@ -1306,10 +1318,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.02
-// Last Updated: 2026-04-24 13:49
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.03
+// Last Updated: 2026-05-30 10:30
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật: [ĐẠI PHẪU THUẬT - DỌN RÁC] Loại bỏ Dead Code (ai_generate và ai_generate_from_card) trong OddOneOutEngine do chức năng này đã được chuyển giao cho Lò Đúc Ma Trận (Block 2.6). Giữ lại nguyên vẹn các hàm Offline và các AI Engine phục vụ chế độ Lắp Ráp/Hybrid. Tuân thủ Điều 3.
+// Cập nhật V1.03: [ĐẠI PHẪU CLOZE ENGINE] Nâng cấp offline_mask lên thuật toán Random Center Masking (Đục lỗ ngẫu nhiên thân câu, sinh 3 đáp án nhiễu). Nâng cấp ai_mask tích hợp lệnh bài Prompt từ Tầng 2.1a để sinh 4 đáp án thông minh.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1764,37 +1776,58 @@ return parsed.noise || [];
 // 4. ĐỘNG CƠ ĐỤC LỖ (CLOZE ENGINE)
 // ============================================================================
 ClozeEngine: {
-offline_mask: function(text, lang, type) {
-if (type === 'word') { return { targetWord: text, displaySentence: '[__________]', hint: "Từ vựng" }; }
+offline_mask: function(text, lang, type, deck = []) {
+if (type === 'word') {
+const dists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(text, deck, lang, 'word', 3);
+return { targetWord: text, displaySentence: '[__________]', hint: "Từ vựng", distractors: dists };
+}
 const isZh = lang === 'zh';
-const stopWordsEn = ['a', 'an', 'the', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'and', 'or', 'but', 'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'it', 'this', 'that', 'he', 'she', 'they', 'we', 'you', 'i'];
-const stopWordsZh = ['的', '是', '在', '了', '和', '我', '你', '他', '不'];
-const stopWordsVi = ['là', 'của', 'và', 'hoặc', 'những', 'các', 'một', 'trong', 'trên', 'tôi', 'bạn'];
-let words = [];
-if (isZh) { words = []; for(let i=0; i<text.length-1; i++) words.push(text.substr(i, 2)); }
-else { words = text.split(/[\s]+/).filter(w => w.trim().length > 0); }
-let candidates = words.filter(w => {
-const clean = window.GameAlgoEngine._cleanWord(w);
-if (clean.length < 2) return false;
-if (isZh) return !stopWordsZh.includes(clean);
-if (lang === 'vi') return !stopWordsVi.includes(clean);
-return !stopWordsEn.includes(clean);
-});
-if (candidates.length === 0) candidates = words.filter(w => w.length > 0);
-candidates.sort((a, b) => b.length - a.length);
-const rawTarget = candidates[0] || text;
-const cleanTarget = rawTarget.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+let targetWord = "";
 let displaySentence = "";
-if (isZh) { displaySentence = text.replace(cleanTarget, '[__________]'); }
-else { const regex = new RegExp(`\\b${cleanTarget}\\b`, 'i'); displaySentence = text.replace(regex, '[__________]'); }
-return { targetWord: cleanTarget, displaySentence: displaySentence, hint: "Điền từ còn thiếu" };
+if (isZh) {
+const chars = Array.from(text);
+if (chars.length <= 3) {
+const idx = chars.length > 1 ? 1 : 0;
+targetWord = chars[idx];
+displaySentence = chars.slice(0, idx).join('') + '[__________]' + chars.slice(idx + 1).join('');
+} else {
+// Random Center Masking: Tránh 2 đầu câu, khoét 1-2 ký tự giữa
+const start = Math.floor(Math.random() * (chars.length - 2)) + 1;
+let k = Math.floor(Math.random() * 2) + 1;
+if (start + k > chars.length - 1) k = 1;
+targetWord = chars.slice(start, start + k).join('');
+displaySentence = chars.slice(0, start).join('') + '[__________]' + chars.slice(start + k).join('');
+}
+} else {
+const words = text.split(/[\s]+/);
+if (words.length <= 3) {
+const idx = words.length > 1 ? 1 : 0;
+targetWord = words[idx];
+displaySentence = words.slice(0, idx).join(' ') + (idx > 0 ? ' ' : '') + '[__________]' + (idx < words.length - 1 ? ' ' : '') + words.slice(idx + 1).join(' ');
+} else {
+// Random Center Masking: Tránh 2 đầu câu, khoét 1-2 từ giữa
+const start = Math.floor(Math.random() * (words.length - 2)) + 1;
+let k = Math.floor(Math.random() * 2) + 1;
+if (start + k > words.length - 1) k = 1;
+targetWord = words.slice(start, start + k).join(' ');
+displaySentence = words.slice(0, start).join(' ') + ' [__________] ' + words.slice(start + k).join(' ');
+}
+}
+// Cạo sạch dấu câu bám vào từ khóa để tạo đáp án sạch
+targetWord = targetWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+const distractors = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(targetWord, deck, lang, 'word', 3);
+return {
+targetWord: targetWord,
+displaySentence: displaySentence.trim(),
+hint: "Điền từ còn thiếu",
+distractors: distractors
+};
 },
-// Bọc thép chống AI làm thơ
 ai_mask: async function(text, hintFallback, lang, apiKey, level = "", topic = "") {
-let prompt = "Context: \"" + text + "\". Meaning: \"" + hintFallback + "\".\nTask: Create a Cloze test (Fill-in-the-blank). Choose ONE highly specific important word and replace it with '[__________]'.\nCRITICAL RULE: The 'hint' field MUST BE exactly the 'Meaning' provided above. ABSOLUTELY DO NOT invent a riddle or explain the word definition. NO target language words allowed in the hint.";
+const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
+let prompt = window.Utils.getPrompt('fillblank_sentence', { term: text, definition: hintFallback, lang: targetLang });
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierClozeRule) {
-const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
 const dataMode = 'sentence';
 const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2', level_3_junior_advanced: 'en_level_3', level_4_discovery_basic: 'en_level_4', level_5_discovery_advanced: 'en_level_5', level_6_pre_ielts: 'en_level_6', level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8', level_9_expert: 'en_level_9' };
 let mappedKey = oldToNewMap[level] || level;
@@ -1804,7 +1837,16 @@ if (ruleStr) injectedRule = "\nCLOZE SELECTION RULE: " + ruleStr;
 }
 prompt += injectedRule;
 prompt += window.GameAlgoEngine._getLevelContext(level);
-const schema = { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" } }, required: ["displaySentence", "targetWord", "hint"] };
+const schema = {
+type: "OBJECT",
+properties: {
+displaySentence: { type: "STRING" },
+targetWord: { type: "STRING" },
+distractors: { type: "ARRAY", items: { type: "STRING" } },
+hint: { type: "STRING" }
+},
+required: ["displaySentence", "targetWord", "distractors", "hint"]
+};
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 }
@@ -11811,10 +11853,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 1.05
-// Last Updated: 2026-05-16 14:35
+// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.0
+// Last Updated: 2026-05-30 11:15
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
+// Cập nhật V2.0: [ĐẠI PHẪU UI] Thêm Toggle Độ khó (Khóa/Mở gợi ý). Thêm Nút Bóng đèn. Render 4 đáp án tĩnh (Read-only) ép gõ phím. Bổ sung Placeholder hỗ trợ Pinyin.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -11822,6 +11864,7 @@ const MenuToggle = window.MenuToggle;
 const [mode, setMode] = React.useState('ai');
 const [timerMode, setTimerMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(30);
+const [difficulty, setDifficulty] = React.useState('easy'); // State độ khó mới
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_fillblank_config');
@@ -11830,6 +11873,7 @@ const config = JSON.parse(savedConfig);
 setMode(config.sourceMode === 'ai_pure' ? 'ai' : 'cards');
 setTimerMode(config.timerMode ?? false);
 setTimeLimit(config.timeLimit ?? 30);
+setDifficulty(config.difficulty || 'easy');
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
@@ -11838,7 +11882,8 @@ const config = {
 sourceMode: mode === 'ai' ? 'ai_pure' : 'card',
 aiMode: mode === 'ai',
 timerMode,
-timeLimit
+timeLimit,
+difficulty // Truyền độ khó vào config
 };
 localStorage.setItem('fc_fillblank_config', JSON.stringify(config));
 onStart(config);
@@ -11882,6 +11927,25 @@ className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 transition-a
 </div>
 {mode === 'cards' && <Icons.CheckCircle size={20} className="text-gray-800" />}
 </button>
+{/* CẦU DAO ĐỘ KHÓ (EASY / HARD) */}
+<div className="w-full flex gap-3 pt-2">
+<button
+onClick={() => setDifficulty('easy')}
+className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'easy' ? `border-green-500 bg-green-50 shadow-md text-green-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+>
+<Icons.Unlock size={20} className="mb-1" />
+<span className="font-bold text-sm">Chế độ Dễ</span>
+<span className="text-[10px] opacity-70">Mở bóng đèn gợi ý</span>
+</button>
+<button
+onClick={() => setDifficulty('hard')}
+className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'hard' ? `border-red-500 bg-red-50 shadow-md text-red-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+>
+<Icons.Lock size={20} className="mb-1" />
+<span className="font-bold text-sm">Chế độ Khó</span>
+<span className="text-[10px] opacity-70">Khóa gợi ý</span>
+</button>
+</div>
 <MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / câu` : 'Thoải mái thời gian'} extra={
 <div className="mt-3 pt-2 border-t border-orange-100 flex justify-between items-center animate-in fade-in">
 <span className="text-[10px] font-bold text-orange-400 uppercase">Chọn thời gian:</span>
@@ -11942,13 +12006,31 @@ config
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
+const [showHint, setShowHint] = React.useState(false); // State quản lý Bóng đèn gợi ý
 const inputRef = React.useRef(null);
 React.useEffect(() => {
+setShowHint(false); // Luôn tắt gợi ý khi sang câu mới
 if (checkStatus === 'idle' && inputRef.current) {
-// [QA FIX] Auto-focus nhẹ nhàng khi hiển thị câu hỏi mới
 setTimeout(() => inputRef.current?.focus(), 100);
 }
 }, [currentQuestion, checkStatus]);
+// THUẬT TOÁN TRỘN 4 ĐÁP ÁN TĨNH (READ-ONLY OPTIONS)
+const displayOptions = React.useMemo(() => {
+if (!currentQuestion) return [];
+let opts = [];
+if (currentQuestion.distractors && currentQuestion.distractors.length > 0) {
+opts = [currentQuestion.targetWord, ...currentQuestion.distractors];
+} else if (currentQuestion.options) {
+opts = currentQuestion.options.map(o => o.text);
+}
+opts = opts.filter(Boolean).slice(0, 4);
+if (opts.length === 0) return [];
+if (!opts.includes(currentQuestion.targetWord)) {
+opts[0] = currentQuestion.targetWord;
+}
+return window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(opts) : opts;
+}, [currentQuestion?.id, currentQuestion?.targetWord]);
+const isHardMode = config?.difficulty === 'hard'; // Biến cờ kiểm tra độ khó
 const formatTime = (seconds) => {
 const m = Math.floor(seconds / 60);
 const s = seconds % 60;
@@ -11957,7 +12039,6 @@ return `${m}:${s.toString().padStart(2, '0')}`;
 const handleBookmark = (e) => {
 e.stopPropagation();
 if (!onSaveToNotebook || !currentQuestion) return;
-// [QA FIX V1.9 - MŨI NHỌN 1] Bọc thép thuật toán trám từ & Đảo ngược Payload chống độc AI
 const cleanSentence = currentQuestion.displaySentence
 ? currentQuestion.displaySentence.replace(/\[__________\]/g, currentQuestion.targetWord)
 : currentQuestion.targetWord;
@@ -11969,15 +12050,13 @@ const displaySentence = currentQuestion.displaySentence
 : currentQuestion.targetWord;
 onSaveToNotebook({
 isSmartTarget: true,
-display: displaySentence, // Có gạch chân cho UI đẹp
-save: cleanSentence,      // Sạch 100% để gọi AI an toàn
+display: displaySentence,
+save: cleanSentence,
 analysis: currentQuestion.hint || currentQuestion.explanation || ""
 });
 };
-// [CHIẾN DỊCH SILENT OFFLINE] Sử dụng GlobalLoadingScreen thay thế
 if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
-// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
 }
 return (
@@ -12022,7 +12101,7 @@ return (
 if (!currentQuestion) return null;
 return (
 <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-gray-50 relative overflow-hidden">
-{/* Thanh đếm ngược thời gian (Progress bar top) */}
+{/* Thanh đếm ngược thời gian */}
 {config?.timerMode && checkStatus !== 'correct' && checkStatus !== 'wrong' && !isGenerating && (
 <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 z-50">
 <div className={`h-full transition-all duration-1000 ease-linear ${timeLeft <= 5 ? 'bg-red-500' : `bg-${mainColor}-500`}`} style={{ width: `${(timeLeft / config.timeLimit) * 100}%` }}></div>
@@ -12066,7 +12145,7 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 </div>
 <div className="flex items-center gap-1 sm:gap-2">
 {currentQuestion?.origin?._isRescued || currentQuestion?._isRescued ? (
-<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng">
 <Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
 </span>
 ) : currentQuestion?.isAiGenerated ? (
@@ -12078,13 +12157,11 @@ Câu {playedCount + 1} <Icons.InfinityIcon size={14} className="text-gray-400 ml
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
 {(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} câu`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* ĐỒNG HỒ PHANH AI GÓC PHẢI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
@@ -12100,15 +12177,24 @@ title="Lưu vào Sổ tay"
 </div>
 </div>
 {/* Main Play Area */}
-<div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 flex flex-col items-center justify-center relative">
-<div className="w-full max-w-2xl bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center relative animate-in zoom-in duration-300">
-<div className="mt-2 mb-2">
-<div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 shadow-inner mx-auto transform -rotate-3">
-<Icons.Edit3 size={32} className="text-blue-500" />
+<div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 flex flex-col items-center justify-center relative">
+<div className="w-full max-w-3xl bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center relative animate-in zoom-in duration-300">
+{/* KHU VỰC BÓNG ĐÈN GỢI Ý & CÂU HỎI */}
+<div className="flex flex-col items-center gap-2 w-full mb-6 relative">
+<button
+onClick={() => !isHardMode && setShowHint(!showHint)}
+disabled={isHardMode}
+className={`p-3 rounded-full flex items-center justify-center transition-all shadow-sm ${isHardMode ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200' : (showHint ? 'bg-yellow-100 text-yellow-600 border border-yellow-300' : 'bg-white border border-gray-200 text-gray-400 hover:text-yellow-500 hover:border-yellow-300 hover:shadow-md active:scale-95')}`}
+title={isHardMode ? "Gợi ý bị khóa ở chế độ Khó" : "Bật/Tắt gợi ý dịch nghĩa"}
+>
+<Icons.Lightbulb size={24} className={showHint && !isHardMode ? 'animate-pulse' : ''} />
+</button>
+{showHint && !isHardMode && currentQuestion.hint && (
+<div className="absolute top-14 z-20 px-6 py-3 bg-yellow-50 rounded-2xl text-sm md:text-base text-yellow-800 italic font-medium border border-yellow-200 text-center shadow-lg max-w-2xl w-full animate-in slide-in-from-top-2">
+{currentQuestion.hint}
 </div>
-</div>
-{/* Question Text */}
-<div className="text-2xl md:text-3xl font-bold text-gray-800 text-center leading-relaxed w-full mb-6">
+)}
+<div className="mt-4 text-2xl md:text-3xl font-bold text-gray-800 text-center leading-relaxed w-full">
 {currentQuestion.displaySentence.split(/\[__________\]/g).map((part, i, arr) => (
 <React.Fragment key={i}>
 <span style={{ fontFamily: window.Utils?.getFontFamily(settings) || 'inherit', fontWeight: settings?.fontWeight || 'bold' }}>{part}</span>
@@ -12116,13 +12202,20 @@ title="Lưu vào Sổ tay"
 </React.Fragment>
 ))}
 </div>
-{currentQuestion.hint && (
-<div className="px-6 py-3 bg-gray-50 rounded-2xl text-sm md:text-base text-gray-600 italic font-medium border border-gray-200 text-center shadow-inner max-w-2xl w-full">
-💡 Gợi ý: "{currentQuestion.hint}"
+</div>
+{/* KHU VỰC 4 ĐÁP ÁN TĨNH (READ-ONLY) CHỈ ĐỂ NHÌN */}
+{displayOptions.length > 0 && (
+<div className="w-full max-w-xl mx-auto mt-2 grid grid-cols-2 gap-3 px-4 animate-in fade-in">
+{displayOptions.map((opt, i) => (
+<div key={i} className="bg-gray-50 border-2 border-dashed border-gray-200 text-gray-600 font-bold py-3 px-4 rounded-xl text-center flex items-center justify-center min-h-[3.5rem] break-words shadow-sm">
+<span className="opacity-40 mr-2 text-xs bg-gray-200 px-1.5 py-0.5 rounded-md font-black">{['A', 'B', 'C', 'D'][i]}</span>
+<span>{opt}</span>
+</div>
+))}
 </div>
 )}
-{/* Input Area */}
-<div className="mt-10 flex gap-3 w-full max-w-md animate-in slide-in-from-bottom-4">
+{/* KHU VỰC NHẬP LIỆU (INPUT) */}
+<div className="mt-8 flex gap-3 w-full max-w-md animate-in slide-in-from-bottom-4">
 <input
 ref={inputRef}
 type="text"
@@ -12130,13 +12223,13 @@ value={inputBuffer}
 onChange={(e) => setInputBuffer(e.target.value)}
 onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
 disabled={checkStatus === 'correct' || checkStatus === 'wrong'}
-className={`flex-1 p-5 text-center text-2xl font-bold border-4 rounded-2xl outline-none shadow-inner transition-colors ${
+className={`flex-1 p-5 text-center text-xl md:text-2xl font-bold border-4 rounded-2xl outline-none shadow-inner transition-colors ${
 checkStatus === 'correct' ? 'border-green-400 bg-green-50 text-green-700' :
 checkStatus === 'wrong' ? 'border-red-400 bg-red-50 text-red-700' :
 checkStatus === 'wrong_retry' ? 'border-orange-400 bg-orange-50 text-orange-700 animate-[shake_0.4s_ease-in-out]' :
 `border-${mainColor}-200 focus:border-${mainColor}-500 bg-white text-gray-800`
 }`}
-placeholder="Gõ từ còn thiếu..."
+placeholder="Gõ đáp án (hoặc Pinyin: xiangzi)..."
 autoComplete="off" spellCheck="false"
 />
 <button
@@ -12150,7 +12243,7 @@ className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg 
 {checkStatus !== 'correct' && checkStatus !== 'wrong' && (
 <p className="text-xs text-gray-400 text-center font-medium mt-4">Bạn có {3 - attempts} lượt thử. Bấm Enter để kiểm tra.</p>
 )}
-{/* Feedback Area (Bảng Tóm tắt Kiến thức) */}
+{/* Bảng Tóm tắt Kiến thức */}
 {(checkStatus === 'correct' || checkStatus === 'wrong') && (
 <div className={`mt-8 w-full rounded-2xl animate-in slide-in-from-bottom-4 flex flex-col shadow-lg border-2 ${checkStatus === 'correct' ? 'border-green-200' : 'border-red-200'}`}>
 <div className={`p-4 ${checkStatus === 'correct' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold rounded-t-xl relative`}>
@@ -12167,13 +12260,11 @@ className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg 
 )}
 </div>
 </div>
-{/* FOOTER ĐƯỢC TÁI CẤU TRÚC (TIÊU CHUẨN VÀNG) */}
+{/* FOOTER */}
 <div className="w-full p-3 sm:p-4 bg-white border-t border-gray-200 shrink-0 flex items-center justify-between z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
-{/* Nút Kết thúc (Bên trái) */}
 <button onClick={() => setShowConfirmEnd(true)} className="absolute left-2 sm:left-4 text-red-500 hover:text-red-700 font-bold text-xs flex items-center gap-1 transition-colors px-2 py-2 hover:bg-red-50 rounded-lg" title="Kết thúc">
 <Icons.X size={16} /> <span className="hidden sm:inline">Kết thúc</span>
 </button>
-{/* Khu vực điều khiển chính (Căn giữa/phải) */}
 <div className="flex-1 flex justify-center sm:justify-end max-w-md ml-auto">
 {checkStatus === 'correct' || checkStatus === 'wrong' ? (
 <div className="w-full flex gap-3">
@@ -12206,10 +12297,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 1.09
-// Last Updated: 2026-05-29 15:25
+// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.1
+// Last Updated: 2026-05-30 11:30
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý dữ liệu và luồng kiểm tra đáp án.
-// Cập nhật V1.09: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa biến currentQuestion (khắc phục Silent Failure) và định dạng payload fillBlankState cho tiến trình khôi phục.
+// Cập nhật V2.1: [DUAL-VALIDATION] Tích hợp cơ chế Hấp thụ Pinyin (Pinyin Auto-Acceptance) vào checkAnswer.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -12462,7 +12553,7 @@ if (window.logSystemEvent) window.logSystemEvent("Lỗi AI ClozeEngine (Đục l
 }
 }
 if (!maskedResult) {
-const offRes = window.GameAlgoEngine.ClozeEngine.offline_mask(baseCard.term, lang, type);
+const offRes = window.GameAlgoEngine.ClozeEngine.offline_mask(baseCard.term, lang, type, enrichedCardsRef.current || []);
 maskedResult = { ...offRes, origin: baseCard, hint: baseCard.definition || offRes.hint, type: type, isAiGenerated: false };
 }
 return maskedResult;
@@ -12699,11 +12790,37 @@ if (!currentQuestion || (checkStatus !== 'idle' && checkStatus !== 'wrong_retry'
 if (inputBuffer.trim() === "") return;
 const normalize = (str) => {
 let s = str.toLowerCase();
-if (window.Utils && window.Utils.advancedNormalize) s = window.Utils.advancedNormalize(s, 'en');
-else s = s.replace(/[^a-z0-9]/g, '');
+if (window.Utils && window.Utils.advancedNormalize) s = window.Utils.advancedNormalize(s, lang || 'en');
+else s = s.replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
 return s.trim();
 };
-if (normalize(currentQuestion.targetWord) === normalize(inputBuffer)) {
+const cleanStr = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase();
+let isCorrect = false;
+const normTarget = normalize(currentQuestion.targetWord);
+const normInput = normalize(inputBuffer);
+// Lớp 1: Khớp Text thông thường (Hán tự / Tiếng Anh)
+if (normTarget === normInput) {
+isCorrect = true;
+}
+// Lớp 2: Hấp thụ Pinyin / Không dấu (Dual-Validation)
+else if ((lang === 'zh' || lang === 'vi') && /^[a-zA-Z\s]+$/.test(inputBuffer)) {
+const cleanInput = cleanStr(inputBuffer);
+if (cleanInput.length >= 2) {
+if (window.Utils && window.Utils.comparePinyin && window.Utils.comparePinyin(inputBuffer, currentQuestion.origin?.pronunciation)) {
+isCorrect = true;
+} else if (currentQuestion.origin?.pronunciation) {
+const cleanSentencePinyin = cleanStr(currentQuestion.origin.pronunciation);
+if (cleanSentencePinyin.includes(cleanInput)) {
+isCorrect = true;
+}
+}
+}
+}
+if (isCorrect) {
+// Phép thuật UI: Ép Input hiển thị đáp án đúng (Hấp thụ Pinyin)
+if (normTarget !== normInput) {
+setInputBuffer(currentQuestion.targetWord);
+}
 if (attempts === 0) {
 localRemoveFromRetryBag(currentQuestion.origin?.term || currentQuestion.targetWord);
 }
