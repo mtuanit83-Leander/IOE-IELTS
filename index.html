@@ -13077,21 +13077,19 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block 5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.3
-// Last Updated: 2026-06-01 22:15
+// Block 5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.4
+// Last Updated: 2026-06-01 22:30
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật V3.3: [EASY/HARD & LAZY HINT] Đổi `aiChallenge` thành Toggle Độ khó. Thích hợp giao diện Dịch thuật On-demand (Lazy Loading Hint) khi thẻ khuyết nghĩa.
+// Cập nhật V3.4: [BUG FIX] Khắc phục lỗi Babel JSX (White Screen) do gọi `<window.GlobalLoadingScreen>`. Tái cấu trúc giao diện Setup 4 khối chuẩn thiết kế UI/UX mới nhất.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
 const [sourceMode, setSourceMode] = React.useState('card');
+const [difficulty, setDifficulty] = React.useState('easy'); // 'easy' | 'hard'
 // State cho Timer
 const [timerMode, setTimerMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(30);
-// State Độ khó (Mới)
-const [difficulty, setDifficulty] = React.useState('easy');
 const Icons = window.Icons;
-const MenuToggle = window.MenuToggle;
 // Tự động lưu/tải cấu hình thói quen của người dùng
 React.useEffect(() => {
 try {
@@ -13099,86 +13097,91 @@ const savedConfig = localStorage.getItem('fc_spotmistake_config');
 if (savedConfig) {
 const config = JSON.parse(savedConfig);
 setSourceMode(config.sourceMode ?? 'card');
+setDifficulty(config.difficulty ?? 'easy');
 setTimerMode(config.timerMode ?? false);
 setTimeLimit(config.timeLimit ?? 30);
-setDifficulty(config.difficulty || 'easy');
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
 const handleStart = () => {
 const config = {
 sourceMode,
-aiMode: sourceMode === 'ai_pure', // Thực tế sẽ do Hook 5.11 phân định thêm theo difficulty
+difficulty,
 timerMode,
-timeLimit,
-difficulty
+timeLimit
 };
 localStorage.setItem('fc_spotmistake_config', JSON.stringify(config));
 onStart(config);
 };
+// Vô hiệu hóa nút Chế độ nếu chọn AI Tự Sinh (vì nó mặc định là khó)
+const isAiPure = sourceMode === 'ai_pure';
 return (
-<div className="w-full h-full flex flex-col">
+<div className="w-full h-full flex flex-col bg-white">
 <div className="flex flex-col items-center mx-auto w-full max-w-2xl h-full animate-in slide-in-from-right-8 p-4">
-<div className="w-full flex items-center justify-between mb-6 shrink-0 mt-2">
-<button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+<div className="w-full flex items-center justify-between mb-8 shrink-0 mt-2">
+<button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
 <Icons.ChevronLeft size={24}/>
 </button>
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Tìm Lỗi Sai</h2>
 <div className="w-10"></div>
 </div>
 <div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
-{/* Chọn Nguồn Dữ Liệu */}
+{/* NGUỒN CÂU HỎI */}
 <div className="mb-6">
-<label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
+<label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Nguồn câu hỏi</label>
 <div className="grid grid-cols-2 gap-3">
 <button
 onClick={() => setSourceMode('card')}
-className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
+className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm text-${mainColor}-700` : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'} active:scale-95`}
 >
-<Icons.Layers size={24} className={sourceMode === 'card' ? `text-${mainColor}-600` : 'text-gray-400'} />
+<Icons.Layers size={28} />
 <div className="text-center">
-<div className="font-bold text-gray-800 text-sm">Thẻ của tôi</div>
-<div className="text-[10px] text-gray-500">Dựa trên Flashcard có sẵn</div>
+<div className="font-bold text-sm">Thẻ của tôi</div>
+<div className="text-[10px] mt-0.5 opacity-70">Dựa trên Flashcard có sẵn</div>
 </div>
 </button>
 <button
 onClick={() => setSourceMode('ai_pure')}
-className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'ai_pure' ? `border-blue-500 bg-blue-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}
+className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${sourceMode === 'ai_pure' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm text-${mainColor}-700` : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'} active:scale-95`}
 >
-<Icons.Sparkles size={24} className={sourceMode === 'ai_pure' ? 'text-blue-600' : 'text-gray-400'} />
+<Icons.Sparkles size={28} />
 <div className="text-center">
-<div className="font-bold text-gray-800 text-sm">AI Tự Sinh</div>
-<div className="text-[10px] text-gray-500">Tạo lỗi sai mới vô tận</div>
+<div className="font-bold text-sm">AI Tự Sinh</div>
+<div className="text-[10px] mt-0.5 opacity-70">Tạo lỗi sai mới vô tận</div>
 </div>
 </button>
 </div>
 </div>
-{/* CẦU DAO ĐỘ KHÓ (EASY / HARD) */}
-{sourceMode === 'card' && (
-<div className="w-full flex gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
+{/* CHẾ ĐỘ ĐỘ KHÓ */}
+<div className={`mb-8 transition-all duration-300 ${isAiPure ? 'opacity-40 pointer-events-none grayscale' : 'opacity-100'}`}>
+<div className="grid grid-cols-2 gap-3">
 <button
 onClick={() => setDifficulty('easy')}
-className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'easy' ? `border-green-500 bg-green-50 shadow-md text-green-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${difficulty === 'easy' ? `border-emerald-500 bg-emerald-50 shadow-sm text-emerald-700` : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'} active:scale-95`}
 >
-<Icons.CheckCircle size={20} className="mb-1" />
-<span className="font-bold text-sm">Chế độ Dễ</span>
-<span className="text-[10px] opacity-70">Mở gợi ý & Bóp méo cơ bản</span>
+<Icons.CheckCircle size={24} />
+<div className="text-center">
+<div className="font-bold text-sm">Chế độ Dễ</div>
+<div className="text-[10px] mt-0.5 opacity-70">Mở gợi ý & Bóp méo cơ bản</div>
+</div>
 </button>
 <button
 onClick={() => setDifficulty('hard')}
-className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'hard' ? `border-red-500 bg-red-50 shadow-md text-red-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${difficulty === 'hard' ? `border-red-500 bg-red-50 shadow-sm text-red-600` : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'} active:scale-95`}
 >
-<Icons.AlertCircle size={20} className="mb-1" />
-<span className="font-bold text-sm">Chế độ Khó</span>
-<span className="text-[10px] opacity-70">Khóa gợi ý & Thử thách AI</span>
+<Icons.AlertCircle size={24} />
+<div className="text-center">
+<div className="font-bold text-sm">Chế độ Khó</div>
+<div className="text-[10px] mt-0.5 opacity-70">Khóa gợi ý & Thử thách AI</div>
+</div>
 </button>
 </div>
-)}
-{/* Cấu hình Thời gian (Timer Toggle) */}
-<div className={`p-4 bg-${mainColor}-50 rounded-xl border border-${mainColor}-100 transition-all mb-6`}>
+</div>
+{/* Cấu hình Thời gian */}
+<div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 transition-all mb-6">
 <div className="flex justify-between items-center">
 <div className="flex flex-col">
-<span className={`font-bold flex items-center gap-2 text-${mainColor}-700`}><window.Icons.Clock size={18} /> Giới hạn thời gian</span>
+<span className={`font-bold flex items-center gap-2 text-${mainColor}-700`}><Icons.Clock size={18} /> Giới hạn thời gian</span>
 <span className="text-xs text-gray-500 mt-1">{timerMode ? `${timeLimit} giây / câu` : 'Không giới hạn'}</span>
 </div>
 <div className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors relative flex items-center ${timerMode ? `bg-${mainColor}-500` : 'bg-gray-300'}`} onClick={() => setTimerMode(!timerMode)}>
@@ -13186,16 +13189,16 @@ className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-c
 </div>
 </div>
 {timerMode && (
-<div className="flex justify-center gap-2 mt-4 pt-3 border-t border-white/50 animate-in fade-in">
-<span className="text-xs font-bold text-gray-500 self-center mr-2 uppercase">Chọn:</span>
+<div className="flex justify-center gap-2 mt-4 pt-4 border-t border-gray-200/60 animate-in fade-in">
+<span className="text-xs font-bold text-gray-400 self-center mr-2 uppercase tracking-wide">Chọn mức:</span>
 {[15, 30, 45, 60].map(t => (
-<button key={t} onClick={() => setTimeLimit(t)} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${timeLimit === t ? `bg-${mainColor}-500 text-white shadow-md scale-105` : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>{t}s</button>
+<button key={t} onClick={() => setTimeLimit(t)} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${timeLimit === t ? `bg-${mainColor}-500 text-white shadow-md scale-105` : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-100'}`}>{t}s</button>
 ))}
 </div>
 )}
 </div>
 </div>
-<div className="w-full mt-4 pt-4 border-t border-gray-100 shrink-0 bg-white pb-safe">
+<div className="w-full pt-4 shrink-0 bg-white pb-safe mt-auto">
 <button
 onClick={handleStart}
 className={`w-full py-4 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-3 active:scale-95 transition-transform text-lg`}
@@ -13220,6 +13223,7 @@ const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
 const [showHint, setShowHint] = React.useState(false);
+const GlobalLoadingScreen = window.GlobalLoadingScreen; // FIX: Bóc tách để tránh lỗi Babel JSX HTML tag
 // Auto-focus ô nhập liệu ở Giai đoạn 2
 const inputRef = React.useRef(null);
 React.useEffect(() => {
@@ -13308,11 +13312,14 @@ const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
 return sortedIndices.map(idx => chunks[idx]?.text).join(isChinese ? '' : ' ');
 }, [selectedIndices, chunks, isChinese]);
 if (isGenerating && !currentQuestion) {
-if (config?.sourceMode === 'card' && !config?.aiMode) {
-return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+// Nếu là chế độ Dễ Offline, hiển thị lớp phủ mờ nhanh
+if (config?.sourceMode === 'card' && config?.difficulty === 'easy') {
+return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none animate-pulse">
+<div className={`w-8 h-8 border-4 border-${mainColor}-200 border-t-${mainColor}-500 rounded-full animate-spin`}></div>
+</div>;
 }
 return (
-<window.GlobalLoadingScreen
+<GlobalLoadingScreen
 onCancel={onBack}
 queueLength={queueLength}
 text={config?.sourceMode === 'ai_pure' ? 'AI đang sáng tác thử thách...' : 'Đang thiết lập trò chơi...'}
@@ -13442,7 +13449,11 @@ className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 b
 <button
 onClick={() => !isHardMode && setShowHint(!showHint)}
 disabled={isHardMode}
-className={`p-3 rounded-full flex items-center justify-center transition-all shadow-sm ${isHardMode ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200' : (showHint ? 'bg-yellow-100 text-yellow-600 border border-yellow-300' : 'bg-white border border-gray-200 text-gray-400 hover:text-yellow-500 hover:border-yellow-300 hover:shadow-md active:scale-95')}`}
+className={`p-3 rounded-full flex items-center justify-center transition-all shadow-sm border ${
+isHardMode
+? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200'
+: (showHint ? 'bg-yellow-100 text-yellow-600 border border-yellow-300' : 'bg-white border border-gray-200 text-gray-400 hover:text-yellow-500 hover:border-yellow-300 hover:shadow-md active:scale-95')
+}`}
 title={isHardMode ? "Gợi ý bị khóa ở chế độ Khó" : "Bật/Tắt gợi ý dịch nghĩa"}
 >
 <Icons.Info size={24} className={showHint && !isHardMode ? 'animate-pulse' : ''} />
@@ -13450,7 +13461,10 @@ title={isHardMode ? "Gợi ý bị khóa ở chế độ Khó" : "Bật/Tắt g�
 {showHint && !isHardMode && (
 <div className="absolute top-14 z-20 px-6 py-3 bg-yellow-50 rounded-2xl text-sm md:text-base text-yellow-800 italic font-medium border border-yellow-200 text-center shadow-lg max-w-2xl w-full animate-in slide-in-from-top-2">
 {currentQuestion.origin?.definition || currentQuestion.hint ? (
-currentQuestion.origin?.definition || currentQuestion.hint
+<div className="flex flex-col">
+<span className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-1">— Ý NGHĨA CÂU VĂN —</span>
+{currentQuestion.origin?.definition || currentQuestion.hint}
+</div>
 ) : (
 <div className="flex flex-col items-center gap-2">
 <span className="text-gray-500 text-sm">Câu này chưa có bản dịch.</span>
@@ -13699,10 +13713,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.19
-// Last Updated: 2026-06-01 21:50
+// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.20
+// Last Updated: 2026-06-01 23:05
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode & Hybrid Mode.
-// Cập nhật V1.19: [PERFORMANCE & LAZY LOAD] Xóa sổ batchEnrich giúp game khởi động 0s. Tích hợp định tuyến Khó/Dễ (Hard=AI Distort, Easy=Offline Distort). Xây dựng hàm handleRequestHint để gọi AI dịch nghĩa On-Demand khi người dùng cần.
+// Cập nhật V1.20: [BUG FIX] Khởi tạo isGenerating = true mặc định để tránh chớp trắng màn hình (Flicker) khi load. Sửa cấu trúc truyền difficulty vào safeConfig.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -13725,7 +13739,8 @@ const [time, setTime] = React.useState(0);
 const [isFinished, setIsFinished] = React.useState(false);
 const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
-const [isGenerating, setIsGenerating] = React.useState(false);
+// [BUG FIX V1.20] Mặc định true để bật khiên Loading ngay lập tức chống chớp trắng màn hình
+const [isGenerating, setIsGenerating] = React.useState(true);
 // State cho Lazy Loading Hint (Dịch thuật On-Demand)
 const [isTranslating, setIsTranslating] = React.useState(false);
 // State quản lý luồng gọi AI giải thích ngữ pháp
@@ -14046,7 +14061,6 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 isInitializingRef.current = true;
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
-// [CẮT BỎ BATCH ENRICH TẠI ĐÂY] - Khởi động 0 giây
 if (sourceMode === 'card') {
 let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
 let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
@@ -14490,10 +14504,9 @@ const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 };
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: gameCallbacks.onEndGame };
-const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
-// [BẢO VỆ TÍN HIỆU HYBRID] Đảm bảo cờ aiChallenge luôn ghi đè nếu nó được bật trong setup
-const effectiveAiMode = safeConfig.aiMode || safeConfig.aiChallenge || isAiMode;
-const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode: effectiveAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag, aiChallenge: safeConfig.aiChallenge }, hookCallbacks);
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card', difficulty: 'easy' };
+const effectiveAiMode = safeConfig.sourceMode === 'ai_pure' || (safeConfig.sourceMode === 'card' && safeConfig.difficulty === 'hard') || isAiMode;
+const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode: effectiveAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks);
 const gameSpecificCallbacks = {
 onBack: logic.handleSaveAndBack,
 onSaveToNotebook: (payload) => {
