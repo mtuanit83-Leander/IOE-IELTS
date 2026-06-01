@@ -87,10 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.2
-// Last Updated: 2026-05-30 13:35
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.3
+// Last Updated: 2026-06-01 10:55
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V2.2: [VÁ LỖI PROMPT ĐIỀN TỪ] Thêm Luật Phủ Quyết (Negative Constraint) vào `fillblank_sentence` cấm AI đục lỗ dấu câu (《》), con số, và hư từ (的, 了, 在).
+// Cập nhật V2.3: [VÁ LỖI AI SPOT MISTAKE] Bổ sung lệnh bài `distort_word` và `distort_sentence` vào DEFAULT_PROMPTS. Áp dụng lệnh STRONGLY PREFER ép AI bóp méo theo cụm từ (Phrase-level) để tăng độ khó và tự nhiên.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -132,7 +132,10 @@ match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {
 // --- 4. FILL BLANK (Điền từ) ---
 fillblank_sentence: `Đóng vai một giáo viên ngôn ngữ, phân tích câu "{term}" ({lang}). CHỈ THỊ: 1. Chọn ra 1 từ hoặc cụm từ CỐT LÕI nhất trong câu (Danh từ, Động từ, hoặc Tính từ quan trọng) để đục lỗ. TUYỆT ĐỐI KHÔNG đục lỗ các dấu câu (như phẩy, chấm, ngoặc kép 《》, v.v.), không đục lỗ các con số, và không đục lỗ các hư từ/trợ từ (như 的, 了, 在). BẮT BUỘC chỉ chọn các từ vựng thực sự mang ý nghĩa cốt lõi. 2. Thay thế từ đó trong câu bằng chuỗi "[__________]". 3. Sinh ra chính xác 3 đáp án nhiễu (distractors) bằng {lang}. Các đáp án nhiễu phải cùng từ loại, hợp cấu trúc ngữ pháp với vị trí đục lỗ nhưng SAI VỀ NGỮ CẢNH để bẫy học viên. 4. Trả về định dạng JSON nghiêm ngặt gồm các key: "displaySentence" (câu đã đục lỗ), "targetWord" (từ đúng đã bị đục), "distractors" (mảng 3 từ sai), "hint" (Dịch nghĩa câu gốc tiếng Việt: "{definition}"). TUYỆT ĐỐI KHÔNG giải thích ngoài JSON.`,
 // --- 5. GRAMMAR ---
-grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, súc tích, Plain text."
+grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, súc tích, Plain text.",
+// --- 6. SPOT MISTAKE (Tìm lỗi sai) ---
+distort_word: `Context: "{term}". Language: {langStr}. Task: Create ONE subtle spelling mistake for this word. CRITICAL: RETURN ONLY ONE WORD. DO NOT WRITE A SENTENCE. Rule: The explanation field MUST BE 100% IN VIETNAMESE.`,
+distort_sentence: `Context: "{term}". Language: {langStr}. Task: Create EXACTLY ONE subtle mistake in the text. STRONGLY PREFER modifying a multi-word phrase (2-4 words) rather than a single character. Create a contextual or grammatical trap using collocations. CRITICAL UX RULE: DO NOT create an error by purely DELETING or OMITTING words. The user must physically click on the wrong word/phrase on the screen. Therefore, the mistake MUST be a SUBSTITUTION (replacing a correct phrase with a wrong one) or an ADDITION (inserting extra unnecessary words). CRITICAL RETURN RULE: The 'wrongWord' field in JSON MUST contain the ENTIRE wrong phrase you inserted/substituted. Rule: The explanation field MUST BE 100% IN VIETNAMESE.`
 };
 // UI TEXT
 window.UI_TEXT = {
@@ -1318,10 +1321,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.08
-// Last Updated: 2026-06-01 10:45
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.09
+// Last Updated: 2026-06-01 10:55
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật V1.08: [MERGE CONFLICT FIX] Hợp nhất toàn vẹn các bản vá: Trả lại 54 dòng code Sliding Window của ClozeEngine (từ V1.04), giữ nguyên thuật toán 1-to-1 SpotMistake (V1.05), và Template Literal an toàn cho AI Prompt (V1.07).
+// Cập nhật V1.09: [AI PHRASE DISTORTION FIX] Nâng cấp System Prompt trong ai_distort để ép AI ưu tiên bóp méo cụm từ (STRONGLY PREFER) và cấm tuyệt đối hành vi xóa từ (OMISSION ERROR) gây tàng hình Hitbox.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1554,9 +1557,9 @@ required: ["wrongWord", "explanation"]
 };
 } else {
 const langStr = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
-// [VÁ LỖI CÚ PHÁP] Chuyển đổi thành Template Literal (Backtick) để đảm bảo không gãy chuỗi
+// [VÁ LỖI AI LƯỜI BIẾNG] Cập nhật Prompt ép bóp méo cụm từ và cấm xóa trắng
 prompt = `Context: "${text}". Language: ${langStr}.\n` +
-`Task: Create EXACTLY ONE subtle mistake in the text. This mistake can be a single word, OR an ENTIRE PHRASE (cụm từ). Feel free to replace a correct phrase with a logically/grammatically wrong phrase to test the user's advanced understanding.\n` +
+`Task: Create EXACTLY ONE subtle mistake in the text. STRONGLY PREFER modifying a multi-word phrase (2-4 words) rather than a single character. Create a contextual or grammatical trap using collocations.\n` +
 `CRITICAL UX RULE: DO NOT create an error by purely DELETING or OMITTING words. The user must physically click on the wrong word/phrase on the screen. Therefore, the mistake MUST be a SUBSTITUTION (replacing a correct word/phrase with a wrong one) or an ADDITION (inserting extra unnecessary words).\n` +
 `CRITICAL RETURN RULE: The 'wrongWord' field in JSON MUST contain the ENTIRE wrong phrase you inserted/substituted.\n` +
 `Rule: The explanation field MUST BE 100% IN VIETNAMESE.` + injectedRule + levelContext;
@@ -1819,12 +1822,10 @@ return parsed.noise || [];
 // ============================================================================
 ClozeEngine: {
 offline_mask: function(text, lang, type, deck = []) {
-// NẾU LÀ TỪ VỰNG: Giữ nguyên logic gọi OptionsEngine
 if (type === 'word') {
 const dists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(text, deck, lang, 'word', 3);
 return { targetWord: text, displaySentence: '[__________]', hint: "Từ vựng", distractors: dists };
 }
-// NẾU LÀ CÂU VĂN: Áp dụng thuật toán Đục lỗ Random Center
 const isZh = lang === 'zh';
 let targetWord = "";
 let displaySentence = "";
@@ -1855,20 +1856,16 @@ targetWord = words.slice(start, start + k).join(' ');
 displaySentence = words.slice(0, start).join(' ') + ' [__________] ' + words.slice(start + k).join(' ');
 }
 }
-// Cạo sạch dấu câu bám vào từ khóa mục tiêu
 targetWord = targetWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
-// --- THUẬT TOÁN SINH NHIỄU NỘI BỘ (INTERNAL DISTRACTOR GENERATOR) ---
 let distractorSet = new Set();
 const targetLen = isZh ? Array.from(targetWord).length : targetWord.length;
 const cleanToken = (t) => t ? t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim() : '';
-// 1. Quét qua các câu khác trong bộ bài để băm từ
 const shuffledDeck = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...deck]) : deck;
 for (const card of shuffledDeck) {
 if (distractorSet.size >= 3) break;
 if (card.term && card.term !== text) {
 if (isZh) {
 const chars = Array.from(card.term);
-// Tiếng Trung: Dùng Sliding Window cắt mảng ký tự bằng đúng độ dài targetWord
 for (let i = 0; i <= chars.length - targetLen; i++) {
 let chunk = chars.slice(i, i + targetLen).join('');
 chunk = cleanToken(chunk);
@@ -1877,11 +1874,9 @@ distractorSet.add(chunk);
 }
 }
 } else {
-// Tiếng Việt/Anh: Tách theo khoảng trắng
 const words = card.term.split(/[\s]+/);
 for (const w of words) {
 const cw = cleanToken(w);
-// Lấy các từ sai lệch độ dài không quá 2 ký tự
 if (cw && cw !== targetWord && Math.abs(cw.length - targetLen) <= 2) {
 distractorSet.add(cw);
 }
@@ -1889,7 +1884,6 @@ distractorSet.add(cw);
 }
 }
 }
-// 2. Fallback 1: Bơm rác mặc định nếu bộ bài quá mỏng
 if (distractorSet.size < 3) {
 const fbZh = ['怎么', '什么', '那个', '这个', '很多', '一点', '非常', '比较', '知道', '觉得'];
 const fbEn = ['other', 'different', 'another', 'some', 'many', 'much', 'very', 'really', 'that', 'this'];
@@ -1899,14 +1893,12 @@ fbPool = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([
 for (const fw of fbPool) {
 if (distractorSet.size >= 3) break;
 let adjustedFw = fw;
-// Nếu tiếng Trung, ép cắt ngắn chuỗi cho bằng targetWord
 if (isZh && Array.from(fw).length > targetLen) {
 adjustedFw = Array.from(fw).slice(0, targetLen).join('');
 }
 if (adjustedFw && adjustedFw !== targetWord) distractorSet.add(adjustedFw);
 }
 }
-// 3. Fallback 2: Chống cháy khẩn cấp
 let fallbackCounter = 1;
 while (distractorSet.size < 3) {
 distractorSet.add(targetWord + fallbackCounter);
@@ -13614,10 +13606,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.11
-// Last Updated: 2026-05-30 16:35
+// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.12
+// Last Updated: 2026-06-01 11:00
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode & Hybrid Mode.
-// Cập nhật V1.11: [MULTI-TARGET LOGIC] Tích hợp hệ thống chấm điểm Đa mục tiêu. Nâng cấp setupQuestion băm từng chữ Hán để UI tương tác mượt mà. Bổ sung hàm handleCheckSpot phục vụ Nút Kiểm Tra thủ công.
+// Cập nhật V1.12: [SUBSET MATCHING LOGIC] Nâng cấp hàm handleCheckSpot áp dụng thuật toán Khớp tập con (Subset Validation). Cho phép người dùng click thiếu chữ miễn là click đúng vào vùng lỗi, chống ức chế khi AI chèn thêm từ thừa.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -14157,13 +14149,15 @@ if (prev.includes(idx)) return prev.filter(i => i !== idx);
 return [...prev, idx];
 });
 };
-// 2. Kích hoạt nút Kiểm tra Thủ công (Manual Check)
+// 2. Kích hoạt nút Kiểm tra Thủ công (Manual Check - Subset Matching Logic)
 const handleCheckSpot = () => {
 if (stage !== 'spot' || checkStatus === 'failed' || checkStatus === 'success' || selectedIndices.length === 0) return;
 // Lấy danh sách đáp án đúng từ hệ thống
 const targetIndices = chunks.map((c, i) => c.isTarget ? i : -1).filter(i => i !== -1);
-// Thuật toán kiểm tra (Không cần theo thứ tự, chỉ cần tập hợp khớp hoàn toàn)
-const isCorrect = targetIndices.length > 0 && targetIndices.length === selectedIndices.length && targetIndices.every(i => selectedIndices.includes(i));
+// [VÁ LỖI UX/AI] Thuật toán Khớp tập con (Subset Validation)
+// Chỉ cần các nút người dùng click NẰM TRONG vùng đáp án đúng của AI, và KHÔNG click nhầm ra ngoài
+// Chấp nhận việc click THIẾU vài nút (Ví dụ AI báo 3 nút sai, nhưng người dùng click trúng 1 nút cốt lõi vẫn cho qua Giai đoạn 2)
+const isCorrect = selectedIndices.length > 0 && selectedIndices.every(i => targetIndices.includes(i));
 if (isCorrect) {
 setStage('correct'); setCheckStatus('correct_spot');
 setScore(p => p + (10 * combo)); setAttempts(0);
