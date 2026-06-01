@@ -88,9 +88,9 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
 // Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.3
-// Last Updated: 2026-06-01 10:55
+// Last Updated: 2026-06-01 14:48
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V2.3: [VÁ LỖI AI SPOT MISTAKE] Bổ sung lệnh bài `distort_word` và `distort_sentence` vào DEFAULT_PROMPTS. Áp dụng lệnh STRONGLY PREFER ép AI bóp méo theo cụm từ (Phrase-level) để tăng độ khó và tự nhiên.
+// Cập nhật V2.3: [DỌN DẸP MÃ CHẾT] Xóa bỏ hằng số distort_word và distort_sentence (đã được chuyển logic sang Block 2.3 để áp dụng Few-Shot Prompting).
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -130,12 +130,9 @@ quiz_sentence: `The original sentence is "{term}". Generate exactly 4 tricky dis
 match_word: `Tạo 1 nghĩa sai (Tiếng Việt) cho MỖI từ sau: {itemsText}. QUY TẮC: Nghĩa sai PHẢI thuộc cùng chủ đề/lĩnh vực với từ gốc nhưng khác nghĩa hoàn toàn. TUYỆT ĐỐI KHÔNG dùng từ sai chính tả tiếng Việt (Ví dụ: KHÔNG dùng 'đôi gáy' cho 'đôi giày'). Bẫy phải đánh lừa được tư duy logic.`,
 match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {itemsText}. QUY TẮC: Bản dịch sai phải đọc CỰC KỲ XUÔI TAI bằng tiếng Việt, nhưng bị sai lệch về: Chủ thể (Anh ấy/Cô ấy), Thời gian (Đã/Sẽ), hoặc tính từ bị đảo ngược. TUYỆT ĐỐI KHÔNG viết sai chính tả.`,
 // --- 4. FILL BLANK (Điền từ) ---
-fillblank_sentence: `Đóng vai một giáo viên ngôn ngữ, phân tích câu "{term}" ({lang}). CHỈ THỊ: 1. Chọn ra 1 từ hoặc cụm từ CỐT LÕI nhất trong câu (Danh từ, Động từ, hoặc Tính từ quan trọng) để đục lỗ. TUYỆT ĐỐI KHÔNG đục lỗ các dấu câu (như phẩy, chấm, ngoặc kép 《》, v.v.), không đục lỗ các con số, và không đục lỗ các hư từ/trợ từ (như 的, 了, 在). BẮT BUỘC chỉ chọn các từ vựng thực sự mang ý nghĩa cốt lõi. 2. Thay thế từ đó trong câu bằng chuỗi "[__________]". 3. Sinh ra chính xác 3 đáp án nhiễu (distractors) bằng {lang}. Các đáp án nhiễu phải cùng từ loại, hợp cấu trúc ngữ pháp với vị trí đục lỗ nhưng SAI VỀ NGỮ CẢNH để bẫy học viên. 4. Trả về định dạng JSON nghiêm ngặt gồm các key: "displaySentence" (câu đã đục lỗ), "targetWord" (từ đúng đã bị đục), "distractors" (mảng 3 từ sai), "hint" (Dịch nghĩa câu gốc tiếng Việt: "{definition}"). TUYỆT ĐỐI KHÔNG giải thích ngoài JSON.`,
+fillblank_sentence: `Đóng vai một giáo viên ngôn ngữ, phân tích câu "{term}" ({lang}). CHỈ THỊ: 1. Chọn ra 1 từ vựng CỐT LÕI nhất trong câu (Danh từ, Động từ, hoặc Tính từ quan trọng) để đục lỗ. TUYỆT ĐỐI KHÔNG đục lỗ các dấu câu (như phẩy, chấm, ngoặc kép 《》, v.v.), không đục lỗ các con số, và không đục lỗ các hư từ/trợ từ (như 的, 了, 在). BẮT BUỘC chỉ chọn các từ vựng thực sự mang ý nghĩa cốt lõi. 2. Thay thế từ đó trong câu bằng chuỗi "[__________]". 3. Sinh ra chính xác 3 đáp án nhiễu (distractors) bằng {lang}. Các đáp án nhiễu phải cùng từ loại, hợp cấu trúc ngữ pháp với vị trí đục lỗ nhưng SAI VỀ NGỮ CẢNH để bẫy học viên. 4. Trả về định dạng JSON nghiêm ngặt gồm các key: "displaySentence" (câu đã đục lỗ), "targetWord" (từ đúng đã bị đục), "distractors" (mảng 3 từ sai), "hint" (Dịch nghĩa câu gốc tiếng Việt: "{definition}"). TUYỆT ĐỐI KHÔNG giải thích ngoài JSON.`,
 // --- 5. GRAMMAR ---
-grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, súc tích, Plain text.",
-// --- 6. SPOT MISTAKE (Tìm lỗi sai) ---
-distort_word: `Context: "{term}". Language: {langStr}. Task: Create ONE subtle spelling mistake for this word. CRITICAL: RETURN ONLY ONE WORD. DO NOT WRITE A SENTENCE. Rule: The explanation field MUST BE 100% IN VIETNAMESE.`,
-distort_sentence: `Context: "{term}". Language: {langStr}. Task: Create EXACTLY ONE subtle mistake in the text. STRONGLY PREFER modifying a multi-word phrase (2-4 words) rather than a single character. Create a contextual or grammatical trap using collocations. CRITICAL UX RULE: DO NOT create an error by purely DELETING or OMITTING words. The user must physically click on the wrong word/phrase on the screen. Therefore, the mistake MUST be a SUBSTITUTION (replacing a correct phrase with a wrong one) or an ADDITION (inserting extra unnecessary words). CRITICAL RETURN RULE: The 'wrongWord' field in JSON MUST contain the ENTIRE wrong phrase you inserted/substituted. Rule: The explanation field MUST BE 100% IN VIETNAMESE.`
+grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, súc tích, Plain text."
 };
 // UI TEXT
 window.UI_TEXT = {
@@ -505,10 +502,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.0
-// Last Updated: 2026-05-28 11:20
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.1
+// Last Updated: 2026-06-01 14:50
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, và kết nối Gemini API. Chứa toàn bộ AI Business Logic.
-// Cập nhật: Phân rã từ Block 2.1 nguyên khối, sử dụng kỹ thuật gán nối tiếp (Mutation) để bảo toàn Namespace.
+// Cập nhật V2.1: [THÁO NÚT THẮT CỔ CHAI] Gỡ bỏ hardcode timeout 15s trong callGeminiApi, sử dụng Dynamic Timeout (loadingTime + 5s) đọc trực tiếp từ cấu hình để tránh xung đột chết luồng sớm.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -558,7 +555,7 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 }
 };
 // ============================================================================
-// 3. GỌI API GEMINI VẠN NĂNG (CÓ QUẢN LÝ KEY POOL)
+// 3. GỌI API GEMINI VẠN NĂNG (CÓ QUẢN LÝ KEY POOL & DYNAMIC TIMEOUT)
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
@@ -574,6 +571,14 @@ let resultText = null;
 let tokenMetadata = null;
 let successKey = null;
 let lastError = null;
+// [DYNAMIC TIMEOUT] Đọc cấu hình từ LocalStorage, cộng thêm 5s đệm an toàn
+let dynamicTimeoutMs = 20000; // Khởi tạo an toàn (20s)
+try {
+const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (aiCfg && aiCfg.loadingTime) {
+dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+}
+} catch(e) {}
 for (let i = 0; i < keyPool.length; i++) {
 const rawK = keyPool[i];
 if (!rawK || rawK.length < 10) continue;
@@ -596,8 +601,8 @@ signal: controller.signal
 const timeoutPromise = new Promise((_, reject) => {
 setTimeout(() => {
 controller.abort();
-reject(new Error("API Timeout (15s)"));
-}, 15000);
+reject(new Error(`API Timeout (${Math.round(dynamicTimeoutMs/1000)}s)`));
+}, dynamicTimeoutMs);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
 const d = await res.json();
@@ -1322,9 +1327,9 @@ prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely
 return prompt;
 };
 // Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.09
-// Last Updated: 2026-06-01 10:55
+// Last Updated: 2026-06-01 14:40
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật V1.09: [AI PHRASE DISTORTION FIX] Nâng cấp System Prompt trong ai_distort để ép AI ưu tiên bóp méo cụm từ (STRONGLY PREFER) và cấm tuyệt đối hành vi xóa từ (OMISSION ERROR) gây tàng hình Hitbox.
+// Cập nhật V1.09: [FEW-SHOT PROMPT OPTIMIZATION] Gỡ bỏ luật cấm đoán gây tê liệt suy luận AI trong `ai_distort`. Tiêm kỹ thuật Few-Shot (Ví dụ mẫu) để AI bắt chước nhanh, giảm thời gian phản hồi từ >15s xuống <3s.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1557,10 +1562,28 @@ required: ["wrongWord", "explanation"]
 };
 } else {
 const langStr = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
-// [VÁ LỖI AI LƯỜI BIẾNG] Cập nhật Prompt ép bóp méo cụm từ và cấm xóa trắng
+// [VÁ LỖI TÊ LIỆT AI] Chuyển từ "Cấm đoán" (Negative Constraints) sang "Dạy qua ví dụ" (Few-Shot Prompting).
+// Đảm bảo AI luôn biết cách Thay thế (Substitution) hoặc Thêm từ (Addition) một cách tự nhiên mà không bị nghẽn (Choke) khi suy luận.
+let examples = "";
+if (lang === 'zh') {
+examples = `
+Examples of VALID mistakes:
+- [Substitution 1 character] Correct: "他在学习", Wrong: "她在学习"
+- [Substitution phrase] Correct: "我很高兴", Wrong: "我很快乐"
+- [Addition 1 character] Correct: "很好", Wrong: "很好的"
+`;
+} else {
+examples = `
+Examples of VALID mistakes:
+- [Substitution word] Correct: "I go to school", Wrong: "I goes to school"
+- [Substitution phrase] Correct: "It is raining cats and dogs", Wrong: "It is raining dogs and cats"
+- [Addition word] Correct: "I like apple", Wrong: "I like the apple"
+`;
+}
 prompt = `Context: "${text}". Language: ${langStr}.\n` +
-`Task: Create EXACTLY ONE subtle mistake in the text. STRONGLY PREFER modifying a multi-word phrase (2-4 words) rather than a single character. Create a contextual or grammatical trap using collocations.\n` +
-`CRITICAL UX RULE: DO NOT create an error by purely DELETING or OMITTING words. The user must physically click on the wrong word/phrase on the screen. Therefore, the mistake MUST be a SUBSTITUTION (replacing a correct word/phrase with a wrong one) or an ADDITION (inserting extra unnecessary words).\n` +
+`Task: Introduce EXACTLY ONE subtle grammatical or contextual error in the text. This error can be a single word, OR an ENTIRE PHRASE (cụm từ). Feel free to replace a correct phrase with a logically/grammatically wrong phrase to test the user's advanced understanding.\n` +
+`REQUIREMENT: You must use Substitution (replace words) or Addition (insert words). The user needs a physical word on the screen to click on. DO NOT purely delete/omit words without replacing them.\n` +
+`${examples}\n` +
 `CRITICAL RETURN RULE: The 'wrongWord' field in JSON MUST contain the ENTIRE wrong phrase you inserted/substituted.\n` +
 `Rule: The explanation field MUST BE 100% IN VIETNAMESE.` + injectedRule + levelContext;
 schema = {
@@ -1822,10 +1845,12 @@ return parsed.noise || [];
 // ============================================================================
 ClozeEngine: {
 offline_mask: function(text, lang, type, deck = []) {
+// NẾU LÀ TỪ VỰNG: Giữ nguyên logic gọi OptionsEngine
 if (type === 'word') {
 const dists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(text, deck, lang, 'word', 3);
 return { targetWord: text, displaySentence: '[__________]', hint: "Từ vựng", distractors: dists };
 }
+// NẾU LÀ CÂU VĂN: Áp dụng thuật toán Đục lỗ Random Center
 const isZh = lang === 'zh';
 let targetWord = "";
 let displaySentence = "";
@@ -1856,16 +1881,20 @@ targetWord = words.slice(start, start + k).join(' ');
 displaySentence = words.slice(0, start).join(' ') + ' [__________] ' + words.slice(start + k).join(' ');
 }
 }
+// Cạo sạch dấu câu bám vào từ khóa mục tiêu
 targetWord = targetWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+// --- THUẬT TOÁN SINH NHIỄU NỘI BỘ (INTERNAL DISTRACTOR GENERATOR) ---
 let distractorSet = new Set();
 const targetLen = isZh ? Array.from(targetWord).length : targetWord.length;
 const cleanToken = (t) => t ? t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim() : '';
+// 1. Quét qua các câu khác trong bộ bài để băm từ
 const shuffledDeck = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...deck]) : deck;
 for (const card of shuffledDeck) {
 if (distractorSet.size >= 3) break;
 if (card.term && card.term !== text) {
 if (isZh) {
 const chars = Array.from(card.term);
+// Tiếng Trung: Dùng Sliding Window cắt mảng ký tự bằng đúng độ dài targetWord
 for (let i = 0; i <= chars.length - targetLen; i++) {
 let chunk = chars.slice(i, i + targetLen).join('');
 chunk = cleanToken(chunk);
@@ -1874,9 +1903,11 @@ distractorSet.add(chunk);
 }
 }
 } else {
+// Tiếng Việt/Anh: Tách theo khoảng trắng
 const words = card.term.split(/[\s]+/);
 for (const w of words) {
 const cw = cleanToken(w);
+// Lấy các từ sai lệch độ dài không quá 2 ký tự
 if (cw && cw !== targetWord && Math.abs(cw.length - targetLen) <= 2) {
 distractorSet.add(cw);
 }
@@ -1884,6 +1915,7 @@ distractorSet.add(cw);
 }
 }
 }
+// 2. Fallback 1: Bơm rác mặc định nếu bộ bài quá mỏng
 if (distractorSet.size < 3) {
 const fbZh = ['怎么', '什么', '那个', '这个', '很多', '一点', '非常', '比较', '知道', '觉得'];
 const fbEn = ['other', 'different', 'another', 'some', 'many', 'much', 'very', 'really', 'that', 'this'];
@@ -1893,12 +1925,14 @@ fbPool = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([
 for (const fw of fbPool) {
 if (distractorSet.size >= 3) break;
 let adjustedFw = fw;
+// Nếu tiếng Trung, ép cắt ngắn chuỗi cho bằng targetWord
 if (isZh && Array.from(fw).length > targetLen) {
 adjustedFw = Array.from(fw).slice(0, targetLen).join('');
 }
 if (adjustedFw && adjustedFw !== targetWord) distractorSet.add(adjustedFw);
 }
 }
+// 3. Fallback 2: Chống cháy khẩn cấp
 let fallbackCounter = 1;
 while (distractorSet.size < 3) {
 distractorSet.add(targetWord + fallbackCounter);
@@ -13034,10 +13068,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Sheet5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.0
-// Last Updated: 2026-05-30 16:15
+// Sheet5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.1
+// Last Updated: 2026-06-01 15:00
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật V3.0: [MULTI-TARGET UI] Nâng cấp UI hỗ trợ chọn nhiều ký tự/từ (selectedIndices). Thêm nút "Kiểm tra" thủ công (Manual Confirmation) cho UX tốt hơn trên di động.
+// Cập nhật V3.1: [HOLISTIC VALIDATION PREP] Định tuyến tham số textToFix vào handleCorrectionSubmit để cung cấp ngữ cảnh vùng chọn cho cơ chế Chấm điểm thẩm thấu.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -13174,10 +13208,42 @@ if (stage === 'correct' && inputRef.current && checkStatus !== 'success' && chec
 inputRef.current.focus();
 }
 }, [stage, checkStatus]);
+// THUẬT TOÁN SHADOW CHUNKING ĐA HÌNH
+const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion?.wrongSentence || "");
+const displayChunks = React.useMemo(() => {
+if (!currentQuestion || !chunks) return [];
+if (isChinese) {
+let charArray = [];
+chunks.forEach((chunk, chunkIdx) => {
+const chars = Array.from(chunk.text);
+chars.forEach((char, charIdx) => {
+charArray.push({
+id: `char_${chunkIdx}_${charIdx}`,
+text: char,
+parentChunkIndex: chunkIdx,
+isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase()) || char === currentQuestion.wrongWord
+});
+});
+});
+return charArray;
+}
+return chunks.map((chunk, idx) => ({
+...chunk,
+parentChunkIndex: idx,
+isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())
+}));
+}, [currentQuestion, chunks, isChinese]);
+// Tính toán chuỗi văn bản đang được chọn để hiển thị ở Giai đoạn 2
+const textToFix = React.useMemo(() => {
+if (!chunks || selectedIndices.length === 0) return "";
+// Sắp xếp lại index để ghép chữ đúng thứ tự
+const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
+return sortedIndices.map(idx => chunks[idx]?.text).join(isChinese ? '' : ' ');
+}, [selectedIndices, chunks, isChinese]);
 const handleKeyDown = (e) => {
 if (e.key === 'Enter') {
 if (stage === 'correct' && (checkStatus === 'correct_spot' || checkStatus === 'wrong_correct')) {
-handleCorrectionSubmit();
+handleCorrectionSubmit(textToFix); // Truyền textToFix vào Logic Hook
 } else if (checkStatus === 'success' || checkStatus === 'failed') {
 nextRound();
 }
@@ -13218,38 +13284,6 @@ save: cleanCorrectSentence || currentQuestion.wrongSentence,
 analysis: currentQuestion.explanation || ""
 });
 };
-// THUẬT TOÁN SHADOW CHUNKING ĐA HÌNH
-const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion?.wrongSentence || "");
-const displayChunks = React.useMemo(() => {
-if (!currentQuestion || !chunks) return [];
-if (isChinese) {
-let charArray = [];
-chunks.forEach((chunk, chunkIdx) => {
-const chars = Array.from(chunk.text);
-chars.forEach((char, charIdx) => {
-charArray.push({
-id: `char_${chunkIdx}_${charIdx}`,
-text: char,
-parentChunkIndex: chunkIdx,
-isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase()) || char === currentQuestion.wrongWord
-});
-});
-});
-return charArray;
-}
-return chunks.map((chunk, idx) => ({
-...chunk,
-parentChunkIndex: idx,
-isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())
-}));
-}, [currentQuestion, chunks, isChinese]);
-// Tính toán chuỗi văn bản đang được chọn để hiển thị ở Giai đoạn 2
-const textToFix = React.useMemo(() => {
-if (!chunks || selectedIndices.length === 0) return "";
-// Sắp xếp lại index để ghép chữ đúng thứ tự
-const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
-return sortedIndices.map(idx => chunks[idx]?.text).join(isChinese ? '' : ' ');
-}, [selectedIndices, chunks, isChinese]);
 if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
@@ -13498,7 +13532,7 @@ autoComplete="off"
 spellCheck="false"
 />
 <button
-onClick={handleCorrectionSubmit}
+onClick={() => handleCorrectionSubmit(textToFix)} // Định tuyến textToFix qua onClick
 className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 transition-all active:scale-95`}
 >
 <Icons.Check size={28} />
@@ -13606,10 +13640,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.12
-// Last Updated: 2026-06-01 11:00
+// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.17
+// Last Updated: 2026-06-01 15:05
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode & Hybrid Mode.
-// Cập nhật V1.12: [SUBSET MATCHING LOGIC] Nâng cấp hàm handleCheckSpot áp dụng thuật toán Khớp tập con (Subset Validation). Cho phép người dùng click thiếu chữ miễn là click đúng vào vùng lỗi, chống ức chế khi AI chèn thêm từ thừa.
+// Cập nhật V1.17: [HOLISTIC VALIDATION] Cấy ghép thuật toán "Chấm Điểm Thẩm Thấu" (Holistic Context Validation) vào handleCorrectionSubmit. Cho phép người dùng sửa tự do cục bộ hoặc toàn cục, triệt tiêu hoàn toàn nghịch lý bóp méo của AI.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -13620,7 +13654,7 @@ const effectiveAiMode = isAiMode || aiChallenge;
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [chunks, setChunks] = React.useState([]);
 const [stage, setStage] = React.useState('spot');
-const [selectedIndices, setSelectedIndices] = React.useState([]); // [NEW] Mảng chứa các mục tiêu được chọn
+const [selectedIndices, setSelectedIndices] = React.useState([]); // Mảng chứa các mục tiêu được chọn
 const [inputBuffer, setInputBuffer] = React.useState("");
 const [checkStatus, setCheckStatus] = React.useState('idle');
 const [attempts, setAttempts] = React.useState(0);
@@ -13735,7 +13769,7 @@ _needsNextOnResume: needsNext
 }
 };
 // ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// BỘ NÃO TÚI nháp TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
 // ==================================================================================
 const localPushToRetryBag = React.useCallback((questionData) => {
 if (addToRetryBag) addToRetryBag('spotmistake', questionData);
@@ -13839,65 +13873,95 @@ try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.curren
 }
 const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(baseCard.term) : baseCard.term.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
-// 5. CHẾ BIẾN LỖI SAI
+// 5. CHẾ BIẾN LỖI SAI BẰNG AI (CHỐNG ẢO GIÁC HÀNG ĐỢI)
 if (effectiveAiMode && currentApiKey && isSentence && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 try {
 const aiDistortPromise = window.GameAlgoEngine.DistortionEngine.ai_distort(baseCard.term, lang, type, currentApiKey, level, config?.topic);
-const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Distort Timeout")), 15000));
+// [DYNAMIC TIMEOUT] Lấy cấu hình loadingTime từ AI Config, cộng thêm 5s đệm an toàn
+let dynamicTimeout = 27000;
+try {
+const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (aiCfg && aiCfg.loadingTime) {
+dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+}
+} catch(e) {}
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Distort Timeout")), dynamicTimeout));
 const parsedResult = await Promise.race([aiDistortPromise, timeoutPromise]);
 if (parsedResult && parsedResult.wrongSentence && parsedResult.wrongWord) {
 return { ...parsedResult, origin: baseCard, isAiGenerated: true };
 }
 } catch(e) {
-console.warn("AI Distortion failed, fallback to offline:", e.message);
+console.warn("AI Distortion failed, returning null to trigger JIT Fallback:", e.message);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi AI DistortionEngine (Bóp méo)", e);
+// [VÁ LỖI ẢO GIÁC BĂNG ĐẠN] Trả thẻ lại bộ bài và trả về NULL để QueueEngine không lưu đạn Offline vào hàng chờ AI
+if (deckRef.current) deckRef.current.unshift(baseCard);
+return null;
 }
 }
+// 6. CHẾ ĐỘ OFFLINE THUẦN TÚY
+if (!effectiveAiMode) {
 let offlineResult = { wrongSentence: baseCard.term + "x", wrongWord: baseCard.term + "x", correction: baseCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
 offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(baseCard.term, lang, type);
 }
 return { ...offlineResult, origin: baseCard, isAiGenerated: false };
+}
+return null;
 };
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-// [ĐẠI PHẪU THUẬT V1.11] Phân rã ký tự thông minh
+// [ĐẠI PHẪU THUẬT V1.15] Phân rã ký tự và Định vị tọa độ tuyệt đối (Absolute Indexing)
 const setupQuestion = (data) => {
 setCurrentQuestion(data);
 let wordChunks = [];
 const sentence = data.wrongSentence || "";
 const wrong = data.wrongWord || "";
+const originTerm = data.origin?.term || "";
 const isChinese = /[\u4e00-\u9fa5]/.test(sentence);
+// THUẬT TOÁN ĐỊNH VỊ TỌA ĐỘ TUYỆT ĐỐI
+let exactStartIndex = sentence.indexOf(wrong); // Default fallback
+if (originTerm && sentence && wrong) {
+let diffIdx = -1;
+const minLen = Math.min(sentence.length, originTerm.length);
+// Tìm điểm khác biệt đầu tiên giữa câu sai và câu đúng
+for(let i = 0; i < minLen; i++) {
+if (sentence[i] !== originTerm[i]) {
+diffIdx = i;
+break;
+}
+}
+if (diffIdx === -1 && sentence.length !== originTerm.length) {
+diffIdx = minLen;
+}
+if (diffIdx !== -1) {
+// Quét trong phạm vi lân cận điểm khác biệt để tìm vị trí chính xác của wrongWord
+const searchAreaStart = Math.max(0, diffIdx - 3);
+const localIndex = sentence.substring(searchAreaStart).indexOf(wrong);
+if (localIndex !== -1) {
+exactStartIndex = searchAreaStart + localIndex;
+}
+}
+}
 if (isChinese) {
-// Tiếng Trung: Băm từng ký tự, quét vị trí Index thủ công để tương thích Multi-Select
+// Tiếng Trung: Băm từng ký tự, quét vị trí Index tuyệt đối để chống lỗi trùng lặp chữ
 let currentStrIdx = 0;
-const startIndex = sentence.indexOf(wrong);
 wordChunks = Array.from(sentence).map((char, idx) => {
-// Tính độ dài byte của ký tự (hỗ trợ Unicode Surrogate Pairs)
-const isTarget = startIndex !== -1 && currentStrIdx >= startIndex && currentStrIdx < startIndex + wrong.length;
+const isTarget = exactStartIndex !== -1 && currentStrIdx >= exactStartIndex && currentStrIdx < exactStartIndex + wrong.length;
 currentStrIdx += char.length;
 return { id: `c-${idx}-${Date.now()}`, text: char, isTarget };
 });
 } else {
-// Tiếng Anh/Việt: Băm theo khoảng trắng như truyền thống
+// Tiếng Anh/Việt: Băm theo chuỗi Substring Matching an toàn 100%
 if (wrong && sentence) {
-let regex;
-try { regex = new RegExp(`\\b${escapeRegExp(wrong)}\\b`, 'i'); }
-catch(e) { regex = new RegExp(escapeRegExp(wrong), 'i'); }
-let match = sentence.match(regex);
-if (!match) {
-regex = new RegExp(escapeRegExp(wrong), 'i');
-match = sentence.match(regex);
-}
-if (match) {
-const index = match.index;
-const before = sentence.substring(0, index);
-const matchedText = sentence.substring(index, index + wrong.length);
-const after = sentence.substring(index + wrong.length);
+if (exactStartIndex !== -1) {
+const before = sentence.substring(0, exactStartIndex);
+const matchedText = sentence.substring(exactStartIndex, exactStartIndex + wrong.length);
+const after = sentence.substring(exactStartIndex + wrong.length);
 const beforeChunks = before.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `cb-${idx}-${Date.now()}`, text, isTarget: false }));
 const matchChunk = { id: `cm-${Date.now()}`, text: matchedText, isTarget: true };
 const afterChunks = after.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `ca-${idx}-${Date.now()}`, text, isTarget: false }));
 wordChunks = [...beforeChunks, matchChunk, ...afterChunks];
 } else {
+// Fallback
 wordChunks = sentence.split(' ').filter(w => w.trim().length > 0).map((text, idx) => {
 const cleanText = text.replace(/[.,?!;:'"]/g, '').toLowerCase();
 const cleanWrong = wrong.replace(/[.,?!;:'"]/g, '').toLowerCase();
@@ -13910,7 +13974,7 @@ wordChunks = sentence.split(' ').map((text, idx) => ({ id: `c-${idx}-${Date.now(
 }
 setChunks(wordChunks);
 setStage('spot');
-setSelectedIndices([]); // Đặt lại mảng chọn
+setSelectedIndices([]);
 setInputBuffer("");
 setCheckStatus('idle');
 setAttempts(0);
@@ -13968,14 +14032,31 @@ deckRef.current = [];
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
+// [ĐỒNG BỘ] Nâng mức trần nạp đạn lên 4 viên
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 } else {
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
+// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
 const isOfflineFastTrack = sourceMode === 'card' && !effectiveAiMode;
 await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
+// --- JUST-IN-TIME OFFLINE FALLBACK ---
+// Cứu hộ tức thời nếu băng đạn rỗng do AI tịt ngòi
+if (!firstData && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
+const fallbackCard = deckRef.current.shift();
+if (fallbackCard) {
+const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
+if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
+offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(fallbackCard.term, lang, type);
+}
+firstData = { ...offlineResult, origin: fallbackCard, isAiGenerated: false, _isRescued: true };
+if (showToast) safeShowToast("AI quá tải, đã kích hoạt thuật toán bóp méo nội bộ!", "warning");
+}
+}
+// Hard Fallback khẩn cấp
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Tìm Lỗi Sai", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
@@ -14043,6 +14124,19 @@ const isOfflineFastTrack = sourceMode === 'card' && !effectiveAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
+// --- JUST-IN-TIME OFFLINE FALLBACK ---
+if (!data && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
+const fallbackCard = deckRef.current.shift();
+if (fallbackCard) {
+const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
+if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
+offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(fallbackCard.term, lang, type);
+}
+data = { ...offlineResult, origin: fallbackCard, isAiGenerated: false, _isRescued: true };
+if (showToast) safeShowToast("AI quá tải, đã kích hoạt thuật toán bóp méo nội bộ!", "warning");
+}
+}
 if (!data) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game Tìm Lỗi Sai", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
@@ -14116,6 +14210,19 @@ const isOfflineFastTrack = sourceMode === 'card' && !effectiveAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
+// --- JUST-IN-TIME OFFLINE FALLBACK ---
+if (!data && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
+const fallbackCard = deckRef.current.shift();
+if (fallbackCard) {
+const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
+if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
+offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(fallbackCard.term, lang, type);
+}
+data = { ...offlineResult, origin: fallbackCard, isAiGenerated: false, _isRescued: true };
+if (showToast) safeShowToast("AI quá tải, đã kích hoạt thuật toán bóp méo nội bộ!", "warning");
+}
+}
 if (!data) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Tìm Lỗi Sai", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
@@ -14141,7 +14248,6 @@ if (onEndGame) onEndGame({ correct: latestStateRef.current.correctCount, time: l
 setTimeout(() => triggerAutoSave(), 150);
 };
 // --- TƯƠNG TÁC NGƯỜI DÙNG (CƠ CHẾ ĐA MỤC TIÊU) ---
-// 1. Nhấp Toggle thêm/bớt lựa chọn (Chỉ nạp đạn, chưa bắn)
 const handleSpotClick = (idx) => {
 if (stage !== 'spot' || checkStatus === 'failed' || checkStatus === 'success') return;
 setSelectedIndices(prev => {
@@ -14149,15 +14255,14 @@ if (prev.includes(idx)) return prev.filter(i => i !== idx);
 return [...prev, idx];
 });
 };
-// 2. Kích hoạt nút Kiểm tra Thủ công (Manual Check - Subset Matching Logic)
 const handleCheckSpot = () => {
 if (stage !== 'spot' || checkStatus === 'failed' || checkStatus === 'success' || selectedIndices.length === 0) return;
-// Lấy danh sách đáp án đúng từ hệ thống
 const targetIndices = chunks.map((c, i) => c.isTarget ? i : -1).filter(i => i !== -1);
-// [VÁ LỖI UX/AI] Thuật toán Khớp tập con (Subset Validation)
-// Chỉ cần các nút người dùng click NẰM TRONG vùng đáp án đúng của AI, và KHÔNG click nhầm ra ngoài
-// Chấp nhận việc click THIẾU vài nút (Ví dụ AI báo 3 nút sai, nhưng người dùng click trúng 1 nút cốt lõi vẫn cho qua Giai đoạn 2)
-const isCorrect = selectedIndices.length > 0 && selectedIndices.every(i => targetIndices.includes(i));
+// [SMART OVERLAP ALGORITHM]
+const hasOverlap = selectedIndices.some(i => targetIndices.includes(i));
+const maxTolerance = targetIndices.length + 3;
+const isWithinTolerance = selectedIndices.length <= maxTolerance;
+const isCorrect = hasOverlap && isWithinTolerance;
 if (isCorrect) {
 setStage('correct'); setCheckStatus('correct_spot');
 setScore(p => p + (10 * combo)); setAttempts(0);
@@ -14178,10 +14283,33 @@ setTimeout(() => triggerAutoSave(), 150);
 };
 const handleCorrectionSubmit = () => {
 if (stage !== 'correct' || !inputBuffer.trim()) return;
-const normalize = (str) => str ? str.toLowerCase().replace(/[.,?!;:"'()[\]{}]/g, "").replace(/\s+/g, " ").trim() : "";
+// Chuẩn hóa chuỗi cực mạnh: Xóa mọi dấu câu và khoảng trắng để so sánh bản chất
+const normalize = (str) => str ? str.toLowerCase().replace(/[.,?!;:"'()[\]{}。，？！；：“”‘’（）【】\u0332]/g, "").replace(/\s+/g, "").trim() : "";
 const normalizedInput = normalize(inputBuffer);
 const normalizedCorrection = normalize(currentQuestion.correction);
-if (normalizedInput === normalizedCorrection) {
+// 1. THUẬT TOÁN CHẤM ĐIỂM THẨM THẤU (HOLISTIC CONTEXT VALIDATION)
+const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion.wrongSentence || "");
+const separator = isChinese ? '' : ' ';
+let userSentenceArray = [];
+const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
+const minIdx = sortedIndices[0];
+const maxIdx = sortedIndices[sortedIndices.length - 1];
+// Cắt bỏ vùng chọn và đắp input của người dùng vào
+for (let i = 0; i < chunks.length; i++) {
+if (i < minIdx || i > maxIdx) {
+userSentenceArray.push(chunks[i].text);
+} else if (i === minIdx) {
+userSentenceArray.push(inputBuffer);
+}
+}
+const userFullSentence = userSentenceArray.join(separator);
+// Xác định câu nguyên thủy
+const aiCorrectSentence = currentQuestion.origin?.term || currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, currentQuestion.correction);
+const normalizedUserFull = normalize(userFullSentence);
+const normalizedAiFull = normalize(aiCorrectSentence);
+// CHẤM ĐIỂM KÉP: Sửa đúng từ (Local) HOẶC Sửa đúng cả câu (Global) đều được chấp nhận
+const isCorrect = (normalizedInput === normalizedCorrection) || (normalizedUserFull === normalizedAiFull);
+if (isCorrect) {
 if (attempts === 0) {
 localRemoveFromRetryBag(currentQuestion.origin?.term || currentQuestion.wrongSentence);
 }
