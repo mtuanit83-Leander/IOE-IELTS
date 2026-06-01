@@ -13077,10 +13077,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block 5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.2
-// Last Updated: 2026-06-01 17:30
+// Block 5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.3
+// Last Updated: 2026-06-01 22:15
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật V3.2: [LAZY LOADING UI] Bổ sung giao diện nút bấm Gọi AI Phân tích ngữ pháp theo yêu cầu (On-Demand) nhằm giải phóng tốc độ sinh câu hỏi.
+// Cập nhật V3.3: [EASY/HARD & LAZY HINT] Đổi `aiChallenge` thành Toggle Độ khó. Thích hợp giao diện Dịch thuật On-demand (Lazy Loading Hint) khi thẻ khuyết nghĩa.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -13088,8 +13088,8 @@ const [sourceMode, setSourceMode] = React.useState('card');
 // State cho Timer
 const [timerMode, setTimerMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(30);
-// State cho Nhánh AI bóp méo thẻ gốc (Hybrid Mode)
-const [aiChallenge, setAiChallenge] = React.useState(false);
+// State Độ khó (Mới)
+const [difficulty, setDifficulty] = React.useState('easy');
 const Icons = window.Icons;
 const MenuToggle = window.MenuToggle;
 // Tự động lưu/tải cấu hình thói quen của người dùng
@@ -13101,17 +13101,17 @@ const config = JSON.parse(savedConfig);
 setSourceMode(config.sourceMode ?? 'card');
 setTimerMode(config.timerMode ?? false);
 setTimeLimit(config.timeLimit ?? 30);
-setAiChallenge(config.aiChallenge ?? false);
+setDifficulty(config.difficulty || 'easy');
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
 const handleStart = () => {
 const config = {
 sourceMode,
-aiMode: sourceMode === 'ai_pure' || (sourceMode === 'card' && aiChallenge),
+aiMode: sourceMode === 'ai_pure', // Thực tế sẽ do Hook 5.11 phân định thêm theo difficulty
 timerMode,
 timeLimit,
-aiChallenge
+difficulty
 };
 localStorage.setItem('fc_spotmistake_config', JSON.stringify(config));
 onStart(config);
@@ -13153,17 +13153,25 @@ className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition
 </button>
 </div>
 </div>
-{/* TÍNH NĂNG THỬ THÁCH AI BÓP MÉO (Chỉ hiện ở mode Thẻ Gốc) */}
+{/* CẦU DAO ĐỘ KHÓ (EASY / HARD) */}
 {sourceMode === 'card' && (
-<div className="animate-in fade-in slide-in-from-top-2 mb-6">
-<MenuToggle
-active={aiChallenge}
-setActive={setAiChallenge}
-icon={Icons.Sparkles}
-color="indigo"
-title="Thử Thách AI Bóp Méo"
-subtitle="AI tự tạo lỗi sai thông minh dựa trên thẻ gốc."
-/>
+<div className="w-full flex gap-3 mb-6 animate-in fade-in slide-in-from-top-2">
+<button
+onClick={() => setDifficulty('easy')}
+className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'easy' ? `border-green-500 bg-green-50 shadow-md text-green-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+>
+<Icons.CheckCircle size={20} className="mb-1" />
+<span className="font-bold text-sm">Chế độ Dễ</span>
+<span className="text-[10px] opacity-70">Mở gợi ý & Bóp méo cơ bản</span>
+</button>
+<button
+onClick={() => setDifficulty('hard')}
+className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'hard' ? `border-red-500 bg-red-50 shadow-md text-red-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+>
+<Icons.AlertCircle size={20} className="mb-1" />
+<span className="font-bold text-sm">Chế độ Khó</span>
+<span className="text-[10px] opacity-70">Khóa gợi ý & Thử thách AI</span>
+</button>
 </div>
 )}
 {/* Cấu hình Thời gian (Timer Toggle) */}
@@ -13206,11 +13214,12 @@ checkStatus, attempts, score, combo, playedCount, time, isFinished, isGenerating
 correctCount, wrongCount, handleSpotClick, handleCheckSpot, handleCorrectionSubmit, handleSkip, nextRound,
 onBack, onEndGame, onSaveToNotebook, isBookmarked,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength, aiWaitTime,
-onRequestExplanation, isExplaining // Props cho Lazy Loading
+onRequestExplanation, isExplaining, handleRequestHint, isTranslating // Nhận Props On-demand
 }) => {
 const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
+const [showHint, setShowHint] = React.useState(false);
 // Auto-focus ô nhập liệu ở Giai đoạn 2
 const inputRef = React.useRef(null);
 React.useEffect(() => {
@@ -13218,42 +13227,15 @@ if (stage === 'correct' && inputRef.current && checkStatus !== 'success' && chec
 inputRef.current.focus();
 }
 }, [stage, checkStatus]);
-// THUẬT TOÁN SHADOW CHUNKING ĐA HÌNH
-const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion?.wrongSentence || "");
-const displayChunks = React.useMemo(() => {
-if (!currentQuestion || !chunks) return [];
-if (isChinese) {
-let charArray = [];
-chunks.forEach((chunk, chunkIdx) => {
-const chars = Array.from(chunk.text);
-chars.forEach((char, charIdx) => {
-charArray.push({
-id: `char_${chunkIdx}_${charIdx}`,
-text: char,
-parentChunkIndex: chunkIdx,
-isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase()) || char === currentQuestion.wrongWord
-});
-});
-});
-return charArray;
-}
-return chunks.map((chunk, idx) => ({
-...chunk,
-parentChunkIndex: idx,
-isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())
-}));
-}, [currentQuestion, chunks, isChinese]);
-// Tính toán chuỗi văn bản đang được chọn để hiển thị ở Giai đoạn 2
-const textToFix = React.useMemo(() => {
-if (!chunks || selectedIndices.length === 0) return "";
-// Sắp xếp lại index để ghép chữ đúng thứ tự
-const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
-return sortedIndices.map(idx => chunks[idx]?.text).join(isChinese ? '' : ' ');
-}, [selectedIndices, chunks, isChinese]);
+// Tắt Hint khi sang câu mới
+React.useEffect(() => {
+setShowHint(false);
+}, [currentQuestion]);
+const isHardMode = config?.difficulty === 'hard';
 const handleKeyDown = (e) => {
 if (e.key === 'Enter') {
 if (stage === 'correct' && (checkStatus === 'correct_spot' || checkStatus === 'wrong_correct')) {
-handleCorrectionSubmit(textToFix); // Truyền textToFix vào Logic Hook
+handleCorrectionSubmit(textToFix);
 } else if (checkStatus === 'success' || checkStatus === 'failed') {
 nextRound();
 }
@@ -13294,6 +13276,37 @@ save: cleanCorrectSentence || currentQuestion.wrongSentence,
 analysis: currentQuestion.explanation || ""
 });
 };
+// THUẬT TOÁN SHADOW CHUNKING ĐA HÌNH
+const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion?.wrongSentence || "");
+const displayChunks = React.useMemo(() => {
+if (!currentQuestion || !chunks) return [];
+if (isChinese) {
+let charArray = [];
+chunks.forEach((chunk, chunkIdx) => {
+const chars = Array.from(chunk.text);
+chars.forEach((char, charIdx) => {
+charArray.push({
+id: `char_${chunkIdx}_${charIdx}`,
+text: char,
+parentChunkIndex: chunkIdx,
+isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase()) || char === currentQuestion.wrongWord
+});
+});
+});
+return charArray;
+}
+return chunks.map((chunk, idx) => ({
+...chunk,
+parentChunkIndex: idx,
+isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())
+}));
+}, [currentQuestion, chunks, isChinese]);
+// Tính toán chuỗi văn bản đang được chọn để hiển thị ở Giai đoạn 2
+const textToFix = React.useMemo(() => {
+if (!chunks || selectedIndices.length === 0) return "";
+const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
+return sortedIndices.map(idx => chunks[idx]?.text).join(isChinese ? '' : ' ');
+}, [selectedIndices, chunks, isChinese]);
 if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
@@ -13424,17 +13437,35 @@ className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 b
 <div className={`h-full transition-all duration-1000 ease-linear ${timeLeft <= 5 ? 'bg-red-500' : `bg-${mainColor}-500`}`} style={{ width: `${(timeLeft / config.timeLimit) * 100}%` }}></div>
 </div>
 )}
-{/* 1. Gợi ý nghĩa (Hint) */}
-<div className="w-full max-w-3xl bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center animate-in slide-in-from-top-4 mt-2">
-<div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex justify-center items-center gap-2">
-<span className="w-8 h-px bg-gray-300"></span>
-{config?.level === 'level_1_kiddie' && <span className="text-xl">💡</span>}
-Ý nghĩa câu văn
-<span className="w-8 h-px bg-gray-300"></span>
+{/* 1. KHU VỰC BÓNG ĐÈN GỢI Ý & DỊCH THUẬT ON-DEMAND */}
+<div className="flex flex-col items-center gap-2 w-full mb-2 mt-2 relative">
+<button
+onClick={() => !isHardMode && setShowHint(!showHint)}
+disabled={isHardMode}
+className={`p-3 rounded-full flex items-center justify-center transition-all shadow-sm ${isHardMode ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200' : (showHint ? 'bg-yellow-100 text-yellow-600 border border-yellow-300' : 'bg-white border border-gray-200 text-gray-400 hover:text-yellow-500 hover:border-yellow-300 hover:shadow-md active:scale-95')}`}
+title={isHardMode ? "Gợi ý bị khóa ở chế độ Khó" : "Bật/Tắt gợi ý dịch nghĩa"}
+>
+<Icons.Info size={24} className={showHint && !isHardMode ? 'animate-pulse' : ''} />
+</button>
+{showHint && !isHardMode && (
+<div className="absolute top-14 z-20 px-6 py-3 bg-yellow-50 rounded-2xl text-sm md:text-base text-yellow-800 italic font-medium border border-yellow-200 text-center shadow-lg max-w-2xl w-full animate-in slide-in-from-top-2">
+{currentQuestion.origin?.definition || currentQuestion.hint ? (
+currentQuestion.origin?.definition || currentQuestion.hint
+) : (
+<div className="flex flex-col items-center gap-2">
+<span className="text-gray-500 text-sm">Câu này chưa có bản dịch.</span>
+<button
+onClick={() => handleRequestHint && handleRequestHint()}
+disabled={isTranslating}
+className={`px-4 py-2 bg-yellow-400 text-yellow-900 font-bold rounded-lg shadow-sm hover:bg-yellow-500 transition-colors flex items-center gap-2 text-sm disabled:opacity-50`}
+>
+{isTranslating ? <div className="w-4 h-4 border-2 border-yellow-900 border-t-transparent rounded-full animate-spin"></div> : <Icons.Sparkles size={16} />}
+Nhờ AI dịch nghĩa
+</button>
 </div>
-<div className="text-lg font-medium text-gray-700 italic leading-relaxed">
-{currentQuestion.origin?.definition || currentQuestion.hint || (currentQuestion.explanation && currentQuestion.explanation.length < 50 ? currentQuestion.explanation : "Hãy đọc kỹ câu văn và tìm lỗi sai...")}
+)}
 </div>
+)}
 </div>
 {/* 2. Khu vực Word Bricks đa hình (Language-Aware & Multi-Select Chunking) */}
 <div className={`w-full max-w-4xl flex flex-wrap justify-center relative z-10 ${isChinese ? 'gap-0 md:gap-0.5' : 'gap-3'}`}>
@@ -13593,7 +13624,7 @@ className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-cente
 <button
 onClick={() => onRequestExplanation && onRequestExplanation()}
 disabled={isExplaining}
-className={`w-full py-3 bg-${mainColor}-50 text-${mainColor}-700 rounded-xl text-sm font-bold border border-${mainColor}-200 hover:bg-${mainColor}-100 flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95`}
+className={`w-full py-3 bg-${mainColor}-50 text-${mainColor}-700 rounded-xl text-sm font-bold border border-${mainColor}-200 hover:bg-${mainColor}-100 flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50`}
 >
 {isExplaining ? (
 <><div className={`w-4 h-4 border-2 border-${mainColor}-600 border-t-transparent rounded-full animate-spin`}></div> Đang nhờ AI phân tích...</>
@@ -13668,17 +13699,18 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.18
-// Last Updated: 2026-06-01 17:36
+// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.19
+// Last Updated: 2026-06-01 21:50
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode & Hybrid Mode.
-// Cập nhật V1.18: [LAZY LOADING AI] Cấy ghép động cơ handleExplain (On-Demand Processing) để kết nối với nút UI mới. Gọi AI giải thích ngữ pháp chỉ khi người dùng yêu cầu, giải phóng 100% tốc độ sinh câu hỏi ban đầu.
+// Cập nhật V1.19: [PERFORMANCE & LAZY LOAD] Xóa sổ batchEnrich giúp game khởi động 0s. Tích hợp định tuyến Khó/Dễ (Hard=AI Distort, Easy=Offline Distort). Xây dựng hàm handleRequestHint để gọi AI dịch nghĩa On-Demand khi người dùng cần.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
-const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag, aiChallenge } = config;
+const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerMode, globalRetryBag, difficulty } = config;
 const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag, onEndGame } = callbacks;
-// [CỜ BẢO VỆ TÍN HIỆU AI] Đảm bảo nhánh Thử thách AI luôn được kích hoạt dù có bị override props
-const effectiveAiMode = isAiMode || aiChallenge;
+// [CỜ BẢO VỆ TÍN HIỆU AI] Chế độ Khó -> Dùng AI bóp méo. Chế độ Dễ -> Dùng Offline
+const isHardMode = difficulty === 'hard';
+const effectiveAiMode = sourceMode === 'ai_pure' || (sourceMode === 'card' && isHardMode);
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
 const [chunks, setChunks] = React.useState([]);
 const [stage, setStage] = React.useState('spot');
@@ -13694,7 +13726,9 @@ const [isFinished, setIsFinished] = React.useState(false);
 const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
-// [NEW V1.18] State quản lý luồng gọi AI giải thích Lazy Loading
+// State cho Lazy Loading Hint (Dịch thuật On-Demand)
+const [isTranslating, setIsTranslating] = React.useState(false);
+// State quản lý luồng gọi AI giải thích ngữ pháp
 const [isAiExplaining, setIsAiExplaining] = React.useState(false);
 // UX Timer State cho màn hình hiển thị kết quả
 const [resultTimer, setResultTimer] = React.useState(0);
@@ -13740,7 +13774,12 @@ const currentData = latestStateRef.current;
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
+pendingCards = pendingTasks.map(task => {
+if (task.originCards && task.originCards.length > 0) return task.originCards[0];
+if (task.origin) return task.origin;
+if (task.question) return task.question;
+return null;
+}).filter(Boolean);
 }
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
 onAutoSave({
@@ -13862,7 +13901,7 @@ if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Spot
 let baseCard = null;
 if (!isPureMode || deckRef.current.length > 0) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
-let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.term.length > 2); // Loại bỏ thẻ quá ngắn
 let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
 if (sentenceCards.length === 0) sentenceCards = validCards;
 validCards = sentenceCards;
@@ -13903,7 +13942,7 @@ try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.curren
 }
 const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(baseCard.term) : baseCard.term.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
-// 5. CHẾ BIẾN LỖI SAI BẰNG AI (CHỐNG ẢO GIÁC HÀNG ĐỢI)
+// 5. CHẾ BIẾN LỖI SAI BẰNG AI (HYBRID MODE - CHỈ KÍCH HOẠT NẾU LÀ CHẾ ĐỘ KHÓ)
 if (effectiveAiMode && currentApiKey && isSentence && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 try {
 const aiDistortPromise = window.GameAlgoEngine.DistortionEngine.ai_distort(baseCard.term, lang, type, currentApiKey, level, config?.topic);
@@ -13928,18 +13967,15 @@ if (deckRef.current) deckRef.current.unshift(baseCard);
 return null;
 }
 }
-// 6. CHẾ ĐỘ OFFLINE THUẦN TÚY
-if (!effectiveAiMode) {
+// 6. CHẾ ĐỘ OFFLINE THUẦN TÚY (CHẾ ĐỘ DỄ)
 let offlineResult = { wrongSentence: baseCard.term + "x", wrongWord: baseCard.term + "x", correction: baseCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
 offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(baseCard.term, lang, type);
 }
 return { ...offlineResult, origin: baseCard, isAiGenerated: false };
-}
-return null;
 };
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-// [ĐẠI PHẪU THUẬT V1.15] Phân rã ký tự và Định vị tọa độ tuyệt đối (Absolute Indexing)
+// Phân rã ký tự và Định vị tọa độ tuyệt đối (Absolute Indexing)
 const setupQuestion = (data) => {
 setCurrentQuestion(data);
 let wordChunks = [];
@@ -13952,7 +13988,6 @@ let exactStartIndex = sentence.indexOf(wrong); // Default fallback
 if (originTerm && sentence && wrong) {
 let diffIdx = -1;
 const minLen = Math.min(sentence.length, originTerm.length);
-// Tìm điểm khác biệt đầu tiên giữa câu sai và câu đúng
 for(let i = 0; i < minLen; i++) {
 if (sentence[i] !== originTerm[i]) {
 diffIdx = i;
@@ -13963,7 +13998,6 @@ if (diffIdx === -1 && sentence.length !== originTerm.length) {
 diffIdx = minLen;
 }
 if (diffIdx !== -1) {
-// Quét trong phạm vi lân cận điểm khác biệt để tìm vị trí chính xác của wrongWord
 const searchAreaStart = Math.max(0, diffIdx - 3);
 const localIndex = sentence.substring(searchAreaStart).indexOf(wrong);
 if (localIndex !== -1) {
@@ -13972,7 +14006,6 @@ exactStartIndex = searchAreaStart + localIndex;
 }
 }
 if (isChinese) {
-// Tiếng Trung: Băm từng ký tự, quét vị trí Index tuyệt đối để chống lỗi trùng lặp chữ
 let currentStrIdx = 0;
 wordChunks = Array.from(sentence).map((char, idx) => {
 const isTarget = exactStartIndex !== -1 && currentStrIdx >= exactStartIndex && currentStrIdx < exactStartIndex + wrong.length;
@@ -13980,7 +14013,6 @@ currentStrIdx += char.length;
 return { id: `c-${idx}-${Date.now()}`, text: char, isTarget };
 });
 } else {
-// Tiếng Anh/Việt: Băm theo chuỗi Substring Matching an toàn 100%
 if (wrong && sentence) {
 if (exactStartIndex !== -1) {
 const before = sentence.substring(0, exactStartIndex);
@@ -13991,7 +14023,6 @@ const matchChunk = { id: `cm-${Date.now()}`, text: matchedText, isTarget: true }
 const afterChunks = after.split(' ').filter(w => w.trim().length > 0).map((text, idx) => ({ id: `ca-${idx}-${Date.now()}`, text, isTarget: false }));
 wordChunks = [...beforeChunks, matchChunk, ...afterChunks];
 } else {
-// Fallback
 wordChunks = sentence.split(' ').filter(w => w.trim().length > 0).map((text, idx) => {
 const cleanText = text.replace(/[.,?!;:'"]/g, '').toLowerCase();
 const cleanWrong = wrong.replace(/[.,?!;:'"]/g, '').toLowerCase();
@@ -14015,19 +14046,7 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 isInitializingRef.current = true;
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
-let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
-if (sourceMode === 'card' && effectiveAiMode && apiKey && window.AiFactoryEngine) {
-safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
-const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(
-currentDeck, initialIndices, 10, lang, apiKey
-);
-if (hasUpdates) {
-enrichedCardsRef.current = updatedCards;
-currentDeck = updatedCards;
-if (onUpdateCards) onUpdateCards(updatedCards);
-safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
-}
-}
+// [CẮT BỎ BATCH ENRICH TẠI ĐÂY] - Khởi động 0 giây
 if (sourceMode === 'card') {
 let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
 let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
@@ -14062,7 +14081,6 @@ deckRef.current = [];
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// [ĐỒNG BỘ] Nâng mức trần nạp đạn lên 4 viên
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 } else {
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
@@ -14311,6 +14329,36 @@ setTimeout(() => setCheckStatus(p => p === 'wrong_spot' ? 'idle' : p), 1000);
 }
 setTimeout(() => triggerAutoSave(), 150);
 };
+// [NEW V1.18] LUỒNG LAZY LOADING: GỌI AI GIẢI THÍCH NGỮ PHÁP ON-DEMAND / DỊCH NGHĨA
+const handleRequestHint = async () => {
+if (isTranslating || isAiExplaining || isGenerating || !currentQuestion || !apiKey) {
+if (!apiKey) safeShowToast("Cần cấu hình API Key để gọi AI!", "warning");
+return;
+}
+const textToTranslate = currentQuestion.origin?.term || currentQuestion.wrongSentence;
+if (!textToTranslate) return;
+setIsTranslating(true);
+setIsAiExplaining(true); // Dùng chung cờ Loading cho UI
+try {
+const prompt = `Dịch câu văn sau sang tiếng Việt một cách ngắn gọn, tự nhiên. CHỈ TRẢ VỀ CÂU DỊCH, KHÔNG GIẢI THÍCH THÊM: "${textToTranslate}"`;
+const res = await window.Utils.callGeminiApi(prompt, null, apiKey);
+if (res && res.text) {
+const translatedText = res.text.replace(/["']/g, "").trim();
+// Cập nhật State để UI hiển thị ngay lập tức
+setCurrentQuestion(prev => ({
+...prev,
+hint: translatedText,
+origin: { ...prev.origin, definition: translatedText }
+}));
+}
+} catch (error) {
+console.warn("Lỗi dịch tự động:", error);
+safeShowToast("Mạng yếu hoặc lỗi AI. Không thể tải gợi ý lúc này.", "error");
+} finally {
+setIsTranslating(false);
+setIsAiExplaining(false);
+}
+};
 // [NEW V1.18] LUỒNG LAZY LOADING: GỌI AI GIẢI THÍCH NGỮ PHÁP ON-DEMAND
 const handleExplain = async () => {
 if (isGenerating || isAiExplaining || !currentQuestion) return;
@@ -14332,18 +14380,15 @@ setIsAiExplaining(false);
 };
 const handleCorrectionSubmit = () => {
 if (stage !== 'correct' || !inputBuffer.trim()) return;
-// Chuẩn hóa chuỗi cực mạnh: Xóa mọi dấu câu và khoảng trắng để so sánh bản chất
 const normalize = (str) => str ? str.toLowerCase().replace(/[.,?!;:"'()[\]{}。，？！；：“”‘’（）【】\u0332]/g, "").replace(/\s+/g, "").trim() : "";
 const normalizedInput = normalize(inputBuffer);
 const normalizedCorrection = normalize(currentQuestion.correction);
-// 1. THUẬT TOÁN CHẤM ĐIỂM THẨM THẤU (HOLISTIC CONTEXT VALIDATION)
 const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion.wrongSentence || "");
 const separator = isChinese ? '' : ' ';
 let userSentenceArray = [];
 const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
 const minIdx = sortedIndices[0];
 const maxIdx = sortedIndices[sortedIndices.length - 1];
-// Cắt bỏ vùng chọn và đắp input của người dùng vào
 for (let i = 0; i < chunks.length; i++) {
 if (i < minIdx || i > maxIdx) {
 userSentenceArray.push(chunks[i].text);
@@ -14352,11 +14397,9 @@ userSentenceArray.push(inputBuffer);
 }
 }
 const userFullSentence = userSentenceArray.join(separator);
-// Xác định câu nguyên thủy
 const aiCorrectSentence = currentQuestion.origin?.term || currentQuestion.wrongSentence.replace(currentQuestion.wrongWord, currentQuestion.correction);
 const normalizedUserFull = normalize(userFullSentence);
 const normalizedAiFull = normalize(aiCorrectSentence);
-// CHẤM ĐIỂM KÉP: Sửa đúng từ (Local) HOẶC Sửa đúng cả câu (Global) đều được chấp nhận
 const isCorrect = (normalizedInput === normalizedCorrection) || (normalizedUserFull === normalizedAiFull);
 if (isCorrect) {
 if (attempts === 0) {
@@ -14434,8 +14477,11 @@ isGenerating, aiCountdown: 0, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
 aiWaitTime,
 handleSpotClick, handleCheckSpot, handleCorrectionSubmit, handleSkip, nextRound, handleSaveAndBack,
-onRequestExplanation: handleExplain, // Bơm hàm gọi AI ra UI
-isExplaining: isAiExplaining // Cờ Loading cho nút bóng đèn
+onRequestExplanation: handleExplain, // Bơm hàm gọi AI giải thích ngữ pháp
+handleRequestHint, // Bơm hàm gọi AI dịch nghĩa
+isExplaining: isAiExplaining,
+isTranslating,
+isHardMode // Bơm cờ độ khó ra UI
 };
 };
 // --- 2. GAME WRAPPER ---
