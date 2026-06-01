@@ -1318,10 +1318,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.06
-// Last Updated: 2026-05-30 16:45
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.08
+// Last Updated: 2026-06-01 10:45
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật V1.06: [PHRASE-LEVEL DISTORTION] Nâng cấp AI Prompt trong `ai_distort` (Sentence Mode). Mở khóa khả năng bóp méo cả cụm từ (Phrase). Kèm theo Luật UX nghiêm ngặt chống lỗi tàng hình (Omission Error).
+// Cập nhật V1.08: [MERGE CONFLICT FIX] Hợp nhất toàn vẹn các bản vá: Trả lại 54 dòng code Sliding Window của ClozeEngine (từ V1.04), giữ nguyên thuật toán 1-to-1 SpotMistake (V1.05), và Template Literal an toàn cho AI Prompt (V1.07).
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1554,11 +1554,12 @@ required: ["wrongWord", "explanation"]
 };
 } else {
 const langStr = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
-prompt = "Context: \"" + text + "\". Language: " + langStr + ".\n" +
-Task: Create EXACTLY ONE subtle mistake in the text. This mistake can be a single word, OR an ENTIRE PHRASE (cụm từ). Feel free to replace a correct phrase with a logically/grammatically wrong phrase to test the user's advanced understanding.\n +
-CRITICAL UX RULE: DO NOT create an error by purely DELETING or OMITTING words. The user must physically click on the wrong word/phrase on the screen. Therefore, the mistake MUST be a SUBSTITUTION (replacing a correct word/phrase with a wrong one) or an ADDITION (inserting extra unnecessary words).\n +
-CRITICAL RETURN RULE: The 'wrongWord' field in JSON MUST contain the ENTIRE wrong phrase you inserted/substituted.\n +
-Rule: The explanation field MUST BE 100% IN VIETNAMESE. + injectedRule + levelContext;
+// [VÁ LỖI CÚ PHÁP] Chuyển đổi thành Template Literal (Backtick) để đảm bảo không gãy chuỗi
+prompt = `Context: "${text}". Language: ${langStr}.\n` +
+`Task: Create EXACTLY ONE subtle mistake in the text. This mistake can be a single word, OR an ENTIRE PHRASE (cụm từ). Feel free to replace a correct phrase with a logically/grammatically wrong phrase to test the user's advanced understanding.\n` +
+`CRITICAL UX RULE: DO NOT create an error by purely DELETING or OMITTING words. The user must physically click on the wrong word/phrase on the screen. Therefore, the mistake MUST be a SUBSTITUTION (replacing a correct word/phrase with a wrong one) or an ADDITION (inserting extra unnecessary words).\n` +
+`CRITICAL RETURN RULE: The 'wrongWord' field in JSON MUST contain the ENTIRE wrong phrase you inserted/substituted.\n` +
+`Rule: The explanation field MUST BE 100% IN VIETNAMESE.` + injectedRule + levelContext;
 schema = {
 type: "OBJECT",
 properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } },
