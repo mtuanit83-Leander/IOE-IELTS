@@ -1553,23 +1553,20 @@ if (ruleStr) injectedRule = "\nCRITICAL DISTORTION RULE: " + ruleStr;
 if (type === 'word') {
 prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
 `Nhiệm vụ: Tạo ra CHÍNH XÁC MỘT lỗi chính tả hoặc lỗi hình thái từ cho từ này.` + injectedRule +
-`\nQUY TẮC QUAN TRỌNG: CHỈ TRẢ VỀ MỘT TỪ DUY NHẤT. KHÔNG ĐƯỢC VIẾT THÀNH CÂU.\n` +
-`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + levelContext;
+`\nQUY TẮC QUAN TRỌNG: CHỈ TRẢ VỀ MỘT TỪ DUY NHẤT. KHÔNG ĐƯỢC VIẾT THÀNH CÂU.\n`;
 schema = {
 type: "OBJECT",
-properties: { wrongWord: { type: "STRING" }, explanation: { type: "STRING" } },
-required: ["wrongWord", "explanation"]
+properties: { wrongWord: { type: "STRING" } },
+required: ["wrongWord"]
 };
 } else {
-// [VÁ LỖI TÊ LIỆT AI] Chuyển từ "Cấm đoán" (Negative Constraints) sang "Dạy qua ví dụ" (Few-Shot Prompting).
-// Việt hóa 100% ví dụ, bơm nhiều mẫu bóp méo CỤM TỪ để định hướng AI.
 let examples = "";
 if (lang === 'zh') {
 examples = `
 Các ví dụ HỢP LỆ:
-- [Thay thế 1 chữ] Câu đúng: "他在学习", Câu sai: "他再学习"
+- [Thay thế 1 chữ] Câu đúng: "他在学习", Câu sai: "她在学习"
 - [Thay thế trái nghĩa] Câu đúng: "天气很好", Câu sai: "天气很坏"
-- [Thay thế từ ngữ pháp] Câu đúng: "跑得快", Câu sai: "跑的快"
+- [Thay thế từ ngữ pháp] Câu đúng: "跑得快", Câu sai: "跑地快"
 - [Thay thế CỤM TỪ - Nhiều chữ] Câu đúng: "我很兴奋", Câu sai: "我感到悲伤"
 - [Thay thế Thành ngữ] Câu đúng: "人山人海", Câu sai: "人山人水"
 - [Thêm 1 chữ] Câu đúng: "很好", Câu sai: "很好的"
@@ -1593,17 +1590,15 @@ Các ví dụ HỢP LỆ:
 - [Thêm từ] Câu đúng: "Tôi thích ăn táo", Câu sai: "Tôi thích ăn quả táo"
 `;
 }
-// [PERSONA PROMPTING & PRIORITIZATION] Đóng vai Giáo viên, ưu tiên bẫy Cụm từ và đảm bảo rào chắn UX.
 prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
 `Nhiệm vụ: Đóng vai một giáo viên, hãy tạo ra CHÍNH XÁC MỘT lỗi sai tinh vi (về ngữ pháp hoặc ngữ cảnh) trong câu này. Lỗi sai này có thể là 1 TỪ DUY NHẤT, HOẶC MỘT CỤM TỪ. Hãy tự do thay thế một cụm từ đúng bằng một cụm từ sai logic/ngữ pháp để thử thách người học.\n` +
 `RÀNG BUỘC CỐT LÕI VỀ TRẢI NGHIỆM NGƯỜI DÙNG: BẮT BUỘC phải dùng phương pháp Thay thế (đổi từ này thành từ khác) hoặc Thêm từ (nhét thêm từ rác vào). Người chơi cần một chữ vật lý hiển thị trên màn hình để bấm vào. TUYỆT ĐỐI KHÔNG tạo lỗi sai bằng cách xóa trắng/lược bỏ từ mà không thay thế bằng từ khác.\n` +
 `${examples}\n` +
-`QUY TẮC TRẢ VỀ QUAN TRỌNG: Trường 'wrongWord' trong JSON BẮT BUỘC phải chứa TOÀN BỘ cụm từ sai mà bạn đã chèn/thay thế.\n` +
-`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + injectedRule + levelContext;
+`QUY TẮC TRẢ VỀ QUAN TRỌNG: Trường 'wrongWord' trong JSON BẮT BUỘC phải chứa TOÀN BỘ cụm từ sai mà bạn đã chèn/thay thế.` + injectedRule + levelContext;
 schema = {
 type: "OBJECT",
-properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } },
-required: ["wrongSentence", "wrongWord", "correction", "explanation"]
+properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" } },
+required: ["wrongSentence", "wrongWord", "correction"]
 };
 }
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
@@ -13082,10 +13077,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Sheet5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.1
-// Last Updated: 2026-06-01 15:00
+// Block 5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.2
+// Last Updated: 2026-06-01 17:30
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật V3.1: [HOLISTIC VALIDATION PREP] Định tuyến tham số textToFix vào handleCorrectionSubmit để cung cấp ngữ cảnh vùng chọn cho cơ chế Chấm điểm thẩm thấu.
+// Cập nhật V3.2: [LAZY LOADING UI] Bổ sung giao diện nút bấm Gọi AI Phân tích ngữ pháp theo yêu cầu (On-Demand) nhằm giải phóng tốc độ sinh câu hỏi.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -13210,7 +13205,8 @@ t, mainColor, config, currentQuestion, chunks, stage, selectedIndices = [], inpu
 checkStatus, attempts, score, combo, playedCount, time, isFinished, isGenerating, aiCountdown,
 correctCount, wrongCount, handleSpotClick, handleCheckSpot, handleCorrectionSubmit, handleSkip, nextRound,
 onBack, onEndGame, onSaveToNotebook, isBookmarked,
-resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength, aiWaitTime
+resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength, aiWaitTime,
+onRequestExplanation, isExplaining // Props cho Lazy Loading
 }) => {
 const Icons = window.Icons;
 const Icon = (Name, props) => Icons[Name] ? React.createElement(Icons[Name], props) : null;
@@ -13437,7 +13433,7 @@ className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 b
 <span className="w-8 h-px bg-gray-300"></span>
 </div>
 <div className="text-lg font-medium text-gray-700 italic leading-relaxed">
-{currentQuestion.origin?.definition || currentQuestion.hint || currentQuestion.explanation}
+{currentQuestion.origin?.definition || currentQuestion.hint || (currentQuestion.explanation && currentQuestion.explanation.length < 50 ? currentQuestion.explanation : "Hãy đọc kỹ câu văn và tìm lỗi sai...")}
 </div>
 </div>
 {/* 2. Khu vực Word Bricks đa hình (Language-Aware & Multi-Select Chunking) */}
@@ -13582,6 +13578,8 @@ className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-cente
 <div className="text-xl font-bold text-green-600 break-words">{currentQuestion.correction}</div>
 </div>
 </div>
+<div className="mt-4">
+{currentQuestion.explanation && currentQuestion.explanation.length > 10 ? (
 <div>
 <div className={`text-xs font-bold text-${mainColor}-400 uppercase mb-1 flex items-center gap-1`}>
 <Icons.Sparkles size={14}/> Phân tích ngữ pháp
@@ -13589,6 +13587,22 @@ className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-cente
 <p className="text-gray-700 leading-relaxed italic text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
 {currentQuestion.explanation}
 </p>
+</div>
+) : (
+<div className="flex justify-center w-full mt-2">
+<button
+onClick={() => onRequestExplanation && onRequestExplanation()}
+disabled={isExplaining}
+className={`w-full py-3 bg-${mainColor}-50 text-${mainColor}-700 rounded-xl text-sm font-bold border border-${mainColor}-200 hover:bg-${mainColor}-100 flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95`}
+>
+{isExplaining ? (
+<><div className={`w-4 h-4 border-2 border-${mainColor}-600 border-t-transparent rounded-full animate-spin`}></div> Đang nhờ AI phân tích...</>
+) : (
+<><Icons.Sparkles size={18} /> Gọi AI phân tích lỗi sai này</>
+)}
+</button>
+</div>
+)}
 </div>
 </div>
 </div>
@@ -13654,10 +13668,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.17
-// Last Updated: 2026-06-01 15:05
+// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.18
+// Last Updated: 2026-06-01 17:36
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode & Hybrid Mode.
-// Cập nhật V1.17: [HOLISTIC VALIDATION] Cấy ghép thuật toán "Chấm Điểm Thẩm Thấu" (Holistic Context Validation) vào handleCorrectionSubmit. Cho phép người dùng sửa tự do cục bộ hoặc toàn cục, triệt tiêu hoàn toàn nghịch lý bóp méo của AI.
+// Cập nhật V1.18: [LAZY LOADING AI] Cấy ghép động cơ handleExplain (On-Demand Processing) để kết nối với nút UI mới. Gọi AI giải thích ngữ pháp chỉ khi người dùng yêu cầu, giải phóng 100% tốc độ sinh câu hỏi ban đầu.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -13680,6 +13694,8 @@ const [isFinished, setIsFinished] = React.useState(false);
 const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(false);
+// [NEW V1.18] State quản lý luồng gọi AI giải thích Lazy Loading
+const [isAiExplaining, setIsAiExplaining] = React.useState(false);
 // UX Timer State cho màn hình hiển thị kết quả
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
@@ -14295,6 +14311,25 @@ setTimeout(() => setCheckStatus(p => p === 'wrong_spot' ? 'idle' : p), 1000);
 }
 setTimeout(() => triggerAutoSave(), 150);
 };
+// [NEW V1.18] LUỒNG LAZY LOADING: GỌI AI GIẢI THÍCH NGỮ PHÁP ON-DEMAND
+const handleExplain = async () => {
+if (isGenerating || isAiExplaining || !currentQuestion) return;
+setIsAiExplaining(true);
+try {
+const contextToExplain = `Hãy giải thích ngữ pháp: Câu bị sai là "${currentQuestion.wrongSentence}". Lỗi sai ở chữ "${currentQuestion.wrongWord}" và phải sửa thành "${currentQuestion.correction}". Tại sao lại sửa như vậy?`;
+const result = await window.Utils.explainSentenceGrammar(contextToExplain, lang, apiKey);
+setCurrentQuestion(prev => ({ ...prev, explanation: result.text }));
+if (result._tokenUsage) {
+const used = result._tokenUsage.totalTokenCount || 0;
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + used);
+}
+} catch (e) {
+if (showToast) safeShowToast("Lỗi kết nối AI: " + e.message, "error");
+} finally {
+setIsAiExplaining(false);
+}
+};
 const handleCorrectionSubmit = () => {
 if (stage !== 'correct' || !inputBuffer.trim()) return;
 // Chuẩn hóa chuỗi cực mạnh: Xóa mọi dấu câu và khoảng trắng để so sánh bản chất
@@ -14398,7 +14433,9 @@ checkStatus, attempts, score, combo, playedCount, time, isFinished,
 isGenerating, aiCountdown: 0, correctCount, wrongCount,
 resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength,
 aiWaitTime,
-handleSpotClick, handleCheckSpot, handleCorrectionSubmit, handleSkip, nextRound, handleSaveAndBack
+handleSpotClick, handleCheckSpot, handleCorrectionSubmit, handleSkip, nextRound, handleSaveAndBack,
+onRequestExplanation: handleExplain, // Bơm hàm gọi AI ra UI
+isExplaining: isAiExplaining // Cờ Loading cho nút bóng đèn
 };
 };
 // --- 2. GAME WRAPPER ---
