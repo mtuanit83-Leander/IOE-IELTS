@@ -1326,10 +1326,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.09
-// Last Updated: 2026-06-01 14:40
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.10
+// Last Updated: 2026-06-01 15:52
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật V1.09: [FEW-SHOT PROMPT OPTIMIZATION] Gỡ bỏ luật cấm đoán gây tê liệt suy luận AI trong `ai_distort`. Tiêm kỹ thuật Few-Shot (Ví dụ mẫu) để AI bắt chước nhanh, giảm thời gian phản hồi từ >15s xuống <3s.
+// Cập nhật V1.10: [PROMPT OPTIMIZATION] Tiêm kỹ thuật Few-Shot hạng nặng vào `ai_distort`. Cung cấp hàng loạt ví dụ đa dạng về Lỗi Thay thế (Substitution) để trị dứt điểm "Hội chứng Lười biếng" (chỉ thêm từ) của AI.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1563,21 +1563,35 @@ required: ["wrongWord", "explanation"]
 } else {
 const langStr = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
 // [VÁ LỖI TÊ LIỆT AI] Chuyển từ "Cấm đoán" (Negative Constraints) sang "Dạy qua ví dụ" (Few-Shot Prompting).
-// Đảm bảo AI luôn biết cách Thay thế (Substitution) hoặc Thêm từ (Addition) một cách tự nhiên mà không bị nghẽn (Choke) khi suy luận.
+// Cung cấp hàng loạt mẫu ĐA DẠNG để AI biết nó được quyền bóp méo cả cụm từ (Collocations/Phrases).
 let examples = "";
 if (lang === 'zh') {
 examples = `
 Examples of VALID mistakes:
 - [Substitution 1 character] Correct: "他在学习", Wrong: "她在学习"
-- [Substitution phrase] Correct: "我很高兴", Wrong: "我很快乐"
-- [Addition 1 character] Correct: "很好", Wrong: "很好的"
+- [Substitution antonym] Correct: "天气很好", Wrong: "天气很坏"
+- [Substitution grammar word] Correct: "跑得快", Wrong: "跑地快"
+- [Substitution PHRASE - Multiple characters] Correct: "我很兴奋", Wrong: "我感到悲伤"
+- [Substitution Idiom] Correct: "人山人海", Wrong: "人山人水"
+- [Addition 1 word] Correct: "很好", Wrong: "很好的"
+- [Addition multiple words] Correct: "我们吃饭", Wrong: "我们马上吃饭"
+`;
+} else if (lang === 'en') {
+examples = `
+Examples of VALID mistakes:
+- [Substitution Word] Correct: "I go to school", Wrong: "I goes to school"
+- [Substitution Antonym] Correct: "It is very hot today", Wrong: "It is very cold today"
+- [Substitution PHRASE] Correct: "I am looking forward to it", Wrong: "I am looking backward to it"
+- [Substitution PHRASE] Correct: "It is raining cats and dogs", Wrong: "It is raining dogs and cats"
+- [Addition Word] Correct: "I like apples", Wrong: "I like the apples"
 `;
 } else {
 examples = `
 Examples of VALID mistakes:
-- [Substitution word] Correct: "I go to school", Wrong: "I goes to school"
-- [Substitution phrase] Correct: "It is raining cats and dogs", Wrong: "It is raining dogs and cats"
-- [Addition word] Correct: "I like apple", Wrong: "I like the apple"
+- [Substitution Word] Correct: "Tôi đi học", Wrong: "Tôi đi làm"
+- [Substitution Antonym] Correct: "Hôm nay trời rất nóng", Wrong: "Hôm nay trời rất lạnh"
+- [Substitution PHRASE] Correct: "Chó cắn áo rách", Wrong: "Chó cắn quần rách"
+- [Addition Word] Correct: "Tôi thích ăn táo", Wrong: "Tôi thích ăn quả táo"
 `;
 }
 prompt = `Context: "${text}". Language: ${langStr}.\n` +
