@@ -1326,10 +1326,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.10
-// Last Updated: 2026-06-01 15:52
+// Block2.3: TẦNG 2: TIỆN ÍCH & CẤU HÌNH (Game Algo Engine) - Version 1.11
+// Last Updated: 2026-06-01 16:59
 // Nhiệm vụ: "Nhà máy Thuật toán" tập trung. Chứa các logic bóp méo câu, đục lỗ, xáo trộn dùng chung.
-// Cập nhật V1.10: [PROMPT OPTIMIZATION] Tiêm kỹ thuật Few-Shot hạng nặng vào `ai_distort`. Cung cấp hàng loạt ví dụ đa dạng về Lỗi Thay thế (Substitution) để trị dứt điểm "Hội chứng Lười biếng" (chỉ thêm từ) của AI.
+// Cập nhật V1.11: [PROMPT OPTIMIZATION] Việt hóa 100% Prompt của Lò đúc Bóp méo. Áp dụng kỹ thuật "Persona Prompting" (Đóng vai Giáo viên) và xếp hạng ưu tiên bóp méo CỤM TỪ để tạo ra các bẫy hóc búa hơn, đồng thời giữ vững rào chắn UX.
 // ==================================================================================
 window.GameAlgoEngine = {
 // Helper nội bộ
@@ -1539,6 +1539,7 @@ ai_distort: async function(text, lang, type, apiKey, level = "", topic = "") {
 let prompt = "";
 let schema = {};
 const levelContext = window.GameAlgoEngine._getLevelContext(level);
+const langStr = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierDistortionRule) {
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
@@ -1550,56 +1551,55 @@ const ruleStr = window.IoeDataEngine.getMicroTierDistortionRule(targetLang, data
 if (ruleStr) injectedRule = "\nCRITICAL DISTORTION RULE: " + ruleStr;
 }
 if (type === 'word') {
-if (lang === 'zh') {
-prompt = "Context: \"" + text + "\". Language: Chinese.\nTask: Create ONE subtle spelling mistake for this word." + injectedRule + "\nCRITICAL: RETURN ONLY ONE WORD. DO NOT WRITE A SENTENCE.\nRule: The explanation field MUST BE 100% IN VIETNAMESE." + levelContext;
-} else {
-prompt = "Context: \"" + text + "\". Language: " + (lang === 'en' ? 'English' : 'Vietnamese') + ".\nTask: Create ONE subtle spelling mistake for this word." + injectedRule + "\nCRITICAL: RETURN ONLY ONE WORD. DO NOT WRITE A SENTENCE.\nRule: The explanation field MUST BE 100% IN VIETNAMESE." + levelContext;
-}
+prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
+`Nhiệm vụ: Tạo ra CHÍNH XÁC MỘT lỗi chính tả hoặc lỗi hình thái từ cho từ này.` + injectedRule +
+`\nQUY TẮC QUAN TRỌNG: CHỈ TRẢ VỀ MỘT TỪ DUY NHẤT. KHÔNG ĐƯỢC VIẾT THÀNH CÂU.\n` +
+`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + levelContext;
 schema = {
 type: "OBJECT",
 properties: { wrongWord: { type: "STRING" }, explanation: { type: "STRING" } },
 required: ["wrongWord", "explanation"]
 };
 } else {
-const langStr = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
 // [VÁ LỖI TÊ LIỆT AI] Chuyển từ "Cấm đoán" (Negative Constraints) sang "Dạy qua ví dụ" (Few-Shot Prompting).
-// Cung cấp hàng loạt mẫu ĐA DẠNG để AI biết nó được quyền bóp méo cả cụm từ (Collocations/Phrases).
+// Việt hóa 100% ví dụ, bơm nhiều mẫu bóp méo CỤM TỪ để định hướng AI.
 let examples = "";
 if (lang === 'zh') {
 examples = `
-Examples of VALID mistakes:
-- [Substitution 1 character] Correct: "他在学习", Wrong: "她在学习"
-- [Substitution antonym] Correct: "天气很好", Wrong: "天气很坏"
-- [Substitution grammar word] Correct: "跑得快", Wrong: "跑地快"
-- [Substitution PHRASE - Multiple characters] Correct: "我很兴奋", Wrong: "我感到悲伤"
-- [Substitution Idiom] Correct: "人山人海", Wrong: "人山人水"
-- [Addition 1 word] Correct: "很好", Wrong: "很好的"
-- [Addition multiple words] Correct: "我们吃饭", Wrong: "我们马上吃饭"
+Các ví dụ HỢP LỆ:
+- [Thay thế 1 chữ] Câu đúng: "他在学习", Câu sai: "他再学习"
+- [Thay thế trái nghĩa] Câu đúng: "天气很好", Câu sai: "天气很坏"
+- [Thay thế từ ngữ pháp] Câu đúng: "跑得快", Câu sai: "跑的快"
+- [Thay thế CỤM TỪ - Nhiều chữ] Câu đúng: "我很兴奋", Câu sai: "我感到悲伤"
+- [Thay thế Thành ngữ] Câu đúng: "人山人海", Câu sai: "人山人水"
+- [Thêm 1 chữ] Câu đúng: "很好", Câu sai: "很好的"
+- [Thêm nhiều chữ] Câu đúng: "我们吃饭", Câu sai: "我们马上吃饭"
 `;
 } else if (lang === 'en') {
 examples = `
-Examples of VALID mistakes:
-- [Substitution Word] Correct: "I go to school", Wrong: "I goes to school"
-- [Substitution Antonym] Correct: "It is very hot today", Wrong: "It is very cold today"
-- [Substitution PHRASE] Correct: "I am looking forward to it", Wrong: "I am looking backward to it"
-- [Substitution PHRASE] Correct: "It is raining cats and dogs", Wrong: "It is raining dogs and cats"
-- [Addition Word] Correct: "I like apples", Wrong: "I like the apples"
+Các ví dụ HỢP LỆ:
+- [Thay thế 1 từ] Câu đúng: "I go to school", Câu sai: "I goes to school"
+- [Thay thế trái nghĩa] Câu đúng: "It is very hot today", Câu sai: "It is very cold today"
+- [Thay thế CỤM TỪ] Câu đúng: "I am looking forward to it", Câu sai: "I am looking backward to it"
+- [Thay thế CỤM TỪ] Câu đúng: "It is raining cats and dogs", Câu sai: "It is raining dogs and cats"
+- [Thêm từ] Câu đúng: "I like apples", Câu sai: "I like the apples"
 `;
 } else {
 examples = `
-Examples of VALID mistakes:
-- [Substitution Word] Correct: "Tôi đi học", Wrong: "Tôi đi làm"
-- [Substitution Antonym] Correct: "Hôm nay trời rất nóng", Wrong: "Hôm nay trời rất lạnh"
-- [Substitution PHRASE] Correct: "Chó cắn áo rách", Wrong: "Chó cắn quần rách"
-- [Addition Word] Correct: "Tôi thích ăn táo", Wrong: "Tôi thích ăn quả táo"
+Các ví dụ HỢP LỆ:
+- [Thay thế từ] Câu đúng: "Tôi đi học", Câu sai: "Tôi đi làm"
+- [Thay thế trái nghĩa] Câu đúng: "Hôm nay trời rất nóng", Câu sai: "Hôm nay trời rất lạnh"
+- [Thay thế CỤM TỪ] Câu đúng: "Chó cắn áo rách", Câu sai: "Chó cắn quần rách"
+- [Thêm từ] Câu đúng: "Tôi thích ăn táo", Câu sai: "Tôi thích ăn quả táo"
 `;
 }
-prompt = `Context: "${text}". Language: ${langStr}.\n` +
-`Task: Introduce EXACTLY ONE subtle grammatical or contextual error in the text. This error can be a single word, OR an ENTIRE PHRASE (cụm từ). Feel free to replace a correct phrase with a logically/grammatically wrong phrase to test the user's advanced understanding.\n` +
-`REQUIREMENT: You must use Substitution (replace words) or Addition (insert words). The user needs a physical word on the screen to click on. DO NOT purely delete/omit words without replacing them.\n` +
+// [PERSONA PROMPTING & PRIORITIZATION] Đóng vai Giáo viên, ưu tiên bẫy Cụm từ và đảm bảo rào chắn UX.
+prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
+`Nhiệm vụ: Đóng vai một giáo viên, hãy tạo ra CHÍNH XÁC MỘT lỗi sai tinh vi (về ngữ pháp hoặc ngữ cảnh) trong câu này. Lỗi sai này có thể là 1 TỪ DUY NHẤT, HOẶC MỘT CỤM TỪ. Hãy tự do thay thế một cụm từ đúng bằng một cụm từ sai logic/ngữ pháp để thử thách người học.\n` +
+`RÀNG BUỘC CỐT LÕI VỀ TRẢI NGHIỆM NGƯỜI DÙNG: BẮT BUỘC phải dùng phương pháp Thay thế (đổi từ này thành từ khác) hoặc Thêm từ (nhét thêm từ rác vào). Người chơi cần một chữ vật lý hiển thị trên màn hình để bấm vào. TUYỆT ĐỐI KHÔNG tạo lỗi sai bằng cách xóa trắng/lược bỏ từ mà không thay thế bằng từ khác.\n` +
 `${examples}\n` +
-`CRITICAL RETURN RULE: The 'wrongWord' field in JSON MUST contain the ENTIRE wrong phrase you inserted/substituted.\n` +
-`Rule: The explanation field MUST BE 100% IN VIETNAMESE.` + injectedRule + levelContext;
+`QUY TẮC TRẢ VỀ QUAN TRỌNG: Trường 'wrongWord' trong JSON BẮT BUỘC phải chứa TOÀN BỘ cụm từ sai mà bạn đã chèn/thay thế.\n` +
+`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + injectedRule + levelContext;
 schema = {
 type: "OBJECT",
 properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } },
@@ -1725,7 +1725,7 @@ fallbackCounter++;
 }
 return arr.slice(0, count);
 },
-ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
+ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "") {
 const promptKey = type === 'sentence' ? 'quiz_sentence' : 'quiz_word';
 let term = "";
 let definition = "";
