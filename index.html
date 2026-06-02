@@ -13077,10 +13077,10 @@ window.Block5_9_useFillBlankLogic = useFillBlankLogic;
 window.useFillBlankLogic = useFillBlankLogic;
 window.Block5_9_FillBlankGame = FillBlankGame;
 window.FillBlankGame = FillBlankGame;
-// Block 5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.4
-// Last Updated: 2026-06-01 22:30
+// Block 5.10: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Setup & PlayScreen UI) - Version 3.5
+// Last Updated: 2026-06-02 08:08
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Tìm Lỗi Sai (Spot Mistake).
-// Cập nhật V3.4: [BUG FIX] Khắc phục lỗi Babel JSX (White Screen) do gọi `<window.GlobalLoadingScreen>`. Tái cấu trúc giao diện Setup 4 khối chuẩn thiết kế UI/UX mới nhất.
+// Cập nhật V3.5: [REFACTOR UI] Đẩy tính toán `textToFix` lên trước để làm tham số cho các hàm sự kiện, đóng gói đầy đủ ngữ cảnh để phục vụ chấm điểm Thẩm thấu (Holistic Context Validation).
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const SpotMistakeSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -13236,10 +13236,42 @@ React.useEffect(() => {
 setShowHint(false);
 }, [currentQuestion]);
 const isHardMode = config?.difficulty === 'hard';
+// THUẬT TOÁN SHADOW CHUNKING ĐA HÌNH
+const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion?.wrongSentence || "");
+const displayChunks = React.useMemo(() => {
+if (!currentQuestion || !chunks) return [];
+if (isChinese) {
+let charArray = [];
+chunks.forEach((chunk, chunkIdx) => {
+const chars = Array.from(chunk.text);
+chars.forEach((char, charIdx) => {
+charArray.push({
+id: `char_${chunkIdx}_${charIdx}`,
+text: char,
+parentChunkIndex: chunkIdx,
+isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase()) || char === currentQuestion.wrongWord
+});
+});
+});
+return charArray;
+}
+return chunks.map((chunk, idx) => ({
+...chunk,
+parentChunkIndex: idx,
+isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())
+}));
+}, [currentQuestion, chunks, isChinese]);
+// Tính toán chuỗi văn bản đang được chọn để hiển thị ở Giai đoạn 2
+const textToFix = React.useMemo(() => {
+if (!chunks || selectedIndices.length === 0) return "";
+// Sắp xếp lại index để ghép chữ đúng thứ tự
+const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
+return sortedIndices.map(idx => chunks[idx]?.text).join(isChinese ? '' : ' ');
+}, [selectedIndices, chunks, isChinese]);
 const handleKeyDown = (e) => {
 if (e.key === 'Enter') {
 if (stage === 'correct' && (checkStatus === 'correct_spot' || checkStatus === 'wrong_correct')) {
-handleCorrectionSubmit(textToFix);
+handleCorrectionSubmit(textToFix); // Truyền textToFix vào Logic Hook
 } else if (checkStatus === 'success' || checkStatus === 'failed') {
 nextRound();
 }
@@ -13280,37 +13312,6 @@ save: cleanCorrectSentence || currentQuestion.wrongSentence,
 analysis: currentQuestion.explanation || ""
 });
 };
-// THUẬT TOÁN SHADOW CHUNKING ĐA HÌNH
-const isChinese = /[\u4e00-\u9fa5]/.test(currentQuestion?.wrongSentence || "");
-const displayChunks = React.useMemo(() => {
-if (!currentQuestion || !chunks) return [];
-if (isChinese) {
-let charArray = [];
-chunks.forEach((chunk, chunkIdx) => {
-const chars = Array.from(chunk.text);
-chars.forEach((char, charIdx) => {
-charArray.push({
-id: `char_${chunkIdx}_${charIdx}`,
-text: char,
-parentChunkIndex: chunkIdx,
-isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase()) || char === currentQuestion.wrongWord
-});
-});
-});
-return charArray;
-}
-return chunks.map((chunk, idx) => ({
-...chunk,
-parentChunkIndex: idx,
-isTargetMatch: chunk.text.toLowerCase().includes(currentQuestion.wrongWord.toLowerCase())
-}));
-}, [currentQuestion, chunks, isChinese]);
-// Tính toán chuỗi văn bản đang được chọn để hiển thị ở Giai đoạn 2
-const textToFix = React.useMemo(() => {
-if (!chunks || selectedIndices.length === 0) return "";
-const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
-return sortedIndices.map(idx => chunks[idx]?.text).join(isChinese ? '' : ' ');
-}, [selectedIndices, chunks, isChinese]);
 if (isGenerating && !currentQuestion) {
 // Nếu là chế độ Dễ Offline, hiển thị lớp phủ mờ nhanh
 if (config?.sourceMode === 'card' && config?.difficulty === 'easy') {
@@ -13713,10 +13714,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.20
-// Last Updated: 2026-06-01 23:05
+// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.21
+// Last Updated: 2026-06-02 08:05
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode & Hybrid Mode.
-// Cập nhật V1.20: [BUG FIX] Khởi tạo isGenerating = true mặc định để tránh chớp trắng màn hình (Flicker) khi load. Sửa cấu trúc truyền difficulty vào safeConfig.
+// Cập nhật V1.21: [BUG FIX] Bơm ngược cờ `aiMode` vào config truyền xuống UI để khắc phục lỗi mất ô hiển thị đạn ở Chế độ Khó.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useSpotMistakeLogic = (cards, config, callbacks) => {
@@ -14506,7 +14507,9 @@ onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: gameCallbacks.onEndGame };
 const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card', difficulty: 'easy' };
 const effectiveAiMode = safeConfig.sourceMode === 'ai_pure' || (safeConfig.sourceMode === 'card' && safeConfig.difficulty === 'hard') || isAiMode;
-const logic = useSpotMistakeLogic(cards, { ...safeConfig, isAiMode: effectiveAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks);
+// [BUG FIX V1.21] Bơm ngược cờ aiMode vào cấu hình truyền xuống UI để hiển thị đúng ô đếm đạn
+const finalConfig = { ...safeConfig, aiMode: effectiveAiMode };
+const logic = useSpotMistakeLogic(cards, { ...finalConfig, isAiMode: effectiveAiMode, apiKey, lang, timeLimit: safeConfig.timeLimit || 60, savedState, globalRetryBag }, hookCallbacks);
 const gameSpecificCallbacks = {
 onBack: logic.handleSaveAndBack,
 onSaveToNotebook: (payload) => {
@@ -14520,7 +14523,7 @@ const SpotMistakePlayScreen = window.SpotMistakePlayScreen || window.Block5_10_S
 if (!SpotMistakePlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy SpotMistakePlayScreen</div>;
 return (
 <SpotMistakePlayScreen
-t={t} mainColor={mainColor} config={safeConfig}
+t={t} mainColor={mainColor} config={finalConfig}
 {...logic}
 onBack={gameSpecificCallbacks.onBack}
 onEndGame={gameCallbacks.onEndGame}
