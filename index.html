@@ -7821,10 +7821,10 @@ return (
 );
 };
 window.ExamPoolManagerModal = ExamPoolManagerModal;
-// Sheet 5.1: Tầng 5-Nối Ô (Match UI) - Version 1.05
-// Last Updated: 2026-05-16 14:25
+// Sheet 5.1: Tầng 5-Nối Ô (Match UI) - Version 1.07
+// Last Updated: 2026-06-02 09:59
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind.
-// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
+// Cập nhật V1.07: [UI REFACTOR] Gỡ bỏ khung viền, nền trắng và shadow của `#match-container` để tối ưu hóa không gian (Edge-to-Edge Design) cho các thẻ câu văn dài, chống vỡ Layout.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -7865,7 +7865,7 @@ return (
 <div className="w-10"></div>
 </div>
 <div className="w-full space-y-3 p-1 flex-1 overflow-y-auto custom-scrollbar pb-4">
-{/* Bảng chọn Nguồn dữ liệu (Mới) */}
+{/* Bảng chọn Nguồn dữ liệu */}
 <div className="mb-4">
 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
 <div className="grid grid-cols-2 gap-3">
@@ -7917,6 +7917,7 @@ isGenerating, aiCountdown, config, queueLength, aiWaitTime = 0
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
+const GlobalLoadingScreen = window.GlobalLoadingScreen;
 const getTimerColor = (time, total) => {
 const ratio = time / total;
 if (ratio > 0.6) return 'text-green-600';
@@ -7938,14 +7939,17 @@ x2: endRect.left - containerRect.left,
 y2: endRect.top + endRect.height / 2 - containerRect.top
 };
 };
-// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
+// [CHIẾN DỊCH SILENT OFFLINE] Tránh chớp màn hình khi load thẻ Offline
 if (isGenerating && (!matchState.pairs || matchState.pairs.length === 0)) {
 if (config?.sourceMode === 'card' && !isAiMode) {
-// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
-return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
+return (
+<div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none animate-pulse">
+<div className={`w-8 h-8 border-4 border-${mainColor}-200 border-t-${mainColor}-500 rounded-full animate-spin`}></div>
+</div>
+);
 }
 return (
-<window.GlobalLoadingScreen
+<GlobalLoadingScreen
 onCancel={() => onEndGame(gameStats)}
 queueLength={queueLength}
 text={config?.sourceMode === 'ai_pure' ? 'AI đang tạo các cặp từ...' : 'Đang thiết lập trò chơi...'}
@@ -7982,21 +7986,21 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH SILENT OFFLINE] Chuyển vòng (Mini Overlay) */}
+{/* Overlay chuyển vòng */}
 {isGenerating && matchState.pairs && matchState.pairs.length > 0 && (
 (config?.sourceMode === 'card' && !isAiMode) ? (
 <div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
 ) : (
-<window.GlobalLoadingScreen
+<GlobalLoadingScreen
 queueLength={queueLength}
 text="Đang thiết lập..."
 mainColor={mainColor}
 />
 )
 )}
-{/* Loading chung (Nếu có) */}
+{/* Loading chung */}
 {isLoading && !isGenerating && (
-<window.GlobalLoadingScreen
+<GlobalLoadingScreen
 queueLength={queueLength}
 text="Đang thiết lập..."
 mainColor={mainColor}
@@ -8031,7 +8035,6 @@ Nối Ô <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 )}
 </div>
 <div className="flex items-center gap-1 sm:gap-2">
-{/* Nguồn Badge (Source Badge) KÈM QUEUE COUNTER */}
 {matchState._isRescued ? (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm hidden sm:flex" title="Sử dụng dữ liệu dự phòng do mất kết nối">
 <Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
@@ -8045,13 +8048,11 @@ Nối Ô <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
 {(isAiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200 hidden sm:flex" title={`Đã nạp sẵn ${queueLength} vòng`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* ĐỒNG HỒ PHANH AI GÓC PHẢI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse hidden sm:flex" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
@@ -8060,7 +8061,7 @@ Nối Ô <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 </div>
 </div>
 {/* --- THÂN GAME CHÍNH TẬP TRUNG SCROLL --- */}
-<div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col items-center relative z-0">
+<div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4 flex flex-col items-center relative z-0">
 {/* KHU VỰC THỐNG KÊ */}
 <div className="w-full max-w-5xl flex justify-between items-center mb-4 transition-all duration-300 px-2">
 <div className="flex gap-2 text-xs font-bold items-center">
@@ -8077,9 +8078,9 @@ Nối Ô <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
 <Icons.AlertCircle size={18} className="shrink-0" /> ⚠️ Chú ý: Chỉ có 4 cặp đúng. Có 2 ô là bẫy vô nghiệm!
 </div>
 )}
-{/* KHU VỰC THẺ NỐI */}
-<div id="match-container" className="relative w-full max-w-5xl bg-white p-4 md:p-8 rounded-2xl shadow-md grid grid-cols-2 gap-4 md:gap-16 border border-gray-100 select-none transition-all duration-300 flex-1 min-h-[400px]">
-<svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+{/* KHU VỰC THẺ NỐI (UI REFACTOR: Gỡ bỏ Khung viền và Shadow để mở rộng không gian) */}
+<div id="match-container" className="relative w-full max-w-5xl grid grid-cols-2 gap-3 sm:gap-6 md:gap-16 select-none transition-all duration-300 flex-1 min-h-[400px]">
+<svg className="absolute inset-0 w-full h-full pointer-events-none z-10" style={{ overflow: 'visible' }}>
 {Object.entries(matchState.connections).map(([leftId, rightId]) => {
 const coords = getLineCoords(leftId, rightId);
 if (!coords) return null;
@@ -8117,7 +8118,7 @@ errorStyle = isWrong ? "border-red-400 bg-red-50 ring-2 ring-red-100" : "border-
 }
 const baseStyle = matchState.selectedLeft === item.id
 ? `border-${mainColor}-500 bg-${mainColor}-50 text-${mainColor}-700 ring-2 ring-${mainColor}-200`
-: 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-white hover:border-gray-300';
+: 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300';
 const connectedStyle = (!matchState.isChecked && matchState.connections[item.id] !== undefined)
 ? `border-${mainColor}-300 bg-${mainColor}-50 opacity-90`
 : '';
@@ -8163,7 +8164,7 @@ Câu/từ đúng là:
 return (
 <button key={item.id} id={`match-right-${item.id}`} onClick={() => handleMatchClick('right', item.id)} disabled={matchState.isChecked || isPaused}
 style={{ fontFamily: window.Utils.getFontFamily(settings), fontWeight: settings?.fontWeight || 'bold', fontSize: settings?.fontSize ? `${settings.fontSize * 0.8}rem` : '1.1rem' }}
-className={`relative flex-1 flex flex-col justify-center items-center w-full p-3 md:p-4 rounded-xl border-2 text-center text-sm md:text-base lg:text-lg transition-all shadow-sm ${Object.values(matchState.connections).includes(item.id) ? `border-${mainColor}-300 bg-${mainColor}-50 opacity-90` : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-white hover:border-gray-300'}`}>
+className={`relative flex-1 flex flex-col justify-center items-center w-full p-3 md:p-4 rounded-xl border-2 text-center text-sm md:text-base lg:text-lg transition-all shadow-sm ${Object.values(matchState.connections).includes(item.id) ? `border-${mainColor}-300 bg-${mainColor}-50 opacity-90` : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'}`}>
 <span className="w-full break-words leading-tight z-10">{item.term}</span>
 {rightFeedbackUI}
 </button>
@@ -8223,10 +8224,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.12
-// Last Updated: 2026-05-29 15:15
+// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.13
+// Last Updated: 2026-06-02 10:15
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật V1.12: [VÁ LỖ HỔNG AUTO-SAVE] Đồng bộ biến matchState/gameStats và áp dụng thuật toán "Giải nén Tổ hợp" (Chunk Decompilation) để phục hồi thẻ gốc từ Batch Queue.
+// Cập nhật V1.13: [JIT PROCESSING] Khai tử "kẻ cắp thời gian" batchEnrich ở đầu game. Di dời logic dịch thuật (Enrich) vào hàm fetchTask để xử lý ngầm On-demand, giải phóng tốc độ khởi động về 0s. Đồng thời cạo sạch tàn dư silentUtterance.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
@@ -8236,7 +8237,6 @@ if (window.globalShowToast) {
 window.globalShowToast({ text: msg, type: type, id: Date.now() });
 }
 }, []);
-// --- REFS ĐỂ ĐẢM BẢO FETCH TASK LUÔN LẤY STATE MỚI NHẤT TRONG BACKGROUND ---
 const diffRef = React.useRef(propDifficulty || 'easy');
 const configRef = React.useRef(config);
 const langRef = React.useRef(lang);
@@ -8258,6 +8258,8 @@ const cfg = JSON.parse(localStorage.getItem('fc_match_config'));
 return cfg?.aiMode !== undefined ? cfg.aiMode : (propAiMode || false);
 } catch { return propAiMode || false; }
 });
+const isAiModeRef = React.useRef(isAiMode);
+React.useEffect(() => { isAiModeRef.current = isAiMode; }, [isAiMode]);
 const [difficulty, setDifficulty] = React.useState(() => {
 if (savedState?.difficulty) return savedState.difficulty;
 try {
@@ -8272,7 +8274,6 @@ const cfg = JSON.parse(localStorage.getItem('fc_match_config'));
 return cfg?.sourceMode || 'card';
 } catch { return 'card'; }
 });
-// Cập nhật Refs
 React.useEffect(() => { diffRef.current = difficulty; }, [difficulty]);
 React.useEffect(() => { configRef.current = config; }, [config]);
 React.useEffect(() => { langRef.current = lang; }, [lang]);
@@ -8285,7 +8286,6 @@ const [gameStats, setGameStats] = React.useState({ correct: 0, wrong: 0 });
 const [isLoading, setIsLoading] = React.useState(false);
 const [isGenerating, setIsGenerating] = React.useState(false);
 const [queueLength, setQueueLength] = React.useState(0);
-// Biến đếm Phanh UI (UI Cooldown)
 const [aiWaitTime, setAiWaitTime] = React.useState(0);
 const deckRef = React.useRef([]);
 const coordinatorRef = React.useRef(null);
@@ -8300,35 +8300,27 @@ return () => { isGameActiveRef.current = false; };
 React.useEffect(() => {
 latestStateRef.current = { matchState, difficulty, gameStats, timeLeft, deck: deckRef.current, aiWaitTime };
 }, [matchState, difficulty, gameStats, timeLeft, aiWaitTime]);
-// ==================================================================================
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Phiên bản riêng cho Game Nối Ô)
-// ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [VÁ LỖI SILENT FAILURE] Game Nối ô dùng matchState và đánh giá tiến độ qua mảng pairs
 if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.matchState && latestStateRef.current.matchState.pairs.length > 0) {
 const currentData = latestStateRef.current;
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// [THUẬT TOÁN GIẢI NÉN BĂNG ĐẠN]
-// Ở Match Game, pendingTasks là 1 mảng các Chunk (Tổ hợp vòng chơi).
-// Ta phải phân rã Chunk này thành các thẻ con trước khi đẩy vào deckRef
 pendingTasks.forEach(task => {
 if (task && Array.isArray(task.pairs)) {
-pendingCards.push(...task.pairs); // Bóc tách thẻ từ cặp nối chuẩn
+pendingCards.push(...task.pairs);
 } else if (task && task.origin) {
 pendingCards.push(task.origin);
 }
 });
 }
-// Nối đạn và Lọc thẻ trùng lặp (tránh nhân bản ID cứng)
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
 const uniqueMergedDeck = mergedDeck.filter((v, i, a) => a.findIndex(t => (t.term === v.term)) === i);
 onAutoSave({
 matchState: currentData.matchState,
-gameStats: currentData.gameStats, // Dùng đúng biến gameStats
+gameStats: currentData.gameStats,
 difficulty: currentData.difficulty,
-deck: uniqueMergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn dạng Flat
+deck: uniqueMergedDeck,
 timeLeft: currentData.timeLeft,
 aiWaitTime: currentData.aiWaitTime,
 _needsNextOnResume: false
@@ -8347,7 +8339,6 @@ setQueueLength(coordinatorRef.current.length());
 }, 500);
 return () => clearInterval(queueScanner);
 }, []);
-// [TIÊU CHUẨN VÀNG] ĐỒNG HỒ LÀM NGUỘI UI (UI COOLDOWN TIMER)
 React.useEffect(() => {
 let cdTimer = null;
 if (aiWaitTime > 0 && !isPaused && !isGenerating && !matchState.isResultPaused) {
@@ -8355,9 +8346,6 @@ cdTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
 }
 return () => { if (cdTimer) clearTimeout(cdTimer); };
 }, [aiWaitTime, isPaused, isGenerating, matchState.isResultPaused]);
-// ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC) & LOG MISTAKE CHUẨN HÓA
-// ==================================================================================
 const localPushToRetryBag = React.useCallback((questionData) => {
 if (addToRetryBag) addToRetryBag('match', questionData);
 }, [addToRetryBag]);
@@ -8375,9 +8363,6 @@ timestamp: Date.now()
 };
 onLogWrong(mistakeCard);
 }, [onLogWrong, difficulty]);
-// ==================================================================================
-// ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
-// ==================================================================================
 const fetchTask = async () => {
 const currentDiff = diffRef.current;
 const currentSourceMode = sourceModeRef.current;
@@ -8385,15 +8370,12 @@ const currentDataMode = configRef.current?.dataMode || 'vocab';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 const targetCount = currentDiff === 'hard' ? 4 : 5;
 let retryCards = [];
-// [QA FIX] Sử dụng Động cơ Khóa nguyên tử thay vì bốc thủ công
-// Match Game cần 4-5 cặp. Chúng ta cho phép 1 thẻ lỗi chen vào mỗi vòng để khớp với tỷ lệ ~25-30%
 if (window.Utils && window.Utils.pullRetryCardWithLock) {
 const pulledCard = window.Utils.pullRetryCardWithLock('match', globalRetryBagRef.current);
 if (pulledCard) {
 retryCards.push(pulledCard);
 }
 }
-// 1. AI PURE MODE: Cắm cáp Máy Trộn Đề Vạn Năng (ExamEngine)
 if (currentSourceMode === 'ai_pure') {
 try {
 const meta = {
@@ -8402,12 +8384,11 @@ type: 'ioe_match',
 level: configRef.current?.level || 'level_4_discovery_basic',
 topic: configRef.current?.topic || '',
 dataMode: currentDataMode,
-difficulty: currentDiff, // Phục vụ phân nhánh subType trong ExamEngine
+difficulty: currentDiff,
 hardMode: currentDiff === 'hard',
 mode: 'minigame'
 };
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
-// Tầng 2.7 tự động Normalization thành { pairs, leftItems, rightItems, isAiGenerated }
 const qData = await window.ExamEngine.hydrateQuestion(meta, currentApiKey, freshHistory);
 if (qData && qData.content) {
 if (onSaveToHarvestRef.current && qData.content.pairs) {
@@ -8420,14 +8401,14 @@ console.warn("PureMode Match Fallback:", e);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Match AI", e);
 }
 }
-// 2 & 3. USER DECK & FALLBACK ENGINE (Dành cho Card Mode)
 let realCards = [];
 let pool = [...retryCards];
 let attempts = 0;
 let maxAttempts = (cardsRef.current?.length || 20) * 2;
 while (pool.length < targetCount && attempts < maxAttempts) {
 if (deckRef.current.length === 0 && currentSourceMode !== 'ai_pure') {
-let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+// KHÔNG LỌC definition Ở ĐÂY NỮA, để JIT xử lý
+let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < targetCount && window.FallbackDataEngine) {
 const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRef.current : 'en';
 const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
@@ -8441,9 +8422,42 @@ validCards = [{ term: "Apple", definition: "Quả táo" }, { term: "Banana", def
 deckRef.current = window.Utils.shuffleArray(validCards);
 }
 if (deckRef.current.length > 0) {
-const c = deckRef.current.shift();
+let c = deckRef.current.shift();
 attempts++;
+// [JIT PROCESSING] Dịch thuật On-demand ngầm cho thẻ khuyết nghĩa
+if (c && (!c.definition || c.definition.trim() === '')) {
+if (isAiModeRef.current && currentApiKey && window.Utils && window.Utils.callGeminiApi) {
+try {
+const targetLang = langRef.current === 'zh' ? 'Chinese' : (langRef.current === 'vi' ? 'Vietnamese' : 'English');
+const prompt = `Dịch từ/câu sau sang tiếng Việt ngắn gọn nhất (dưới 6 từ). KHÔNG giải thích. Từ/câu: "${c.term}". Ngôn ngữ gốc: ${targetLang}.`;
+const schema = { type: "OBJECT", properties: { definition: { type: "STRING" } }, required: ["definition"] };
+let dynamicTimeout = 15000;
+try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.loadingTime) dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 2000; } catch(e) {}
+const callPromise = window.Utils.callGeminiApi(prompt, schema, currentApiKey);
+const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("JIT Enrich Timeout")), dynamicTimeout));
+const res = await Promise.race([callPromise, timeoutPromise]);
+const parsed = window.Utils.parseAiJson(res.text);
+if (parsed && parsed.definition) {
+c = { ...c, definition: parsed.definition };
+if (onUpdateCardsRef.current) {
+const newCards = [...(cardsRef.current || [])];
+const idx = newCards.findIndex(card => card.term === c.term);
+if (idx !== -1) {
+newCards[idx] = { ...newCards[idx], definition: parsed.definition };
+cardsRef.current = newCards;
+onUpdateCardsRef.current(newCards);
+}
+}
+}
+} catch(e) {
+console.warn("[JIT Enrich] Lỗi dịch thuật ngầm cho từ:", c.term, e.message);
+}
+}
+}
+// Chỉ đẩy vào pool nếu thẻ đã có nghĩa (đã được JIT hoặc có sẵn)
+if (c && c.definition && c.definition.trim() !== '') {
 if (!pool.some(r => r.term === c.term)) pool.push(c);
+}
 } else {
 break;
 }
@@ -8469,7 +8483,6 @@ pool.push({ term: "Fallback " + pool.length, definition: "Dự phòng " + pool.l
 realCards = pool.slice(0, targetCount);
 let trapCards = [];
 let isAiGenerated = false;
-// 4. TẠO BẪY (DISTORTION ENGINE) CHO HARD MODE CARD
 if (currentDiff === 'hard') {
 const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
 const availableTraps = cleanDeckForTraps.filter(c => !realCards.some(r => r.term === c.term));
@@ -8496,7 +8509,6 @@ let distortedTerm = null;
 let explanation = "";
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(trapCard.term) : trapCard.term.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
-// Giữ lại AI Distort cho Card Mode (Vì Card mode không đi qua ExamEngine)
 const isAiModeActive = JSON.parse(localStorage.getItem('fc_match_config'))?.aiMode || false;
 if (isAiModeActive && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 try {
@@ -8510,7 +8522,7 @@ const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10
 localStorage.setItem('fc_total_tokens', currentTotal + 150);
 }
 } catch(e) {
-console.warn("AI Distortion fallback to Offline Engine", e);
+console.warn("AI Distortion fallback to Offline Engine", e.message);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi API bóp méo bẫy Match", e);
 }
 }
@@ -8532,7 +8544,6 @@ isAiGenerated: isAiGenerated
 });
 }
 }
-// 5. FORMAT DỮ LIỆU ĐẦU RA (LAYOUT ITEMS)
 const leftItems = [...realCards, ...trapCards].map((c, i) => ({
 id: `left_${i}_${Date.now()}`,
 term: c.term,
@@ -8570,7 +8581,6 @@ _isRescued: data._isRescued || false
 setTimeLeft(timeLimit || 60);
 isInitializingRef.current = false;
 setIsGenerating(false);
-// Kích hoạt UI Cooldown
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || isAiMode) {
 currentCooldown = 9;
@@ -8579,31 +8589,18 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 setTimeout(() => triggerAutoSave(), 150);
 };
-// ==================================================================================
-// KHỞI TẠO GAME VỚI BATCH COORDINATOR
-// ==================================================================================
 const startMatch = async () => {
 isInitializingRef.current = true;
 setIsGenerating(true);
-if (window.speechSynthesis) {
-const silentUtterance = new SpeechSynthesisUtterance('');
-silentUtterance.volume = 0;
-window.speechSynthesis.speak(silentUtterance);
+// Đánh thức loa vật lý an toàn thay cho silentUtterance
+if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
+window.fc_audioCtx.resume();
 }
 let currentDeck = sourceMode === 'card' ? [...(cardsRef.current || [])] : [];
-let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-if (sourceMode === 'card' && isAiMode && currentApiKey && window.AiFactoryEngine) {
-safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
-const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(currentDeck, initialIndices, 10, langRef.current, currentApiKey);
-if (hasUpdates) {
-currentDeck = updatedCards;
-cardsRef.current = updatedCards;
-if (onUpdateCardsRef.current) onUpdateCardsRef.current(updatedCards);
-safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
-}
-}
+// ĐÃ KHAI TỬ BATCH ENRICH Ở ĐÂY!
 if (sourceMode === 'card') {
+// KHÔNG LỌC ĐỊNH NGHĨA Ở ĐÂY NỮA ĐỂ JIT ENGINE XỬ LÝ NGẦM
 let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 4) {
 safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
@@ -8636,7 +8633,6 @@ coordinatorRef.current = window.QueueEngine.createBatchQueueCoordinator(fetchTas
 safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
 return;
 }
-// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
 await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 let firstData = coordinatorRef.current.pop();
@@ -8654,7 +8650,6 @@ const handleSaveAndBack = () => {
 const currentData = latestStateRef.current;
 let finalStats = { ...currentData.gameStats };
 let needsNext = false;
-// [BÍT LỖ HỔNG THOÁT NGANG] Kiểm tra nếu người dùng chưa nộp bài
 if (!currentData.matchState.isChecked && currentData.matchState.leftItems && currentData.matchState.leftItems.length > 0) {
 currentData.matchState.leftItems.forEach(item => {
 if (!item.isTrap && item.origin) {
@@ -8662,7 +8657,7 @@ localPushToRetryBag(item.origin);
 logMistake(item.origin);
 }
 });
-finalStats.wrong += currentData.matchState.pairs.length; // Tăng lỗi sai bằng số cặp
+finalStats.wrong += currentData.matchState.pairs.length;
 needsNext = true;
 safeShowToast("Thoát ngang bị tính lỗi sai!", "warning");
 }
@@ -8677,7 +8672,6 @@ _needsNextOnResume: needsNext
 }));
 onBack(sessionData);
 };
-// PHỤC HỒI DỮ LIỆU TỪ SESSION
 const hasStartedRef = React.useRef(false);
 React.useEffect(() => {
 if (hasStartedRef.current) return;
@@ -8695,7 +8689,6 @@ coordinatorRef.current = window.QueueEngine.createBatchQueueCoordinator(fetchTas
 const isOfflineFastTrack = sourceModeRef.current === 'card' && !isAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
-// [BÍT LỖ HỔNG THOÁT NGANG] Xử lý cờ _needsNextOnResume
 if (savedState._needsNextOnResume) {
 setMatchState({
 pairs: [], leftItems: [], rightItems: [], connections: {},
@@ -8810,11 +8803,8 @@ if (left.origin) localPushToRetryBag(left.origin);
 }
 }
 });
-// [VÁ LỖI AUTO-NEXT] Ép thời gian đếm lùi kết quả phải đồng bộ với thời gian chờ AI
 let delaySec = 10;
-if (aiWaitTime > delaySec) {
-delaySec = aiWaitTime;
-}
+if (aiWaitTime > delaySec) { delaySec = aiWaitTime; }
 setGameStats(p => ({ correct: p.correct + roundScore, wrong: p.wrong + (matchState.leftItems.length - roundScore) }));
 setMatchState(p => ({ ...p, isChecked: true, score: roundScore, correctLines, wrongLines, missingLines, timer: delaySec, isResultPaused: false }));
 if (difficulty === 'hard' && roundScore === matchState.leftItems.length) {
@@ -8828,10 +8818,8 @@ safeShowToast("Hết giờ! Đã tự động kiểm tra.", "warning");
 setTimeout(() => triggerAutoSave(), 150);
 };
 const generateMatch = async () => {
-if (window.speechSynthesis) {
-const silentUtterance = new SpeechSynthesisUtterance('');
-silentUtterance.volume = 0;
-window.speechSynthesis.speak(silentUtterance);
+if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
+window.fc_audioCtx.resume();
 }
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
