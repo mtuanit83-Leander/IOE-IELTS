@@ -2847,10 +2847,10 @@ getPendingItems: function() { return [...this.queue]; } // [VÁ LỖ HỔNG AUTO
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.22
-// Last Updated: 2026-05-14 14:39
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.23
+// Last Updated: 2026-06-02 15:05
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [DEEP-LOGGING & ZOMBIE KILLER] Cấy hệ thống báo lỗi ẩn window.logSystemEvent vào các Lò đúc. Khử Memory Leak do "Zombie Timers" không được clear sau khi Promise hoàn thành. Xóa bỏ cờ Recovery tạo ảo giác lặp từ cho game Ngữ âm. Mềm hóa lưới lọc batchEnrich. Tuân thủ Điều 3 & 5.
+// Cập nhật: [DYNAMIC TIMEOUT] Tiêu diệt toàn bộ Hardcoded Timeout (15s, 20s, 30s). Đồng bộ hóa thời gian chờ với thiết lập loadingTime của người dùng để chống nghẽn AI.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2878,8 +2878,14 @@ prompt += batchTargets.map((b, i) => (i+1) + ". " + b.term).join('\n');
 prompt += "\n\nReturn EXACTLY a JSON object with a translations array.\nFormat: {\"translations\": [\"nghĩa 1\", \"nghĩa 2\", ...]}";
 const schema = { type: "OBJECT", properties: { translations: { type: "ARRAY", items: { type: "STRING" } } }, required: ["translations"] };
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
+// [DYNAMIC TIMEOUT]
+let dynamicTimeout = 20000;
+try {
+const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (aiCfg && aiCfg.loadingTime) dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+} catch(e) {}
 const timeoutPromise = new Promise((_, r) => {
-timeoutId = setTimeout(() => r(new Error("Timeout")), 15000);
+timeoutId = setTimeout(() => r(new Error("Timeout")), dynamicTimeout);
 });
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
@@ -3075,8 +3081,14 @@ let prompt = this._buildSystemPrompt('base_card', null, level, lang, topic, data
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('base_card', null);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
+// [DYNAMIC TIMEOUT]
+let dynamicTimeout = 20000;
+try {
+const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (aiCfg && aiCfg.loadingTime) dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+} catch(e) {}
 const timeoutPromise = new Promise((_, r) => {
-timeoutId = setTimeout(() => r(new Error("AI Base Card Timeout")), 15000);
+timeoutId = setTimeout(() => r(new Error("AI Base Card Timeout")), dynamicTimeout);
 });
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
@@ -3106,8 +3118,14 @@ let prompt = this._buildSystemPrompt('matrix', subType, level, lang, topic, data
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('matrix', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
+// [DYNAMIC TIMEOUT]
+let dynamicTimeout = 25000;
+try {
+const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (aiCfg && aiCfg.loadingTime) dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+} catch(e) {}
 const timeoutPromise = new Promise((_, r) => {
-timeoutId = setTimeout(() => r(new Error("AI Matrix Timeout")), 20000);
+timeoutId = setTimeout(() => r(new Error("AI Matrix Timeout")), dynamicTimeout);
 });
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
@@ -3141,9 +3159,20 @@ let prompt = this._buildSystemPrompt('context', subType, level, lang, topic, 'se
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('context', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
-const timeoutLimit = subType === 'reading_passage' ? 30000 : 20000;
+// [DYNAMIC TIMEOUT]
+let dynamicTimeout = subType === 'reading_passage' ? 35000 : 25000;
+try {
+const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (aiCfg && aiCfg.loadingTime) {
+const baseTime = parseInt(aiCfg.loadingTime, 10);
+dynamicTimeout = (baseTime * 1000) + 5000;
+if (subType === 'reading_passage') {
+dynamicTimeout += 5000; // Extra buffer for heavy reading passages
+}
+}
+} catch(e) {}
 const timeoutPromise = new Promise((_, r) => {
-timeoutId = setTimeout(() => r(new Error(`AI Context Timeout (${subType})`)), timeoutLimit);
+timeoutId = setTimeout(() => r(new Error(`AI Context Timeout (${subType})`)), dynamicTimeout);
 });
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
@@ -10197,10 +10226,10 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 };
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.14
-// Last Updated: 2026-06-02 14:30
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.15
+// Last Updated: 2026-06-02 18:15
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật: [VÁ LỖI BĂNG ĐẠN ẢO] Thay thế queueLength bằng aiAmmoCount ở màn hình PlayScreen để chỉ hiển thị đạn AI xịn. Bảo toàn nguyên vẹn 100% logic QuizSetup.
+// Cập nhật V1.15: [VÁ LỖI BĂNG ĐẠN ẢO] Lột bỏ hoàn toàn queueLength, sử dụng trực tiếp aiAmmoCount từ Tầng 5.6 để phản ánh trung thực số lượng đạn do AI tạo ra trên giao diện.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -10341,9 +10370,9 @@ handleAnswer, AiModeSwitch, isAiMode, setAiMode, onMissingKey, isLoading,
 showChanceToast, isGenerating, timerMode, timeLeft, totalTime, isRoundStarted,
 onStartRound, onEndGame, onPause, onBack, feedbackType, isPaused,
 correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode,
-hardMode, listenPlayCount, sourceMode, queueLength, config,
+hardMode, listenPlayCount, sourceMode, config,
 aiWaitTime, resultTimer, isResultPaused, toggleResultPause, onNext,
-aiAmmoCount = 0 // [QA FIX] Thêm tham số đạn xịn từ Tầng 5.6
+aiAmmoCount = 0 // [QA FIX V1.15] Nhận duy nhất tham số Đạn xịn (AI) từ Tầng 5.6
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
@@ -10362,7 +10391,7 @@ return <div className="w-full h-full bg-gray-50 flex items-center justify-center
 return (
 <window.GlobalLoadingScreen
 onCancel={() => onEndGame()}
-queueLength={aiAmmoCount} // [QA FIX] Dùng đạn xịn để hiển thị
+queueLength={aiAmmoCount} // [QA FIX V1.15] Truyền số lượng Đạn xịn cho Loading Screen
 text={sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
 levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
@@ -10501,7 +10530,7 @@ title="Lưu vào Sổ tay"
 </div>
 )}
 <div className={`w-full flex justify-end items-center mb-1 gap-2`}>
-{/* Nhãn diện nguồn gốc AI và Đồng hồ Throttling KÈM QUEUE COUNTER */}
+{/* Nhãn diện nguồn gốc AI và Đồng hồ Throttling KÈM AMMO COUNTER */}
 {currentQuestionData?.question?._isRescued || currentQuestionData?._isRescued ? (
 <span className="text-[9px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-200 shadow-sm" title="Sử dụng dữ liệu dự phòng do mất kết nối">
 <Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
@@ -10515,9 +10544,9 @@ title="Lưu vào Sổ tay"
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{/* [QA FIX] Băng đạn chỉ báo Đạn AI thật */}
+{/* [QA FIX V1.15] Băng đạn chỉ báo Đạn AI thật */}
 {(isAiMode || sourceMode === 'ai_pure') && aiAmmoCount > 0 && (
-<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${aiAmmoCount} vòng AI`}>
+<span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${aiAmmoCount} câu AI`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {aiAmmoCount}
 </span>
 )}
@@ -10624,10 +10653,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.16
-// Last Updated: 2026-06-02 14:40
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.18
+// Last Updated: 2026-06-02 18:05
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.16: [ĐẠI PHẪU KIẾN TRÚC] Cắt bỏ batchEnrich để khởi động game 0s. Áp dụng JIT Processing (Dịch ngầm đơn lẻ) bên trong fetchTask. Tính toán và truyền biến aiAmmoCount (Đạn xịn) xuống UI để trị dứt điểm Băng đạn Ảo.
+// Cập nhật V1.18: [VÁ LỖI BĂNG ĐẠN ẢO] Nâng cấp queueScanner, áp dụng thuật toán đếm "đạn xịn" dựa trên cờ isAiGenerated thông qua getPendingItems(), truyền biến aiAmmoCount xuống UI để báo cáo trung thực số đạn AI.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -10662,7 +10691,7 @@ const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
 // Biến đếm đạn và Phanh UI (UI Cooldown)
 const [queueLength, setQueueLength] = React.useState(0);
-const [aiAmmoCount, setAiAmmoCount] = React.useState(0); // [NEW V1.16] Đếm đạn AI xịn
+const [aiAmmoCount, setAiAmmoCount] = React.useState(0); // [NEW V1.18] Đếm đạn AI xịn
 const [aiWaitTime, setAiWaitTime] = React.useState(0);
 const audioTimeoutRef = React.useRef(null);
 const timerRef = React.useRef(null);
@@ -10727,9 +10756,11 @@ return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
 if (coordinatorRef.current) {
+// 1. Quét tổng đạn (QueueLength truyền thống)
 if (typeof coordinatorRef.current.length === 'function') {
 setQueueLength(coordinatorRef.current.length());
 }
+// 2. Quét đạn xịn (AI Ammo) qua hàm getPendingItems()
 if (typeof coordinatorRef.current.getPendingItems === 'function') {
 const pending = coordinatorRef.current.getPendingItems();
 // Chỉ đếm những viên đạn có cờ isAiGenerated là True
@@ -10894,9 +10925,17 @@ try {
 if (hardMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
 const distractorLang = isReverse ? lang : 'vi';
+// [DYNAMIC TIMEOUT] Lấy cấu hình loadingTime từ AI Config, cộng thêm 5s đệm an toàn
+let dynamicTimeout = 25000;
+try {
+const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (aiCfg && aiCfg.loadingTime) {
+dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+}
+} catch(e) {}
 // Gọi API sinh nhiễu
 const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(card, distractorLang, type, currentApiKey, numOptions - 1, configRef.current?.level || level, configRef.current?.topic, isReverse);
-const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout (20s)")), 20000));
+const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout")), dynamicTimeout));
 const dists = await Promise.race([aiCallPromise, timeoutPromise]);
 if (dists && dists.length > 0) {
 distractors = dists.map(d => ({ text: d, isCorrect: false }));
