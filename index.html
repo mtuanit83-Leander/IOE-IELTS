@@ -4529,6 +4529,109 @@ addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 1, 'General Practice');
 return blueprint;
 }
 };
+
+
+
+
+
+
+// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 1.2
+// Last Updated: 2026-06-03 15:16
+// Nhiệm vụ: Số hóa Khung năng lực ngôn ngữ (HSK/CEFR) thành các quy tắc (Rules) định hướng AI sinh lỗi, đục lỗ và tạo bẫy. Áp dụng kỹ thuật Few-Shot & Priority Prompting.
+// Cập nhật V1.2: [VÁ LỖI CÚ PHÁP] Sửa lỗi thiếu dấu nháy đơn ở các key của object GRADE_CONTEXTS gây crash Babel.
+// ==================================================================================
+
+window.IoeDataEngine = {
+// 1. NGỮ CẢNH TRÌNH ĐỘ (Định hướng Từ vựng và Cấu trúc)
+GRADE_CONTEXTS: {
+'zh_level_1': 'HSK 1 (150 words). ƯU TIÊN CAO NHẤT: 1) Dùng phó từ mức độ trước tính từ vị ngữ (VD: 我很忙, không dùng 我是忙). 2) Xếp thời gian và địa điểm TRƯỚC động từ chính (VD: 我今天在家看书). 3) Phân biệt phủ định Không (不) và Chưa/Không có (没).',
+
+'zh_level_2': 'HSK 2 (300 words). ƯU TIÊN CAO NHẤT: 1) Trong câu so sánh 比, KHUYẾN KHÍCH dùng 一点儿/得多, tránh dùng phó từ mức độ như 很/非常. 2) Dùng chính xác Bổ ngữ trạng thái (得) và Trợ từ động thái (着/过). 3) Phân biệt điểm xuất phát 从 và khoảng cách 离.',
+
+'zh_level_3': 'HSK 3 (600 words). ƯU TIÊN CAO NHẤT: 1) Động từ ly hợp (见面, 帮忙) không mang tân ngữ trực tiếp (VD: 帮他的忙, không dùng 帮忙他). 2) Bổ ngữ xu hướng: Danh từ địa điểm đứng trước 来/去 (VD: 走进教室来). 3) Ứng dụng câu chữ 把 và bị động 被.',
+
+'zh_level_4': 'HSK 4 (1200 words). ƯU TIÊN CAO NHẤT: 1) Câu bị động với 让/叫 bắt buộc phải có chủ thể tác động. 2) Nhấn mạnh 是...的: Dạng phủ định là 不是...的. 3) Trật tự chủ ngữ với cặp liên từ (VD: 不仅...而且, 即使...也).',
+
+// Placeholder cho Tiếng Anh
+'en_level_1': 'A1 Level (Beginner). Very basic vocabulary and simple present/past tenses.',
+'en_level_2': 'A2 Level (Elementary). Basic daily vocabulary, simple prepositions, and continuous tenses.',
+'en_level_3': 'B1 Level (Intermediate). Everyday language, relative clauses, and basic modal verbs.'
+},
+
+// 2. QUY TẮC ĐỤC LỖ (FILL BLANK CLOZE RULES)
+getMicroTierClozeRule: function(lang, dataMode, level, topic) {
+if (lang === 'Chinese') {
+switch(level) {
+case 'zh_level_1':
+return "Ưu tiên đục lỗ 1 từ thuộc các loại: Lượng từ (个, 本), Phó từ phủ định (不, 没), Động từ năng nguyện (会, 想, 能), hoặc Hư từ cơ bản (的, 了). Ba đáp án nhiễu nên cùng loại từ nhưng sai ngữ pháp. VÍ DỤ: Đục từ '本' -> Nhiễu: '个', '口', '只'.";
+case 'zh_level_2':
+return "Ưu tiên đục lỗ 1 từ thuộc các loại: Lượng từ chuyên biệt (件, 双, 张), Trợ từ (得, 着, 过), Phó từ logic (就, 还, 再), hoặc Liên từ (因为, 所以). Ba đáp án nhiễu nên có cấu trúc tương đương nhưng sai ngữ nghĩa. VÍ DỤ: Đục từ '得' -> Nhiễu: '的', '地', '了'.";
+case 'zh_level_3':
+return "Ưu tiên đục lỗ 1 từ khó: Trợ từ kết cấu (得, 着), Phó từ (才, 就), hoặc Giới từ (把, 被). Ba đáp án nhiễu phải tạo ra mâu thuẫn về mặt cấu trúc. VÍ DỤ: Đục từ '把' -> Nhiễu: '被', '让', '叫'.";
+case 'zh_level_4':
+return "Ưu tiên đục lỗ 1 liên từ phức hợp hoặc từ nhấn mạnh: 不仅, 即使, 否则, 竟然, 让, 叫, hoặc 的 (trong cấu trúc 是...的). Ba đáp án nhiễu nên là các liên từ khác gây đảo lộn tính logic của câu.";
+default:
+return "Ưu tiên đục lỗ 1 hư từ quan trọng hoặc động từ cốt lõi. Đáp án nhiễu nên hợp lệ về mặt ngữ pháp nhưng sai lệch về ngữ cảnh.";
+}
+}
+return "Ưu tiên đục lỗ 1 từ vựng cốt lõi. Ba đáp án nhiễu thuộc cùng từ loại nhưng sai ý nghĩa ngữ cảnh.";
+},
+
+// 3. QUY TẮC BÓP MÉO (SPOT MISTAKE DISTORTION RULES)
+getMicroTierDistortionRule: function(lang, dataMode, level, topic) {
+if (lang === 'Chinese') {
+switch(level) {
+case 'zh_level_1':
+return "Hãy tạo 1 lỗi sai bằng phương pháp THAY THẾ (1-đổi-1). Ưu tiên các bẫy HSK 1. CÁC VÍ DỤ TỐT: 1) Sai lượng từ (Đổi 本 thành 个). 2) Nhầm phủ định (Đổi 没 thành 不). 3) Sai hư từ (Đổi 的 thành 地). 4) Đặt địa điểm ra sau động từ thay vì trước động từ.";
+case 'zh_level_2':
+return "Hãy tạo 1 lỗi sai bằng phương pháp THAY THẾ (1-đổi-1). Ưu tiên các bẫy HSK 2. CÁC VÍ DỤ TỐT: 1) Đổi 得 thành 地. 2) Chèn thêm 很 vào trước tính từ trong câu so sánh 比. 3) Nhầm vị trí của 多 (三个多 vs 十多个). 4) Đổi 离 thành 从. 5) Ghép sai cặp liên từ (mặc dù... cho nên).";
+case 'zh_level_3':
+return "Hãy tạo 1 lỗi sai tinh vi bằng phương pháp THAY THẾ. Ưu tiên bẫy HSK 3. CÁC VÍ DỤ TỐT: 1) Đẩy danh từ địa điểm ra sau 来/去. 2) Động từ ly hợp mang tân ngữ (见面他). 3) Đổi 只有 thành 只要. 4) Dùng sai câu chữ 把 và 被. 5) Chèn thừa chữ 了 bên cạnh chữ 着.";
+case 'zh_level_4':
+return "Hãy tạo 1 lỗi sai khó bằng phương pháp THAY THẾ. Ưu tiên bẫy HSK 4. CÁC VÍ DỤ TỐT: 1) Đảo sai vị trí chủ ngữ với liên từ 不仅. 2) Lược bỏ chủ thể sau chữ 让/叫. 3) Đặt chữ 不 sau chữ 是 thay vì trước nó. 4) Dùng sai cụm thành ngữ.";
+default:
+return "Hãy tạo 1 lỗi sai bằng phương pháp thay thế 1-đổi-1, tập trung vào ngữ pháp và vị trí từ.";
+}
+}
+return "Tạo một lỗi sai tinh tế bằng cách thay thế hoặc chèn thêm một từ dư thừa.";
+},
+
+// 4. QUY TẮC TẠO ĐÁP ÁN NHIỄU (QUIZ OPTIONS RULES)
+getMicroTierOptionsRule: function(lang, dataMode, level, topic) {
+if (lang === 'Chinese') {
+return "Khuyến khích chọn 3 đáp án nhiễu bám sát cấp độ HSK của từ mục tiêu. Ưu tiên cao nhất là tạo bẫy bằng chữ Hán đồng âm (cùng Pinyin), từ có chung bộ thủ nhưng khác nghĩa, hoặc từ gần nghĩa. VÍ DỤ: Mục tiêu '买' (Mua) -> Nhiễu: '卖', '读', '看'.";
+}
+if (lang === 'English') {
+return "Khuyến khích chọn 3 đáp án nhiễu theo cấp độ CEFR. Ưu tiên sử dụng False Friends (từ dễ nhầm lẫn), từ có chung tiền tố/hậu tố, hoặc cùng trường từ vựng. VÍ DỤ: Mục tiêu 'accept' -> Nhiễu: 'except', 'expect', 'aspect'.";
+}
+return "Đáp án nhiễu nên là những lỗi hiểu lầm phổ biến, thuộc cùng chủ đề và từ loại.";
+},
+
+// 5. QUY TẮC TẠO RÁC (SCRAMBLE NOISE RULES)
+getMicroTierNoiseRule: function(lang, dataMode, level, topic) {
+if (lang === 'Chinese') {
+switch(level) {
+case 'zh_level_1':
+case 'zh_level_2':
+return "Hãy sinh thêm 2 chữ Hán rác. Ưu tiên các trợ từ thường gây rối ngữ pháp. VÍ DỤ: '的', '了', '是', '不'.";
+case 'zh_level_3':
+case 'zh_level_4':
+return "Hãy sinh thêm 2 từ rác (1-2 chữ Hán). Ưu tiên các hư từ cấu trúc phức tạp. VÍ DỤ: '被', '把', '才', '就', '让', '叫'.";
+default:
+return "Sinh thêm 2 chữ Hán ngẫu nhiên.";
+}
+}
+return "Hãy sinh thêm 2 từ rác ngắn (giới từ, mạo từ) sao cho nếu ghép vào câu sẽ làm sai ngữ pháp.";
+}
+};
+
+
+
+
+
+
+
+
 // Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.01
 // Last Updated: 2026-04-19 12:07
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
