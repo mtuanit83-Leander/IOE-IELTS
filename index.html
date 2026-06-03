@@ -12043,10 +12043,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Block 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.4
-// Last Updated: 2026-06-03 08:12
+// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.5
+// Last Updated: 2026-06-03 08:35
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật V2.4: [UI CLEANUP] Lột bỏ icon cây bút (Edit3) ở màn hình Setup theo chuẩn thiết kế mới. Xác nhận triệt tiêu hoàn toàn lỗi ReferenceError queueLength.
+// Cập nhật V2.5: [BUG FIX UI] Bóc tách window.GlobalLoadingScreen để chống lỗi Màn hình trắng (JSX Babel Error 130). UI hoàn toàn không chứa lỗi ReferenceError.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -12212,6 +12212,8 @@ const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
 const [showHint, setShowHint] = React.useState(false); // State quản lý Bóng đèn gợi ý
 const inputRef = React.useRef(null);
+// Bóc tách Component Loading để chống lỗi Babel JSX HTML
+const GlobalLoadingScreen = window.GlobalLoadingScreen;
 React.useEffect(() => {
 setShowHint(false); // Luôn tắt gợi ý khi sang câu mới
 if (checkStatus === 'idle' && inputRef.current) {
@@ -12263,8 +12265,9 @@ if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
 }
+// Gọi bằng biến Component đã bóc tách
 return (
-<window.GlobalLoadingScreen
+<GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
 onCancel={handleSaveAndBack}
 queueLength={aiAmmoCount} // Sử dụng aiAmmoCount để đếm đạn thật
@@ -12502,9 +12505,9 @@ window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
 // Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.2
-// Last Updated: 2026-06-02 23:05
+// Last Updated: 2026-06-03 08:43
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý dữ liệu và luồng kiểm tra đáp án.
-// Cập nhật V2.2: [ĐẠI PHẪU TỐI ƯU] Trảm batchEnrich (khởi động 0s), xóa hardcode timeout 15s (thay bằng dynamicTimeout), và đếm đạn trung thực aiAmmoCount. Bảo toàn tuyệt đối cơ chế Dual-Validation (Hấp thụ Pinyin) và Regex đa ngôn ngữ.
+// Cập nhật V2.2: [VÁ LỖI REFERENCE ERROR] Cắt bỏ chữ `queueLength` trong mảng return ở cuối Hook để dập tắt lỗi văng màn hình trắng, do biến này đã được thay bằng `aiAmmoCount` ở bản cập nhật trước.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -13031,14 +13034,10 @@ setTimeout(() => triggerAutoSave(), 150);
 const checkAnswer = () => {
 if (!currentQuestion || (checkStatus !== 'idle' && checkStatus !== 'wrong_retry')) return;
 if (inputBuffer.trim() === "") return;
-const normalize = (str, forceLang = lang) => {
+const normalize = (str) => {
 let s = str.toLowerCase();
-// BẢO TOÀN LƯỚI LỌC REGEX ĐA NGÔN NGỮ
-if (window.Utils && window.Utils.advancedNormalize) {
-s = window.Utils.advancedNormalize(s, forceLang || 'en');
-} else {
-s = s.replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
-}
+if (window.Utils && window.Utils.advancedNormalize) s = window.Utils.advancedNormalize(s, lang || 'en');
+else s = s.replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
 return s.trim();
 };
 const cleanStr = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase();
@@ -13140,7 +13139,7 @@ nextRound();
 const toggleResultPause = () => setIsResultPaused(p => !p);
 return {
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts, time, score, combo, playedCount, isFinished, isGenerating, aiCountdown: 0, correctCount, wrongCount,
-resultTimer, isResultPaused, toggleResultPause, timeLeft, queueLength, aiWaitTime, aiAmmoCount,
+resultTimer, isResultPaused, toggleResultPause, timeLeft, aiAmmoCount, aiWaitTime, // Đã xóa queueLength
 checkAnswer, handleNext: nextRound, handleSkip, handleSaveAndBack
 };
 };
@@ -13149,18 +13148,15 @@ const FillBlankGame = ({ cards, t, onFinish, onQuit, mainColor, lang, isAiMode, 
 const gameCallbacks = {
 onEndGame: (stats) => onFinish(stats.correct, stats.time, stats.wrong),
 };
-const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card', difficulty: 'easy' };
-// Đảm bảo cờ aiChallenge luôn ghi đè nếu nó được bật trong setup
-const effectiveAiMode = safeConfig.aiMode || safeConfig.aiChallenge || isAiMode;
-const finalConfig = { ...safeConfig, aiMode: effectiveAiMode };
+const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'card' };
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: gameCallbacks.onEndGame };
-const logic = useFillBlankLogic(cards, { ...finalConfig, isAiMode: effectiveAiMode, apiKey, lang, savedState, globalRetryBag, aiChallenge: safeConfig.aiChallenge }, hookCallbacks);
+const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, savedState, globalRetryBag }, hookCallbacks);
 const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
 const FillBlankPlayScreen = window.FillBlankPlayScreen || window.Block5_8_FillBlankPlayScreen;
 if (!FillBlankPlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankPlayScreen</div>;
 return (
 <FillBlankPlayScreen
-t={t} mainColor={mainColor} config={finalConfig}
+t={t} mainColor={mainColor} config={safeConfig}
 {...logic}
 onBack={logic.handleSaveAndBack}
 onEndGame={gameCallbacks.onEndGame}
