@@ -540,10 +540,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.4
-// Last Updated: 2026-06-05 22:24
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.5
+// Last Updated: 2026-06-06 23:05
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, và kết nối Gemini API. Chứa toàn bộ AI Business Logic.
-// Cập nhật V2.4: [HỆ THỐNG PHANH ABS & CÔNG TẮC HỦY DIỆT] Cấy ghép bộ nhớ Cooldown (chặn Spam 429) và lắng nghe AbortSignal từ QueueEngine để diệt Zombie Request khi thoát game.
+// Cập nhật V2.5: [HỆ THỐNG PHANH ABS 2.0] Cấy ghép độ trễ (Sleep) vào vòng lặp xoay tua Key. Khi gặp lỗi 503 (Server Overloaded), ép hệ thống ngủ đông 4s trước khi thử Key khác để chống dội bom API và khóa Key bị lỗi 15s.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -626,8 +626,8 @@ if (!rawK || rawK.length < 10) continue;
 const k = rawK.replace(/["'\s]/g, "");
 // [HỆ THỐNG PHANH ABS] Bỏ qua các Key đang gỡ lịch Rate Limit 429
 if (window.__apiCooldowns[k] && Date.now() < window.__apiCooldowns[k]) {
-console.warn(`[Rate Limit] Key ...${k.slice(-5)} đang gỡ lịch. Bỏ qua.`);
-lastError = new Error("Tất cả API Key đang trong thời gian làm nguội (Rate Limit 429).");
+console.warn(`[Rate Limit] Key ...${k.slice(-5)} đang làm nguội. Bỏ qua.`);
+lastError = new Error("Tất cả API Key đang trong thời gian làm nguội.");
 continue;
 }
 // [CÔNG TẮC HỦY DIỆT] Kiểm tra luồng ngắt từ Game Engine
@@ -663,10 +663,13 @@ reject(new Error(`API Timeout (${Math.round(dynamicTimeoutMs/1000)}s)`));
 const res = await Promise.race([fetchPromise, timeoutPromise]);
 const d = await res.json();
 if (d.error) {
-// Bắt cúp điện 429 và tống vào nhà giam 60 giây
+// Phân loại Lỗi mạng để có chiến thuật chờ đợi hợp lý
 if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED') {
 window.__apiCooldowns[k] = Date.now() + 60000;
 throw new Error(`Rate Limit 429: ${d.error.message}`);
+}
+if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) {
+throw new Error(`Server Overloaded 503: ${d.error.message}`);
 }
 throw new Error(d.error.message);
 }
@@ -676,12 +679,19 @@ if (d.usageMetadata) tokenMetadata = d.usageMetadata;
 successKey = k;
 break;
 } catch (e) {
-// Bắt buộc ném lỗi nếu do người dùng bấm Thoát, không đâm Key tiếp theo
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) {
 throw e;
 }
+// HỆ THỐNG PHANH ABS TÁC CHIẾN MẠNG
 if (e.message && e.message.includes('429')) {
 window.__apiCooldowns[k] = Date.now() + 60000;
+} else if (e.message && e.message.includes('503')) {
+window.__apiCooldowns[k] = Date.now() + 15000; // Khóa key này 15s để hồi sức
+console.warn(`[ABS] Server Google đang bận (503). Động cơ ngủ đông 4s trước khi đổi Key...`);
+await new Promise(r => setTimeout(r, 4000)); // Ép hệ thống dừng nã đạn 4 giây
+} else {
+// Lỗi vặt khác (Timeout, Network...), chờ nhẹ 1.5s để chống Spam
+await new Promise(r => setTimeout(r, 1500));
 }
 console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message);
 lastError = e;
@@ -765,7 +775,7 @@ for (const rawK of keyPool) {
 if (!rawK || rawK.length < 10) continue;
 const k = rawK.replace(/["'\s]/g, "");
 if (window.__apiCooldowns[k] && Date.now() < window.__apiCooldowns[k]) {
-lastError = new Error("Key đang bị Rate Limit");
+lastError = new Error("Key đang bị Rate Limit hoặc Cooldown");
 continue;
 }
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
@@ -787,6 +797,8 @@ if (data.error) {
 if (data.error.code === 429 || data.error.message.includes('quota') || data.error.status === 'RESOURCE_EXHAUSTED') {
 window.__apiCooldowns[k] = Date.now() + 60000;
 throw new Error(`Rate Limit 429: ${data.error.message}`);
+} else if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) {
+throw new Error(`Server Overloaded 503: ${data.error.message}`);
 } else {
 throw new Error(data.error.message);
 }
@@ -796,6 +808,14 @@ successKey = k;
 break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
+// HỆ THỐNG PHANH ABS (Cho Luồng Enrich)
+if (e.message && e.message.includes('503')) {
+window.__apiCooldowns[k] = Date.now() + 15000;
+console.warn(`[ABS] SmartFill: Server bận. Động cơ ngủ đông 4s trước khi đổi Key...`);
+await new Promise(r => setTimeout(r, 4000));
+} else if (e.message && !e.message.includes('429')) {
+await new Promise(r => setTimeout(r, 1500));
+}
 console.warn(`SmartFill Key ...${k.slice(-5)} failed:`, e.message);
 lastError = e;
 }
