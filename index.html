@@ -540,13 +540,29 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.6
-// Last Updated: 2026-06-06 23:20
-// Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, và kết nối Gemini API. Chứa toàn bộ AI Business Logic.
-// Cập nhật V2.6: [HỆ THỐNG PHANH ABS 2.1] Cấy ghép thêm nhịp thở 1000ms cho lỗi 429 (Hết hạn ngạch). Tránh hiện tượng xoay tua Key quá nhanh tạo ra hàng loạt request đỏ trong 1 giây.
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.7
+// Last Updated: 2026-06-07 00:05
+// Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.7: [GLOBAL MUTEX LOCK & ABS 2.2] Cấy ghép bộ Khóa Đa Luồng (withApiLock) đảm bảo không có 2 request nào đập vào Google cùng lúc (Chống Race Condition). Nâng nhịp thở lỗi 429 lên 2000ms kèm Console Log màu sắc.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
+// ============================================================================
+// 0. CƠ CHẾ KHÓA ĐA LUỒNG (GLOBAL MUTEX LOCK) - CHỐNG RACE CONDITION
+// ============================================================================
+window.Utils.__apiMutex = window.Utils.__apiMutex || Promise.resolve();
+window.Utils.withApiLock = async (taskFn) => {
+const previousLock = window.Utils.__apiMutex;
+let releaseLock;
+window.Utils.__apiMutex = new Promise(resolve => { releaseLock = resolve; });
+// Chờ luồng trước đó chạy xong (Bỏ qua lỗi của luồng trước để không đứt chuỗi)
+await previousLock.catch(() => {});
+try {
+return await taskFn();
+} finally {
+releaseLock(); // Mở khóa cho luồng tiếp theo
+}
+};
 // ============================================================================
 // 1. TẢI DỮ LIỆU TỪ GOOGLE SHEETS QUA PROXY
 // ============================================================================
@@ -583,7 +599,7 @@ try {
 const k = apiKey.replace(/["'\s]/g, "");
 const body = { contents: [{ parts: [{ text: "Reply 'OK'" }] }] };
 const controller = new AbortController();
-const timeoutId = setTimeout(() => controller.abort(), 10000); // Ngắt sau 10s
+const timeoutId = setTimeout(() => controller.abort(), 10000);
 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
@@ -600,6 +616,7 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 // 3. GỌI API GEMINI VẠN NĂNG (CÓ QUẢN LÝ KEY POOL, DYNAMIC TIMEOUT & COOLDOWN)
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
+return window.Utils.withApiLock(async () => {
 window.__apiCooldowns = window.__apiCooldowns || {};
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
@@ -624,13 +641,11 @@ for (let i = 0; i < keyPool.length; i++) {
 const rawK = keyPool[i];
 if (!rawK || rawK.length < 10) continue;
 const k = rawK.replace(/["'\s]/g, "");
-// [HỆ THỐNG PHANH ABS] Bỏ qua các Key đang gỡ lịch Rate Limit 429
+// [HỆ THỐNG PHANH ABS]
 if (window.__apiCooldowns[k] && Date.now() < window.__apiCooldowns[k]) {
-console.warn(`[Rate Limit] Key ...${k.slice(-5)} đang làm nguội. Bỏ qua.`);
 lastError = new Error("Tất cả API Key đang trong thời gian làm nguội.");
 continue;
 }
-// [CÔNG TẮC HỦY DIỆT] Kiểm tra luồng ngắt từ Game Engine
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) {
 throw new DOMException("User exited", "AbortError");
@@ -663,7 +678,6 @@ reject(new Error(`API Timeout (${Math.round(dynamicTimeoutMs/1000)}s)`));
 const res = await Promise.race([fetchPromise, timeoutPromise]);
 const d = await res.json();
 if (d.error) {
-// Phân loại Lỗi mạng để có chiến thuật chờ đợi hợp lý
 if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED') {
 window.__apiCooldowns[k] = Date.now() + 60000;
 throw new Error(`Rate Limit 429: ${d.error.message}`);
@@ -682,34 +696,33 @@ break;
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) {
 throw e;
 }
-// HỆ THỐNG PHANH ABS TÁC CHIẾN MẠNG
+// TÁC CHIẾN MẠNG
 if (e.message && e.message.includes('429')) {
 window.__apiCooldowns[k] = Date.now() + 60000;
-console.warn(`[ABS] Key hết hạn ngạch (429). Chuyển Key sau 1s...`);
-await new Promise(r => setTimeout(r, 1000)); // Nhịp thở cho lỗi 429
+console.warn(`%c[ABS] Key hết hạn ngạch (429). Chuyển Key sau 2s...`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+await new Promise(r => setTimeout(r, 2000));
 } else if (e.message && e.message.includes('503')) {
-window.__apiCooldowns[k] = Date.now() + 15000; // Khóa key này 15s để hồi sức
-console.warn(`[ABS] Server Google đang bận (503). Động cơ ngủ đông 4s trước khi đổi Key...`);
-await new Promise(r => setTimeout(r, 4000)); // Ép hệ thống dừng nã đạn 4 giây
+window.__apiCooldowns[k] = Date.now() + 15000;
+console.warn(`%c[ABS] Server bận (503). Động cơ ngủ đông 4s...`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
+await new Promise(r => setTimeout(r, 4000));
 } else {
-// Lỗi vặt khác (Timeout, Network...), chờ nhẹ 1.5s để chống Spam
 await new Promise(r => setTimeout(r, 1500));
 }
-console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message);
 lastError = e;
 }
 }
 if (!resultText) throw new Error(`Tất cả ${keyPool.length} API Key đều lỗi. (Lỗi cuối: ${lastError?.message})`);
 if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey);
-console.log("Updated primary API Key to working key.");
 }
 return { text: resultText, tokenMetadata };
+});
 };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ENRICH CARD)
 // ============================================================================
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null) => {
+return window.Utils.withApiLock(async () => {
 window.__apiCooldowns = window.__apiCooldowns || {};
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKey;
@@ -810,25 +823,23 @@ successKey = k;
 break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
-// HỆ THỐNG PHANH ABS (Cho Luồng Enrich)
 if (e.message && e.message.includes('503')) {
 window.__apiCooldowns[k] = Date.now() + 15000;
-console.warn(`[ABS] SmartFill: Server bận. Động cơ ngủ đông 4s trước khi đổi Key...`);
+console.warn(`%c[ABS] SmartFill: Server bận. Động cơ ngủ đông 4s...`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 await new Promise(r => setTimeout(r, 4000));
 } else if (e.message && e.message.includes('429')) {
-console.warn(`[ABS] SmartFill: Key hết hạn ngạch. Chuyển Key sau 1s...`);
-await new Promise(r => setTimeout(r, 1000)); // Nhịp thở cho lỗi 429
+window.__apiCooldowns[k] = Date.now() + 60000;
+console.warn(`%c[ABS] SmartFill: Key hết hạn ngạch. Chuyển Key sau 2s...`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+await new Promise(r => setTimeout(r, 2000)); // Nhịp thở cho lỗi 429
 } else {
 await new Promise(r => setTimeout(r, 1500));
 }
-console.warn(`SmartFill Key ...${k.slice(-5)} failed:`, e.message);
 lastError = e;
 }
 }
 if (!finalResult) throw new Error(`AI Error (Tất cả Key đều lỗi): ${lastError?.message}`);
 if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey);
-console.log("SmartFill: Auto-switched to working key:", successKey.slice(-5));
 }
 const text = finalResult.candidates?.[0]?.content?.parts?.[0]?.text;
 if (!text) throw new Error("AI không trả về kết quả");
@@ -841,12 +852,8 @@ if (parsed.image_keyword) {
 imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
 }
 const meta = finalResult.usageMetadata ? { _tokenUsage: finalResult.usageMetadata } : {};
-return {
-...parsed,
-term: term,
-image: imgUrl,
-...meta
-};
+return { ...parsed, term: term, image: imgUrl, ...meta };
+});
 };
 // ============================================================================
 // 5. TẠO NHIỄU CHO GAME (QUIZ / MATCH)
