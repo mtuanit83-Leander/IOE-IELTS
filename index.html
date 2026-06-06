@@ -87,10 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.4
-// Last Updated: 2026-06-02 22:15
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.7
+// Last Updated: 2026-06-06 13:20
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V2.4: [DỌN DẸP MÃ CHẾT] Xóa bỏ hoàn toàn quiz_word và quiz_sentence do đã được chuyển logic Inline Prompt (Persona + Few-Shot) sang Block 2.3A.
+// Cập nhật V2.7: [CHỐNG HALLUCINATION] Siết chặt logic prompt enrich_sentence, cấm AI đoán mò nhãn ngữ pháp nếu không có từ khóa đặc trưng.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -118,11 +118,36 @@ en: { dataKey: 'fc_data_en', noteKey: 'fc_notebook_en' },
 zh: { dataKey: 'fc_data_zh', noteKey: 'fc_notebook_zh' },
 vi: { dataKey: 'fc_data_vi', noteKey: 'fc_notebook_vi' }
 };
-// HỆ THỐNG PROMPT TÁCH BIỆT (TỐI ƯU HÓA)
+// ============================================================================
+// HỆ THỐNG MENU ĐỊNH DANH BẪY SƯ PHẠM (TRAP ID REGISTRY)
+// ============================================================================
+window.IoeEnumRegistry = {
+// Bản đồ phân cấp: Level -> Danh sách bẫy được phép dùng
+LEVEL_TO_TRAPS: {
+// --- HỆ TIẾNG TRUNG (HSK) ---
+zh_level_1: ['zh_hsk_adv_degree', 'zh_hsk_prep_mismatch', 'zh_hsk_noun_space'],
+zh_level_2: ['zh_hsk_separable_obj', 'zh_hsk_rc_negation', 'zh_hsk_rc_state', 'zh_hsk_dc_direction'],
+zh_level_3: ['zh_hsk_ba_indefinite', 'zh_hsk_ba_result', 'zh_hsk_bei_reverse', 'zh_hsk_exist_order'],
+zh_level_4: ['zh_hsk_emph_order', 'zh_hsk_emph_extreme', 'zh_hsk_paired_only_if', 'zh_hsk_paired_as_long_as', 'zh_hsk_adv_zhongyu'],
+// --- HỆ TIẾNG ANH (CEFR) ---
+en_level_1: ['eng_article_an', 'eng_plural_s', 'eng_present_cont', 'eng_this_these'],
+en_level_2: ['eng_past_irregular', 'eng_comparative_double', 'eng_much_many'],
+en_level_3: ['eng_since_for', 'eng_passive_missing_be', 'eng_vietglish_collocation'],
+en_level_4: ['eng_past_irregular', 'eng_comparative_double', 'eng_much_many', 'eng_vietglish_collocation'],
+en_level_5: ['eng_since_for', 'eng_passive_missing_be', 'eng_vietglish_collocation']
+},
+// Phương thức truy xuất nhanh
+getAvailableTraps: function(levelKey) {
+return this.LEVEL_TO_TRAPS[levelKey] || [];
+}
+};
+// ============================================================================
+// HỆ THỐNG PROMPT TÁCH BIỆT (TỐI ƯU HÓA & KHÓA ENUM)
+// ============================================================================
 window.DEFAULT_PROMPTS = {
 // --- 1. ENRICH (Làm giàu thẻ) ---
 enrich_word: `Phân tích "{term}" ({lang}->Vi). QUY TẮC QUAN TRỌNG:Nếu là tiếng Trung, dịch sát nghĩa HSK3. Nếu là Tiếng Anh, CHỈ lấy nghĩa thông dụng nhất (A1-A2). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa/translate cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt: Danh từ, Động từ, Tính từ, Trạng từ, Giới từ, Đại từ, Liên từ), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals, Daily Life...), analysis(Giải thích ý nghĩa, cách dùng chi tiết), sinoViet(Nếu là tiếng Trung: CRITICAL CHỈ XUẤT ÂM HÁN VIỆT THUẦN TÚY, TUYỆT ĐỐI KHÔNG DỊCH NGHĨA, KHÔNG DÙNG DẤU NGOẶC ĐƠN. Nếu là tiếng Anh: Dịch chi tiết/Giải thích thêm), example(câu chứa từ + dịch), image_keyword(English).`,
-enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt)(Sát nghĩa nhất), partOfSpeech(Ghi là "Câu văn" hoặc "Thành ngữ"), topic(Phân loại chủ đề Tiếng Anh, VD: Weather, Work, Relationships...), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English).`,
+enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt), partOfSpeech(Ghi là "Câu văn"), topic(Phân loại chủ đề), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English), grammar_type(BẮT BUỘC: Mảng String chứa 1 mã ngữ pháp CỐT LÕI NHẤT (tối đa 2 nếu thực sự có). NẾU LÀ TIẾNG TRUNG, CHỈ CHỌN TRONG: [zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as]. LƯU Ý SỐNG CÒN: Chỉ chọn mã khi câu CÓ CHỨA từ khóa của cấu trúc đó (VD: Không có chữ 连/也/都 tuyệt đối cấm chọn emph_order; Không có chữ 把 cấm chọn ba_result; Không có chữ 被 cấm chọn bei_reverse). KHÔNG ĐOÁN MÒ! NẾU LÀ TIẾNG ANH, CHỈ CHỌN TRONG: [eng_article_an, eng_plural_s, eng_present_cont, eng_this_these, eng_past_irregular, eng_comparative_double, eng_much_many, eng_since_for, eng_passive_missing_be, eng_vietglish_collocation]. TUYỆT ĐỐI KHÔNG DÙNG TỪ KHÁC).`,
 // --- 2. MATCH (Nối ô) ---
 match_word: `Tạo 1 nghĩa sai (Tiếng Việt) cho MỖI từ sau: {itemsText}. QUY TẮC: Nghĩa sai PHẢI thuộc cùng chủ đề/lĩnh vực với từ gốc nhưng khác nghĩa hoàn toàn. TUYỆT ĐỐI KHÔNG dùng từ sai chính tả tiếng Việt (Ví dụ: KHÔNG dùng 'đôi gáy' cho 'đôi giày'). Bẫy phải đánh lừa được tư duy logic.`,
 match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {itemsText}. QUY TẮC: Bản dịch sai phải đọc CỰC KỲ XUÔI TAI bằng tiếng Việt, nhưng bị sai lệch về: Chủ thể (Anh ấy/Cô ấy), Thời gian (Đã/Sẽ), hoặc tính từ bị đảo ngược. TUYỆT ĐỐI KHÔNG viết sai chính tả.`,
@@ -133,14 +158,15 @@ grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, sú
 };
 // UI TEXT
 window.UI_TEXT = {
+// ... (Giữ nguyên toàn bộ từ điển tĩnh)
 vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Or input link directly:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "定义", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "停止", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
-// Block 2.1b: TẦNG 2: TIỆN ÍCH LÕI (Core Data Utilities) - Version 2.1
-// Last Updated: 2026-05-30 09:46
+// Block 2.1b: TẦNG 2: TIỆN ÍCH LÕI (Core Data Utilities) - Version 2.3
+// Last Updated: 2026-06-05 06:15
 // Nhiệm vụ: Khởi tạo đối tượng window.Utils. Chứa các hàm xử lý chuỗi, mảng, thời gian thuần túy (Không gọi API, không gọi DB) và Thuật toán tĩnh.
-// Cập nhật V2.1: Bổ sung hàm comparePinyin hỗ trợ cơ chế "Hấp thụ Pinyin" (Pinyin Auto-Acceptance) cho Game Điền từ.
+// Cập nhật V2.3: [VI PHẪU THUẬT CỘT 10] Chuẩn hóa toàn diện trường `grammar_type` (Cột J) cho hệ thống I/O (Export/Import).
 // ==================================================================================
 window.Utils = {
 safeJsonParse: (key, f) => { try { const i = localStorage.getItem(key); return i ? JSON.parse(i) : f; } catch { return f; } },
@@ -244,7 +270,9 @@ sinoViet: String(row[4] || "").trim(),
 example: String(row[5] || "").trim(),
 image: String(row[6] || "").trim(),
 partOfSpeech: String(row[7] || "").trim(),
-topic: String(row[8] || "").trim()
+topic: String(row[8] || "").trim(),
+// Bắt dữ liệu cột J (index 9) và ép vào mảng an toàn
+grammar_type: row[9] ? String(row[9]).split(',').map(s => s.trim()).filter(Boolean) : []
 };
 }).filter(card => card !== null);
 },
@@ -256,9 +284,17 @@ return window.Utils.convertRawRowsToCards(rows);
 sanitizeCards: (rawCards) => {
 if (!Array.isArray(rawCards)) return [];
 return rawCards.map(c => ({
-term: String(c.term || ''), pronunciation: String(c.pronunciation || ''), definition: String(c.definition || ''),
+term: String(c.term || ''),
+pronunciation: String(c.pronunciation || ''),
+definition: String(c.definition || ''),
 analysis: String(c.analysis || ''),
-sinoViet: String(c.sinoViet || ''), example: String(c.example || ''), image: String(c.image || ''), partOfSpeech: String(c.partOfSpeech || ''), topic: String(c.topic || '')
+sinoViet: String(c.sinoViet || ''),
+example: String(c.example || ''),
+image: String(c.image || ''),
+partOfSpeech: String(c.partOfSpeech || ''),
+topic: String(c.topic || ''),
+// Bảo vệ mảng grammar_type khi nạp vào hệ thống
+grammar_type: Array.isArray(c.grammar_type) ? c.grammar_type : (typeof c.grammar_type === 'string' && c.grammar_type.trim() !== '' ? c.grammar_type.split(',').map(s => s.trim()).filter(Boolean) : [])
 })).filter(c => c.term.trim() !== "");
 },
 detectSentence: (text) => {
@@ -268,8 +304,15 @@ return /[.?!。？！]/.test(str) || str.split(/\s+/).length > 4 || (str.length 
 },
 jsonToTsv: (data) => {
 if (!Array.isArray(data) || data.length === 0) return "";
-const headers = ['term', 'pronunciation', 'definition', 'analysis', 'sinoViet', 'example', 'image', 'partOfSpeech', 'topic'];
-const rows = data.map(item => headers.map(key => { let val = item[key] || ''; val = String(val).replace(/(\r\n|\n|\r)/gm, " "); return val; }).join('\t'));
+// Định nghĩa chính xác 10 cột để xuất ra TSV (Clipboard)
+const headers = ['term', 'pronunciation', 'definition', 'analysis', 'sinoViet', 'example', 'image', 'partOfSpeech', 'topic', 'grammar_type'];
+const rows = data.map(item => headers.map(key => {
+let val = item[key] || '';
+// Chuyển mảng thành chuỗi phân tách bằng dấu phẩy
+if (Array.isArray(val)) val = val.join(', ');
+val = String(val).replace(/(\r\n|\n|\r)/gm, " ");
+return val;
+}).join('\t'));
 return rows.join('\n');
 },
 calculateSimilarity: (str1, str2) => {
@@ -296,7 +339,6 @@ return (2.0 * intersection) / (clean1.length - 1 + clean2.length - 1);
 },
 comparePinyin: (input, targetPinyin) => {
 if (!input || !targetPinyin) return false;
-// Cạo sạch: Chuyển Unicode sang dạng NFD để tách dấu thanh điệu, xóa dấu, xóa số, xóa khoảng trắng và ký tự đặc biệt
 const cleanStr = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase();
 const cleanInput = cleanStr(input);
 const cleanTarget = cleanStr(targetPinyin);
@@ -499,10 +541,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.1
-// Last Updated: 2026-06-01 14:50
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.4
+// Last Updated: 2026-06-05 22:24
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, và kết nối Gemini API. Chứa toàn bộ AI Business Logic.
-// Cập nhật V2.1: [THÁO NÚT THẮT CỔ CHAI] Gỡ bỏ hardcode timeout 15s trong callGeminiApi, sử dụng Dynamic Timeout (loadingTime + 5s) đọc trực tiếp từ cấu hình để tránh xung đột chết luồng sớm.
+// Cập nhật V2.4: [HỆ THỐNG PHANH ABS & CÔNG TẮC HỦY DIỆT] Cấy ghép bộ nhớ Cooldown (chặn Spam 429) và lắng nghe AbortSignal từ QueueEngine để diệt Zombie Request khi thoát game.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -515,9 +557,12 @@ let finalUrl = url.includes('docs.google.com') ? url.replace(/\/edit.*$/, '/expo
 const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
 const strategies = [
 { name: "Direct", url: finalUrl },
+{ name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(finalUrl + cacheBuster)}` },
 { name: "CorsProxyIO", url: `https://corsproxy.io/?${encodeURIComponent(finalUrl + cacheBuster)}` },
+{ name: "ThingProxy", url: `https://thingproxy.freeboard.io/fetch/${finalUrl}` },
 { name: "CodeTabs", url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(finalUrl)}` },
-{ name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(finalUrl + cacheBuster)}` }
+{ name: "CorsAnywhere", url: `https://cors-anywhere.herokuapp.com/${finalUrl}` },
+{ name: "CorsSH", url: `https://proxy.cors.sh/${finalUrl}` }
 ];
 let err;
 for (const s of strategies) {
@@ -526,9 +571,10 @@ const res = await fetch(s.url);
 if (res.ok) return res;
 } catch (e) {
 err = e;
+console.warn(`[Proxy Fallback] ${s.name} thất bại, thử node tiếp theo...`);
 }
 }
-throw new Error("Lỗi tải dữ liệu mạng");
+throw new Error("Lỗi tải dữ liệu mạng (Tất cả Proxy đều bị chặn)");
 };
 // ============================================================================
 // 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING)
@@ -552,12 +598,12 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 }
 };
 // ============================================================================
-// 3. GỌI API GEMINI VẠN NĂNG (CÓ QUẢN LÝ KEY POOL & DYNAMIC TIMEOUT)
+// 3. GỌI API GEMINI VẠN NĂNG (CÓ QUẢN LÝ KEY POOL, DYNAMIC TIMEOUT & COOLDOWN)
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
+window.__apiCooldowns = window.__apiCooldowns || {};
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// Đẩy Key hiện tại lên đầu Pool
 if (currentKey && !keyPool.includes(currentKey)) {
 keyPool.unshift(currentKey);
 } else if (currentKey) {
@@ -568,8 +614,7 @@ let resultText = null;
 let tokenMetadata = null;
 let successKey = null;
 let lastError = null;
-// [DYNAMIC TIMEOUT] Đọc cấu hình từ LocalStorage, cộng thêm 5s đệm an toàn
-let dynamicTimeoutMs = 20000; // Khởi tạo an toàn (20s)
+let dynamicTimeoutMs = 20000;
 try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
 if (aiCfg && aiCfg.loadingTime) {
@@ -580,20 +625,35 @@ for (let i = 0; i < keyPool.length; i++) {
 const rawK = keyPool[i];
 if (!rawK || rawK.length < 10) continue;
 const k = rawK.replace(/["'\s]/g, "");
+// [HỆ THỐNG PHANH ABS] Bỏ qua các Key đang gỡ lịch Rate Limit 429
+if (window.__apiCooldowns[k] && Date.now() < window.__apiCooldowns[k]) {
+console.warn(`[Rate Limit] Key ...${k.slice(-5)} đang gỡ lịch. Bỏ qua.`);
+lastError = new Error("Tất cả API Key đang trong thời gian làm nguội (Rate Limit 429).");
+continue;
+}
+// [CÔNG TẮC HỦY DIỆT] Kiểm tra luồng ngắt từ Game Engine
+const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
+if (abortSignal && abortSignal.aborted) {
+throw new DOMException("User exited", "AbortError");
+}
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
-const randomTemp = Math.random() * (1.1 - 0.7) + 0.7; // Nhiệt độ linh hoạt chống cached
+const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
 body.generationConfig = { temperature: randomTemp };
 if (schema) {
 body.generationConfig.responseMimeType = "application/json";
 body.generationConfig.responseSchema = schema;
 }
 const controller = new AbortController();
+const onAbort = () => controller.abort();
+if (abortSignal) abortSignal.addEventListener('abort', onAbort);
 const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
 signal: controller.signal
+}).finally(() => {
+if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
 const timeoutPromise = new Promise((_, reject) => {
 setTimeout(() => {
@@ -603,13 +663,27 @@ reject(new Error(`API Timeout (${Math.round(dynamicTimeoutMs/1000)}s)`));
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
 const d = await res.json();
-if (d.error) throw new Error(d.error.message);
+if (d.error) {
+// Bắt cúp điện 429 và tống vào nhà giam 60 giây
+if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED') {
+window.__apiCooldowns[k] = Date.now() + 60000;
+throw new Error(`Rate Limit 429: ${d.error.message}`);
+}
+throw new Error(d.error.message);
+}
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
 resultText = d.candidates[0].content.parts[0].text;
 if (d.usageMetadata) tokenMetadata = d.usageMetadata;
 successKey = k;
-break; // Thoát vòng lặp ngay khi có key thành công
+break;
 } catch (e) {
+// Bắt buộc ném lỗi nếu do người dùng bấm Thoát, không đâm Key tiếp theo
+if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) {
+throw e;
+}
+if (e.message && e.message.includes('429')) {
+window.__apiCooldowns[k] = Date.now() + 60000;
+}
 console.warn(`Key ...${k.slice(-5)} lỗi:`, e.message);
 lastError = e;
 }
@@ -625,6 +699,7 @@ return { text: resultText, tokenMetadata };
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ENRICH CARD)
 // ============================================================================
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null) => {
+window.__apiCooldowns = window.__apiCooldowns || {};
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKey;
 if (currentKey && !keyPool.includes(currentKey)) {
@@ -648,7 +723,8 @@ topic: { type: "STRING" },
 analysis: { type: "STRING" },
 sinoViet: { type: "STRING" },
 example: { type: "STRING" },
-image_keyword: { type: "STRING" }
+image_keyword: { type: "STRING" },
+grammar_type: { type: "ARRAY", items: { type: "STRING" } }
 };
 let propertiesToFetch = {};
 let requiredFields = [];
@@ -664,7 +740,7 @@ requiredFields.push(schemaKey);
 promptRequest = `Chỉ phân tích và trả về thông tin cho các mục sau: ${requiredFields.join(", ")}. Các mục khác bỏ qua. Bắt buộc suy luận chủ đề (topic) nếu được yêu cầu.${targetFields.includes('topic') ? topicRestriction : ''}`;
 } else {
 propertiesToFetch = fullProperties;
-requiredFields = ["term", "pronunciation", "definition", "partOfSpeech", "topic", "analysis", "sinoViet", "example", "image_keyword"];
+requiredFields = ["term", "pronunciation", "definition", "partOfSpeech", "topic", "analysis", "sinoViet", "example", "image_keyword", "grammar_type"];
 promptRequest = `Phân tích đầy đủ tất cả các trường thông tin, đặc biệt là tự động phân loại chủ đề (topic).${topicRestriction}`;
 }
 const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
@@ -689,16 +765,29 @@ let lastError = null;
 for (const rawK of keyPool) {
 if (!rawK || rawK.length < 10) continue;
 const k = rawK.replace(/["'\s]/g, "");
+if (window.__apiCooldowns[k] && Date.now() < window.__apiCooldowns[k]) {
+lastError = new Error("Key đang bị Rate Limit");
+continue;
+}
+const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
+if (abortSignal && abortSignal.aborted) throw new DOMException("User exited", "AbortError");
 try {
+const controller = new AbortController();
+const onAbort = () => controller.abort();
+if (abortSignal) abortSignal.addEventListener('abort', onAbort);
 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify(payload)
+body: JSON.stringify(payload),
+signal: controller.signal
+}).finally(() => {
+if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
 const data = await res.json();
 if (data.error) {
-if (data.error.code === 429 || data.error.message.includes('quota') || data.error.message.includes('permission') || data.error.message.includes('API key')) {
-throw new Error(data.error.message);
+if (data.error.code === 429 || data.error.message.includes('quota') || data.error.status === 'RESOURCE_EXHAUSTED') {
+window.__apiCooldowns[k] = Date.now() + 60000;
+throw new Error(`Rate Limit 429: ${data.error.message}`);
 } else {
 throw new Error(data.error.message);
 }
@@ -707,6 +796,7 @@ finalResult = data;
 successKey = k;
 break;
 } catch (e) {
+if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
 console.warn(`SmartFill Key ...${k.slice(-5)} failed:`, e.message);
 lastError = e;
 }
@@ -719,7 +809,6 @@ console.log("SmartFill: Auto-switched to working key:", successKey.slice(-5));
 const text = finalResult.candidates?.[0]?.content?.parts?.[0]?.text;
 if (!text) throw new Error("AI không trả về kết quả");
 const parsed = JSON.parse(text);
-// --- VỆ SINH DỮ LIỆU (CẠO RÁC ẢO GIÁC HÁN VIỆT) ---
 if (lang === 'zh' && parsed.sinoViet) {
 parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
 }
@@ -962,10 +1051,10 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.08
-// Last Updated: 2026-05-19 19:25
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.09
+// Last Updated: 2026-06-05 16:00
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
-// Cập nhật: [CHIẾN DỊCH VÔ HIỆU HÓA] Dọn dẹp rác hệ thống: Xóa bỏ Prompt xử lý Thanh điệu/Pinyin Tiếng Trung khỏi dự phòng _buildSystemPromptForFactory. Trả hệ thống về nguyên bản phục vụ Alphabetic. Tuân thủ Điều 3.
+// Cập nhật V1.09: [KỶ LUẬT ĐỊNH DẠNG - ANTI-FRAGMENT] Cấy ghép Chỉ thị Vàng "antiFragmentRule" vào các bẫy Options để diệt tận gốc hiện tượng AI trả về đáp án cụt lủn ở Game Trắc nghiệm câu văn.
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -1090,26 +1179,29 @@ return rule;
 },
 getMicroTierOptionsRule: function(targetLang, dataMode, mappedKey, topic) {
 let optionsRule = "";
+// [VÁ LỖI CỤT LỦN - JIT FORMATTING]
+// Ép cứng AI phải trả về toàn bộ câu văn, nghiêm cấm việc chỉ nhả ra vài từ vụn vặt gây mất cân xứng bài thi.
+const antiFragmentRule = "CRITICAL FORMAT RULE: YOU MUST RETURN FULL COMPLETE SENTENCES. DO NOT return short fragments, isolated chunks, or single words. The distractors MUST have the EXACT SAME length and overall structure as the original sentence. ";
 if (targetLang === 'English' && dataMode === 'vocab') {
 if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) optionsRule = "The 3 distractors MUST be completely different words (meaning and spelling) to be easily distinguishable for beginners.";
 else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) optionsRule = "The 3 distractors MUST share the same part of speech and be somewhat related to the target word's topic to cause slight confusion.";
 else optionsRule = "The 3 distractors MUST be advanced False Friends, words with identical prefixes/suffixes, or highly nuanced synonyms that don't quite fit. They must look extremely plausible to an academic learner.";
 } else if (targetLang === 'English' && dataMode === 'sentence') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) optionsRule = "The 3 distractors MUST contain obvious grammar errors (e.g., totally wrong verb tense, missing subjects).";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) optionsRule = "The 3 distractors MUST contain subtle intermediate errors (e.g., slightly wrong preposition, comparative vs superlative confusion).";
-else optionsRule = "The 3 distractors MUST look grammatically perfect but contain high-level semantic flaws (e.g., incorrect nuanced relative pronoun, wrong formal collocation, or inversion syntax error).";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) optionsRule = antiFragmentRule + "The 3 distractors MUST contain obvious grammar errors (e.g., totally wrong verb tense, missing subjects).";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) optionsRule = antiFragmentRule + "The 3 distractors MUST contain subtle intermediate errors (e.g., slightly wrong preposition, comparative vs superlative confusion).";
+else optionsRule = antiFragmentRule + "The 3 distractors MUST look grammatically perfect but contain high-level semantic flaws (e.g., incorrect nuanced relative pronoun, wrong formal collocation, or inversion syntax error).";
 } else if (targetLang === 'Chinese' && dataMode === 'vocab') {
 if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) optionsRule = "The 3 distractors MUST be visually distinct characters or basic antonyms. Avoid complex homophones.";
 else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) optionsRule = "The 3 distractors MUST be Near-synonyms (近义词) or characters sharing the same radical (同部首字) to cause visual/semantic confusion.";
 else optionsRule = "The 3 distractors MUST be highly formal written words (书面语) or very similar Chengyu (成语) with 1 character difference.";
 } else if (targetLang === 'Chinese' && dataMode === 'sentence') {
-if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) optionsRule = "The 3 distractors MUST have obvious word-order errors or totally wrong measure words.";
-else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) optionsRule = "The 3 distractors MUST have subtle grammatical errors (e.g., wrong aspect particle 了/着/过, or slightly incorrect 'Ba'/'Bei' structure).";
-else optionsRule = "The 3 distractors MUST be semantically flawed but structurally perfect sentences (e.g., wrong usage of Chengyu in context).";
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) optionsRule = antiFragmentRule + "The 3 distractors MUST have obvious word-order errors or totally wrong measure words.";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) optionsRule = antiFragmentRule + "The 3 distractors MUST have subtle grammatical errors (e.g., wrong aspect particle 了/着/过, or slightly incorrect 'Ba'/'Bei' structure).";
+else optionsRule = antiFragmentRule + "The 3 distractors MUST be semantically flawed but structurally perfect sentences (e.g., wrong usage of Chengyu in context).";
 } else if (targetLang === 'Vietnamese' && dataMode === 'vocab') {
 optionsRule = "The 3 distractors MUST be plausible Vietnamese words related to the topic, but with entirely different meanings. DO NOT use spelling errors.";
 } else if (targetLang === 'Vietnamese' && dataMode === 'sentence') {
-optionsRule = "The 3 distractors MUST be highly natural Vietnamese sentences but with logically incorrect meanings (e.g., opposite adjectives, reversed subjects/objects).";
+optionsRule = antiFragmentRule + "The 3 distractors MUST be highly natural Vietnamese sentences but with logically incorrect meanings (e.g., opposite adjectives, reversed subjects/objects).";
 }
 return optionsRule;
 },
@@ -1235,8 +1327,12 @@ prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
-// [VÁ LỖI BỐC HƠI TOKEN] Thiết quân luật độ dài ngăn chặn lỗi dài dòng của AI
+// [VÁ LỖI CỤT LỦN & BỐC HƠI TOKEN] Tách biệt thiết quân luật cho Từ Vựng và Câu Văn
+if (dataMode === 'sentence') {
+prompt += `STRICT FORMAT MARTIAL LAW: The target and ALL options/distractors MUST be FULL, complete sentences. NEVER return short fragments or isolated words. They must mirror the length and structure of the original sentence.\n`;
+} else {
 prompt += `STRICT LENGTH MARTIAL LAW: If the target level is Pre-A1, A1, or A2 (e.g., Kiddie, Junior, Starters, Movers, Flyers), ALL options/distractors MUST BE STRICTLY LESS THAN 8 WORDS. Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
+}
 prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
 // [TOPIC FREEDOM] Đặc xá chủ đề cho các game kỹ thuật
 const isTopicFree = topic === 'ANY' || subType === 'pronunciation' || subType === 'odd_one_out' || subType === 'spot_mistake';
@@ -1276,7 +1372,6 @@ prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'pronunciation') {
 prompt += "TASK: Generate a Pronunciation/Phonetics question.\n";
 prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLevel}.\n`;
-// [CHIẾN DỊCH VÔ HIỆU HÓA] Đã xóa bỏ đoạn mã rườm rà chuyên xử lý Thanh điệu/Pinyin Tiếng Trung. Chỉ giữ lại luồng Alphabetic gốc.
 const phoneticCategories = ['single vowels (a, e, i, o, u)', 'vowel digraphs (e.g., ea, oo, ou)', 'consonant digraphs (e.g., ch, th, gh)', 'silent letters (e.g., k, w, b)', 'grammar suffixes (-ed or -s/-es)'];
 const seedCategory = phoneticCategories[Math.floor(Math.random() * phoneticCategories.length)];
 prompt += `DYNAMIC SEEDING RULE: You have the ABSOLUTE FREEDOM to choose ONE specific spelling pattern belonging to this category: [${seedCategory}]. Generate 4 words sharing that exact same spelling pattern, but ONE word must have a DIFFERENT pronunciation for that pattern or be NOT silent.\n`;
@@ -1323,10 +1418,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.3
-// Last Updated: 2026-06-03 10:15
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.6
+// Last Updated: 2026-06-05 20:55
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.3: [PROMPT OPTIMIZATION] Tiêm Vắc-xin Few-Shot Prompting vào `ai_mask` (Game Điền Từ) và `ai_getNoise` (Game Ghép Câu) để trung hòa các lệnh cấm đoán (Negative Constraints), giải phóng tốc độ suy luận của AI xuống dưới 5 giây.
+// Cập nhật V1.6: [ĐẠI VI PHẪU] Sửa lỗi nhầm lẫn biến term/definition gây treo API 20s. Tích hợp Thuật toán Nội suy Kép (Dual-Context Interpolation) cho Micro-prompt giúp AI hiểu đúng ngôn ngữ cần lừa.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Ép AI tuân thủ đúng Khung năng lực
@@ -1345,11 +1440,16 @@ if (!contextDesc) return "";
 return "\nCRITICAL LEVEL RULE: The user is at level [" + mappedKey + "]. Context: " + contextDesc + ". The vocabulary and grammar used MUST strictly match this level. DO NOT use advanced or complex words/structures for basic levels.";
 },
 // 1. ĐỘNG CƠ TẠO LỖI SAI TRỰC TUYẾN (Spot Mistake)
-ai_distort: async function(text, lang, type, apiKey, level = "", topic = "") {
+ai_distort: async function(text, lang, type, apiKey, level = "", topic = "", card = null) {
 let prompt = "";
 let schema = {};
 const levelContext = window.GameAiEngine._getLevelContext(level);
 const langStr = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
+let microPrompt = "";
+if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
+const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'spot_mistake');
+if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+}
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierDistortionRule) {
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
@@ -1362,7 +1462,7 @@ if (ruleStr) injectedRule = "\nCRITICAL DISTORTION RULE: " + ruleStr;
 }
 if (type === 'word') {
 prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
-`Nhiệm vụ: Tạo ra CHÍNH XÁC MỘT lỗi chính tả hoặc lỗi hình thái từ cho từ này.` + injectedRule +
+`Nhiệm vụ: Tạo ra CHÍNH XÁC MỘT lỗi chính tả hoặc lỗi hình thái từ cho từ này.` + microPrompt + injectedRule +
 `\nQUY TẮC QUAN TRỌNG: CHỈ TRẢ VỀ MỘT TỪ DUY NHẤT. KHÔNG ĐƯỢC VIẾT THÀNH CÂU.\n` +
 `Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + levelContext;
 schema = {
@@ -1384,7 +1484,7 @@ prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
 `RÀNG BUỘC CỐT LÕI VỀ TRẢI NGHIỆM NGƯỜI DÙNG: BẮT BUỘC phải dùng phương pháp Thay thế (đổi từ này thành từ khác) hoặc Thêm từ (nhét thêm từ rác vào). Người chơi cần một chữ vật lý hiển thị trên màn hình để bấm vào. TUYỆT ĐỐI KHÔNG tạo lỗi sai bằng cách xóa trắng/lược bỏ từ mà không thay thế bằng từ khác.\n` +
 `${examples}\n` +
 `QUY TẮC TRẢ VỀ QUAN TRỌNG: Trường 'wrongWord' trong JSON BẮT BUỘC phải chứa TOÀN BỘ cụm từ sai mà bạn đã chèn/thay thế.\n` +
-`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + injectedRule + levelContext;
+`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + microPrompt + injectedRule + levelContext;
 schema = {
 type: "OBJECT",
 properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } },
@@ -1402,12 +1502,24 @@ if (typeof cardOrText === 'string') {
 term = cardOrText;
 definition = cardOrText;
 } else if (cardOrText) {
-if (isReverse) {
-term = cardOrText.definition;
-definition = cardOrText.term;
-} else {
+// [VÁ LỖI 20s - COGNITIVE DISSONANCE]
+// KHÔNG BAO GIỜ gán ngược term = Tiếng Việt, definition = Tiếng Trung.
+// Biến term phải luôn giữ nguyên bản chất là Ngoại ngữ, definition là Tiếng Việt.
 term = cardOrText.term;
 definition = cardOrText.definition;
+}
+let microPrompt = "";
+if (typeof cardOrText === 'object' && cardOrText !== null && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
+const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(cardOrText, 'quiz');
+if (mp) {
+// [THUẬT TOÁN NỘI SUY KÉP (DUAL-CONTEXT INTERPOLATION)]
+if (!isReverse) {
+// Chế độ Thường (Hỏi Trung -> Chọn Việt): Giải thích cho AI hiểu phải lừa bằng tiếng Việt
+microPrompt = `\n[PHÂN TÍCH NGỮ PHÁP VÀ LỪA NGHĨA]: Câu gốc ngoại ngữ mang đặc trưng ngữ pháp sau: "${mp}". Bạn hãy tự phân tích xem trọng điểm ngữ pháp này nằm ở chữ nào trong câu ngoại ngữ. Sau đó, TẠO RA CÁC ĐÁP ÁN NHIỄU BẰNG TIẾNG VIỆT bằng cách dịch sai hoặc hiểu nhầm chính trọng điểm ngữ pháp đó.\n`;
+} else {
+// Chế độ Đảo ngược (Hỏi Việt -> Chọn Trung): Áp dụng trực tiếp bẫy tiếng Trung
+microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: ${mp}\n`;
+}
 }
 }
 let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm hóc búa.\n`;
@@ -1419,6 +1531,7 @@ prompt += `Ưu tiên cao nhất: ${count} đáp án sai phải cùng loại từ
 prompt += `Ví dụ HỢP LỆ:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
 } else {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
+// [VÁ LỖI 20s] Lắp ráp chính xác biến vào chuỗi để AI không bị mâu thuẫn
 prompt += `Mục tiêu tiếng Việt: "${definition}"\nNghĩa đúng (đáp án chuẩn): "${term}"\n`;
 prompt += `Ưu tiên cao nhất: ${count} đáp án sai phải cùng loại từ, cùng chủ đề, và cùng độ dài tương đối với đáp án đúng. `;
 if (distractorLang === 'zh') {
@@ -1428,6 +1541,9 @@ prompt += `Ví dụ HỢP LỆ:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖"
 prompt += `Đặc biệt tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
 prompt += `Ví dụ HỢP LỆ:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n- Nghĩa đúng: "apple" -> Nhiễu: ["orange", "banana", "grape"]\n`;
 }
+}
+if (type === 'sentence') {
+prompt += `\nCRITICAL FORMATTING RULE: ALL generated distractors MUST be FULL, COMPLETE SENTENCES with the EXACT SAME LENGTH and STRUCTURE as the original sentence. NEVER return short fragments, chunks, or single words. You MUST reconstruct the ENTIRE sentence containing the distorted trap.\n`;
 }
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOptionsRule) {
@@ -1439,6 +1555,8 @@ if (!mappedKey.includes('level_')) mappedKey = distractorLang === 'zh' ? 'zh_lev
 const ruleStr = window.IoeDataEngine.getMicroTierOptionsRule(targetLang, dataMode, mappedKey, topic);
 if (ruleStr) injectedRule = "\nCRITICAL DISTRACTOR RULE: " + ruleStr;
 }
+// Ghép nối Micro-prompt đã được bọc vỏ
+prompt += microPrompt;
 prompt += injectedRule;
 if (distractorLang !== 'vi') {
 prompt += window.GameAiEngine._getLevelContext(level);
@@ -1451,8 +1569,13 @@ const dists = parsed.distractors || [];
 return dists.slice(0, count);
 },
 // 3. ĐỘNG CƠ SINH RÁC TRỰC TUYẾN (Scramble Noise)
-ai_getNoise: async function(correctText, lang, type, apiKey, count = 2, level = "", topic = "") {
+ai_getNoise: async function(correctText, lang, type, apiKey, count = 2, level = "", topic = "", card = null) {
 let prompt = "";
+let microPrompt = "";
+if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
+const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'scramble');
+if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+}
 // [VÁ LỖI V1.3] Tiêm Persona và Few-Shot thay cho Negative Constraints
 if (type === 'word') {
 if (lang === 'zh') {
@@ -1483,6 +1606,7 @@ if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'e
 const ruleStr = window.IoeDataEngine.getMicroTierNoiseRule(targetLang, dataMode, mappedKey, topic);
 if (ruleStr) injectedRule = "\nNOISE GENERATION RULE: " + ruleStr;
 }
+prompt += microPrompt;
 prompt += injectedRule;
 prompt += window.GameAiEngine._getLevelContext(level);
 const schema = { type: "OBJECT", properties: { noise: { type: "ARRAY", items: { type: "STRING" } } }, required: ["noise"] };
@@ -1491,10 +1615,15 @@ const parsed = window.Utils.parseAiJson(res.text);
 return parsed.noise || [];
 },
 // 4. ĐỘNG CƠ ĐỤC LỖ TRỰC TUYẾN (Cloze Mask)
-ai_mask: async function(text, hintFallback, lang, apiKey, level = "", topic = "") {
+ai_mask: async function(text, hintFallback, lang, apiKey, level = "", topic = "", card = null) {
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
 // Mượn chỉ thị gốc từ 2.1a
 let prompt = window.Utils.getPrompt('fillblank_sentence', { term: text, definition: hintFallback, lang: targetLang });
+let microPrompt = "";
+if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
+const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'fill_blank');
+if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+}
 // [VÁ LỖI V1.3] Tiêm Vắc-xin Few-Shot để chống Tê liệt suy luận do các lệnh cấm đoán
 let examples = "\n\nCÁC VÍ DỤ CHUẨN (HÃY HỌC QUA VÍ DỤ NÀY ĐỂ TRÁNH LỖI):\n";
 if (lang === 'zh') {
@@ -1516,6 +1645,7 @@ if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'e
 const ruleStr = window.IoeDataEngine.getMicroTierClozeRule(targetLang, dataMode, mappedKey, topic);
 if (ruleStr) injectedRule = "\nCLOZE SELECTION RULE: " + ruleStr;
 }
+prompt += microPrompt;
 prompt += injectedRule;
 prompt += window.GameAiEngine._getLevelContext(level);
 const schema = {
@@ -1532,13 +1662,29 @@ const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 }
 };
-// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.1
-// Last Updated: 2026-06-02 21:54
+// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.2
+// Last Updated: 2026-06-04 08:43
 // Nhiệm vụ: Chuyên trách thuật toán Offline (không dùng mạng) và Định tuyến tương thích ngược cho 9 Games Tầng 5.
 // ==================================================================================
 window.GameOfflineEngine = {
 // Helper nội bộ
 _cleanWord: (word) => word ? word.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase() : "",
+// ============================================================================
+// 0. BỘ ĐỊNH TUYẾN NGỮ PHÁP (Offline Grammar Smart Router)
+// ============================================================================
+offline_getGrammarMicroPrompt: function(card, gameType) {
+if (!window.IoeDataEngine || !window.IoeDataEngine.MICRO_PROMPTS) return "";
+let gTypes = card.grammar_type;
+if (!gTypes) return "";
+if (typeof gTypes === 'string') gTypes = gTypes.split(',').map(t => t.trim());
+if (!Array.isArray(gTypes) || gTypes.length === 0) return "";
+const gamePrompts = window.IoeDataEngine.MICRO_PROMPTS[gameType];
+if (!gamePrompts) return "";
+const validTypes = gTypes.filter(t => gamePrompts[t]);
+if (validTypes.length === 0) return "";
+const targetType = validTypes[Math.floor(Math.random() * validTypes.length)];
+return gamePrompts[targetType];
+},
 // ============================================================================
 // 1. THUẬT TOÁN BÓP MÉO NGOẠI TUYẾN (Offline Distortion)
 // ============================================================================
@@ -2057,6 +2203,9 @@ return fb;
 window.GameAlgoEngine = {
 _cleanWord: (word) => window.GameOfflineEngine._cleanWord(word),
 _getLevelContext: (level) => window.GameAiEngine && window.GameAiEngine._getLevelContext ? window.GameAiEngine._getLevelContext(level) : "",
+GrammarRouter: {
+getMicroPrompt: (...args) => window.GameOfflineEngine.offline_getGrammarMicroPrompt(...args)
+},
 DistortionEngine: {
 offline_distort: (...args) => window.GameOfflineEngine.offline_distort(...args),
 ai_distort: (...args) => window.GameAiEngine.ai_distort(...args)
@@ -2596,15 +2745,14 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.09
-// Last Updated: 2026-05-28 13:50
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.10
+// Last Updated: 2026-06-05 22:24
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật: [VÁ LỖ HỔNG AUTO-SAVE] Bổ sung hàm getPendingItems() xuất bản sao băng đạn RAM ra ngoài để lưu tiến độ chống mất câu hỏi khi reload. Tuân thủ Hiến Pháp 3.0.
+// Cập nhật V1.10: [CÔNG TẮC HỦY DIỆT - KILL SWITCH] Cấy ghép The Global Abort Controller. Tự động bóp cò ngắt toàn bộ Zombie Request (Lỗi mạng treo) ngay khi người dùng đóng Game.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Sequential Early Resolve - Boomerang Principle)
 createQueueCoordinator: function(fetchDataFn, defaultMaxConcurrent = 4) {
-// Hút cấu hình AI từ LocalStorage (Fallback nếu chưa có)
 let aiConfig = { loadingTime: 22, delayMs: 2500, maxAmmo: defaultMaxConcurrent };
 try {
 const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
@@ -2615,21 +2763,21 @@ if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
 }
 } catch (e) { console.warn("Lỗi đọc fc_ai_config", e); }
 const maxConcurrent = aiConfig.maxAmmo;
+// Khởi tạo Kíp nổ C4 cho phiên làm việc mới
+const abortCtrl = new AbortController();
+window.__currentGameAbortController = abortCtrl;
 return {
 queue: [],
 isFetching: false,
 isActive: true,
 _currentPromise: null,
-_isResolved: false, // Cờ theo dõi trạng thái Promise
+_isResolved: false,
+_abortCtrl: abortCtrl, // Giữ dây cháy chậm
 maintain: function(isInitial = false, timeoutMs = 22000, isOfflineFastTrack = false) {
 if (!this.isActive) return Promise.resolve();
 if (this.queue.length >= maxConcurrent) return Promise.resolve();
 const isQueueEmptyStart = this.queue.length === 0;
 if (this.isFetching) {
-// [VÁ LỖI ĐIỂM CHẾT RACE CONDITION]
-// Nếu vòng lặp ngầm đang chạy nhưng Promise trước đó ĐÃ RESOLVE (do đạn cũ)
-// VÀ băng đạn hiện tại lại rỗng -> Không được trả về Promise cũ (sẽ làm UI nổ cò ngay).
-// Phải tạo Promise mới để UI thực sự CHỜ đạn mới.
 if (this.queue.length === 0 && this._isResolved) {
 this._isResolved = false;
 this._currentPromise = new Promise((resolve) => {
@@ -2639,7 +2787,6 @@ this._isResolved = true;
 resolve();
 }
 };
-// Ngay cả khi bị Race Condition, UI cũng nên đợi
 setTimeout(() => { if (this._resolveEarly) this._resolveEarly(); }, timeoutMs);
 });
 }
@@ -2657,38 +2804,32 @@ resolveOuter();
 const runBackground = async () => {
 try {
 while (this.queue.length < maxConcurrent && this.isActive) {
-// Nhịp 1: Ném Boomerang (Gọi API / DB)
 const data = await fetchDataFn(1);
-// Chặn đứng ngay lập tức nếu người dùng đã thoát game trong lúc chờ AI
 if (!this.isActive) break;
 if (data) {
-// Nhịp 2: Bắt Boomerang & Lưu trữ vào băng đạn
 if (Array.isArray(data)) {
 this.queue.push(...data);
 } else {
 this.queue.push(data);
 }
-// Nhịp 4: Thời gian tản nhiệt (Boomerang Cool-down theo Cấu hình AI)
-// Đảm bảo chỉ delay nếu CẦN nạp thêm đạn
 if (this.queue.length < maxConcurrent && this.isActive) {
 await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
 } else {
-// Gặp lỗi nặng hoặc cạn dữ liệu -> Mở khóa UI để báo lỗi và ngừng nạp
 break;
 }
 }
 } catch (e) {
+if (e.name !== 'AbortError' && !e.message?.includes('User exited')) {
 console.warn("Queue Worker Error:", e);
+}
 } finally {
 this.isFetching = false;
 }
 };
 runBackground();
-// [VÁ LỖI EARLY RESOLVE & OFFLINE TRAP] Áp dụng chiến thuật Promise.all
 const ammoPromise = new Promise((resolveAmmo) => {
 const checkAmmo = () => {
-// Hoàn thành nếu có đạn HOẶC tiến trình background đã dừng (cạn dữ liệu/lỗi)
 if (this.queue.length >= 1 || !this.isFetching) {
 resolveAmmo();
 } else {
@@ -2697,14 +2838,11 @@ setTimeout(checkAmmo, 200);
 };
 checkAmmo();
 });
-// Bỏ qua thời gian ép chờ nếu đang chơi ở chế độ Offline (isOfflineFastTrack === true)
 const enforcedWaitMs = (isQueueEmptyStart && !isOfflineFastTrack) ? (aiConfig.loadingTime * 1000) : 0;
 const timerPromise = new Promise(r => setTimeout(r, enforcedWaitMs));
-// Mở khóa UI khi CẢ 2 điều kiện đều thỏa mãn: Có đạn VÀ Đã hết thời gian ép chờ
 Promise.all([ammoPromise, timerPromise]).then(() => {
 if (this._resolveEarly) this._resolveEarly();
 });
-// Cầu dao an toàn (Safety Timeout) cộng thêm thời gian ép chờ
 setTimeout(() => {
 if (this._resolveEarly) this._resolveEarly();
 }, enforcedWaitMs + timeoutMs);
@@ -2717,14 +2855,23 @@ this.maintain();
 return item;
 },
 peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
-destroy: function() { this.isActive = false; this.queue = []; },
+destroy: function() {
+this.isActive = false;
+this.queue = [];
+// [CÔNG TẮC HỦY DIỆT] Kích nổ tín hiệu kết thúc ngay khi phá hủy Coordinator
+if (this._abortCtrl) {
+this._abortCtrl.abort("User exited");
+if (window.__currentGameAbortController === this._abortCtrl) {
+window.__currentGameAbortController = null;
+}
+}
+},
 length: function() { return this.queue.length; },
-getPendingItems: function() { return [...this.queue]; } // [VÁ LỖ HỔNG AUTO-SAVE]
+getPendingItems: function() { return [...this.queue]; }
 };
 },
-// ĐỘNG CƠ BATCH COORDINATOR (Dành cho Match Game - Kiến trúc Boomerang)
+// ĐỘNG CƠ BATCH COORDINATOR (Dành cho Match Game)
 createBatchQueueCoordinator: function(fetchDataFn, defaultMaxConcurrent = 2) {
-// Hút cấu hình AI từ LocalStorage
 let aiConfig = { loadingTime: 22, delayMs: 2500, maxAmmo: defaultMaxConcurrent };
 try {
 const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
@@ -2735,18 +2882,20 @@ if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
 }
 } catch (e) { console.warn("Lỗi đọc fc_ai_config", e); }
 const maxConcurrent = aiConfig.maxAmmo;
+const abortCtrl = new AbortController();
+window.__currentGameAbortController = abortCtrl;
 return {
 queue: [],
 isFetching: false,
 isActive: true,
 _currentPromise: null,
 _isResolved: false,
+_abortCtrl: abortCtrl,
 maintain: function(isInitial = false, timeoutMs = 22000, isOfflineFastTrack = false) {
 if (!this.isActive) return Promise.resolve();
 if (this.queue.length >= maxConcurrent) return Promise.resolve();
 const isQueueEmptyStart = this.queue.length === 0;
 if (this.isFetching) {
-// [VÁ LỖI ĐIỂM CHẾT RACE CONDITION]
 if (this.queue.length === 0 && this._isResolved) {
 this._isResolved = false;
 this._currentPromise = new Promise((resolve) => {
@@ -2768,13 +2917,10 @@ const runBackground = async () => {
 try {
 while (this.queue.length < maxConcurrent && this.isActive) {
 try {
-// Nhịp 1: Ném Boomerang
 const data = await fetchDataFn();
 if (!this.isActive) break;
 if (data) {
-// Nhịp 2: Bắt và lưu trữ
 this.queue.push(data);
-// Nhịp 4: Boomerang Cool-down theo Cấu hình AI
 if (this.queue.length < maxConcurrent && this.isActive) {
 await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
@@ -2782,7 +2928,9 @@ await new Promise(r => setTimeout(r, aiConfig.delayMs));
 break;
 }
 } catch (e) {
+if (e.name !== 'AbortError' && !e.message?.includes('User exited')) {
 console.warn("BatchCoordinator fetch error:", e);
+}
 break;
 }
 }
@@ -2791,7 +2939,6 @@ this.isFetching = false;
 }
 };
 runBackground();
-// [VÁ LỖI EARLY RESOLVE & OFFLINE TRAP]
 const ammoPromise = new Promise((resolveAmmo) => {
 const checkAmmo = () => {
 if (this.queue.length >= 1 || !this.isFetching) resolveAmmo();
@@ -2799,13 +2946,11 @@ else setTimeout(checkAmmo, 200);
 };
 checkAmmo();
 });
-// Bỏ qua thời gian ép chờ nếu đang chơi ở chế độ Offline (isOfflineFastTrack === true)
 const enforcedWaitMs = (isQueueEmptyStart && !isOfflineFastTrack) ? (aiConfig.loadingTime * 1000) : 0;
 const timerPromise = new Promise(r => setTimeout(r, enforcedWaitMs));
 Promise.all([ammoPromise, timerPromise]).then(() => {
 if (this._resolveEarly) this._resolveEarly();
 });
-// Cầu dao an toàn (Safety Timeout) cộng thêm thời gian ép chờ
 setTimeout(() => {
 if (this._resolveEarly) this._resolveEarly();
 }, enforcedWaitMs + 22000);
@@ -2818,22 +2963,33 @@ this.maintain();
 return item;
 },
 peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
-destroy: function() { this.isActive = false; this.queue = []; },
+destroy: function() {
+this.isActive = false;
+this.queue = [];
+if (this._abortCtrl) {
+this._abortCtrl.abort("User exited");
+if (window.__currentGameAbortController === this._abortCtrl) {
+window.__currentGameAbortController = null;
+}
+}
+},
 length: function() { return this.queue.length; },
-getPendingItems: function() { return [...this.queue]; } // [VÁ LỖ HỔNG AUTO-SAVE]
+getPendingItems: function() { return [...this.queue]; }
 };
 },
 // ĐỘNG CƠ NẠP ĐỢT CHO BÀI THI TỔNG HỢP (MOCK TEST CHUNKING)
 createMockTestCoordinator: function(fetchChunkFn, chunkSize = 10, prefetchThreshold = 3) {
+const abortCtrl = new AbortController();
+window.__currentGameAbortController = abortCtrl;
 return {
 queue: [],
 isFetching: false,
 isActive: true,
 _currentPromise: null,
 totalLoaded: 0,
+_abortCtrl: abortCtrl,
 maintain: function() {
 if (!this.isActive) return Promise.resolve();
-// Ngưỡng Pre-fetch: Bắt đầu gọi API/DB khi số đạn trong băng <= prefetchThreshold
 if (this.queue.length > prefetchThreshold) return Promise.resolve();
 if (this.isFetching && this._currentPromise) return this._currentPromise;
 this.isFetching = true;
@@ -2846,7 +3002,9 @@ this.queue.push(...chunkData);
 this.totalLoaded += chunkData.length;
 }
 } catch (e) {
+if (e.name !== 'AbortError' && !e.message?.includes('User exited')) {
 console.warn("MockTestCoordinator fetch error:", e);
+}
 } finally {
 this.isFetching = false;
 resolveOuter();
@@ -2860,21 +3018,30 @@ return this._currentPromise;
 },
 pop: function() {
 const item = this.queue.shift();
-this.maintain(); // Ngầm kiểm tra và nạp đạn nếu dưới ngưỡng prefetchThreshold
+this.maintain();
 return item;
 },
 peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
-destroy: function() { this.isActive = false; this.queue = []; },
+destroy: function() {
+this.isActive = false;
+this.queue = [];
+if (this._abortCtrl) {
+this._abortCtrl.abort("User exited");
+if (window.__currentGameAbortController === this._abortCtrl) {
+window.__currentGameAbortController = null;
+}
+}
+},
 length: function() { return this.queue.length; },
 getTotalLoaded: function() { return this.totalLoaded; },
-getPendingItems: function() { return [...this.queue]; } // [VÁ LỖ HỔNG AUTO-SAVE]
+getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.23
-// Last Updated: 2026-06-02 15:05
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.25
+// Last Updated: 2026-06-04 15:22
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật: [DYNAMIC TIMEOUT] Tiêu diệt toàn bộ Hardcoded Timeout (15s, 20s, 30s). Đồng bộ hóa thời gian chờ với thiết lập loadingTime của người dùng để chống nghẽn AI.
+// Cập nhật V1.25: [VÁ LỖI CẤY GHÉP GRAMMAR TYPE] Mở rộng Schema JSON trong `_getMasterSchema` (nhánh base_card) để hứng trường `grammar_type` khi người dùng bấm tia chớp làm giàu thẻ.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -2902,7 +3069,6 @@ prompt += batchTargets.map((b, i) => (i+1) + ". " + b.term).join('\n');
 prompt += "\n\nReturn EXACTLY a JSON object with a translations array.\nFormat: {\"translations\": [\"nghĩa 1\", \"nghĩa 2\", ...]}";
 const schema = { type: "OBJECT", properties: { translations: { type: "ARRAY", items: { type: "STRING" } } }, required: ["translations"] };
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
-// [DYNAMIC TIMEOUT]
 let dynamicTimeout = 20000;
 try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
@@ -2914,7 +3080,6 @@ timeoutId = setTimeout(() => r(new Error("Timeout")), dynamicTimeout);
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
-// [VÁ LỖI BATCH ENRICH] Mềm hóa màng lọc để giữ lại tối đa các từ dịch thành công
 if (parsed && Array.isArray(parsed.translations)) {
 const limit = Math.min(parsed.translations.length, batchTargets.length);
 for(let i = 0; i < limit; i++) {
@@ -2964,10 +3129,8 @@ prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
-// [VÁ LỖI BỐC HƠI TOKEN] Thiết quân luật độ dài ngăn chặn lỗi dài dòng của AI
 prompt += `STRICT LENGTH MARTIAL LAW: If the target level is Pre-A1, A1, or A2 (e.g., Kiddie, Junior, Starters, Movers, Flyers), ALL options/distractors MUST BE STRICTLY LESS THAN 8 WORDS. Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
 prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
-// [TOPIC FREEDOM] Đặc xá chủ đề cho các game kỹ thuật
 const isTopicFree = topic === 'ANY' || subType === 'pronunciation' || subType === 'odd_one_out' || subType === 'spot_mistake';
 if (isTopicFree) {
 prompt += `TOPIC FREEDOM: You have absolute freedom to use vocabulary from ALL 26 Cambridge topics. Focus entirely on the technical mechanics of the question (Spelling, Grammar, or Odd-one-out logic).\n`;
@@ -3003,7 +3166,6 @@ const oddRule = window.IoeDataEngine?.getMicroTierOddRule ? window.IoeDataEngine
 if (oddRule) prompt += oddRule + "\n";
 prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'pronunciation') {
-// [VÁ LỖI GAME NGỮ ÂM] Thuật toán Hạt giống Phân loại (Categorical Phonetic Seeding)
 const phoneticCategories = ['single vowels (a, e, i, o, u)', 'vowel digraphs (e.g., ea, oo, ou)', 'consonant digraphs (e.g., ch, th, gh)', 'silent letters (e.g., k, w, b)', 'grammar suffixes (-ed or -s/-es)'];
 const seedCategory = phoneticCategories[Math.floor(Math.random() * phoneticCategories.length)];
 prompt += "TASK: Generate a Pronunciation/Phonetics question.\n";
@@ -3011,7 +3173,6 @@ prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLe
 prompt += `DYNAMIC SEEDING RULE: You have the ABSOLUTE FREEDOM to choose ONE specific spelling pattern belonging to this category: [${seedCategory}]. Generate 4 words sharing that exact same spelling pattern, but ONE word must have a DIFFERENT pronunciation for that pattern or be NOT silent.\n`;
 prompt += "STRICT MARTIAL LAW 1: NO SPELLING VARIANCE ALLOWED within the chosen pattern. They MUST share the exact same visual spelling anchor.\n";
 prompt += "STRICT MARTIAL LAW 2: RETURN PLAIN TEXT ONLY. Absolutely do not use asterisks (*) or any special characters to mark letters.\n";
-// [VÁ LỖI DEEP-LOG] Đã xóa RECOVERY_FORMAT rác rưởi để chặn AI tự phịa đáp án ảo khi bí từ.
 prompt += "RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, clearly explaining which specific sound/IPA is different for the shared spelling pattern.\n";
 }
 }
@@ -3057,7 +3218,18 @@ _getMasterSchema: function(forgeType, subType) {
 const commonProps = { cefr_level: { type: "STRING" } };
 const commonRequired = ["cefr_level"];
 if (forgeType === 'base_card') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, image_keyword: { type: "STRING" }, ...commonProps }, required: ["term", "definition", "image_keyword", ...commonRequired] };
+// [CẤY GHÉP MỞ RỘNG] Hứng grammar_type cho tất cả các thẻ được AI sinh mới hoặc làm giàu
+return {
+type: "OBJECT",
+properties: {
+term: { type: "STRING" },
+definition: { type: "STRING" },
+image_keyword: { type: "STRING" },
+grammar_type: { type: "ARRAY", items: { type: "STRING" } },
+...commonProps
+},
+required: ["term", "definition", "image_keyword", "grammar_type", ...commonRequired]
+};
 }
 if (forgeType === 'matrix') {
 if (subType === 'match') {
@@ -3105,7 +3277,6 @@ let prompt = this._buildSystemPrompt('base_card', null, level, lang, topic, data
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('base_card', null);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
-// [DYNAMIC TIMEOUT]
 let dynamicTimeout = 20000;
 try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
@@ -3122,6 +3293,7 @@ term: parsed.term,
 definition: parsed.definition,
 image_keyword: parsed.image_keyword || parsed.term,
 cefr_level: parsed.cefr_level || "",
+grammar_type: parsed.grammar_type || [],
 isAiGenerated: true,
 _tokenUsage: res.tokenMetadata
 };
@@ -3142,7 +3314,6 @@ let prompt = this._buildSystemPrompt('matrix', subType, level, lang, topic, data
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('matrix', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
-// [DYNAMIC TIMEOUT]
 let dynamicTimeout = 25000;
 try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
@@ -3155,7 +3326,6 @@ const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
 const result = { ...parsed, isAiGenerated: true, type: subType, _tokenUsage: res.tokenMetadata };
-// [VÁ LỖI XÁO TRỘN HẬU KIỂM] Chống Positional Bias
 if (subType === 'odd_one_out' && result.words && Array.isArray(result.words)) {
 result.words = window.Utils.shuffleArray(result.words);
 }
@@ -3183,7 +3353,6 @@ let prompt = this._buildSystemPrompt('context', subType, level, lang, topic, 'se
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('context', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
-// [DYNAMIC TIMEOUT]
 let dynamicTimeout = subType === 'reading_passage' ? 35000 : 25000;
 try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
@@ -3191,7 +3360,7 @@ if (aiCfg && aiCfg.loadingTime) {
 const baseTime = parseInt(aiCfg.loadingTime, 10);
 dynamicTimeout = (baseTime * 1000) + 5000;
 if (subType === 'reading_passage') {
-dynamicTimeout += 5000; // Extra buffer for heavy reading passages
+dynamicTimeout += 5000;
 }
 }
 } catch(e) {}
@@ -4529,109 +4698,180 @@ addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 1, 'General Practice');
 return blueprint;
 }
 };
-
-
-
-
-
-
-// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 1.2
-// Last Updated: 2026-06-03 15:16
-// Nhiệm vụ: Số hóa Khung năng lực ngôn ngữ (HSK/CEFR) thành các quy tắc (Rules) định hướng AI sinh lỗi, đục lỗ và tạo bẫy. Áp dụng kỹ thuật Few-Shot & Priority Prompting.
-// Cập nhật V1.2: [VÁ LỖI CÚ PHÁP] Sửa lỗi thiếu dấu nháy đơn ở các key của object GRADE_CONTEXTS gây crash Babel.
+// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.2
+// Last Updated: 2026-06-06 09:35
+// Nhiệm vụ: Số hóa Khung năng lực ngôn ngữ (HSK/CEFR) thành các quy tắc (Rules) định hướng AI sinh lỗi, đục lỗ và tạo bẫy.
+// Cập nhật V2.2: [ID STANDARDIZATION] Quy chuẩn hóa toàn bộ 19 mã định danh bẫy Tiếng Trung theo cấu trúc zh_hsk_[pattern].
 // ==================================================================================
-
 window.IoeDataEngine = {
-// 1. NGỮ CẢNH TRÌNH ĐỘ (Định hướng Từ vựng và Cấu trúc)
+// 1. NGỮ CẢNH TRÌNH ĐỘ (Định hướng Từ vựng và Cấu trúc chung)
 GRADE_CONTEXTS: {
-'zh_level_1': 'HSK 1 (150 words). ƯU TIÊN CAO NHẤT: 1) Dùng phó từ mức độ trước tính từ vị ngữ (VD: 我很忙, không dùng 我是忙). 2) Xếp thời gian và địa điểm TRƯỚC động từ chính (VD: 我今天在家看书). 3) Phân biệt phủ định Không (不) và Chưa/Không có (没).',
-
-'zh_level_2': 'HSK 2 (300 words). ƯU TIÊN CAO NHẤT: 1) Trong câu so sánh 比, KHUYẾN KHÍCH dùng 一点儿/得多, tránh dùng phó từ mức độ như 很/非常. 2) Dùng chính xác Bổ ngữ trạng thái (得) và Trợ từ động thái (着/过). 3) Phân biệt điểm xuất phát 从 và khoảng cách 离.',
-
-'zh_level_3': 'HSK 3 (600 words). ƯU TIÊN CAO NHẤT: 1) Động từ ly hợp (见面, 帮忙) không mang tân ngữ trực tiếp (VD: 帮他的忙, không dùng 帮忙他). 2) Bổ ngữ xu hướng: Danh từ địa điểm đứng trước 来/去 (VD: 走进教室来). 3) Ứng dụng câu chữ 把 và bị động 被.',
-
-'zh_level_4': 'HSK 4 (1200 words). ƯU TIÊN CAO NHẤT: 1) Câu bị động với 让/叫 bắt buộc phải có chủ thể tác động. 2) Nhấn mạnh 是...的: Dạng phủ định là 不是...的. 3) Trật tự chủ ngữ với cặp liên từ (VD: 不仅...而且, 即使...也).',
-
-// Placeholder cho Tiếng Anh
-'en_level_1': 'A1 Level (Beginner). Very basic vocabulary and simple present/past tenses.',
-'en_level_2': 'A2 Level (Elementary). Basic daily vocabulary, simple prepositions, and continuous tenses.',
-'en_level_3': 'B1 Level (Intermediate). Everyday language, relative clauses, and basic modal verbs.'
+zh_level_1: 'HSK 1 (150 words). ƯU TIÊN CAO NHẤT: 1) Dùng phó từ mức độ trước tính từ vị ngữ (VD: 我很忙, không dùng 我是忙). 2) Xếp thời gian và địa điểm TRƯỚC động từ chính (VD: 我今天在家看书). 3) Phân biệt phủ định Không (不) và Chưa/Không có (没).',
+zh_level_2: 'HSK 2 (300 words). ƯU TIÊN CAO NHẤT: 1) Trong câu so sánh 比, KHUYẾN KHÍCH dùng 一点儿/得多, tránh dùng phó từ mức độ như 很/非常. 2) Dùng chính xác Bổ ngữ trạng thái (得) và Trợ từ động thái (着/过). 3) Phân biệt điểm xuất phát 从 và khoảng cách 离.',
+zh_level_3: 'HSK 3 (600 words). Tuân thủ nghiêm ngặt từ vựng và ngữ pháp HSK3 theo Giáo trình Hán ngữ Quyển 3.',
+zh_level_4: 'HSK 4 (1200 words). ƯU TIÊN CAO NHẤT: 1) Câu bị động với 让/叫 bắt buộc phải có chủ thể tác động. 2) Nhấn mạnh 是...的: Dạng phủ định là 不是...的. 3) Trật tự chủ ngữ với cặp liên từ (VD: 不仅...而且, 即使...也).',
+en_level_1: 'Kiddie (Pre-A1 / Lớp 1-2). ƯU TIÊN: Từ vựng trực quan (Màu sắc, đồ vật, con vật, gia đình). Cấu trúc rất ngắn và đơn giản (This is, I have, It is). KHÔNG dùng thì Quá khứ hay từ vựng trừu tượng.',
+en_level_2: 'Junior (A1 / Lớp 3-4). ƯU TIÊN: Chủ đề sinh hoạt hàng ngày, trường học. Ngữ pháp: Hiện tại đơn (To be, số ít/số nhiều), Hiện tại tiếp diễn (V-ing). KHÔNG dùng câu phức.',
+en_level_3: 'Junior+ (A1+ / Lớp 5). ƯU TIÊN: Quá khứ đơn cơ bản (Was/Were, Regular verbs), Tương lai gần (Be going to), Từ nối cơ bản (And, But, Because).',
+en_level_4: 'Discovery (A2 / Lớp 6-7). ƯU TIÊN: Quá khứ đơn (Bất quy tắc), So sánh hơn/nhất, Danh từ đếm được/không đếm được (Much/Many), Giới từ thời gian/nơi chốn (In/On/At).',
+en_level_5: 'Discovery+ (B1 / Lớp 8-9). ƯU TIÊN: Hiện tại hoàn thành (Since/For), Câu tường thuật (Lùi thì), Câu bị động cơ bản, Cụm động từ & Cụm từ cố định (Phrasal verbs & Collocations).',
+en_level_6: 'Pre-IELTS (IELTS 4.0). ƯU TIÊN: Cấu trúc câu phức (Although, Even though), Câu điều kiện loại 1 & 2, Động từ khuyết thiếu (Modal verbs of deduction).',
+en_level_7: 'Breakthrough (IELTS 5.0). ƯU TIÊN: Mệnh đề quan hệ rút gọn, Quá khứ hoàn thành, Từ vựng học thuật cơ bản.',
+en_level_8: 'Academic (IELTS 6.5). ƯU TIÊN: Câu đảo ngữ (Inversion), Cấu trúc giả định, Từ vựng IELTS chuyên sâu (Môi trường, Khoa học, Xã hội).',
+en_level_9: 'Expert (IELTS 7.5+). ƯU TIÊN: Thành ngữ (Idioms), Sắc thái từ vựng cực kỳ tinh vi, Cấu trúc câu ghép phức tạp đa tầng.'
 },
-
-// 2. QUY TẮC ĐỤC LỖ (FILL BLANK CLOZE RULES)
-getMicroTierClozeRule: function(lang, dataMode, level, topic) {
-if (lang === 'Chinese') {
-switch(level) {
-case 'zh_level_1':
-return "Ưu tiên đục lỗ 1 từ thuộc các loại: Lượng từ (个, 本), Phó từ phủ định (不, 没), Động từ năng nguyện (会, 想, 能), hoặc Hư từ cơ bản (的, 了). Ba đáp án nhiễu nên cùng loại từ nhưng sai ngữ pháp. VÍ DỤ: Đục từ '本' -> Nhiễu: '个', '口', '只'.";
-case 'zh_level_2':
-return "Ưu tiên đục lỗ 1 từ thuộc các loại: Lượng từ chuyên biệt (件, 双, 张), Trợ từ (得, 着, 过), Phó từ logic (就, 还, 再), hoặc Liên từ (因为, 所以). Ba đáp án nhiễu nên có cấu trúc tương đương nhưng sai ngữ nghĩa. VÍ DỤ: Đục từ '得' -> Nhiễu: '的', '地', '了'.";
-case 'zh_level_3':
-return "Ưu tiên đục lỗ 1 từ khó: Trợ từ kết cấu (得, 着), Phó từ (才, 就), hoặc Giới từ (把, 被). Ba đáp án nhiễu phải tạo ra mâu thuẫn về mặt cấu trúc. VÍ DỤ: Đục từ '把' -> Nhiễu: '被', '让', '叫'.";
-case 'zh_level_4':
-return "Ưu tiên đục lỗ 1 liên từ phức hợp hoặc từ nhấn mạnh: 不仅, 即使, 否则, 竟然, 让, 叫, hoặc 的 (trong cấu trúc 是...的). Ba đáp án nhiễu nên là các liên từ khác gây đảo lộn tính logic của câu.";
-default:
-return "Ưu tiên đục lỗ 1 hư từ quan trọng hoặc động từ cốt lõi. Đáp án nhiễu nên hợp lệ về mặt ngữ pháp nhưng sai lệch về ngữ cảnh.";
-}
-}
-return "Ưu tiên đục lỗ 1 từ vựng cốt lõi. Ba đáp án nhiễu thuộc cùng từ loại nhưng sai ý nghĩa ngữ cảnh.";
+// 2. KHO ĐẠN VI LỆNH (MICRO-PROMPTS REPOSITORY)
+MICRO_PROMPTS: {
+// ====================================================
+// GAME TRẮC NGHIỆM (QUIZ) - SINH ĐÁP ÁN NHIỄU
+// ====================================================
+quiz: {
+// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
+zh_hsk_separable_obj: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Động từ Ly hợp (như 帮忙, 结婚, 见面). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách ÉP động từ ly hợp mang tân ngữ trực tiếp ngay phía sau (Ví dụ: 帮忙他).",
+zh_hsk_adv_zhongyu: "CHIẾN LƯỢC BẪY: Từ mục tiêu liên quan đến phó từ 终于 (Cuối cùng). Yêu cầu: Tạo đáp án nhiễu sai vị trí bằng cách xếp phó từ này ra SAU động từ chính.",
+zh_hsk_adv_degree: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Phó từ chỉ mức độ. Yêu cầu: Tạo đáp án nhiễu bằng cách sử dụng sai cấu trúc của phó từ 极 (Ví dụ: Không có '了' phía sau) hoặc dùng sai quan hệ hô ứng của 越...越...",
+zh_hsk_prep_mismatch: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Giới từ. Yêu cầu: Tạo đáp án nhiễu bằng cách dùng sai ngữ cảnh của giới từ 根据 (căn cứ) hoặc 关于 (về việc).",
+zh_hsk_conj_mismatch: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Liên từ. Yêu cầu: Tạo đáp án nhiễu bằng cách phá vỡ cặp liên từ tăng tiến 不但...而且... (Ví dụ: ghép 不但 đi với 还是).",
+zh_hsk_noun_space: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Danh từ chỉ nơi chốn/không gian. Yêu cầu: Tạo đáp án nhiễu bằng cách sử dụng danh từ không gian làm chủ ngữ một cách phi logic.",
+zh_hsk_rc_negation: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Kết quả (BNKQ). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách dùng 不 để phủ định BNKQ trong quá khứ thay vì dùng 没.",
+zh_hsk_rc_state: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Kết quả (BNKQ). Yêu cầu: Tạo đáp án nhiễu bằng cách thay đổi trạng thái kết quả của hành động sao cho sai lệch hoàn toàn logic (Ví dụ: Hành động thành công nhưng dùng sai chữ 错).",
+zh_hsk_pc_ability: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Khả năng (BNKN). Yêu cầu: Tạo đáp án nhiễu bằng cách nhầm lẫn cấu trúc 得/不 của BNKN với việc sử dụng động từ năng nguyện 能/不能.",
+zh_hsk_dc_location: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Xu hướng (BNXH). Yêu cầu: Tạo đáp án nhiễu sai vị trí bằng cách xếp Tân ngữ Địa điểm ra SAU chữ 来 hoặc 去 (Ví dụ: 走进来教室).",
+zh_hsk_dc_direction: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Xu hướng (BNXH). Yêu cầu: Tạo đáp án nhiễu bằng cách đảo ngược hướng di chuyển so với người nói (Ví dụ: Đang đi tới thì dùng 去 thay vì 来).",
+zh_hsk_ba_indefinite: "CHIẾN LƯỢC BẪY: Câu chữ 把 (Ba). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách sử dụng Tân ngữ không xác định (Ví dụ: 把一本书 thay vì 把那本书).",
+zh_hsk_ba_result: "CHIẾN LƯỢC BẪY: Câu chữ 把 (Ba). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách bỏ trống thành phần kết quả/xử lý sau động từ chính.",
+zh_hsk_bei_reverse: "CHIẾN LƯỢC BẪY: Câu bị động chữ 被 (Bei). Yêu cầu: Tạo đáp án nhiễu mang nghĩa sai lệch bằng cách đảo ngược vai trò của Kẻ tác động và Nạn nhân.",
+zh_hsk_exist_order: "CHIẾN LƯỢC BẪY: Câu Tồn tại có chữ 着. Yêu cầu: Tạo đáp án nhiễu sai cấu trúc bằng cách đảo trật tự Trạng ngữ Nơi chốn ra sau Động từ (Ví dụ: 几个汉字写着在黑板上).",
+zh_hsk_emph_order: "CHIẾN LƯỢC BẪY: Câu nhấn mạnh 连...也/都... Yêu cầu: Tạo đáp án nhiễu sai trật tự bằng cách xếp đối tượng nhấn mạnh ra sau phó từ liên kết 也/都.",
+zh_hsk_emph_extreme: "CHIẾN LƯỢC BẪY: Câu nhấn mạnh 连...也/都... Yêu cầu: Tạo đáp án nhiễu sai logic bằng cách thay thế đối tượng nhấn mạnh bằng một sự vật bình thường, làm mất tính cực đoan của cấu trúc.",
+zh_hsk_paired_only_if: "CHIẾN LƯỢC BẪY: Cặp liên từ điều kiện 只有...才... Yêu cầu: Tạo đáp án nhiễu sai logic bằng cách phá vỡ sự hô ứng (Ví dụ: Lắp chữ 只有 đi kèm với chữ 就).",
+zh_hsk_paired_as_long_as: "CHIẾN LƯỢC BẪY: Cặp liên từ điều kiện 只要...就... Yêu cầu: Tạo đáp án nhiễu sai logic bằng cách phá vỡ sự hô ứng (Ví dụ: Lắp chữ 只要 đi kèm với chữ 才).",
+general_trap: "CHIẾN LƯỢC BẪY: Tạo đáp án nhiễu có nghĩa gần giống từ/câu gốc nhưng khác biệt tinh tế về sắc thái hoặc dùng sai từ loại trong ngữ cảnh.",
+// Bẫy Tiếng Anh
+eng_article_an: "CHIẾN LƯỢC BẪY: Mạo từ (A/An). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách dùng 'a' trước nguyên âm (vd: a apple, a elephant) hoặc 'an' trước phụ âm (vd: an cat).",
+eng_plural_s: "CHIẾN LƯỢC BẪY: Danh từ số nhiều. Yêu cầu: Tạo đáp án nhiễu bằng cách thêm 's' vào danh từ bất quy tắc (vd: childs, sheeps) hoặc bỏ quên 'es' sau ch/sh/x/o.",
+eng_present_cont: "CHIẾN LƯỢC BẪY: Hiện tại tiếp diễn. Yêu cầu: Tạo đáp án nhiễu bằng cách bỏ quên động từ To Be (vd: He playing) hoặc không thêm '-ing' (vd: He is play).",
+eng_this_these: "CHIẾN LƯỢC BẪY: Đại từ chỉ định. Yêu cầu: Tạo đáp án nhiễu sai sự phối hợp số lượng (vd: These car is fast, That dogs are cute).",
+eng_past_irregular: "CHIẾN LƯỢC BẪY: Quá khứ bất quy tắc. Yêu cầu: Tạo đáp án nhiễu bằng cách thêm đuôi '-ed' vào động từ bất quy tắc (vd: goed, buyed, see-ed) thay vì dùng V2.",
+eng_comparative_double: "CHIẾN LƯỢC BẪY: So sánh hơn. Yêu cầu: Tạo đáp án nhiễu bằng cách dùng so sánh kép (vd: more taller, more better) hoặc dùng sai quy tắc từ ngắn/dài (vd: gooder, expensiver).",
+eng_much_many: "CHIẾN LƯỢC BẪY: Lượng từ Much/Many. Yêu cầu: Tạo đáp án nhiễu bằng cách dùng 'many' cho danh từ không đếm được (vd: many water) hoặc 'much' cho danh từ đếm được.",
+eng_since_for: "CHIẾN LƯỢC BẪY: Hiện tại hoàn thành. Yêu cầu: Tạo đáp án nhiễu sai logic bằng cách đảo ngược cách dùng của Since (đi với khoảng thời gian) và For (đi với mốc thời gian).",
+eng_passive_missing_be: "CHIẾN LƯỢC BẪY: Câu bị động. Yêu cầu: Tạo đáp án nhiễu sai cấu trúc bằng cách bỏ quên động từ 'to be' (vd: The letter written by him) hoặc dùng V1 thay vì V3/ed.",
+eng_vietglish_collocation: "CHIẾN LƯỢC BẪY: Cụm từ cố định (Collocation). Yêu cầu: Tạo đáp án nhiễu bằng cách dịch word-by-word từ tiếng Việt sang (vd: 'uống thuốc' thành 'drink medicine' thay vì 'take medicine', 'làm bài tập' thành 'make homework')."
 },
-
-// 3. QUY TẮC BÓP MÉO (SPOT MISTAKE DISTORTION RULES)
-getMicroTierDistortionRule: function(lang, dataMode, level, topic) {
-if (lang === 'Chinese') {
-switch(level) {
-case 'zh_level_1':
-return "Hãy tạo 1 lỗi sai bằng phương pháp THAY THẾ (1-đổi-1). Ưu tiên các bẫy HSK 1. CÁC VÍ DỤ TỐT: 1) Sai lượng từ (Đổi 本 thành 个). 2) Nhầm phủ định (Đổi 没 thành 不). 3) Sai hư từ (Đổi 的 thành 地). 4) Đặt địa điểm ra sau động từ thay vì trước động từ.";
-case 'zh_level_2':
-return "Hãy tạo 1 lỗi sai bằng phương pháp THAY THẾ (1-đổi-1). Ưu tiên các bẫy HSK 2. CÁC VÍ DỤ TỐT: 1) Đổi 得 thành 地. 2) Chèn thêm 很 vào trước tính từ trong câu so sánh 比. 3) Nhầm vị trí của 多 (三个多 vs 十多个). 4) Đổi 离 thành 从. 5) Ghép sai cặp liên từ (mặc dù... cho nên).";
-case 'zh_level_3':
-return "Hãy tạo 1 lỗi sai tinh vi bằng phương pháp THAY THẾ. Ưu tiên bẫy HSK 3. CÁC VÍ DỤ TỐT: 1) Đẩy danh từ địa điểm ra sau 来/去. 2) Động từ ly hợp mang tân ngữ (见面他). 3) Đổi 只有 thành 只要. 4) Dùng sai câu chữ 把 và 被. 5) Chèn thừa chữ 了 bên cạnh chữ 着.";
-case 'zh_level_4':
-return "Hãy tạo 1 lỗi sai khó bằng phương pháp THAY THẾ. Ưu tiên bẫy HSK 4. CÁC VÍ DỤ TỐT: 1) Đảo sai vị trí chủ ngữ với liên từ 不仅. 2) Lược bỏ chủ thể sau chữ 让/叫. 3) Đặt chữ 不 sau chữ 是 thay vì trước nó. 4) Dùng sai cụm thành ngữ.";
-default:
-return "Hãy tạo 1 lỗi sai bằng phương pháp thay thế 1-đổi-1, tập trung vào ngữ pháp và vị trí từ.";
-}
-}
-return "Tạo một lỗi sai tinh tế bằng cách thay thế hoặc chèn thêm một từ dư thừa.";
+// ====================================================
+// GAME TÌM LỖI SAI (SPOT MISTAKE) - TẠO LỖI 1-VỊ-TRÍ
+// ====================================================
+spot_mistake: {
+// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
+zh_hsk_separable_obj: "MỤC TIÊU BÓP MÉO: Động từ ly hợp. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách ép động từ ly hợp mang tân ngữ trực tiếp ngay phía sau (VD: 帮忙他 thay vì 帮他的忙).",
+zh_hsk_adv_zhongyu: "MỤC TIÊU BÓP MÉO: Phó từ 终于. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đặt sai vị trí phó từ 终于 ra sau động từ chính.",
+zh_hsk_adv_degree: "MỤC TIÊU BÓP MÉO: Phó từ mức độ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dùng sai cấu trúc 越...越... hoặc dùng chữ 极 mà thiếu chữ 了.",
+zh_hsk_prep_mismatch: "MỤC TIÊU BÓP MÉO: Giới từ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay giới từ đúng bằng một giới từ sai hoàn toàn về ngữ cảnh (VD: 根据 thay bằng 关于).",
+zh_hsk_conj_mismatch: "MỤC TIÊU BÓP MÉO: Liên từ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách phá vỡ cặp liên từ 不但...而且..., ghép sai với một từ khác.",
+zh_hsk_noun_space: "MỤC TIÊU BÓP MÉO: Danh từ không gian. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thêm thừa các chữ như 上, 里 vào sau các danh từ đã mang sẵn nghĩa địa điểm.",
+zh_hsk_rc_negation: "MỤC TIÊU BÓP MÉO: Phủ định BNKQ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dùng chữ 不 để phủ định Bổ ngữ kết quả trong quá khứ thay vì dùng chữ 没.",
+zh_hsk_rc_state: "MỤC TIÊU BÓP MÉO: Bổ ngữ kết quả. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay Bổ ngữ kết quả bằng một chữ mang ý nghĩa trái ngược hoàn toàn logic của câu.",
+zh_hsk_pc_ability: "MỤC TIÊU BÓP MÉO: Bổ ngữ khả năng. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách nhầm lẫn cấu trúc 得/不 của BNKN với việc sử dụng động từ năng nguyện 能/不能.",
+zh_hsk_dc_location: "MỤC TIÊU BÓP MÉO: Bổ ngữ xu hướng. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đặt Tân ngữ Địa điểm ra SAU động từ xu hướng 来 hoặc 去 (VD: 走进来教室).",
+zh_hsk_dc_direction: "MỤC TIÊU BÓP MÉO: Bổ ngữ xu hướng. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dùng sai chữ 来 hoặc 去, khiến nó ngược với hướng di chuyển của người nói.",
+zh_hsk_ba_indefinite: "MỤC TIÊU BÓP MÉO: Câu chữ 把. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách biến Tân ngữ thành Cụm số lượng từ KHÔNG xác định (VD: 把一本书).",
+zh_hsk_ba_result: "MỤC TIÊU BÓP MÉO: Câu chữ 把. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xóa bỏ hoàn toàn phần thành phần khác (kết quả/xử lý) đứng sau động từ chính.",
+zh_hsk_bei_reverse: "MỤC TIÊU BÓP MÉO: Câu chữ 被. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đảo ngược logic giữa Chủ thể tác động và Đối tượng chịu tác động.",
+zh_hsk_exist_order: "MỤC TIÊU BÓP MÉO: Câu Tồn tại (着). YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xếp Trạng ngữ chỉ Nơi chốn ra SAU Động từ (VD: 几个汉字写着在黑板上).",
+zh_hsk_emph_order: "MỤC TIÊU BÓP MÉO: Câu nhấn mạnh 连...也/都. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xếp sai vị trí đối tượng nhấn mạnh ra sau chữ 也/都.",
+zh_hsk_emph_extreme: "MỤC TIÊU BÓP MÉO: Câu nhấn mạnh 连...也/都. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay đối tượng nhấn mạnh bằng một sự vật bình thường, làm mất tính cực đoan.",
+zh_hsk_paired_only_if: "MỤC TIÊU BÓP MÉO: Cặp 只有...才... YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách phá vỡ cặp hô ứng, thay thế chữ 才 bằng chữ 就.",
+zh_hsk_paired_as_long_as: "MỤC TIÊU BÓP MÉO: Cặp 只要...就... YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách phá vỡ cặp hô ứng, thay thế chữ 就 bằng chữ 才.",
+general_mistake: "MỤC TIÊU BÓP MÉO: Lỗi tổng hợp. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách lạm dụng sai ngữ cảnh một từ vựng bất kỳ trong câu hoặc dùng sai từ loại.",
+// Bẫy Tiếng Anh
+eng_article_an: "MỤC TIÊU BÓP MÉO: Mạo từ A/An. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đảo ngược cách dùng mạo từ (vd: a orange, an book).",
+eng_plural_s: "MỤC TIÊU BÓP MÉO: Danh từ số nhiều. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thêm 's' vào một danh từ số nhiều bất quy tắc (vd: childrens).",
+eng_present_cont: "MỤC TIÊU BÓP MÉO: Động từ To Be. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xóa bỏ động từ 'to be' trong câu tiếp diễn (vd: She eating).",
+eng_this_these: "MỤC TIÊU BÓP MÉO: Đại từ chỉ định. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dùng sai số ít/số nhiều (vd: These is my pen).",
+eng_past_irregular: "MỤC TIÊU BÓP MÉO: Quá khứ đơn. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách chia sai động từ bất quy tắc (thêm đuôi -ed).",
+eng_comparative_double: "MỤC TIÊU BÓP MÉO: So sánh hơn. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách nhét chữ 'more' vào trước tính từ ngắn đã có đuôi '-er'.",
+eng_much_many: "MỤC TIÊU BÓP MÉO: Much/Many. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay thế 'much' bằng 'many' trước danh từ không đếm được.",
+eng_since_for: "MỤC TIÊU BÓP MÉO: Since/For. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay thế 'since' bằng 'for' trước một mốc thời gian cụ thể (vd: for 1990).",
+eng_passive_missing_be: "MỤC TIÊU BÓP MÉO: Bị động. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xóa bỏ động từ 'to be', chỉ để lại V3.",
+eng_vietglish_collocation: "MỤC TIÊU BÓP MÉO: Collocation. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dịch word-by-word tiếng Việt sang (vd: do a decision -> make a decision)."
 },
-
-// 4. QUY TẮC TẠO ĐÁP ÁN NHIỄU (QUIZ OPTIONS RULES)
-getMicroTierOptionsRule: function(lang, dataMode, level, topic) {
-if (lang === 'Chinese') {
-return "Khuyến khích chọn 3 đáp án nhiễu bám sát cấp độ HSK của từ mục tiêu. Ưu tiên cao nhất là tạo bẫy bằng chữ Hán đồng âm (cùng Pinyin), từ có chung bộ thủ nhưng khác nghĩa, hoặc từ gần nghĩa. VÍ DỤ: Mục tiêu '买' (Mua) -> Nhiễu: '卖', '读', '看'.";
-}
-if (lang === 'English') {
-return "Khuyến khích chọn 3 đáp án nhiễu theo cấp độ CEFR. Ưu tiên sử dụng False Friends (từ dễ nhầm lẫn), từ có chung tiền tố/hậu tố, hoặc cùng trường từ vựng. VÍ DỤ: Mục tiêu 'accept' -> Nhiễu: 'except', 'expect', 'aspect'.";
-}
-return "Đáp án nhiễu nên là những lỗi hiểu lầm phổ biến, thuộc cùng chủ đề và từ loại.";
+// ====================================================
+// GAME ĐIỀN TỪ (FILL BLANK) - ĐỤC CHỖ HIỂM & SINH NHIỄU
+// ====================================================
+fill_blank: {
+// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
+zh_hsk_separable_obj: "MỤC TIÊU ĐỤC LỖ: Động từ ly hợp. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 cụm từ nhiễu là động từ ly hợp nhưng mang tân ngữ ghép dính sai quy tắc (VD: đáp án đúng là 帮忙, nhiễu là 帮忙他) hoặc các động từ sai nghĩa.",
+zh_hsk_adv_zhongyu: "MỤC TIÊU ĐỤC LỖ: Phó từ 终于. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ chỉ thời gian hoặc mức độ không hợp logic với kết quả cuối cùng (như 已经, 正在, 刚).",
+zh_hsk_adv_degree: "MỤC TIÊU ĐỤC LỖ: Phó từ mức độ (极, 越). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ mức độ khác nhưng sai cấu trúc hô ứng hoặc không tương thích với chữ 了 phía sau (như 很, 非常, 最).",
+zh_hsk_prep_mismatch: "MỤC TIÊU ĐỤC LỖ: Giới từ (根据, 关于). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 giới từ khác hoàn toàn sai ngữ cảnh (như 对, 向, 为).",
+zh_hsk_conj_mismatch: "MỤC TIÊU ĐỤC LỖ: Liên từ (不但, 而且). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 liên từ phá vỡ logic tăng tiến (như 还是, 或者, 虽然).",
+zh_hsk_noun_space: "MỤC TIÊU ĐỤC LỖ: Danh từ không gian/phương hướng (上, 里). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 từ chỉ phương hướng ngược lại hoặc sai logic vật lý (như 外, 下, 前).",
+zh_hsk_rc_negation: "MỤC TIÊU ĐỤC LỖ: Phó từ phủ định 没 trước Bổ ngữ Kết quả. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 từ phủ định sai ngữ pháp cho quá khứ (như 不, 别, 未).",
+zh_hsk_rc_state: "MỤC TIÊU ĐỤC LỖ: Bổ ngữ Kết quả (错, 对, 好). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 Bổ ngữ trạng thái kết quả có ý nghĩa trái ngược hoàn toàn với logic vế câu (như 坏, 完, 满).",
+zh_hsk_pc_ability: "MỤC TIÊU ĐỤC LỖ: Trợ từ 得 hoặc 不 trong Bổ ngữ Khả năng. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 trợ từ kết cấu hoặc động từ năng nguyện sai cấu trúc (như 的, 地, 能).",
+zh_hsk_dc_location: "MỤC TIÊU ĐỤC LỖ: Tân ngữ Địa điểm đứng trước 来/去. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 danh từ chung không mang tính chất không gian/địa điểm để dụ học viên điền sai.",
+zh_hsk_dc_direction: "MỤC TIÊU ĐỤC LỖ: Động từ xu hướng (来, 去). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 hướng di chuyển ngược lại với logic của người nói trong ngữ cảnh (như 进, 出, 回 nếu không hợp).",
+zh_hsk_ba_indefinite: "MỤC TIÊU ĐỤC LỖ: Lượng từ/Chỉ thị từ xác định trong câu chữ 把 (như 这, 那). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 cụm số lượng từ không xác định (như 一, 几) để phá vỡ quy tắc câu chữ 把.",
+zh_hsk_ba_result: "MỤC TIÊU ĐỤC LỖ: Động từ hoặc Bổ ngữ kết quả trong câu chữ 把. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 động từ đứng độc lập không tạo ra sự xử lý/kết quả (như 听, 看, 想).",
+zh_hsk_bei_reverse: "MỤC TIÊU ĐỤC LỖ: Giới từ bị động 被 (hoặc 叫, 让). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 giới từ mang tính chủ động (như 把, 对, 为) để lừa đảo chiều tác động.",
+zh_hsk_exist_order: "MỤC TIÊU ĐỤC LỖ: Trợ từ động thái 着 trong câu tồn tại. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 trợ từ động thái/kết cấu sai quy tắc (như 了, 过, 在).",
+zh_hsk_emph_order: "MỤC TIÊU ĐỤC LỖ: Chữ 连 trong cấu trúc nhấn mạnh. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ/liên từ không tạo thành cặp hô ứng với 也/都 (như 就, 才, 还).",
+zh_hsk_emph_extreme: "MỤC TIÊU ĐỤC LỖ: Phó từ hô ứng 也 hoặc 都 sau chữ 连. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ sai ngữ pháp không dùng trong câu nhấn mạnh (như 就, 才, 却).",
+zh_hsk_paired_only_if: "MỤC TIÊU ĐỤC LỖ: Chữ 才 hô ứng với 只有. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ phá vỡ cặp hô ứng điều kiện duy nhất (như 就, 还, 也).",
+zh_hsk_paired_as_long_as: "MỤC TIÊU ĐỤC LỖ: Chữ 就 hô ứng với 只要. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ phá vỡ cặp hô ứng điều kiện đủ (như 才, 还, 也).",
+general_blank: "MỤC TIÊU ĐỤC LỖ: Một Động từ hoặc Tính từ cốt lõi mang ý nghĩa quyết định của câu. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 từ cùng từ loại (đều là động từ/tính từ) nhưng sai hoàn toàn về mặt ý nghĩa văn cảnh.",
+// Bẫy Tiếng Anh
+eng_article_an: "MỤC TIÊU ĐỤC LỖ: Mạo từ A/An. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 mạo từ hoặc đại từ sai quy tắc (vd: the, some, any) để đánh lừa.",
+eng_plural_s: "MỤC TIÊU ĐỤC LỖ: Danh từ số nhiều bất quy tắc. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các dạng số nhiều sai (vd: childs, childrens, childrenes).",
+eng_present_cont: "MỤC TIÊU ĐỤC LỖ: Động từ To Be trong câu tiếp diễn. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các trợ động từ sai thì hoặc sai ngôi (vd: do, does, am, are).",
+eng_this_these: "MỤC TIÊU ĐỤC LỖ: Đại từ chỉ định This/These/That/Those. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các đại từ sai sự phối hợp số lượng hoặc khoảng cách.",
+eng_past_irregular: "MỤC TIÊU ĐỤC LỖ: Động từ bất quy tắc (V2). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các dạng chia sai của động từ đó (vd: buyed, boughted, buy).",
+eng_comparative_double: "MỤC TIÊU ĐỤC LỖ: Tính từ so sánh hơn. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các dạng so sánh sai quy tắc (vd: more tall, tallest, most tall).",
+eng_much_many: "MỤC TIÊU ĐỤC LỖ: Lượng từ Much/Many. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra lượng từ sai (vd: a few cho danh từ không đếm được, many cho nước).",
+eng_since_for: "MỤC TIÊU ĐỤC LỖ: Giới từ Since/For. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các giới từ thời gian khác sai ngữ cảnh (vd: in, on, at, from).",
+eng_passive_missing_be: "MỤC TIÊU ĐỤC LỖ: Động từ To Be trong câu bị động. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các trợ động từ sai (vd: has, did, had) hoặc sai ngôi.",
+eng_vietglish_collocation: "MỤC TIÊU ĐỤC LỖ: Động từ trong Cụm từ cố định (Collocation). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các động từ dịch word-by-word từ tiếng Việt (vd: đáp án nhiễu là 'drink' thay vì 'take' medicine)."
 },
-
-// 5. QUY TẮC TẠO RÁC (SCRAMBLE NOISE RULES)
-getMicroTierNoiseRule: function(lang, dataMode, level, topic) {
-if (lang === 'Chinese') {
-switch(level) {
-case 'zh_level_1':
-case 'zh_level_2':
-return "Hãy sinh thêm 2 chữ Hán rác. Ưu tiên các trợ từ thường gây rối ngữ pháp. VÍ DỤ: '的', '了', '是', '不'.";
-case 'zh_level_3':
-case 'zh_level_4':
-return "Hãy sinh thêm 2 từ rác (1-2 chữ Hán). Ưu tiên các hư từ cấu trúc phức tạp. VÍ DỤ: '被', '把', '才', '就', '让', '叫'.";
-default:
-return "Sinh thêm 2 chữ Hán ngẫu nhiên.";
+// ====================================================
+// GAME GHÉP CÂU (SCRAMBLE NOISE) - SINH TỪ RÁC (DISTRACTORS)
+// ====================================================
+scramble: {
+// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
+zh_hsk_separable_obj: "MỤC TIÊU: Động từ ly hợp. YÊU CẦU: Hãy sinh ra các TỪ RÁC là Đại từ nhân xưng (như 他, 我) hoặc Danh từ chỉ người để lừa học viên ghép nó trực tiếp vào ngay sau động từ ly hợp (VD: tạo chữ 他 để lừa ghép thành 帮忙他).",
+zh_hsk_adv_zhongyu: "MỤC TIÊU: Phó từ 终于. YÊU CẦU: Hãy sinh ra các TỪ RÁC là các từ chỉ thời gian (như 昨天) hoặc giới từ (như 在) để làm rối loạn trật tự, lừa học viên xếp 终于 ra sau động từ chính.",
+zh_hsk_adv_degree: "MỤC TIÊU: Phó từ mức độ. YÊU CẦU: Hãy sinh ra TỪ RÁC là '很' hoặc '非常' để lừa học viên ghép sai vào cấu trúc '越...越...' hoặc lừa đặt trước tính từ đã có chữ '极'.",
+zh_hsk_prep_mismatch: "MỤC TIÊU: Giới từ. YÊU CẦU: Hãy sinh ra TỪ RÁC là giới từ sai ngữ cảnh (như '对于', '对') để lừa học viên thay thế cho các giới từ như 根据 hay 关于.",
+zh_hsk_conj_mismatch: "MỤC TIÊU: Cặp liên từ 不但...而且. YÊU CẦU: Hãy sinh ra TỪ RÁC là liên từ sai cặp như '还是', '或者' hoặc '但是' để lừa học viên phá vỡ cấu trúc hô ứng.",
+zh_hsk_noun_space: "MỤC TIÊU: Danh từ không gian. YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '里' hoặc '上' dư thừa để lừa học viên nhét vào sau các danh từ đã mang sẵn nghĩa địa điểm (như 图书馆里).",
+zh_hsk_rc_negation: "MỤC TIÊU: Phủ định Bổ ngữ Kết quả. YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '不' (Không) để lừa học viên sử dụng sai thay vì dùng chữ '没' (Chưa) trong câu nói về quá khứ.",
+zh_hsk_rc_state: "MỤC TIÊU: Bổ ngữ Kết quả. YÊU CẦU: Hãy sinh ra TỪ RÁC là một Động từ/Tính từ biểu thị kết quả (như 错, 坏, 完) trái ngược hoàn toàn với logic của câu gốc.",
+zh_hsk_pc_ability: "MỤC TIÊU: Bổ ngữ Khả năng (得/不). YÊU CẦU: Hãy sinh ra TỪ RÁC là Động từ năng nguyện '能' hoặc '不能' để lừa học viên nhầm lẫn cấu trúc biểu đạt khả năng.",
+zh_hsk_dc_location: "MỤC TIÊU: Bổ ngữ Xu hướng mang Tân ngữ Địa điểm. YÊU CẦU: Hãy sinh ra TỪ RÁC là Giới từ '在' hoặc '到' để lừa học viên xếp sai Tân ngữ Địa điểm ra sau chữ 来/去 (VD: 走进来在教室).",
+zh_hsk_dc_direction: "MỤC TIÊU: Bổ ngữ Xu hướng. YÊU CẦU: Hãy sinh ra TỪ RÁC là động từ xu hướng (như 去, 出) ngược chiều với hướng di chuyển của câu gốc để lừa học viên.",
+zh_hsk_ba_indefinite: "MỤC TIÊU: Câu chữ 把 (Bǎ). YÊU CẦU: Hãy sinh ra TỪ RÁC là Cụm số lượng từ KHÔNG xác định (như 一个, 一本) hoặc chữ '被' để lừa học viên phá vỡ quy tắc tân ngữ xác định của câu chữ 把.",
+zh_hsk_ba_result: "MỤC TIÊU: Câu chữ 把. YÊU CẦU: Hãy sinh ra TỪ RÁC là một động từ độc lập không có thành phần kết quả (như 看看, 玩) để lừa học viên ghép vào cuối câu thay vì động từ chính xác.",
+zh_hsk_bei_reverse: "MỤC TIÊU: Câu bị động chữ 被 (Bèi). YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '把' (Bǎ) để lừa học viên nhầm lẫn cấu trúc Chủ động và Bị động.",
+zh_hsk_exist_order: "MỤC TIÊU: Câu Tồn tại (着). YÊU CẦU: Hãy sinh ra TỪ RÁC là Giới từ '在' để lừa học viên xếp phần Trạng ngữ chỉ Nơi chốn ra cuối câu thay vì đầu câu.",
+zh_hsk_emph_order: "MỤC TIÊU: Cấu trúc nhấn mạnh 连...也/都. YÊU CẦU: Hãy sinh ra TỪ RÁC là Phó từ '就' hoặc '还' để lừa học viên làm rối loạn cặp hô ứng.",
+zh_hsk_emph_extreme: "MỤC TIÊU: Cấu trúc 连...也/都. YÊU CẦU: Hãy sinh ra TỪ RÁC là một danh từ chung chung, bình thường (không mang tính cực đoan) để lừa học viên đặt sau chữ 连.",
+zh_hsk_paired_only_if: "MỤC TIÊU: Cấu trúc 只有...才... (Chỉ có... mới...). YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '就' để lừa học viên ghép sai cặp hô ứng điều kiện.",
+zh_hsk_paired_as_long_as: "MỤC TIÊU: Cấu trúc 只要...就... (Chỉ cần... là...). YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '才' để lừa học viên ghép sai cặp hô ứng điều kiện.",
+general_noise: "MỤC TIÊU: Tạo nhiễu chung. YÊU CẦU: Hãy sinh ra các TỪ RÁC là các Hư từ (的, 了, 是) hoặc Giới từ (在, 比) không phù hợp với cấu trúc câu gốc để lừa học viên ghép sai ngữ pháp.",
+// Bẫy Tiếng Anh
+eng_article_an: "MỤC TIÊU: Mạo từ A/An. YÊU CẦU: Sinh ra TỪ RÁC là mạo từ sai (vd: 'a' nếu danh từ bắt đầu bằng nguyên âm) để lừa học viên ghép sai.",
+eng_plural_s: "MỤC TIÊU: Danh từ số nhiều. YÊU CẦU: Sinh ra TỪ RÁC là dạng có '-s' hoặc '-es' bị chia sai của danh từ trong câu.",
+eng_present_cont: "MỤC TIÊU: Hiện tại tiếp diễn. YÊU CẦU: Sinh ra TỪ RÁC là động từ chia ở thì khác (vd: V-ed, V-s) hoặc sai to be (vd: 'are' nếu chủ ngữ là He).",
+eng_this_these: "MỤC TIÊU: Đại từ chỉ định. YÊU CẦU: Sinh ra TỪ RÁC là đại từ chỉ định sai số lượng (vd: chữ 'these' nếu danh từ là số ít).",
+eng_past_irregular: "MỤC TIÊU: Quá khứ đơn. YÊU CẦU: Sinh ra TỪ RÁC là dạng động từ bị chia đuôi '-ed' sai quy tắc của động từ chính trong câu.",
+eng_comparative_double: "MỤC TIÊU: So sánh hơn. YÊU CẦU: Sinh ra TỪ RÁC là chữ 'more' hoặc 'most' dư thừa để lừa học viên xếp vào trước tính từ ngắn.",
+eng_much_many: "MỤC TIÊU: Much/Many. YÊU CẦU: Sinh ra TỪ RÁC là chữ 'much' (nếu danh từ đếm được) hoặc 'many' (nếu không đếm được).",
+eng_since_for: "MỤC TIÊU: Since/For. YÊU CẦU: Sinh ra TỪ RÁC là chữ 'for' (nếu câu dùng since) hoặc 'since' (nếu câu dùng for).",
+eng_passive_missing_be: "MỤC TIÊU: Bị động. YÊU CẦU: Sinh ra TỪ RÁC là các trợ động từ sai (vd: did, does, have) để lừa học viên thay thế cho to be.",
+eng_vietglish_collocation: "MỤC TIÊU: Collocation. YÊU CẦU: Sinh ra TỪ RÁC là một động từ mang nghĩa tiếng Việt tương đương nhưng sai tiếng Anh (vd: chữ 'make' thay vì 'do')."
 }
-}
-return "Hãy sinh thêm 2 từ rác ngắn (giới từ, mạo từ) sao cho nếu ghép vào câu sẽ làm sai ngữ pháp.";
 }
 };
-
-
-
-
-
-
-
-
 // Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.01
 // Last Updated: 2026-04-19 12:07
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
@@ -6764,11 +7004,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.06
-// Last Updated: 2026-05-21 11:15
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.07
+// Last Updated: 2026-06-05 08:08
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
-// Cập nhật: [UX/UI] Cố định Header (Sticky) và thêm tính năng Kéo thả (Draggable) cho LinkManagerModal.
+// Cập nhật: [VI PHẪU THUẬT CỘT 10] Bổ sung trường grammar_type vào ManualInputModal.
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
@@ -7152,11 +7392,11 @@ const ManualInputModal = ({ isOpen, onClose, onImport, onAddCard, onAutoFill, t,
 const [mode, setMode] = React.useState('single');
 const [text, setText] = React.useState('');
 const [isFilling, setIsFilling] = React.useState(false);
-const [singleData, setSingleData] = React.useState({ term: '', pronunciation: '', definition: '', partOfSpeech: '', example: '', sinoViet: '' });
+const [singleData, setSingleData] = React.useState({ term: '', pronunciation: '', definition: '', partOfSpeech: '', example: '', sinoViet: '', grammar_type: '' });
 React.useEffect(() => {
 if (isOpen) {
 setText('');
-setSingleData({ term: '', pronunciation: '', definition: '', partOfSpeech: '', example: '', sinoViet: '' });
+setSingleData({ term: '', pronunciation: '', definition: '', partOfSpeech: '', example: '', sinoViet: '', grammar_type: '' });
 setMode('single');
 setIsFilling(false);
 }
@@ -7165,7 +7405,7 @@ const handleSingleChange = (field, value) => setSingleData(prev => ({ ...prev, [
 const handleSingleSubmit = () => {
 if (!singleData.term.trim()) return;
 onAddCard(singleData);
-setSingleData({ term: '', pronunciation: '', definition: '', partOfSpeech: '', example: '', sinoViet: '' });
+setSingleData({ term: '', pronunciation: '', definition: '', partOfSpeech: '', example: '', sinoViet: '', grammar_type: '' });
 };
 const handleAutoFillClick = async () => {
 if (!singleData.term.trim()) return;
@@ -7185,7 +7425,8 @@ pronunciation: result.pronunciation || prev.pronunciation,
 definition: result.definition || prev.definition,
 partOfSpeech: result.partOfSpeech || prev.partOfSpeech,
 example: result.example || prev.example,
-sinoViet: result.sinoViet || prev.sinoViet
+sinoViet: result.sinoViet || prev.sinoViet,
+grammar_type: result.grammar_type ? (Array.isArray(result.grammar_type) ? result.grammar_type.join(', ') : result.grammar_type) : prev.grammar_type
 }));
 }
 }
@@ -7216,7 +7457,7 @@ return (
 </button>
 </div>
 </div>
-<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 <div>
 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Từ loại</label>
 <input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none text-gray-600 font-sans text-sm" placeholder="Danh từ..." value={singleData.partOfSpeech || ''} onChange={(e) => handleSingleChange('partOfSpeech', e.target.value)} />
@@ -7228,6 +7469,10 @@ return (
 <div>
 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Hán Việt</label>
 <input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none text-gray-600 text-sm" placeholder="Nhĩ hảo" value={singleData.sinoViet} onChange={(e) => handleSingleChange('sinoViet', e.target.value)} />
+</div>
+<div>
+<label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nhãn ngữ pháp</label>
+<input type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none text-gray-600 text-sm" placeholder="ba_sentence, verb..." value={singleData.grammar_type} onChange={(e) => handleSingleChange('grammar_type', e.target.value)} />
 </div>
 </div>
 <div>
@@ -9022,12 +9267,12 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 };
 window.MatchGame = MatchGame;
 window.Block5_2_MatchGame = MatchGame;
-// Sheet 5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.05
-// Last Updated: 2026-05-16 14:10
+// Block5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.06
+// Last Updated: 2026-06-05 10:55
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Ghép Câu (Scramble Game).
-// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng hoàn toàn GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp 0.1s). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
+// Cập nhật V1.06: [DỌN ĐƯỜNG JIT ENRICH] Triệt tiêu GlobalLoadingScreen giữa các vòng đấu, thay bằng Overlay Blur mượt mà để tương thích hoàn hảo với cơ chế dịch ngầm On-demand của QueueEngine. Không thay đổi Setup UI.
 // ==================================================================================
-// 1. SCRAMBLE SETUP (Màn hình cấu hình)
+// 1. SCRAMBLE SETUP (Màn hình cấu hình) - GIỮ NGUYÊN 100%
 const ScrambleSetup = ({ t, mainColor, onStart, onBack }) => {
 const [sourceMode, setSourceMode] = React.useState('card');
 const [timerMode, setTimerMode] = React.useState(false);
@@ -9070,7 +9315,7 @@ return (
 <div className="w-10"></div>
 </div>
 <div className="w-full space-y-3 flex-1 overflow-y-auto custom-scrollbar p-1 pb-4">
-{/* Bảng chọn Nguồn dữ liệu (Mới) */}
+{/* Bảng chọn Nguồn dữ liệu */}
 <div className="mb-2">
 <label className="block text-sm font-semibold text-gray-700 mb-2">Nguồn câu hỏi</label>
 <div className="grid grid-cols-2 gap-3">
@@ -9160,7 +9405,7 @@ return (
 </div>
 );
 };
-// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
+// [KHỞI TẠO GAME] Chỉ chặn màn hình lúc bốc bài lần đầu tiên
 if (isGenerating && (!gameState.origin || aiCountdown > 0)) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 // Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
@@ -9211,17 +9456,14 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng */}
+{/* [CƠ CHẾ JIT/LAZY LOAD MƯỢT MÀ] Khóa màn hình nhẹ nhàng giữa các vòng */}
 {isGenerating && gameState.origin && (
-(config?.sourceMode === 'card' && !config?.aiMode) ? (
-<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
-) : (
-<window.GlobalLoadingScreen
-queueLength={queueLength}
-text="Đang tải câu tiếp theo..."
-mainColor={mainColor}
-/>
-)
+<div className="absolute inset-0 z-[150] bg-white/30 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-300">
+<div className={`px-5 py-3 bg-white rounded-2xl shadow-xl border-2 border-${mainColor}-100 flex items-center gap-3`}>
+<div className={`w-5 h-5 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin`}></div>
+<span className={`font-bold text-${mainColor}-700 text-sm`}>AI đang dịch câu mới...</span>
+</div>
+</div>
 )}
 {isPaused && (
 <div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in">
@@ -9381,7 +9623,7 @@ return (
 </div>
 )}
 </div>
-{/* FOOTER ĐƯỢC TÁI CẤU TRÚC (TIÊU CHUẨN VÀNG) */}
+{/* FOOTER ĐƯỢC TÁI CẤU TRÚC */}
 <div className="w-full p-3 sm:p-4 bg-white border-t border-gray-200 shrink-0 flex items-center justify-between z-30 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 {/* Nút Kết thúc (Bên trái) */}
 <button onClick={() => setShowConfirmEnd(true)} className="absolute left-2 sm:left-4 text-red-500 hover:text-red-700 font-bold text-xs flex items-center gap-1 transition-colors px-2 py-2 hover:bg-red-50 rounded-lg" title="Kết thúc">
@@ -9469,10 +9711,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.10
-// Last Updated: 2026-05-28 14:00
+// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.11
+// Last Updated: 2026-06-05 11:00
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
-// Cập nhật V1.10: [VÁ LỖ HỔNG AUTO-SAVE] Tích hợp thu hồi đạn RAM từ QueueEngine. Ép kiểu bóc tách thuộc tính `origin` để bảo toàn cấu trúc thẻ nguyên thủy khi khôi phục ván chơi.
+// Cập nhật V1.11: [JIT ENRICHMENT] Xóa bỏ hoàn toàn batchEnrich gây tắc nghẽn lúc khởi động. Đưa logic dịch ngầm (Lazy Loading) vào fetchTask. Mở khóa nạp thẻ chưa có nghĩa.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 const safeShowToast = React.useCallback((msg, type = 'success') => {
@@ -9650,8 +9892,8 @@ if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Scra
 // 3. THẺ CỦA TÔI (HOẶC AI SẬP PHẢI RÚT THẺ THAY THẾ)
 if (!card) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
-// Lọc thẻ mù khi nạp lại băng đạn rỗng trong quá trình chơi vô tận
-let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+// [VI PHẪU JIT]: Loại bỏ điều kiện bắt buộc phải có definition. Chỉ cần có term là nạp được.
+let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 2 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
@@ -9670,6 +9912,24 @@ validCards = [{ term: "Learning languages is fun", definition: "Học ngôn ng�
 deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
 }
 card = deckRef.current.shift();
+// [CƠ CHẾ JIT ENRICHMENT] Nạp ngầm ý nghĩa nếu thẻ khuyết
+if (card && (!card.definition || card.definition.trim() === '')) {
+if (isAiMode && currentApiKey && window.Utils && window.Utils.fillCardWithAi) {
+try {
+const enriched = await window.Utils.fillCardWithAi(card.term, lang, currentApiKey, ['definition', 'pronunciation', 'grammar_type']);
+card = { ...card, ...enriched, is_enriched: true };
+if (onUpdateCards) onUpdateCards([card]); // Bắn thẻ đã dịch lên Tầng 6 để lưu DB
+if (enriched._tokenUsage) {
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + (enriched._tokenUsage.totalTokenCount || 0));
+}
+} catch (e) {
+card.definition = "Không thể tải nghĩa (Lỗi AI)";
+}
+} else {
+card.definition = "Bấm Giải thích để tra nghĩa bằng AI";
+}
+}
 // [QA FIX V1.4] Sliding Window 400 & Sync LocalStorage cho Card Mode
 if (historyQueueRef.current && card) {
 if (!historyQueueRef.current.includes(card.term)) {
@@ -9760,20 +10020,9 @@ setIsGenerating(true);
 setStats({ correct: 0, wrong: 0 });
 isInitializingRef.current = true;
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
-let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
-if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
-safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
-const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(
-currentDeck, initialIndices, 10, lang, apiKey
-);
-if (hasUpdates) {
-currentDeck = updatedCards;
-if (onUpdateCards) onUpdateCards(updatedCards);
-safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
-}
-}
 if (sourceMode === 'card') {
-let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+// [VI PHẪU JIT]: Không gạt thẻ mồ côi (khuyết definition) ra khỏi băng đạn nữa
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 2) {
 safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
@@ -10351,6 +10600,7 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 />
 );
 };
+// [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
 // Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.15
@@ -14738,10 +14988,10 @@ window.Block5_11_useSpotMistakeLogic = useSpotMistakeLogic;
 window.useSpotMistakeLogic = useSpotMistakeLogic;
 window.Block5_11_SpotMistakeGame = SpotMistakeGame;
 window.SpotMistakeGame = SpotMistakeGame;
-// Sheet5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.06
-// Last Updated: 2026-05-16 15:58
+// Sheet5.12: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Setup & PlayScreen UI) - Version 1.07
+// Last Updated: 2026-06-05 14:22
 // Nhiệm vụ: Giao diện Cài đặt và Màn hình chơi chính của Game Từ Khác Loại (Odd One Out).
-// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
+// Cập nhật V1.07: [TỐI ƯU UX JIT] Xóa bỏ màn hình GlobalLoadingScreen cồng kềnh giữa các vòng đấu, thay thế bằng Overlay Blur mượt mà để đồng bộ hoàn hảo với cơ chế Lazy Loading của Tầng Logic.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const OddOneOutSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -14843,7 +15093,7 @@ const m = Math.floor(seconds / 60);
 const s = seconds % 60;
 return `${m}:${s.toString().padStart(2, '0')}`;
 };
-// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
+// [KHỞI TẠO GAME] Chỉ chặn màn hình lúc bốc bài lần đầu tiên
 if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 // Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
@@ -14921,18 +15171,14 @@ return (
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng */}
+{/* [CƠ CHẾ JIT/LAZY LOAD MƯỢT MÀ] Overlay chuyển vòng thanh lịch */}
 {isGenerating && currentQuestion && (
-(config?.sourceMode === 'card' && !config?.aiMode) ? (
-<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
-) : (
-<window.GlobalLoadingScreen
-duration={0}
-queueLength={queueLength}
-text="Đang tải vòng tiếp theo..."
-mainColor={mainColor}
-/>
-)
+<div className="absolute inset-0 z-[150] bg-white/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+<div className={`px-6 py-4 bg-white/90 rounded-2xl shadow-2xl border-2 border-${mainColor}-100 flex items-center gap-4`}>
+<div className={`w-6 h-6 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin`}></div>
+<span className={`font-bold text-${mainColor}-700 text-base`}>AI đang chuẩn bị nhóm từ...</span>
+</div>
+</div>
 )}
 {/* Header */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10 relative">
@@ -15125,10 +15371,10 @@ window.Block5_12_OddOneOutSetup = OddOneOutSetup;
 window.OddOneOutSetup = OddOneOutSetup;
 window.Block5_12_OddOneOutPlayScreen = OddOneOutPlayScreen;
 window.OddOneOutPlayScreen = OddOneOutPlayScreen;
-// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.12
-// Last Updated: 2026-05-29 15:30
+// Sheet5.13: TẦNG 5: TRÒ CHƠI HÓA (OddOneOut Logic & Wrapper) - Version 1.13
+// Last Updated: 2026-06-05 14:30
 // Nhiệm vụ: Controller chính của Game Từ Khác Loại (Odd One Out). Quản lý luồng, gọi API Tầng 2 và kết nối UI.
-// Cập nhật V1.12: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa biến currentQuestion, định dạng payload oddOneOutState, và nâng cấp bộ giải nén băng đạn RAM nhận diện được thuộc tính dị biệt `originCards`.
+// Cập nhật V1.13: [ĐẠI VI PHẪU] Xóa sổ vĩnh viễn batchEnrich gây chậm trễ khởi động. Nới lỏng đầu vào cho thẻ khuyết nghĩa. Tích hợp JIT Lazy Loading trực tiếp vào Lò đúc Hybrid AI.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useOddOneOutLogic = (cards, config, callbacks) => {
@@ -15367,7 +15613,8 @@ if (!isPureMode && isAiMode && currentApiKey && window.AiFactoryEngine) {
 let poppedCard = null;
 try {
 if (deckRef.current.length === 0) {
-let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+// Nới lỏng màng lọc khi nạp lại kho đạn, chấp nhận thẻ chưa có definition
+let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 4 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, 'vocab', level, 20);
@@ -15381,8 +15628,23 @@ deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCar
 }
 poppedCard = deckRef.current.shift();
 if (poppedCard) {
+// [CƠ CHẾ JIT ENRICHMENT] Khắc phục thẻ mồ côi (khuyết definition) trước khi gọi AI tạo nhóm
+if (!poppedCard.definition || poppedCard.definition.trim() === '') {
+try {
+const enriched = await window.Utils.fillCardWithAi(poppedCard.term, lang, currentApiKey, ['definition', 'pronunciation']);
+poppedCard = { ...poppedCard, ...enriched, is_enriched: true };
+if (onUpdateCards) onUpdateCards([poppedCard]);
+if (enriched._tokenUsage) {
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + (enriched._tokenUsage.totalTokenCount || 0));
+}
+} catch (e) {
+console.warn("JIT Enrich failed for OddOneOut Hybrid", e);
+poppedCard.definition = "Từ vựng ngẫu nhiên"; // Chuỗi bảo hiểm chống sập cấu trúc Prompt
+}
+}
 let historyPrompt = window.AiFactoryEngine.getHistoryPrompt(historyQueueRef.current);
-const hybridPrompt = historyPrompt + `\nCRITICAL REQUIREMENT: You MUST include the exact word/phrase "${poppedCard.term}" (Meaning: ${poppedCard.definition}) as one of the 4 items in your array. It can be the odd one out, or one of the 3 similar items.`;
+const hybridPrompt = historyPrompt + `\nCRITICAL REQUIREMENT: You MUST include the exact word/phrase "${poppedCard.term}" (Meaning: ${poppedCard.definition || 'Unknown'}) as one of the 4 items in your array. It can be the odd one out, or one of the 3 similar items.`;
 const aiPromise = window.AiFactoryEngine.forgeMatrix('odd_one_out', level, lang, currentApiKey, config?.topic, hybridPrompt, config?.dataMode);
 const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Hybrid Timeout")), 15000));
 const parsedResult = await Promise.race([aiPromise, timeoutPromise]);
@@ -15423,6 +15685,7 @@ if (poppedCard) deckRef.current.unshift(poppedCard);
 }
 // 3. THẺ GỐC HOẶC KHO CỨU HỘ (Nếu AI Pure sập mạng hoặc đang ở Card Mode ko AI)
 if (window.GameAlgoEngine && window.GameAlgoEngine.OddOneOutEngine && window.GameAlgoEngine.OddOneOutEngine.offline_generate) {
+// Offline Engine yêu cầu khắt khe thẻ phải có nghĩa mới mix được an toàn
 const cleanDeck = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
 const offlineResult = window.GameAlgoEngine.OddOneOutEngine.offline_generate(cleanDeck, lang);
 if (offlineResult) {
@@ -15451,19 +15714,10 @@ isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
 streakTrackerRef.current = []; // Reset trí nhớ vị trí
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
-let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
-if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
-safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
-const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(currentDeck, initialIndices, 10, lang, apiKey);
-if (hasUpdates) {
-currentDeck = updatedCards;
-enrichedCardsRef.current = updatedCards;
-if (onUpdateCards) onUpdateCards(updatedCards);
-safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
-}
-}
+// [VI PHẪU] Xóa bỏ hoàn toàn lời gọi batchEnrich gây kẹt xe ở đây
 if (sourceMode === 'card') {
-let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
+// Nới lỏng màng lọc, chấp nhận thẻ mồ côi đi vào QueueEngine để được JIT cứu vớt
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 4) {
 safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
@@ -17266,10 +17520,10 @@ className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 trans
 };
 window.Block5_16_ExamReviewModal = ExamReviewModal;
 window.ExamReviewModal = ExamReviewModal;
-// Sheet5.17: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Setup & PlayScreen UI) - Version 1.06
-// Last Updated: 2026-05-16 16:25
+// Sheet5.17: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Setup & PlayScreen UI) - Version 1.07
+// Last Updated: 2026-06-05 14:15
 // Nhiệm vụ: Giao diện thuần túy (Dumb Component) cho Game Hình Ảnh. Tuân thủ Quiz Sample.
-// Cập nhật: [VÁ LỖI FLASHING & BÓNG MA AI] Chặn đứng GlobalLoadingScreen khi nạp thẻ Offline (xóa sổ hiện tượng chớp). Ẩn huy hiệu băng đạn nếu không dùng AI. Tuân thủ Điều 3.
+// Cập nhật V1.07: [TỐI ƯU UX JIT] Xóa bỏ màn hình GlobalLoadingScreen cồng kềnh giữa các vòng đấu, thay thế bằng Overlay Blur mượt mà để đồng bộ hoàn hảo với cơ chế Lazy Loading của Tầng Logic.
 // ==================================================================================
 // --- 1. COMPONENT SETUP (Màn hình cấu hình) ---
 const ImageQuizSetup = ({ t, mainColor = 'purple', onStart, onBack }) => {
@@ -17386,7 +17640,7 @@ display: currentQuestion.term,
 analysis: currentQuestion.definition || currentQuestion.explanation || ""
 });
 };
-// [CHIẾN DỊCH SILENT OFFLINE] Chặn đứng GlobalLoadingScreen nếu là thẻ offline
+// [KHỞI TẠO GAME] Chỉ chặn màn hình lúc bốc bài lần đầu tiên
 if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 // Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
@@ -17471,18 +17725,14 @@ return (
 </div>
 </div>
 )}
-{/* [CHIẾN DỊCH SILENT OFFLINE] Overlay chuyển vòng */}
+{/* [CƠ CHẾ JIT/LAZY LOAD MƯỢT MÀ] Khóa màn hình nhẹ nhàng giữa các vòng */}
 {isGenerating && currentQuestion && (
-(config?.sourceMode === 'card' && !config?.aiMode) ? (
-<div className="absolute inset-0 z-[150] bg-transparent pointer-events-none"></div>
-) : (
-<window.GlobalLoadingScreen
-duration={0}
-queueLength={queueLength}
-text="Đang tải ảnh tiếp theo..."
-mainColor={mainColor}
-/>
-)
+<div className="absolute inset-0 z-[150] bg-white/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+<div className={`px-6 py-4 bg-white/90 rounded-2xl shadow-2xl border-2 border-${mainColor}-100 flex items-center gap-4`}>
+<div className={`w-6 h-6 border-4 border-${mainColor}-200 border-t-${mainColor}-600 rounded-full animate-spin`}></div>
+<span className={`font-bold text-${mainColor}-700 text-base`}>AI đang tải ảnh tiếp theo...</span>
+</div>
+</div>
 )}
 {/* HEADER */}
 <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10 relative">
@@ -17637,10 +17887,10 @@ window.Block5_17_ImageQuizSetup = ImageQuizSetup;
 window.ImageQuizSetup = ImageQuizSetup;
 window.Block5_17_ImageQuizPlayScreen = ImageQuizPlayScreen;
 window.ImageQuizPlayScreen = ImageQuizPlayScreen;
-// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.12
-// Last Updated: 2026-05-29 15:35
+// Sheet5.18: TẦNG 5: TRÒ CHƠI HÓA (Image Quiz Logic & Wrapper) - Version 1.13
+// Last Updated: 2026-06-05 14:20
 // Nhiệm vụ: Controller chính của Game Hình Ảnh (Image Quiz). Quản lý luồng AI, tạo nhiễu ảnh và liên kết UI.
-// Cập nhật V1.12: [VÁ LỖ HỔNG AUTO-SAVE] Chuẩn hóa biến currentQuestion, định dạng payload imageQuizState, và nâng cấp bộ giải nén băng đạn RAM chuẩn Toàn Năng.
+// Cập nhật V1.13: [ĐẠI VI PHẪU] Xóa bỏ batchEnrich gây chậm. Tích hợp JIT Lazy Loading. Cấy ghép Màng Lọc Từ loại (PoS Blacklist) chặn các từ trừu tượng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useImageQuizLogic = (cards, config, callbacks) => {
@@ -17876,7 +18126,16 @@ if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Imag
 // ==========================================
 if (!card) {
 if (deckRef.current.length === 0 && !isPureMode) {
-let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
+// [CƠ CHẾ LỌC PO.S SƯ PHẠM] Lọc các từ trừu tượng khỏi game hình ảnh
+const posBlacklistRegex = /(giới từ|liên từ|phó từ|trợ từ|đại từ|lượng từ|preposition|conjunction|adverb|particle|pronoun|measure word|介词|连词|副词|助词|代词|量词)/i;
+let validCards = (enrichedCardsRef.current || []).filter(c => {
+if (!c.term || c.term.trim() === '') return false;
+// Ưu tiên cho qua nếu đã có sẵn ảnh hoặc từ khóa hình ảnh thủ công
+if (c.image?.startsWith('http') || (c.image_keyword && c.image_keyword.trim() !== '')) return true;
+// Trảm các thẻ mang từ loại trừu tượng
+if (c.partOfSpeech && posBlacklistRegex.test(c.partOfSpeech)) return false;
+return true;
+});
 if (validCards.length < 4 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, 'vocab', level, 20);
@@ -17890,6 +18149,25 @@ if (validCards.length === 0) validCards = [{ term: "Apple", definition: "Quả t
 deckRef.current = window.Utils.shuffleArray(validCards);
 }
 card = deckRef.current.shift();
+// [JIT ENRICHMENT] Nạp ngầm hình ảnh và ý nghĩa nếu thẻ khuyết
+if (card && sourceMode === 'card' && isAiMode && currentApiKey && window.Utils && window.Utils.fillCardWithAi) {
+const missingFields = [];
+if (!card.definition || card.definition.trim() === '') missingFields.push('definition');
+if (!card.image_keyword || card.image_keyword.trim() === '') missingFields.push('image_keyword');
+if (missingFields.length > 0) {
+try {
+const enriched = await window.Utils.fillCardWithAi(card.term, lang, currentApiKey, missingFields);
+card = { ...card, ...enriched, is_enriched: true };
+if (onUpdateCards) onUpdateCards([card]); // Bắn thẻ đã dịch lên DB
+if (enriched._tokenUsage) {
+const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
+localStorage.setItem('fc_total_tokens', currentTotal + (enriched._tokenUsage.totalTokenCount || 0));
+}
+} catch (e) {
+console.warn("JIT Enrich failed for Image Quiz", e);
+}
+}
+}
 if (card && historyQueueRef.current) {
 if (!historyQueueRef.current.includes(card.term)) {
 historyQueueRef.current.push(card.term);
@@ -17979,21 +18257,17 @@ isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
 streakTrackerRef.current = []; // Reset trí nhớ vị trí
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
-let initialIndices = window.Utils.shuffleArray(Array.from({length: currentDeck.length}, (_, i) => i));
-if (sourceMode === 'card' && isAiMode && apiKey && window.AiFactoryEngine) {
-safeShowToast("Đang rà soát dữ liệu thẻ...", "info");
-const { updatedCards, hasUpdates } = await window.AiFactoryEngine.batchEnrich(currentDeck, initialIndices, 10, lang, apiKey);
-if (hasUpdates) {
-currentDeck = updatedCards;
-enrichedCardsRef.current = updatedCards;
-if (onUpdateCards) onUpdateCards(updatedCards);
-safeShowToast("Đã tự động dịch và lưu các thẻ khuyết nghĩa!", "success");
-}
-}
 if (sourceMode === 'card') {
-let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
+// [CƠ CHẾ LỌC PO.S SƯ PHẠM ĐẦU VÀO]
+const posBlacklistRegex = /(giới từ|liên từ|phó từ|trợ từ|đại từ|lượng từ|preposition|conjunction|adverb|particle|pronoun|measure word|介词|连词|副词|助词|代词|量词)/i;
+let validCards = currentDeck.filter(c => {
+if (!c.term || c.term.trim() === '') return false;
+if (c.image?.startsWith('http') || (c.image_keyword && c.image_keyword.trim() !== '')) return true;
+if (c.partOfSpeech && posBlacklistRegex.test(c.partOfSpeech)) return false;
+return true;
+});
 if (validCards.length < 4) {
-safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
+safeShowToast("Bộ thẻ ít từ vựng trực quan. Đang bù thêm dự phòng...", "warning");
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, 'vocab', level, 20);
@@ -21733,11 +22007,11 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.01
-// Last Updated: 2026-04-08 19:55
+// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.02
+// Last Updated: 2026-06-05 09:10
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
 // Quy tắc: Tách biệt hoàn toàn logic chạy ngầm khỏi App Component chính. TUYỆT ĐỐI KHÔNG CẮT XÉN CODE. Tuân thủ Điều 3.
-// Cập nhật: [BƯỚC 2 - TOPIC FLOW] Bổ sung trường `topic` vào danh sách requiredFields/missingFields của hàm processAiQueue và handleAiEnrichCard.
+// Cập nhật V1.02: [VI PHẪU THUẬT CỘT 10] Bổ sung `grammar_type` vào mảng missingFields để chặn rò rỉ dữ liệu JIT.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -21859,12 +22133,16 @@ if (!currentApiKey) { aiQueueRef.current.shift(); continue; }
 try {
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
-// [HOTFIX v1.5] Thêm topic vào mảng cần kiểm tra để AI chạy ngầm
-const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'sinoViet', 'example', 'image'];
+// [HOTFIX v1.02] Thêm grammar_type vào mảng cần kiểm tra để AI chạy ngầm
+const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'sinoViet', 'example', 'image', 'grammar_type'];
 const missingFields = noteCard ? requiredFields.filter(field => {
-const val = noteCard[field] ? noteCard[field].toString().trim() : "";
-if (field === 'image') return !val.startsWith('http');
-return val === "";
+const val = noteCard[field];
+if (field === 'grammar_type') {
+return !val || (Array.isArray(val) && val.length === 0) || (typeof val === 'string' && val.trim() === '');
+}
+const strVal = val ? val.toString().trim() : "";
+if (field === 'image') return !strVal.startsWith('http');
+return strVal === "";
 }) : requiredFields;
 if (missingFields && missingFields.length === 0) { aiQueueRef.current.shift(); continue; }
 let res;
@@ -21922,8 +22200,14 @@ processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
 const currentCard = latestStateRef.current.cards.find(c => c.term === cardTerm);
-// [HOTFIX v1.5] Cấy ghép topic vào mảng lọc thông tin bị thiếu
-const missingFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'sinoViet', 'example', 'image'].filter(f => !currentCard?.[f] || (f==='image' && !currentCard[f].startsWith('http')));
+// [HOTFIX v1.02] Bổ sung grammar_type vào mảng lọc thông tin bị thiếu
+const missingFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'sinoViet', 'example', 'image', 'grammar_type'].filter(f => {
+if (f === 'grammar_type') {
+const val = currentCard?.[f];
+return !val || (Array.isArray(val) && val.length === 0) || (typeof val === 'string' && val.trim() === '');
+}
+return !currentCard?.[f] || (f === 'image' && !currentCard[f].startsWith('http'));
+});
 if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return; }
 if (silent && !missingFields.length) return;
 const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields);
@@ -22013,10 +22297,10 @@ handleManualAiFill
 window.Block6_2_useAiLogic = useAiLogic;
 window.Block14_useAiLogic = useAiLogic; // GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC (Fallback)
 window.useAiLogic = useAiLogic;
-// Block6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data I/O & Persistence) - Version 1.01
-// Last Updated: 2026-04-18 15:10
+// Block 6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data I/O & Persistence) - Version 1.02
+// Last Updated: 2026-06-05 21:35
 // Nhiệm vụ: "Người vận chuyển" (The Porter). Chuyên trách nạp/xuất dữ liệu, quản lý file system và dọn rác bộ nhớ.
-// Cập nhật: [QA FIX V1.25 - NHÁT DAO 2] Bọc thép Luồng GViz chống CORS Origin null. Thay thế toàn bộ các lệnh fetch() trần trụi tại handleFetchApiKey và fetchDirectGvizTabs bằng window.Utils.fetchWithFallback để tận dụng màng lọc Proxy khi người dùng chạy offline trên ổ cứng (file://). Tuân thủ Điều 3.
+// Cập nhật V1.02: [LƯỚI LỬA ĐA TẦNG EXCEL] Đồng bộ 7 node Proxy xuyên thủng vào hàm safeFetchExcel để vượt rào CORS khi tải file Excel nguyên khối trên môi trường file://.
 // ==================================================================================
 const useDataIO = (core, latestStateRef, callbacks) => {
 const { t, showToast } = callbacks;
@@ -22123,7 +22407,7 @@ showToast("Lỗi copy: " + err, "error");
 // ==================================================================================
 // 3. ĐỘNG CƠ TẢI DỮ LIỆU GOOGLE SHEETS (PROXY & GVIZ)
 // ==================================================================================
-// Cách 1: Tải qua Proxy (Lấy toàn bộ file Excel)
+// Cách 1: Tải qua Proxy (Lấy toàn bộ file Excel nguyên khối)
 const safeFetchExcel = async (url) => {
 let cleanUrl = url.trim();
 const match = cleanUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -22131,16 +22415,20 @@ if (!match) throw new Error("Link không hợp lệ. Không tìm thấy ID của
 const sheetId = match[1];
 const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
 const cacheBuster = `&cb=${Date.now()}`;
+// [V1.02 FIX] Mạng lưới 7 Node Proxy bọc thép xuyên thủng CORS file://
 const proxies = [
-`https://api.allorigins.win/raw?url=${encodeURIComponent(exportUrl + cacheBuster)}`,
-`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(exportUrl)}`,
-`https://corsproxy.io/?${encodeURIComponent(exportUrl)}`,
-exportUrl
+{ name: "Direct", url: exportUrl },
+{ name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(exportUrl + cacheBuster)}` },
+{ name: "CorsProxyIO", url: `https://corsproxy.io/?${encodeURIComponent(exportUrl + cacheBuster)}` },
+{ name: "ThingProxy", url: `https://thingproxy.freeboard.io/fetch/${exportUrl}` },
+{ name: "CodeTabs", url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(exportUrl)}` },
+{ name: "CorsAnywhere", url: `https://cors-anywhere.herokuapp.com/${exportUrl}` },
+{ name: "CorsSH", url: `https://proxy.cors.sh/${exportUrl}` }
 ];
 let lastErr = null;
 for (const proxy of proxies) {
 try {
-const res = await fetch(proxy);
+const res = await fetch(proxy.url);
 if (!res.ok) throw new Error(`HTTP ${res.status}`);
 const buffer = await res.arrayBuffer();
 if (buffer.byteLength < 100) throw new Error("File quá nhỏ, lỗi chặn kết nối.");
@@ -22151,6 +22439,7 @@ throw new Error("LỖI QUYỀN TRUY CẬP: Hãy chắc chắn Link Google Sheet 
 return buffer;
 } catch (e) {
 lastErr = e;
+console.warn(`[Excel Proxy Fallback] ${proxy.name} thất bại, thử node tiếp theo...`);
 if (e.message.includes("LỖI QUYỀN TRUY CẬP")) throw e;
 }
 }
@@ -22166,7 +22455,7 @@ const fetchTab = async (sheetName) => {
 const encodedName = encodeURIComponent(sheetName);
 const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodedName}`;
 try {
-// [QA FIX V1.25] Dùng fetchWithFallback thay vì fetch trần để vượt CORS khi chạy file://
+// Dùng fetchWithFallback thay vì fetch trần để vượt CORS khi chạy file://
 const res = await window.Utils.fetchWithFallback(gvizUrl);
 if (!res) return null;
 const text = await res.text();
@@ -22200,7 +22489,6 @@ break;
 if (total === 0) {
 const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
 try {
-// [QA FIX V1.25] Dùng fetchWithFallback thay vì fetch trần
 const res = await window.Utils.fetchWithFallback(gvizUrl);
 if (res) {
 const text = await res.text();
@@ -22476,7 +22764,7 @@ const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
 if (match) {
 const gvizUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv`;
 try {
-// [QA FIX V1.25] Sửa lỗi CORS file:// bằng cách ném gvizUrl qua màng lọc Proxy thay vì fetch trần
+// Sửa lỗi CORS file:// bằng cách ném gvizUrl qua màng lọc Proxy
 const res = await window.Utils.fetchWithFallback(gvizUrl);
 if (res) {
 const fetchedText = await res.text();
@@ -23312,11 +23600,11 @@ handleResetSrs
 // EXPORT GLOBAL
 window.Block6_5_useStudyProgress = useStudyProgress;
 window.useStudyProgress = useStudyProgress;
-// Block6.6: TẦNG 6: LOGIC LƯU TRỮ AI (AI Curator Logic) - Version 1.01
-// Last Updated: 2026-04-19 20:22
+// Block6.6: TẦNG 6: LOGIC LƯU TRỮ AI (AI Curator Logic) - Version 1.02
+// Last Updated: 2026-06-05 08:12
 // Nhiệm vụ: Chuyên trách quản lý Kho dữ liệu AI tự sinh (AI Harvest Pool).
 // Chức năng: Thu hoạch câu hỏi, bảo trì bộ nhớ, xuất bản dữ liệu sang Excel chuẩn.
-// Cập nhật: [GIAI ĐOẠN 5 - BƯỚC 1] Gỡ bỏ hoàn toàn giới hạn 2000 câu và thuật toán cắt tỉa (Garbage Collection). Biến kho lưu trữ thành "Vô tận" trên IndexedDB. Chỉ cảnh báo khi đạt 50,000 câu. Tuân thủ Điều 3.
+// Cập nhật: [VI PHẪU THUẬT CỘT 10] Bổ sung grammar_type vào luồng map dữ liệu xuất Excel.
 // ==================================================================================
 const useAiCurator = (core, latestStateRef, callbacks) => {
 const { t, showToast } = callbacks;
@@ -23392,7 +23680,7 @@ Object.keys(pool).forEach(levelKey => {
 const items = pool[levelKey];
 if (items && items.length > 0) {
 hasData = true;
-// Trích xuất thông划 Level và Language từ Key (VD: 'en_level_4')
+// Trích xuất thông tin Level và Language từ Key (VD: 'en_level_4')
 const parts = levelKey.split('_');
 const languageCode = parts[0] || 'en';
 const levelCode = levelKey;
@@ -23429,7 +23717,7 @@ definition = item.targetWord || item.definition || '';
 analysis = item.hint || item.explanation || item.analysis || '';
 example = item.example || '';
 }
-// Map vào 11 cột chuẩn của Flashcard Lite (Bảo vệ an toàn chống lỗi nháy kép)
+// Map vào các cột chuẩn của Flashcard Lite (Thêm grammar_type thành cột J)
 return {
 term: term,
 pronunciation: item.pronunciation || '',
@@ -23440,6 +23728,7 @@ example: example,
 image: item.image || '',
 partOfSpeech: pos,
 topic: item.topic || 'AI Harvested',
+grammar_type: Array.isArray(item.grammar_type) ? item.grammar_type.join(', ') : (item.grammar_type || ''),
 level: levelCode,
 language: languageCode
 };
@@ -23456,7 +23745,7 @@ return;
 }
 const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 window.XLSX.writeFile(wb, `AI_Harvest_Master_${dateStr}.xlsx`);
-showToast("Đã tải xuống file Excel chuẩn 11 cột!", "success");
+showToast("Đã tải xuống file Excel chuẩn chứa nhãn ngữ pháp!", "success");
 }, [latestStateRef, showToast]);
 // TRẢ VỀ API CHO MAIN CONTROLLER
 return {
