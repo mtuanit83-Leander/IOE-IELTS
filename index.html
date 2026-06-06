@@ -6138,10 +6138,10 @@ return (
 };
 // EXPORT TO WINDOW
 window.SettingsModal = SettingsModal;
-// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.02
-// Last Updated: 2026-05-18 10:20
+// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.03
+// Last Updated: 2026-06-06 17:20
 // Nhiệm vụ: Chuyên trách dữ liệu học tập & Tiến độ của người dùng (Sổ tay, Lỗi sai, Đã thuộc).
-// Cập nhật: [NÂNG CẤP MENU ÔN TẬP - BƯỚC 3] Loại bỏ các nút Game tĩnh rườm rà. Xây dựng Component ReviewDropdown vạn năng, chứa toàn bộ 10 Mini-games + 1 Flashcard để người dùng thỏa sức lựa chọn hình thức ôn tập Sổ tay/Lỗi sai. Tuân thủ Điều 3.
+// Cập nhật V1.03: [ANTI-BOMBING ENGINE] Nâng cấp handleAiFillAll thành luồng chạy tuần tự có kiểm soát. Thêm cơ chế Auto-Retry (Thử lại 3 lần khi gặp lỗi 429/503) và khóa UI hiển thị tiến độ % để chống Spam API.
 // ==================================================================================
 // --- COMPONENT NỘI BỘ: REVIEW DROPDOWN (MENU ÔN TẬP VẠN NĂNG) ---
 const ReviewDropdown = ({ onSelect, dataLength, mainColor = 'blue' }) => {
@@ -6213,6 +6213,8 @@ const NotebookModal = ({ isOpen, onClose, data, onSave, onPlay, t, mainColor, on
 const [editingData, setEditingData] = React.useState([]);
 const [fillingIndices, setFillingIndices] = React.useState(new Set());
 const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
+const [isAutoFillingAll, setIsAutoFillingAll] = React.useState(false);
+const [fillProgress, setFillProgress] = React.useState({ current: 0, total: 0 });
 React.useEffect(() => {
 if (isOpen) {
 const loaded = JSON.parse(JSON.stringify(data)).map((item, index) => ({
@@ -6222,6 +6224,8 @@ _tempId: Date.now() + index
 loaded.push({ term: '', pronunciation: '', definition: '', partOfSpeech: '', topic: '', example: '', sinoViet: '', image: '', _tempId: Date.now() + 999999 });
 setEditingData(loaded);
 setShowConfirmDelete(false);
+setIsAutoFillingAll(false);
+setFillProgress({ current: 0, total: 0 });
 }
 }, [isOpen, data]);
 const handleChange = (index, field, value) => {
@@ -6252,11 +6256,11 @@ const validData = editingData.filter(item => item.term && item.term.trim() !== "
 onSave(validData.map(({ _tempId, ...rest }) => rest));
 onClose();
 };
-const handleAiFill = async (index) => {
+const handleAiFill = async (index, isBatch = false) => {
 let item = editingData[index];
 if (!item.term || item.term.trim() === "") {
-alert("Vui lòng nhập từ vựng trước khi gọi AI!");
-return;
+if (!isBatch) alert("Vui lòng nhập từ vựng trước khi gọi AI!");
+return false;
 }
 if (sourceData && sourceData.length > 0) {
 const localMatch = sourceData.find(c => c.term.toLowerCase().trim() === item.term.toLowerCase().trim());
@@ -6286,8 +6290,11 @@ const missingFields = requiredFields.filter(field => !item[field] || item[field]
 if (!item.image || !item.image.startsWith('http')) {
 missingFields.push('image');
 }
-if (missingFields.length === 0) return;
-if (!apiKey) { alert("Vui lòng nhập API Key để AI điền nốt thông tin còn thiếu!"); return; }
+if (missingFields.length === 0) return true;
+if (!apiKey) {
+if (!isBatch) alert("Vui lòng nhập API Key để AI điền nốt thông tin còn thiếu!");
+throw new Error("Missing API Key");
+}
 setFillingIndices(prev => new Set(prev).add(index));
 try {
 const result = await window.Utils.fillCardWithAi(item.term, lang, apiKey, missingFields);
@@ -6314,17 +6321,19 @@ newData[index].image = result.image;
 }
 return newData;
 });
+return true;
 }
 } catch (e) {
 console.error(e);
-alert("Lỗi AI: " + e.message);
+if (!isBatch) alert("Lỗi AI: " + e.message);
+throw e;
 } finally {
 setFillingIndices(prev => { const next = new Set(prev); next.delete(index); return next; });
 }
 };
 const handleAiFillAll = async () => {
 if (!apiKey) { alert("Vui lòng nhập API Key trước!"); return; }
-if (!confirm("Hệ thống sẽ tự động điền thông tin cho các từ còn thiếu. Việc này có thể tốn nhiều Token. Bạn có muốn tiếp tục?")) return;
+if (isAutoFillingAll) return; // Chống spam click
 const indicesToFill = editingData.map((item, idx) => {
 if (!item.term || item.term.trim() === "") return -1;
 const required = ['definition', 'pronunciation', 'example'];
@@ -6332,10 +6341,38 @@ const isMissing = required.some(f => !item[f] || item[f].trim() === "");
 return isMissing ? idx : -1;
 }).filter(idx => idx !== -1);
 if (indicesToFill.length === 0) { alert("Sổ tay đã đầy đủ thông tin (hoặc chưa nhập từ vựng)!"); return; }
-for (const idx of indicesToFill) {
-await handleAiFill(idx);
-await new Promise(r => setTimeout(r, 3000));
+if (!confirm(`Hệ thống sẽ tự động gọi AI điền thông tin cho ${indicesToFill.length} thẻ còn thiếu. Việc này có thể tốn nhiều Token. Bạn có muốn tiếp tục?`)) return;
+setIsAutoFillingAll(true);
+setFillProgress({ current: 0, total: indicesToFill.length });
+for (let i = 0; i < indicesToFill.length; i++) {
+const idx = indicesToFill[i];
+setFillProgress({ current: i + 1, total: indicesToFill.length });
+let attempts = 0;
+const maxAttempts = 3;
+let success = false;
+while (attempts < maxAttempts && !success) {
+try {
+await handleAiFill(idx, true); // true = isBatch (Tắt alert)
+success = true;
+// Nghỉ làm nguội API an toàn sau khi thành công
+if (i < indicesToFill.length - 1) {
+await new Promise(r => setTimeout(r, 4000));
 }
+} catch (err) {
+attempts++;
+console.warn(`Lỗi AI cho thẻ ${editingData[idx]?.term}, thử lại lần ${attempts}/${maxAttempts}...`);
+if (attempts < maxAttempts) {
+// Exponential Backoff: Chờ 5s rồi 10s trước khi thử lại
+const delayMs = attempts === 1 ? 5000 : 10000;
+await new Promise(r => setTimeout(r, delayMs));
+} else {
+console.error(`Bỏ qua thẻ ${editingData[idx]?.term} sau 3 lần thử thất bại.`);
+}
+}
+}
+}
+setIsAutoFillingAll(false);
+setFillProgress({ current: 0, total: 0 });
 };
 if (!isOpen) return null;
 const Icons = window.Icons;
@@ -6389,7 +6426,7 @@ Xóa hết
 </button>
 )}
 {item.term && (
-<button onClick={() => handleAiFill(idx)} disabled={fillingIndices.has(idx)} className={`text-purple-500 hover:bg-purple-50 p-1 rounded transition-colors ${fillingIndices.has(idx) ? 'animate-spin' : ''}`} title="Tự động điền thông minh (Smart Fill)">
+<button onClick={() => handleAiFill(idx)} disabled={fillingIndices.has(idx) || isAutoFillingAll} className={`text-purple-500 hover:bg-purple-50 p-1 rounded transition-colors ${fillingIndices.has(idx) ? 'animate-spin' : ''} disabled:opacity-50`} title="Tự động điền thông minh (Smart Fill)">
 <Icons.Sparkles size={16} />
 </button>
 )}
@@ -6426,12 +6463,21 @@ Xóa hết
 </div>
 <div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative z-10">
 <div className="flex gap-2 w-full sm:w-auto">
-{/* [NEW v1.02] Tích hợp Dropdown Ôn tập Vạn năng */}
 <ReviewDropdown onSelect={(type) => onReviewGame && onReviewGame(type, data, 'Sổ tay từ vựng')} dataLength={data.length} mainColor={mainColor} />
-<button onClick={handleAiFillAll} disabled={data.length === 0} title="AI Tự điền" className={`px-2 sm:px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-lg hover:bg-purple-200 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm transition-all active:scale-95`}>
-<Icons.Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" /> AI
+<button onClick={handleAiFillAll} disabled={data.length === 0 || isAutoFillingAll} title="AI Tự điền hàng loạt" className={`px-2 sm:px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-lg hover:bg-purple-200 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-wait`}>
+{isAutoFillingAll ? (
+<Icons.Sparkles size={16} className="sm:w-[18px] sm:h-[18px] animate-pulse" />
+) : (
+<Icons.Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
+)}
+<span className="hidden sm:inline">
+{isAutoFillingAll ? `Xử lý AI (${fillProgress.current}/${fillProgress.total})` : 'AI Tự điền'}
+</span>
+<span className="sm:hidden">
+{isAutoFillingAll ? `${fillProgress.current}/${fillProgress.total}` : 'AI'}
+</span>
 </button>
-<button onClick={handleDeleteAllClick} disabled={editingData.filter(i => i.term).length === 0} title="Xóa toàn bộ" className={`px-2 sm:px-4 py-2 bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm transition-all active:scale-95`}>
+<button onClick={handleDeleteAllClick} disabled={editingData.filter(i => i.term).length === 0 || isAutoFillingAll} title="Xóa toàn bộ" className={`px-2 sm:px-4 py-2 bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm transition-all active:scale-95 disabled:opacity-50`}>
 <Icons.Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /> Xóa
 </button>
 </div>
@@ -6439,7 +6485,7 @@ Xóa hết
 <button onClick={() => onCopy && onCopy(editingData.filter(i => i.term))} disabled={data.length === 0} title="Copy Sheet" className={`px-2 sm:px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 font-bold rounded-lg hover:bg-teal-100 flex items-center justify-center gap-2 text-xs sm:text-base shadow-sm active:scale-95 transition-all`}>
 <Icons.ExternalLink size={16} className="sm:w-[18px] sm:h-[18px]" /> Copy
 </button>
-<button onClick={handleSave} className={`px-2 sm:px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 flex items-center justify-center gap-2 text-xs sm:text-base active:scale-95 transition-all`}>
+<button onClick={handleSave} disabled={isAutoFillingAll} className={`px-2 sm:px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 flex items-center justify-center gap-2 text-xs sm:text-base active:scale-95 transition-all disabled:opacity-50`}>
 <Icons.Save size={16} className="sm:w-[18px] sm:h-[18px]" /> {t('saveChanges')}
 </button>
 </div>
@@ -6550,7 +6596,6 @@ return (
 </div>
 <div className="flex gap-2">
 <button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg transition-colors active:scale-95">Đóng</button>
-{/* [NEW V1.02] Tích hợp Dropdown Ôn tập Vạn năng */}
 <ReviewDropdown onSelect={(type) => onReviewGame && onReviewGame(type, data, 'Sổ tay cần nhớ')} dataLength={data.length} mainColor={mainColor} />
 </div>
 </div>
@@ -7073,7 +7118,7 @@ results[k] = 0; // Fallback nếu chưa có hàm ping
 }
 setTestResults({ ...results });
 // Delay nhỏ để tránh spam quá nhanh
-await new Promise(r => setTimeout(r, 1000));
+await new Promise(r => setTimeout(r, 500));
 }
 setIsTesting(false);
 if (window.globalShowToast) window.globalShowToast("Đã hoàn tất kiểm tra kho đạn!", "info");
@@ -22006,11 +22051,11 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.02
-// Last Updated: 2026-06-05 09:10
+// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.03
+// Last Updated: 2026-06-06 17:30
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
 // Quy tắc: Tách biệt hoàn toàn logic chạy ngầm khỏi App Component chính. TUYỆT ĐỐI KHÔNG CẮT XÉN CODE. Tuân thủ Điều 3.
-// Cập nhật V1.02: [VI PHẪU THUẬT CỘT 10] Bổ sung `grammar_type` vào mảng missingFields để chặn rò rỉ dữ liệu JIT.
+// Cập nhật V1.03: [ANTI-BOMBING ENGINE] Đập bỏ cơ chế Batch Enrich bắn song song trong useEffect. Xây dựng hàng đợi tuần tự (enrichQueueRef) chạy nền 1 luồng duy nhất, cách nhau 5000ms để chống lỗi 429/503.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -22021,6 +22066,9 @@ setNotebook, aiQueueRef, isAiQueueProcessing, processingCardsRef
 } = core;
 // Cờ báo hiệu vòng lặp đang chạy
 const isLoopRunning = useRef(false);
+// Hàng đợi tuần tự cho tính năng Làm giàu thẻ khi đang học
+const enrichQueueRef = useRef([]);
+const isProcessingEnrichQueue = useRef(false);
 // ==================================================================================
 // 1. LOGIC AUTO-PLAY (STABLE VERSION)
 // ==================================================================================
@@ -22262,27 +22310,55 @@ try { return await window.Utils.fillCardWithAi(term, core.lang, apiKey); }
 catch (e) { callbacks.showToast(e.message, "error"); return null; }
 finally { setIsAiLoading(false); }
 };
-// Effect: Batch Enrich
-useEffect(() => {
-let active = true;
-if (core.viewMode === 'learn' && core.isAiModeLearn && core.cards.length > 0 && apiKey) {
-const run = async () => {
-if (!active) return;
-await handleAiEnrichCard(null, true); // Gọi không tham số (mặc định lấy current)
-if (!active) return;
-await new Promise(r => setTimeout(r, 5000));
-// Enrich next 2 cards
-for (let i = 1; i <= 2; i++) {
-if (!active) return;
-const nextIdx = (core.currentCardIndex + i) % core.cards.length;
-if (nextIdx !== core.currentCardIndex) await handleAiEnrichCard(nextIdx, true);
-if (!active) return;
+// ==================================================================================
+// 4. ĐỘNG CƠ HÀNG ĐỢI LÀM GIÀU THẺ (ENRICH QUEUE WORKER)
+// ==================================================================================
+const processEnrichQueue = async () => {
+if (isProcessingEnrichQueue.current) return;
+isProcessingEnrichQueue.current = true;
+while (enrichQueueRef.current.length > 0) {
+const termToEnrich = enrichQueueRef.current[0];
+try {
+// Tái sử dụng hàm handleAiEnrichCard với tham số silent=true để xử lý ngầm
+await handleAiEnrichCard({ term: termToEnrich }, true);
+} catch (e) {
+console.warn(`Background enrich error for ${termToEnrich}:`, e);
+}
+enrichQueueRef.current.shift();
+// Làm nguội API 5 giây trước khi xử lý thẻ tiếp theo trong hàng đợi
+if (enrichQueueRef.current.length > 0) {
 await new Promise(r => setTimeout(r, 5000));
 }
+}
+isProcessingEnrichQueue.current = false;
 };
-run();
+// Effect: Batch Enrich (Chạy Tuần Tự)
+useEffect(() => {
+if (core.viewMode === 'learn' && core.isAiModeLearn && core.cards.length > 0 && apiKey) {
+const currentTerm = core.cards[core.currentCardIndex]?.term;
+if (!currentTerm) return;
+const nextTerms = [];
+nextTerms.push(currentTerm); // Ưu tiên thẻ hiện tại
+// Nạp thêm 2 thẻ kế tiếp
+for (let i = 1; i <= 2; i++) {
+const nextIdx = (core.currentCardIndex + i) % core.cards.length;
+const nextTerm = core.cards[nextIdx]?.term;
+if (nextTerm && !nextTerms.includes(nextTerm)) {
+nextTerms.push(nextTerm);
 }
-return () => { active = false; };
+}
+// Đẩy vào hàng đợi (Loại bỏ các từ đã có sẵn trong queue)
+nextTerms.forEach(term => {
+if (!enrichQueueRef.current.includes(term)) {
+enrichQueueRef.current.push(term);
+}
+});
+// Kích hoạt động cơ
+processEnrichQueue();
+} else {
+// Dọn dẹp hàng đợi nếu tắt tính năng hoặc thoát màn hình
+enrichQueueRef.current = [];
+}
 }, [core.currentCardIndex, core.isAiModeLearn, core.viewMode, apiKey]);
 return {
 runAutoPlay,
