@@ -540,10 +540,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.5
-// Last Updated: 2026-06-06 23:05
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.6
+// Last Updated: 2026-06-06 23:20
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, và kết nối Gemini API. Chứa toàn bộ AI Business Logic.
-// Cập nhật V2.5: [HỆ THỐNG PHANH ABS 2.0] Cấy ghép độ trễ (Sleep) vào vòng lặp xoay tua Key. Khi gặp lỗi 503 (Server Overloaded), ép hệ thống ngủ đông 4s trước khi thử Key khác để chống dội bom API và khóa Key bị lỗi 15s.
+// Cập nhật V2.6: [HỆ THỐNG PHANH ABS 2.1] Cấy ghép thêm nhịp thở 1000ms cho lỗi 429 (Hết hạn ngạch). Tránh hiện tượng xoay tua Key quá nhanh tạo ra hàng loạt request đỏ trong 1 giây.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -685,6 +685,8 @@ throw e;
 // HỆ THỐNG PHANH ABS TÁC CHIẾN MẠNG
 if (e.message && e.message.includes('429')) {
 window.__apiCooldowns[k] = Date.now() + 60000;
+console.warn(`[ABS] Key hết hạn ngạch (429). Chuyển Key sau 1s...`);
+await new Promise(r => setTimeout(r, 1000)); // Nhịp thở cho lỗi 429
 } else if (e.message && e.message.includes('503')) {
 window.__apiCooldowns[k] = Date.now() + 15000; // Khóa key này 15s để hồi sức
 console.warn(`[ABS] Server Google đang bận (503). Động cơ ngủ đông 4s trước khi đổi Key...`);
@@ -813,7 +815,10 @@ if (e.message && e.message.includes('503')) {
 window.__apiCooldowns[k] = Date.now() + 15000;
 console.warn(`[ABS] SmartFill: Server bận. Động cơ ngủ đông 4s trước khi đổi Key...`);
 await new Promise(r => setTimeout(r, 4000));
-} else if (e.message && !e.message.includes('429')) {
+} else if (e.message && e.message.includes('429')) {
+console.warn(`[ABS] SmartFill: Key hết hạn ngạch. Chuyển Key sau 1s...`);
+await new Promise(r => setTimeout(r, 1000)); // Nhịp thở cho lỗi 429
+} else {
 await new Promise(r => setTimeout(r, 1500));
 }
 console.warn(`SmartFill Key ...${k.slice(-5)} failed:`, e.message);
