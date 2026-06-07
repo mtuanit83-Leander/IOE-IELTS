@@ -87,10 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 2.9
-// Last Updated: 2026-06-06 14:05
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.0
+// Last Updated: 2026-06-07 07:45
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V2.9: [SEAL THE GAPS] Nạp đủ 19 bẫy HSK vào LEVEL_TO_TRAPS. Xóa bỏ hoàn toàn dấu gạch chéo '/' trong JSON Enum, tách riêng biệt 100% ID để chống "Literal Copy-Paste Syndrome".
+// Cập nhật V3.0: [AI FATIGUE CURE] Quy hoạch lại Prompt enrich_sentence thành danh sách Rules có đánh số giúp tăng cường độ tập trung của LLM. Bổ sung 3 bẫy HSK mới (离, 比, 除了) vào IoeEnumRegistry. Ép buộc AI chỉ xuất tối đa 2 tag/câu.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -126,8 +126,8 @@ window.IoeEnumRegistry = {
 LEVEL_TO_TRAPS: {
 // --- HỆ TIẾNG TRUNG (HSK) ---
 zh_level_1: ['zh_hsk_adv_degree', 'zh_hsk_prep_mismatch', 'zh_hsk_noun_space'],
-zh_level_2: ['zh_hsk_separable_obj', 'zh_hsk_rc_negation', 'zh_hsk_rc_state', 'zh_hsk_dc_direction', 'zh_hsk_dc_location'],
-zh_level_3: ['zh_hsk_ba_indefinite', 'zh_hsk_ba_result', 'zh_hsk_bei_reverse', 'zh_hsk_exist_order', 'zh_hsk_pc_ability', 'zh_hsk_conj_mismatch'],
+zh_level_2: ['zh_hsk_separable_obj', 'zh_hsk_rc_negation', 'zh_hsk_rc_state', 'zh_hsk_dc_direction', 'zh_hsk_dc_location', 'zh_hsk_dist_li', 'zh_hsk_comp_bi'],
+zh_level_3: ['zh_hsk_ba_indefinite', 'zh_hsk_ba_result', 'zh_hsk_bei_reverse', 'zh_hsk_exist_order', 'zh_hsk_pc_ability', 'zh_hsk_conj_mismatch', 'zh_hsk_except_chule'],
 zh_level_4: ['zh_hsk_emph_order', 'zh_hsk_emph_extreme', 'zh_hsk_paired_only_if', 'zh_hsk_paired_as_long_as', 'zh_hsk_adv_zhongyu'],
 // --- HỆ TIẾNG ANH (CEFR) ---
 en_level_1: ['eng_article_an', 'eng_plural_s', 'eng_present_cont', 'eng_this_these'],
@@ -147,7 +147,12 @@ return this.LEVEL_TO_TRAPS[levelKey] || [];
 window.DEFAULT_PROMPTS = {
 // --- 1. ENRICH (Làm giàu thẻ) ---
 enrich_word: `Phân tích "{term}" ({lang}->Vi). QUY TẮC QUAN TRỌNG:Nếu là tiếng Trung, dịch sát nghĩa HSK3. Nếu là Tiếng Anh, CHỈ lấy nghĩa thông dụng nhất (A1-A2). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa/translate cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt: Danh từ, Động từ, Tính từ, Trạng từ, Giới từ, Đại từ, Liên từ), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals, Daily Life...), analysis(Giải thích ý nghĩa, cách dùng chi tiết), sinoViet(Nếu là tiếng Trung: CRITICAL CHỈ XUẤT ÂM HÁN VIỆT THUẦN TÚY, TUYỆT ĐỐI KHÔNG DỊCH NGHĨA, KHÔNG DÙNG DẤU NGOẶC ĐƠN. Nếu là tiếng Anh: Dịch chi tiết/Giải thích thêm), example(câu chứa từ + dịch), image_keyword(English).`,
-enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt), partOfSpeech(Ghi là "Câu văn"), topic(Phân loại chủ đề), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English), grammar_type(NẾU KHÔNG CÓ CẤU TRÚC NÀO ĐẶC BIỆT, TRẢ VỀ MẢNG RỖNG []. CHỈ CHỌN MÃ KHI CÂU THỰC SỰ CÓ TỪ KHÓA. TIẾNG TRUNG chọn trong: [zh_hsk_separable_obj (ly hợp), zh_hsk_adv_zhongyu (phải có 终于), zh_hsk_adv_degree (phải có 极 hoặc 越), zh_hsk_prep_mismatch (phải có 根据 hoặc 关于), zh_hsk_conj_mismatch (phải có 不但), zh_hsk_noun_space (phải có 里 hoặc 上), zh_hsk_rc_negation (phủ định BNKQ), zh_hsk_rc_state (BN kết quả), zh_hsk_pc_ability (BN Khả năng), zh_hsk_dc_location (tân ngữ địa điểm + 来 hoặc 去), zh_hsk_dc_direction (động từ + 来 hoặc 去), zh_hsk_ba_indefinite (phải có 把), zh_hsk_ba_result (phải có 把), zh_hsk_bei_reverse (phải có 被), zh_hsk_exist_order (phải có 着), zh_hsk_emph_order (phải có 连...也/都), zh_hsk_emph_extreme (phải có 连...也/都), zh_hsk_paired_only_if (只有...才), zh_hsk_paired_as_long_as (只要...就)]. TIẾNG ANH chọn trong: [eng_article_an (a/an), eng_plural_s (số nhiều), eng_present_cont (V-ing), eng_this_these (this/these), eng_past_irregular (V2 bất quy tắc), eng_comparative_double (so sánh hơn), eng_much_many (much/many), eng_since_for (since/for), eng_passive_missing_be (bị động), eng_vietglish_collocation (cụm từ cố định)]. TUYỆT ĐỐI KHÔNG BỊA MÃ KHÁC VÀ KHÔNG ĐOÁN MÒ!).`,
+enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt), partOfSpeech(Ghi là "Câu văn"), topic(Phân loại chủ đề), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English), grammar_type(ĐỌC KỸ QUY TẮC SAU:
+1. NẾU KHÔNG CÓ CẤU TRÚC ĐẶC BIỆT, TRẢ VỀ MẢNG RỖNG [].
+2. CHỈ CHỌN TỐI ĐA 1 ĐẾN 2 MÃ CỐT LÕI NHẤT CỦA CÂU. KHÔNG THAM LAM.
+3. TIẾNG TRUNG chọn trong: [zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as, zh_hsk_dist_li (cấu trúc khoảng cách 离), zh_hsk_comp_bi (so sánh 比), zh_hsk_except_chule (cấu trúc 除了)].
+4. TIẾNG ANH chọn trong: [eng_article_an, eng_plural_s, eng_present_cont, eng_this_these, eng_past_irregular, eng_comparative_double, eng_much_many, eng_since_for, eng_passive_missing_be, eng_vietglish_collocation].
+TUYỆT ĐỐI KHÔNG BỊA MÃ KHÁC!).`,
 // --- 2. MATCH (Nối ô) ---
 match_word: `Tạo 1 nghĩa sai (Tiếng Việt) cho MỖI từ sau: {itemsText}. QUY TẮC: Nghĩa sai PHẢI thuộc cùng chủ đề/lĩnh vực với từ gốc nhưng khác nghĩa hoàn toàn. TUYỆT ĐỐI KHÔNG dùng từ sai chính tả tiếng Việt (Ví dụ: KHÔNG dùng 'đôi gáy' cho 'đôi giày'). Bẫy phải đánh lừa được tư duy logic.`,
 match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {itemsText}. QUY TẮC: Bản dịch sai phải đọc CỰC KỲ XUÔI TAI bằng tiếng Việt, nhưng bị sai lệch về: Chủ thể (Anh ấy/Cô ấy), Thời gian (Đã/Sẽ), hoặc tính từ bị đảo ngược. TUYỆT ĐỐI KHÔNG viết sai chính tả.`,
