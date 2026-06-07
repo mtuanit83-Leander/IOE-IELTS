@@ -540,10 +540,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.8
-// Last Updated: 2026-06-07 07:05
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.9
+// Last Updated: 2026-06-07 07:20
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.8: [GLOBAL MUTEX LOCK & ABS 2.3] Cấy ghép Khóa Đa Luồng (withApiLock) chống Race Condition. Thêm cơ chế "Retry-On-Spot" (Thử lại tại chỗ) cho lỗi 503 trước khi đổi Key.
+// Cập nhật V2.9: [ROUND-ROBIN ENGINE] Đổi chiến thuật phân tải: Key dùng THÀNH CÔNG bị ép nghỉ 2 phút (Hàng đợi OK). Key LỖI bị ép nghỉ 20s/120s (Hàng đợi NG). Phân tán tải trọng đều lên toàn bộ rổ Key.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -613,7 +613,7 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 }
 };
 // ============================================================================
-// 3. GỌI API GEMINI VẠN NĂNG (CÓ QUẢN LÝ KEY POOL, DYNAMIC TIMEOUT & COOLDOWN)
+// 3. GỌI API GEMINI VẠN NĂNG (ROUND-ROBIN DYNAMIC POOL)
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
 return window.Utils.withApiLock(async () => {
@@ -637,20 +637,35 @@ if (aiCfg && aiCfg.loadingTime) {
 dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 }
 } catch(e) {}
-let retryCount503 = 0;
-for (let i = 0; i < keyPool.length; i++) {
-const rawK = keyPool[i];
-if (!rawK || rawK.length < 10) continue;
-const k = rawK.replace(/["'\s]/g, "");
-// [HỆ THỐNG PHANH ABS]
-if (window.__apiCooldowns[k] && Date.now() < window.__apiCooldowns[k]) {
-lastError = new Error("Key đang trong thời gian làm nguội.");
-continue;
-}
+let attempts = 0;
+const maxAttempts = Math.max(10, keyPool.length * 3); // Chống kẹt vòng lặp vô tận
+while (attempts < maxAttempts) {
+attempts++;
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
-if (abortSignal && abortSignal.aborted) {
-throw new DOMException("User exited", "AbortError");
+if (abortSignal && abortSignal.aborted) throw new DOMException("User exited", "AbortError");
+// --- THUẬT TOÁN TÌM KEY RẢNH RỖI (ROUND-ROBIN) ---
+let targetKey = null;
+let shortestWaitMs = Infinity;
+for (const rawK of keyPool) {
+if (!rawK || rawK.length < 10) continue;
+const cleanK = rawK.replace(/["'\s]/g, "");
+const cooldownUntil = window.__apiCooldowns[cleanK] || 0;
+const waitMs = cooldownUntil - Date.now();
+if (waitMs <= 0) {
+targetKey = cleanK;
+break; // Tìm thấy Key đang rảnh, bốc luôn!
 }
+if (waitMs < shortestWaitMs) {
+shortestWaitMs = waitMs; // Ghi nhớ Key sắp "mãn hạn tù" sớm nhất
+}
+}
+// Nếu TẤT CẢ các Key đều đang nằm trong Hàng đợi OK/NG (Đang đóng băng)
+if (!targetKey) {
+console.warn(`%c[Round-Robin] Kho đạn đang nạp. Chờ ${Math.ceil(shortestWaitMs/1000)}s...`, "color: #8b5cf6; font-weight: bold; font-size: 11px;");
+await new Promise(r => setTimeout(r, shortestWaitMs + 50)); // Ngủ đông đợi Key nhanh nhất hồi phục
+continue; // Quay lại vòng lặp để bốc cái Key vừa hồi phục
+}
+// --- THỰC THI BẮN API VỚI TARGET KEY ---
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
@@ -662,7 +677,7 @@ body.generationConfig.responseSchema = schema;
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
@@ -679,51 +694,37 @@ reject(new Error(`API Timeout (${Math.round(dynamicTimeoutMs/1000)}s)`));
 const res = await Promise.race([fetchPromise, timeoutPromise]);
 const d = await res.json();
 if (d.error) {
-if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED') {
-window.__apiCooldowns[k] = Date.now() + 60000;
-throw new Error(`Rate Limit 429: ${d.error.message}`);
-}
-if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) {
-throw new Error(`Server Overloaded 503: ${d.error.message}`);
-}
+if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED') throw new Error(`429: ${d.error.message}`);
+if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) throw new Error(`503: ${d.error.message}`);
 throw new Error(d.error.message);
 }
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
+// --- XỬ LÝ KHI THÀNH CÔNG (HÀNG ĐỢI OK) ---
 resultText = d.candidates[0].content.parts[0].text;
 if (d.usageMetadata) tokenMetadata = d.usageMetadata;
-successKey = k;
-break;
+successKey = targetKey;
+// ÉP KEY VỪA THÀNH CÔNG NGHỈ 2 PHÚT NẾU CÓ NHIỀU KEY
+if (keyPool.length > 1) {
+window.__apiCooldowns[targetKey] = Date.now() + 120000; // 120 giây
+console.log(`%c[Round-Robin OK] Key ...${targetKey.slice(-5)} thành công. Ép nghỉ 2 phút.`, "color: #10b981; font-weight: bold; font-size: 11px;");
+}
+break; // Thoát vòng lặp, hoàn thành nhiệm vụ
 } catch (e) {
-if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) {
-throw e;
-}
-// TÁC CHIẾN MẠNG
+if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
+// --- XỬ LÝ KHI THẤT BẠI (HÀNG ĐỢI NG) ---
 if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[k] = Date.now() + 60000;
-console.warn(`%c[ABS] Key hết hạn ngạch (429). Chuyển Key sau 2s...`, "color: #ef4444; font-weight: bold; font-size: 11px;");
-await new Promise(r => setTimeout(r, 2000));
-retryCount503 = 0;
+window.__apiCooldowns[targetKey] = Date.now() + 120000; // Nghỉ 2 phút
+console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 2 phút.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
-if (retryCount503 < 1) {
-console.warn(`%c[ABS] Server bận (503). Chờ 4s và thử lại tại chỗ (lần 2)...`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
-await new Promise(r => setTimeout(r, 4000));
-retryCount503++;
-i--; // Trừ i để lặp lại chính Key này ở vòng lặp tiếp theo
-continue;
+window.__apiCooldowns[targetKey] = Date.now() + 20000; // Nghỉ 20 giây
+console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 } else {
-window.__apiCooldowns[k] = Date.now() + 15000;
-console.warn(`%c[ABS] Server vẫn bận (503). Bỏ cuộc, ngủ đông 4s đổi Key...`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
-await new Promise(r => setTimeout(r, 4000));
-retryCount503 = 0;
-}
-} else {
-await new Promise(r => setTimeout(r, 1500));
-retryCount503 = 0;
+window.__apiCooldowns[targetKey] = Date.now() + 5000; // Nghỉ 5 giây cho lỗi vặt
 }
 lastError = e;
 }
 }
-if (!resultText) throw new Error(`Tất cả ${keyPool.length} API Key đều lỗi. (Lỗi cuối: ${lastError?.message})`);
+if (!resultText) throw new Error(`Đã thử ${attempts} lần nhưng thất bại. Lỗi cuối: ${lastError?.message}`);
 if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey);
 }
@@ -731,7 +732,7 @@ return { text: resultText, tokenMetadata };
 });
 };
 // ============================================================================
-// 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ENRICH CARD)
+// 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ROUND-ROBIN DYNAMIC POOL)
 // ============================================================================
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null) => {
 return window.Utils.withApiLock(async () => {
@@ -798,22 +799,39 @@ temperature: Math.random() * (1.1 - 0.7) + 0.7
 let finalResult = null;
 let successKey = null;
 let lastError = null;
-let retryCount503 = 0;
-for (let i = 0; i < keyPool.length; i++) {
-const rawK = keyPool[i];
-if (!rawK || rawK.length < 10) continue;
-const k = rawK.replace(/["'\s]/g, "");
-if (window.__apiCooldowns[k] && Date.now() < window.__apiCooldowns[k]) {
-lastError = new Error("Key đang bị Rate Limit hoặc Cooldown");
-continue;
-}
+let attempts = 0;
+const maxAttempts = Math.max(10, keyPool.length * 3);
+while (attempts < maxAttempts) {
+attempts++;
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("User exited", "AbortError");
+// --- THUẬT TOÁN TÌM KEY RẢNH RỖI (ROUND-ROBIN) ---
+let targetKey = null;
+let shortestWaitMs = Infinity;
+for (const rawK of keyPool) {
+if (!rawK || rawK.length < 10) continue;
+const cleanK = rawK.replace(/["'\s]/g, "");
+const cooldownUntil = window.__apiCooldowns[cleanK] || 0;
+const waitMs = cooldownUntil - Date.now();
+if (waitMs <= 0) {
+targetKey = cleanK;
+break;
+}
+if (waitMs < shortestWaitMs) {
+shortestWaitMs = waitMs;
+}
+}
+if (!targetKey) {
+console.warn(`%c[Round-Robin SmartFill] Đang chờ đạn. Ngủ đông ${Math.ceil(shortestWaitMs/1000)}s...`, "color: #8b5cf6; font-weight: bold; font-size: 11px;");
+await new Promise(r => setTimeout(r, shortestWaitMs + 50));
+continue;
+}
+// --- THỰC THI BẮN API ---
 try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload),
@@ -823,47 +841,34 @@ if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
 const data = await res.json();
 if (data.error) {
-if (data.error.code === 429 || data.error.message.includes('quota') || data.error.status === 'RESOURCE_EXHAUSTED') {
-window.__apiCooldowns[k] = Date.now() + 60000;
-throw new Error(`Rate Limit 429: ${data.error.message}`);
-} else if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) {
-throw new Error(`Server Overloaded 503: ${data.error.message}`);
-} else {
+if (data.error.code === 429 || data.error.message.includes('quota') || data.error.status === 'RESOURCE_EXHAUSTED') throw new Error(`429: ${data.error.message}`);
+if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) throw new Error(`503: ${data.error.message}`);
 throw new Error(data.error.message);
 }
-}
+// --- XỬ LÝ KHI THÀNH CÔNG (HÀNG ĐỢI OK) ---
 finalResult = data;
-successKey = k;
+successKey = targetKey;
+if (keyPool.length > 1) {
+window.__apiCooldowns[targetKey] = Date.now() + 120000; // 120 giây
+console.log(`%c[Round-Robin OK] SmartFill Key ...${targetKey.slice(-5)} thành công. Cất vào kho 2 phút.`, "color: #10b981; font-weight: bold; font-size: 11px;");
+}
 break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
-// HỆ THỐNG PHANH ABS (Cho Luồng Enrich)
-if (e.message && e.message.includes('503')) {
-if (retryCount503 < 1) {
-console.warn(`%c[ABS] SmartFill: Server bận. Chờ 4s và thử lại tại chỗ (lần 2)...`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
-await new Promise(r => setTimeout(r, 4000));
-retryCount503++;
-i--; // Trừ i để lặp lại chính Key này ở vòng lặp tiếp theo
-continue;
+// --- XỬ LÝ KHI THẤT BẠI (HÀNG ĐỢI NG) ---
+if (e.message && e.message.includes('429')) {
+window.__apiCooldowns[targetKey] = Date.now() + 120000;
+console.warn(`%c[Round-Robin NG] SmartFill Key ...${targetKey.slice(-5)} dính 429. Đóng băng 2 phút.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+} else if (e.message && e.message.includes('503')) {
+window.__apiCooldowns[targetKey] = Date.now() + 20000;
+console.warn(`%c[Round-Robin NG] SmartFill Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 } else {
-window.__apiCooldowns[k] = Date.now() + 15000;
-console.warn(`%c[ABS] SmartFill: Server vẫn bận. Bỏ cuộc, ngủ đông 4s đổi Key...`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
-await new Promise(r => setTimeout(r, 4000));
-retryCount503 = 0;
-}
-} else if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[k] = Date.now() + 60000;
-console.warn(`%c[ABS] SmartFill: Key hết hạn ngạch. Chuyển Key sau 2s...`, "color: #ef4444; font-weight: bold; font-size: 11px;");
-await new Promise(r => setTimeout(r, 2000)); // Nhịp thở cho lỗi 429
-retryCount503 = 0;
-} else {
-await new Promise(r => setTimeout(r, 1500));
-retryCount503 = 0;
+window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
 lastError = e;
 }
 }
-if (!finalResult) throw new Error(`AI Error (Tất cả Key đều lỗi): ${lastError?.message}`);
+if (!finalResult) throw new Error(`AI Error (Đã thử ${attempts} lần): ${lastError?.message}`);
 if (successKey && successKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, successKey);
 }
