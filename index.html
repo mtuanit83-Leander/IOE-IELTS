@@ -545,10 +545,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.9
-// Last Updated: 2026-06-07 07:20
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.10
+// Last Updated: 2026-06-07 07:50
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.9: [ROUND-ROBIN ENGINE] Đổi chiến thuật phân tải: Key dùng THÀNH CÔNG bị ép nghỉ 2 phút (Hàng đợi OK). Key LỖI bị ép nghỉ 20s/120s (Hàng đợi NG). Phân tán tải trọng đều lên toàn bộ rổ Key.
+// Cập nhật V2.10: [MAXIMUM FIREPOWER] Tối ưu hóa thời gian Đóng băng Round-Robin. Key thành công (OK) chỉ nghỉ 15s. Key lỗi (429) nghỉ 60s, lỗi (503) nghỉ 20s. Giải phóng 100% công suất của 25 API Keys.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -708,23 +708,23 @@ if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả v�
 resultText = d.candidates[0].content.parts[0].text;
 if (d.usageMetadata) tokenMetadata = d.usageMetadata;
 successKey = targetKey;
-// ÉP KEY VỪA THÀNH CÔNG NGHỈ 2 PHÚT NẾU CÓ NHIỀU KEY
+// ÉP KEY VỪA THÀNH CÔNG NGHỈ 15 GIÂY NẾU CÓ NHIỀU KEY
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 120000; // 120 giây
-console.log(`%c[Round-Robin OK] Key ...${targetKey.slice(-5)} thành công. Ép nghỉ 2 phút.`, "color: #10b981; font-weight: bold; font-size: 11px;");
+window.__apiCooldowns[targetKey] = Date.now() + 30000; // 30 giây
+console.log(`%c[Round-Robin OK] Key ...${targetKey.slice(-5)} thành công. Ép nghỉ 30s.`, "color: #10b981; font-weight: bold; font-size: 11px;");
 }
 break; // Thoát vòng lặp, hoàn thành nhiệm vụ
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
 // --- XỬ LÝ KHI THẤT BẠI (HÀNG ĐỢI NG) ---
 if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[targetKey] = Date.now() + 120000; // Nghỉ 2 phút
-console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 2 phút.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+window.__apiCooldowns[targetKey] = Date.now() + 80000; // Nghỉ 80 giây
+console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 60s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
 window.__apiCooldowns[targetKey] = Date.now() + 20000; // Nghỉ 20 giây
 console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 } else {
-window.__apiCooldowns[targetKey] = Date.now() + 5000; // Nghỉ 5 giây cho lỗi vặt
+window.__apiCooldowns[targetKey] = Date.now() + 8000; // Nghỉ 8 giây cho lỗi vặt
 }
 lastError = e;
 }
@@ -854,21 +854,21 @@ throw new Error(data.error.message);
 finalResult = data;
 successKey = targetKey;
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 120000; // 120 giây
-console.log(`%c[Round-Robin OK] SmartFill Key ...${targetKey.slice(-5)} thành công. Cất vào kho 2 phút.`, "color: #10b981; font-weight: bold; font-size: 11px;");
+window.__apiCooldowns[targetKey] = Date.now() + 15000; // 15 giây
+console.log(`%c[Round-Robin OK] SmartFill Key ...${targetKey.slice(-5)} thành công. Cất vào kho 15s.`, "color: #10b981; font-weight: bold; font-size: 11px;");
 }
 break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
 // --- XỬ LÝ KHI THẤT BẠI (HÀNG ĐỢI NG) ---
 if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[targetKey] = Date.now() + 120000;
-console.warn(`%c[Round-Robin NG] SmartFill Key ...${targetKey.slice(-5)} dính 429. Đóng băng 2 phút.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+window.__apiCooldowns[targetKey] = Date.now() + 60000; // 60 giây
+console.warn(`%c[Round-Robin NG] SmartFill Key ...${targetKey.slice(-5)} dính 429. Đóng băng 60s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
-window.__apiCooldowns[targetKey] = Date.now() + 20000;
+window.__apiCooldowns[targetKey] = Date.now() + 20000; // 20 giây
 console.warn(`%c[Round-Robin NG] SmartFill Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 } else {
-window.__apiCooldowns[targetKey] = Date.now() + 5000;
+window.__apiCooldowns[targetKey] = Date.now() + 5000; // 5 giây
 }
 lastError = e;
 }
