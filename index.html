@@ -1498,13 +1498,13 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.6
-// Last Updated: 2026-06-05 20:55
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.7
+// Last Updated: 2026-06-08 14:35
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.6: [ĐẠI VI PHẪU] Sửa lỗi nhầm lẫn biến term/definition gây treo API 20s. Tích hợp Thuật toán Nội suy Kép (Dual-Context Interpolation) cho Micro-prompt giúp AI hiểu đúng ngôn ngữ cần lừa.
+// Cập nhật V1.7: [CREATIVE FREEDOM] Đại vi phẫu gọt bỏ toàn bộ các lệnh cấm đoán (CRITICAL, BẮT BUỘC, TUYỆT ĐỐI KHÔNG) trong Prompt. Chuyển đổi sang triết lý "Định hướng Sáng tạo" để giải phóng tốc độ suy luận của LLM, giảm độ trễ từ 25s xuống 3-5s. Giữ nguyên Thuật toán Nội suy Kép.
 // ==================================================================================
 window.GameAiEngine = {
-// RADAR NHẬN DIỆN TRÌNH ĐỘ - Ép AI tuân thủ đúng Khung năng lực
+// RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
 _getLevelContext: function(level) {
 if (!level) return "";
 const oldToNewMap = {
@@ -1517,7 +1517,7 @@ level_9_expert: 'en_level_9'
 let mappedKey = oldToNewMap[level] || level;
 let contextDesc = window.IoeDataEngine && window.IoeDataEngine.GRADE_CONTEXTS ? window.IoeDataEngine.GRADE_CONTEXTS[mappedKey] : "";
 if (!contextDesc) return "";
-return "\nCRITICAL LEVEL RULE: The user is at level [" + mappedKey + "]. Context: " + contextDesc + ". The vocabulary and grammar used MUST strictly match this level. DO NOT use advanced or complex words/structures for basic levels.";
+return "\n[ĐỊNH HƯỚNG TRÌNH ĐỘ]: Người học đang ở cấp độ [" + mappedKey + "]. Ngữ cảnh: " + contextDesc + ". Hãy ưu tiên sử dụng từ vựng và cấu trúc ngữ pháp phù hợp với cấp độ này để mang lại trải nghiệm học tự nhiên nhất.";
 },
 // 1. ĐỘNG CƠ TẠO LỖI SAI TRỰC TUYẾN (Spot Mistake)
 ai_distort: async function(text, lang, type, apiKey, level = "", topic = "", card = null) {
@@ -1538,13 +1538,13 @@ const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_le
 let mappedKey = oldToNewMap[level] || level;
 if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'en_level_4';
 const ruleStr = window.IoeDataEngine.getMicroTierDistortionRule(targetLang, dataMode, mappedKey, topic);
-if (ruleStr) injectedRule = "\nCRITICAL DISTORTION RULE: " + ruleStr;
+if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG BÓP MÉO]: " + ruleStr;
 }
 if (type === 'word') {
 prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
-`Nhiệm vụ: Tạo ra CHÍNH XÁC MỘT lỗi chính tả hoặc lỗi hình thái từ cho từ này.` + microPrompt + injectedRule +
-`\nQUY TẮC QUAN TRỌNG: CHỈ TRẢ VỀ MỘT TỪ DUY NHẤT. KHÔNG ĐƯỢC VIẾT THÀNH CÂU.\n` +
-`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + levelContext;
+`Nhiệm vụ: Tạo ra một lỗi chính tả hoặc lỗi hình thái từ tự nhiên cho từ này.` + microPrompt + injectedRule +
+`\n[ĐỊNH HƯỚNG CẤU TRÚC]: Hãy trả về một từ vựng duy nhất.\n` +
+`[YÊU CẦU NGÔN NGỮ]: Hãy viết phần giải thích (explanation) bằng tiếng Việt.` + levelContext;
 schema = {
 type: "OBJECT",
 properties: { wrongWord: { type: "STRING" }, explanation: { type: "STRING" } },
@@ -1553,18 +1553,18 @@ required: ["wrongWord", "explanation"]
 } else {
 let examples = "";
 if (lang === 'zh') {
-examples = `Các ví dụ HỢP LỆ:\n- [Thay thế 1 chữ] Câu đúng: "他在学习", Câu sai: "她在学习"\n- [Thay thế trái nghĩa] Câu đúng: "天气很好", Câu sai: "天气很坏"\n- [Thay thế từ ngữ pháp] Câu đúng: "跑得快", Câu sai: "跑地快"\n- [Thay thế CỤM TỪ - Nhiều chữ] Câu đúng: "我很兴奋", Câu sai: "我感到悲伤"\n- [Thay thế Thành ngữ] Câu đúng: "人山人海", Câu sai: "人山人水"\n- [Thêm 1 chữ] Câu đúng: "很好", Câu sai: "很好的"\n- [Thêm nhiều chữ] Câu đúng: "我们吃饭", Câu sai: "我们马上吃饭"`;
+examples = `Một số ý tưởng:\n- [Thay thế 1 chữ] Câu đúng: "他在学习", Câu sai: "她在学习"\n- [Thay thế trái nghĩa] Câu đúng: "天气很好", Câu sai: "天气很坏"\n- [Thay thế từ ngữ pháp] Câu đúng: "跑得快", Câu sai: "跑地快"\n- [Thay thế CỤM TỪ - Nhiều chữ] Câu đúng: "我很兴奋", Câu sai: "我感到悲伤"\n- [Thay thế Thành ngữ] Câu đúng: "人山人海", Câu sai: "人山人水"\n- [Thêm 1 chữ] Câu đúng: "很好", Câu sai: "很好的"\n- [Thêm nhiều chữ] Câu đúng: "我们吃饭", Câu sai: "我们马上吃饭"`;
 } else if (lang === 'en') {
-examples = `Các ví dụ HỢP LỆ:\n- [Thay thế 1 từ] Câu đúng: "I go to school", Câu sai: "I goes to school"\n- [Thay thế trái nghĩa] Câu đúng: "It is very hot today", Câu sai: "It is very cold today"\n- [Thay thế CỤM TỪ] Câu đúng: "I am looking forward to it", Câu sai: "I am looking backward to it"\n- [Thay thế CỤM TỪ] Câu đúng: "It is raining cats and dogs", Câu sai: "It is raining dogs and cats"\n- [Thêm từ] Câu đúng: "I like apples", Câu sai: "I like the apples"`;
+examples = `Một số ý tưởng:\n- [Thay thế 1 từ] Câu đúng: "I go to school", Câu sai: "I goes to school"\n- [Thay thế trái nghĩa] Câu đúng: "It is very hot today", Câu sai: "It is very cold today"\n- [Thay thế CỤM TỪ] Câu đúng: "I am looking forward to it", Câu sai: "I am looking backward to it"\n- [Thay thế CỤM TỪ] Câu đúng: "It is raining cats and dogs", Câu sai: "It is raining dogs and cats"\n- [Thêm từ] Câu đúng: "I like apples", Câu sai: "I like the apples"`;
 } else {
-examples = `Các ví dụ HỢP LỆ:\n- [Thay thế từ] Câu đúng: "Tôi đi học", Câu sai: "Tôi đi làm"\n- [Thay thế trái nghĩa] Câu đúng: "Hôm nay trời rất nóng", Câu sai: "Hôm nay trời rất lạnh"\n- [Thay thế CỤM TỪ] Câu đúng: "Chó cắn áo rách", Câu sai: "Chó cắn quần rách"\n- [Thêm từ] Câu đúng: "Tôi thích ăn táo", Câu sai: "Tôi thích ăn quả táo"`;
+examples = `Một số ý tưởng:\n- [Thay thế từ] Câu đúng: "Tôi đi học", Câu sai: "Tôi đi làm"\n- [Thay thế trái nghĩa] Câu đúng: "Hôm nay trời rất nóng", Câu sai: "Hôm nay trời rất lạnh"\n- [Thay thế CỤM TỪ] Câu đúng: "Chó cắn áo rách", Câu sai: "Chó cắn quần rách"\n- [Thêm từ] Câu đúng: "Tôi thích ăn táo", Câu sai: "Tôi thích ăn quả táo"`;
 }
 prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n` +
-`Nhiệm vụ: Đóng vai một giáo viên, hãy tạo ra CHÍNH XÁC MỘT lỗi sai tinh vi (về ngữ pháp hoặc ngữ cảnh) trong câu này. Lỗi sai này có thể là 1 TỪ DUY NHẤT, HOẶC MỘT CỤM TỪ. Hãy tự do thay thế một cụm từ đúng bằng một cụm từ sai logic/ngữ pháp để thử thách người học.\n` +
-`RÀNG BUỘC CỐT LÕI VỀ TRẢI NGHIỆM NGƯỜI DÙNG: BẮT BUỘC phải dùng phương pháp Thay thế (đổi từ này thành từ khác) hoặc Thêm từ (nhét thêm từ rác vào). Người chơi cần một chữ vật lý hiển thị trên màn hình để bấm vào. TUYỆT ĐỐI KHÔNG tạo lỗi sai bằng cách xóa trắng/lược bỏ từ mà không thay thế bằng từ khác.\n` +
+`Nhiệm vụ: Đóng vai một giáo viên, hãy tạo ra một lỗi sai tinh vi (về ngữ pháp hoặc ngữ cảnh) trong câu này. Lỗi sai này có thể là 1 từ duy nhất, hoặc một cụm từ. Hãy tự do thay thế một cụm từ đúng bằng một cụm từ sai logic/ngữ pháp để thử thách người học.\n` +
+`[ĐỊNH HƯỚNG TẠO LỖI]: Hãy ưu tiên dùng phương pháp Thay thế (đổi từ này thành từ khác) hoặc Thêm từ (nhét thêm từ rác vào) để người chơi có điểm chạm vật lý trên màn hình.\n` +
 `${examples}\n` +
-`QUY TẮC TRẢ VỀ QUAN TRỌNG: Trường 'wrongWord' trong JSON BẮT BUỘC phải chứa TOÀN BỘ cụm từ sai mà bạn đã chèn/thay thế.\n` +
-`Quy tắc: Trường explanation (giải thích) BẮT BUỘC phải viết 100% BẰNG TIẾNG VIỆT.` + microPrompt + injectedRule + levelContext;
+`[ĐỊNH HƯỚNG TRẢ VỀ]: Trường 'wrongWord' trong JSON nên chứa trọn vẹn cụm từ sai mà bạn đã chèn/thay thế.\n` +
+`[YÊU CẦU NGÔN NGỮ]: Hãy viết phần giải thích (explanation) bằng tiếng Việt.` + microPrompt + injectedRule + levelContext;
 schema = {
 type: "OBJECT",
 properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" } },
@@ -1602,28 +1602,28 @@ microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: 
 }
 }
 }
-let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm hóc búa.\n`;
+let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm.\n`;
 let langStr = distractorLang === 'zh' ? 'Tiếng Trung' : (distractorLang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
 if (!isReverse) {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng TIẾNG VIỆT cho mục tiêu sau.\n`;
 prompt += `Mục tiêu ngoại ngữ: "${term}"\nNghĩa đúng (đáp án chuẩn): "${definition}"\n`;
-prompt += `Ưu tiên cao nhất: ${count} đáp án sai phải cùng loại từ, cùng chủ đề với đáp án đúng, đọc rất xuôi tai nhưng sai hoàn toàn về ý nghĩa cốt lõi. Hãy lợi dụng sự hiểu lầm văn cảnh, hoặc nghĩa gần giống nhưng sai sắc thái.\n`;
-prompt += `Ví dụ HỢP LỆ:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
+prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề với đáp án đúng, đọc rất xuôi tai nhưng mang ý nghĩa sai lệch. Hãy lợi dụng sự hiểu lầm văn cảnh, hoặc nghĩa gần giống nhưng khác sắc thái.\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
 } else {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
 // [VÁ LỖI 20s] Lắp ráp chính xác biến vào chuỗi để AI không bị mâu thuẫn
 prompt += `Mục tiêu tiếng Việt: "${definition}"\nNghĩa đúng (đáp án chuẩn): "${term}"\n`;
-prompt += `Ưu tiên cao nhất: ${count} đáp án sai phải cùng loại từ, cùng chủ đề, và cùng độ dài tương đối với đáp án đúng. `;
+prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề, và có độ dài tương đối với đáp án đúng. `;
 if (distractorLang === 'zh') {
-prompt += `Đặc biệt tạo bẫy đồng âm (Pinyin giống nhau), sai bộ thủ, hoặc các từ có mặt chữ Hán gần giống nhưng khác nghĩa.\n`;
-prompt += `Ví dụ HỢP LỆ:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n- Nghĩa đúng: "时间" (thời gian) -> Nhiễu: ["世界", "时候", "时刻"]\n`;
+prompt += `Bạn có thể tạo bẫy đồng âm (Pinyin giống nhau), sai bộ thủ, hoặc các từ có mặt chữ Hán gần giống nhưng khác nghĩa.\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n- Nghĩa đúng: "时间" (thời gian) -> Nhiễu: ["世界", "时候", "时刻"]\n`;
 } else {
-prompt += `Đặc biệt tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
-prompt += `Ví dụ HỢP LỆ:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n- Nghĩa đúng: "apple" -> Nhiễu: ["orange", "banana", "grape"]\n`;
+prompt += `Bạn có thể tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n- Nghĩa đúng: "apple" -> Nhiễu: ["orange", "banana", "grape"]\n`;
 }
 }
 if (type === 'sentence') {
-prompt += `\nCRITICAL FORMATTING RULE: ALL generated distractors MUST be FULL, COMPLETE SENTENCES with the EXACT SAME LENGTH and STRUCTURE as the original sentence. NEVER return short fragments, chunks, or single words. You MUST reconstruct the ENTIRE sentence containing the distorted trap.\n`;
+prompt += `\n[ĐỊNH HƯỚNG CẤU TRÚC]: Các đáp án nhiễu nên là những CÂU HOÀN CHỈNH. Hãy cố gắng giữ trọn vẹn nhịp điệu và độ dài tương đương câu gốc để học viên phải tư duy logic mới tìm ra lỗi sai.\n`;
 }
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOptionsRule) {
@@ -1633,7 +1633,7 @@ const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_le
 let mappedKey = oldToNewMap[level] || level;
 if (!mappedKey.includes('level_')) mappedKey = distractorLang === 'zh' ? 'zh_level_4' : 'en_level_4';
 const ruleStr = window.IoeDataEngine.getMicroTierOptionsRule(targetLang, dataMode, mappedKey, topic);
-if (ruleStr) injectedRule = "\nCRITICAL DISTRACTOR RULE: " + ruleStr;
+if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG TẠO NHIỄU]: " + ruleStr;
 }
 // Ghép nối Micro-prompt đã được bọc vỏ
 prompt += microPrompt;
@@ -1641,7 +1641,7 @@ prompt += injectedRule;
 if (distractorLang !== 'vi') {
 prompt += window.GameAiEngine._getLevelContext(level);
 }
-prompt += `\nTRẢ VỀ ĐÚNG ${count} ĐÁP ÁN NHIỄU VÀ TUYỆT ĐỐI KHÔNG TRẢ VỀ ĐÁP ÁN ĐÚNG NÀO.`;
+prompt += `\nHãy trả về ${count} đáp án nhiễu (không bao gồm đáp án đúng).`;
 const schema = { type: "OBJECT", properties: { distractors: { type: "ARRAY", items: { type: "STRING" } } }, required: ["distractors"] };
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(res.text);
@@ -1656,24 +1656,24 @@ if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
 const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'scramble');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 }
-// [VÁ LỖI V1.3] Tiêm Persona và Few-Shot thay cho Negative Constraints
+// [VÁ LỖI V1.3] Tiêm Persona và Few-Shot
 if (type === 'word') {
 if (lang === 'zh') {
-prompt = `Nhiệm vụ: Đóng vai giáo viên tiếng Trung. Từ gốc: "${correctText}".\nHãy tạo ra ĐÚNG ${count} chữ Hán (Hanzi) ngẫu nhiên CÙNG BỘ THỦ hoặc ĐỒNG ÂM với từ gốc để làm nhiễu người học. CHỈ trả về các chữ Hán đó.`;
+prompt = `Nhiệm vụ: Đóng vai giáo viên tiếng Trung. Từ gốc: "${correctText}".\nHãy tạo ra ${count} chữ Hán (Hanzi) ngẫu nhiên có cùng bộ thủ hoặc đồng âm với từ gốc để làm nhiễu người học. Vui lòng chỉ trả về các chữ Hán đó.`;
 } else {
-prompt = `Nhiệm vụ: Đóng vai giáo viên. Từ gốc: "${correctText}".\nHãy tạo ra ĐÚNG ${count} chữ cái in thường (a-z) ngẫu nhiên để làm nhiễu. CHỈ trả về chữ cái.`;
+prompt = `Nhiệm vụ: Đóng vai giáo viên. Từ gốc: "${correctText}".\nHãy tạo ra ${count} chữ cái in thường (a-z) ngẫu nhiên để làm nhiễu. Vui lòng chỉ trả về chữ cái.`;
 }
 } else {
 const langStr = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
 prompt = `Ngữ cảnh câu: "${correctText}". Ngôn ngữ: ${langStr}.\n` +
-`Nhiệm vụ: Đóng vai một giáo viên chuyên môn, hãy tạo ra ĐÚNG ${count} từ vựng làm nhiễu (Distractors) để người học sắp xếp câu.\n` +
-`Chiến lược: Ưu tiên chọn các từ CÙNG TỪ LOẠI (Danh từ, Động từ...) với các từ trong câu nhưng SAI NGỮ CẢNH, sao cho khi người học cố tình ghép vào câu sẽ tạo ra lỗi ngữ pháp hoặc vô nghĩa.\n\n`;
+`Nhiệm vụ: Đóng vai một giáo viên chuyên môn, hãy tạo ra ${count} từ vựng làm nhiễu (Distractors) để người học sắp xếp câu.\n` +
+`Chiến lược: Ưu tiên chọn các từ CÙNG TỪ LOẠI (Danh từ, Động từ...) với các từ trong câu nhưng mang ngữ cảnh sai lệch, sao cho khi người học cố tình ghép vào câu sẽ tạo ra lỗi ngữ pháp hoặc vô nghĩa.\n\n`;
 if (lang === 'zh') {
-prompt += `Ví dụ HỢP LỆ:\n- Câu gốc "我们吃饭" -> Từ nhiễu: ["马", "跑"]\n- Câu gốc "天气很好" -> Từ nhiễu: ["坏", "去"]\n`;
+prompt += `Một số ý tưởng:\n- Câu gốc "我们吃饭" -> Từ nhiễu: ["马", "跑"]\n- Câu gốc "天气很好" -> Từ nhiễu: ["坏", "去"]\n`;
 } else if (lang === 'en') {
-prompt += `Ví dụ HỢP LỆ:\n- Câu gốc "I go to school" -> Từ nhiễu: ["went", "cars"]\n- Câu gốc "She is beautiful" -> Từ nhiễu: ["are", "ugly"]\n`;
+prompt += `Một số ý tưởng:\n- Câu gốc "I go to school" -> Từ nhiễu: ["went", "cars"]\n- Câu gốc "She is beautiful" -> Từ nhiễu: ["are", "ugly"]\n`;
 } else {
-prompt += `Ví dụ HỢP LỆ:\n- Câu gốc "Tôi đi học" -> Từ nhiễu: ["đã", "chạy"]\n`;
+prompt += `Một số ý tưởng:\n- Câu gốc "Tôi đi học" -> Từ nhiễu: ["đã", "chạy"]\n`;
 }
 }
 let injectedRule = "";
@@ -1684,7 +1684,7 @@ const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_le
 let mappedKey = oldToNewMap[level] || level;
 if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'en_level_4';
 const ruleStr = window.IoeDataEngine.getMicroTierNoiseRule(targetLang, dataMode, mappedKey, topic);
-if (ruleStr) injectedRule = "\nNOISE GENERATION RULE: " + ruleStr;
+if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG SINH RÁC]: " + ruleStr;
 }
 prompt += microPrompt;
 prompt += injectedRule;
@@ -1704,8 +1704,8 @@ if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
 const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'fill_blank');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 }
-// [VÁ LỖI V1.3] Tiêm Vắc-xin Few-Shot để chống Tê liệt suy luận do các lệnh cấm đoán
-let examples = "\n\nCÁC VÍ DỤ CHUẨN (HÃY HỌC QUA VÍ DỤ NÀY ĐỂ TRÁNH LỖI):\n";
+// [VÁ LỖI V1.3] Tiêm Vắc-xin Few-Shot
+let examples = "\n\nMỘT SỐ VÍ DỤ MINH HỌA:\n";
 if (lang === 'zh') {
 examples += `- Câu gốc: "我喜欢吃苹果。" -> displaySentence: "我喜欢吃[__________]。", targetWord: "苹果", distractors: ["香蕉", "汽车", "跑"]\n`;
 examples += `- Câu gốc: "今天天气很好。" -> displaySentence: "今天天气很[__________]。", targetWord: "好", distractors: ["坏", "下雨", "吃"]\n`;
@@ -1723,7 +1723,7 @@ const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_le
 let mappedKey = oldToNewMap[level] || level;
 if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'en_level_4';
 const ruleStr = window.IoeDataEngine.getMicroTierClozeRule(targetLang, dataMode, mappedKey, topic);
-if (ruleStr) injectedRule = "\nCLOZE SELECTION RULE: " + ruleStr;
+if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG ĐỤC LỖ]: " + ruleStr;
 }
 prompt += microPrompt;
 prompt += injectedRule;
