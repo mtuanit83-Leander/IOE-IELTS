@@ -87,10 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.0
-// Last Updated: 2026-06-07 07:45
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.1
+// Last Updated: 2026-06-08 09:34
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V3.0: [AI FATIGUE CURE] Quy hoạch lại Prompt enrich_sentence thành danh sách Rules có đánh số giúp tăng cường độ tập trung của LLM. Bổ sung 3 bẫy HSK mới (离, 比, 除了) vào IoeEnumRegistry. Ép buộc AI chỉ xuất tối đa 2 tag/câu.
+// Cập nhật V3.1: [CREATIVE FREEDOM] Chuyển đổi triết lý Prompt từ "Cấm đoán" sang "Định hướng Sáng tạo". Bổ sung riêng biệt cấu trúc quiz_word và quiz_sentence để giải phóng thời gian tư duy (Thoughts Tokens) cho LLM, ép xuất câu hoàn chỉnh chống lộ đáp án.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -142,24 +142,37 @@ return this.LEVEL_TO_TRAPS[levelKey] || [];
 }
 };
 // ============================================================================
-// HỆ THỐNG PROMPT TÁCH BIỆT (TỐI ƯU HÓA & KHÓA ENUM)
+// HỆ THỐNG PROMPT TÁCH BIỆT (KHAI PHÓNG SỰ SÁNG TẠO)
 // ============================================================================
 window.DEFAULT_PROMPTS = {
 // --- 1. ENRICH (Làm giàu thẻ) ---
-enrich_word: `Phân tích "{term}" ({lang}->Vi). QUY TẮC QUAN TRỌNG:Nếu là tiếng Trung, dịch sát nghĩa HSK3. Nếu là Tiếng Anh, CHỈ lấy nghĩa thông dụng nhất (A1-A2). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa/translate cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt: Danh từ, Động từ, Tính từ, Trạng từ, Giới từ, Đại từ, Liên từ), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals, Daily Life...), analysis(Giải thích ý nghĩa, cách dùng chi tiết), sinoViet(Nếu là tiếng Trung: CRITICAL CHỈ XUẤT ÂM HÁN VIỆT THUẦN TÚY, TUYỆT ĐỐI KHÔNG DỊCH NGHĨA, KHÔNG DÙNG DẤU NGOẶC ĐƠN. Nếu là tiếng Anh: Dịch chi tiết/Giải thích thêm), example(câu chứa từ + dịch), image_keyword(English).`,
-enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt), partOfSpeech(Ghi là "Câu văn"), topic(Phân loại chủ đề), analysis(cấu trúc ngữ pháp), example((Create another example sentence with similar grammar structure)+(Dịch)), image_keyword(English), grammar_type(ĐỌC KỸ QUY TẮC SAU:
-1. NẾU KHÔNG CÓ CẤU TRÚC ĐẶC BIỆT, TRẢ VỀ MẢNG RỖNG [].
-2. CHỈ CHỌN TỐI ĐA 1 ĐẾN 2 MÃ CỐT LÕI NHẤT CỦA CÂU. KHÔNG THAM LAM.
-3. TIẾNG TRUNG chọn trong: [zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as, zh_hsk_dist_li (cấu trúc khoảng cách 离), zh_hsk_comp_bi (so sánh 比), zh_hsk_except_chule (cấu trúc 除了)].
+enrich_word: `Phân tích từ vựng "{term}" ({lang}->Vi). ĐỊNH HƯỚNG SÁNG TẠO: Ưu tiên dịch sát nghĩa ở trình độ HSK3 (Tiếng Trung) hoặc A1-A2 (Tiếng Anh). JSON fields: term, pronunciation(IPA/Pinyin), definition(dịch nghĩa cực ngắn dưới 6 từ, không giải thích), partOfSpeech(Từ loại bằng Tiếng Việt), topic(Phân loại chủ đề Tiếng Anh, VD: Food, Animals...), analysis(Giải thích cách dùng ngắn gọn), sinoViet(Tiếng Trung: Chỉ xuất Âm Hán Việt thuần túy. Tiếng Anh: Giải thích chi tiết), example(câu chứa từ + dịch), image_keyword(English).`,
+enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt), partOfSpeech(Ghi là "Câu văn"), topic(Phân loại chủ đề), analysis(cấu trúc ngữ pháp), example(Tạo 1 câu ví dụ có cấu trúc tương tự + Dịch), image_keyword(English), grammar_type(ĐỊNH HƯỚNG GẮN NHÃN:
+1. Nếu câu mang cấu trúc bình thường, hãy trả về mảng rỗng [].
+2. Hãy chọn lọc 1 đến 2 mã cốt lõi nhất phản ánh đúng đặc trưng ngữ pháp của câu.
+3. TIẾNG TRUNG chọn trong: [zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as, zh_hsk_dist_li, zh_hsk_comp_bi, zh_hsk_except_chule].
 4. TIẾNG ANH chọn trong: [eng_article_an, eng_plural_s, eng_present_cont, eng_this_these, eng_past_irregular, eng_comparative_double, eng_much_many, eng_since_for, eng_passive_missing_be, eng_vietglish_collocation].
-TUYỆT ĐỐI KHÔNG BỊA MÃ KHÁC!).`,
-// --- 2. MATCH (Nối ô) ---
-match_word: `Tạo 1 nghĩa sai (Tiếng Việt) cho MỖI từ sau: {itemsText}. QUY TẮC: Nghĩa sai PHẢI thuộc cùng chủ đề/lĩnh vực với từ gốc nhưng khác nghĩa hoàn toàn. TUYỆT ĐỐI KHÔNG dùng từ sai chính tả tiếng Việt (Ví dụ: KHÔNG dùng 'đôi gáy' cho 'đôi giày'). Bẫy phải đánh lừa được tư duy logic.`,
-match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {itemsText}. QUY TẮC: Bản dịch sai phải đọc CỰC KỲ XUÔI TAI bằng tiếng Việt, nhưng bị sai lệch về: Chủ thể (Anh ấy/Cô ấy), Thời gian (Đã/Sẽ), hoặc tính từ bị đảo ngược. TUYỆT ĐỐI KHÔNG viết sai chính tả.`,
-// --- 3. FILL BLANK (Điền từ) ---
-fillblank_sentence: `Đóng vai một giáo viên ngôn ngữ, phân tích câu "{term}" ({lang}). CHỈ THỊ: 1. Chọn ra 1 từ vựng CỐT LÕI nhất trong câu (Danh từ, Động từ, hoặc Tính từ quan trọng) để đục lỗ. TUYỆT ĐỐI KHÔNG đục lỗ các dấu câu (như phẩy, chấm, ngoặc kép 《》, v.v.), không đục lỗ các con số, và không đục lỗ các hư từ/trợ từ (như 的, 了, 在). BẮT BUỘC chỉ chọn các từ vựng thực sự mang ý nghĩa cốt lõi. 2. Thay thế từ đó trong câu bằng chuỗi "[__________]". 3. Sinh ra chính xác 3 đáp án nhiễu (distractors) bằng {lang}. Các đáp án nhiễu phải cùng từ loại, hợp cấu trúc ngữ pháp với vị trí đục lỗ nhưng SAI VỀ NGỮ CẢNH để bẫy học viên. 4. Trả về định dạng JSON nghiêm ngặt gồm các key: "displaySentence" (câu đã đục lỗ), "targetWord" (từ đúng đã bị đục), "distractors" (mảng 3 từ sai), "hint" (Dịch nghĩa câu gốc tiếng Việt: "{definition}"). TUYỆT ĐỐI KHÔNG giải thích ngoài JSON.`,
-// --- 4. GRAMMAR ---
-grammar: "Phân tích ngữ pháp câu: '{sentence}' ({lang}). Ngắn gọn, súc tích, Plain text."
+Vui lòng chỉ sử dụng các mã có sẵn trong danh sách trên).`,
+// --- 2. TRẮC NGHIỆM (QUIZ) ---
+quiz_word: `Bạn là chuyên gia thiết kế bài tập ngôn ngữ. Hãy tạo 3 đáp án nhiễu (distractors) cho từ vựng: "{baseText}" (Nghĩa đúng: "{targetText}").
+ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo ra các đáp án nhiễu cùng từ loại hoặc cùng chủ đề với từ gốc để mang lại tính thử thách logic cao nhất cho người học.`,
+quiz_sentence: `Bạn là chuyên gia thiết kế bài tập ngôn ngữ. Hãy tạo 3 đáp án nhiễu (distractors) cho câu văn: "{baseText}" (Bản dịch đúng: "{targetText}").
+KỶ LUẬT CẤU TRÚC: Cả 3 đáp án nhiễu phải là NHỮNG CÂU HOÀN CHỈNH. Hãy giữ trọn vẹn độ dài và không được cắt xén câu để tránh làm lộ đáp án.
+ĐỊNH HƯỚNG SÁNG TẠO: Bạn có thể tự do bay bổng biến tấu chủ ngữ, động từ, hoặc thời gian, tính từ... để tạo ra những tình huống sai lệch thú vị và tự nhiên nhất so với bản dịch đúng.`,
+// --- 3. NỐI Ô (MATCH) ---
+match_word: `Tạo 1 nghĩa sai (Tiếng Việt) cho MỖI từ sau: {itemsText}.
+ĐỊNH HƯỚNG SÁNG TẠO: Nghĩa sai nên thuộc cùng nhóm chủ đề/lĩnh vực với từ gốc nhưng mang ý nghĩa hoàn toàn khác. Hãy lừa học viên bằng tư duy logic thay vì tạo ra các từ sai chính tả tiếng Việt.`,
+match_sentence: `Tạo 1 bản dịch sai (Tiếng Việt) cho MỖI câu sau: {itemsText}.
+ĐỊNH HƯỚNG SÁNG TẠO: Bản dịch sai cần được viết vô cùng trôi chảy và xuôi tai, nhưng ẩn chứa sự sai lệch khéo léo về chủ thể, mốc thời gian hoặc đảo ngược tính chất của sự việc.`,
+// --- 4. ĐIỀN TỪ (FILL BLANK) ---
+fillblank_sentence: `Đóng vai một giáo viên, phân tích câu "{term}" ({lang}).
+ĐỊNH HƯỚNG SÁNG TẠO:
+1. Hãy tìm một từ vựng mang ý nghĩa then chốt (Danh từ, Động từ, Tính từ) để đục lỗ. Vui lòng bỏ qua các dấu câu, con số hay các trợ từ ngữ pháp cơ bản để bài tập hay hơn.
+2. Thay thế từ đó bằng chuỗi "[__________]".
+3. Sáng tạo 3 đáp án nhiễu (distractors) bằng {lang}. Các đáp án nhiễu nên hợp lệ về cấu trúc ngữ pháp nhưng sai lệch về ngữ cảnh để lừa học viên.
+4. Trả về JSON: "displaySentence" (câu đã đục lỗ), "targetWord" (từ đúng đã bị đục), "distractors" (mảng 3 từ sai), "hint" (Dịch nghĩa câu: "{definition}").`,
+// --- 5. GIẢI THÍCH NGỮ PHÁP (GRAMMAR) ---
+grammar: "Đóng vai một gia sư tận tâm, hãy phân tích ngữ pháp của câu sau: '{sentence}' ({lang}). Ngắn gọn, súc tích và dễ hiểu."
 };
 // UI TEXT
 window.UI_TEXT = {
@@ -4765,18 +4778,18 @@ addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 1, 'General Practice');
 return blueprint;
 }
 };
-// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.2
-// Last Updated: 2026-06-06 09:35
+// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.4
+// Last Updated: 2026-06-08 09:42
 // Nhiệm vụ: Số hóa Khung năng lực ngôn ngữ (HSK/CEFR) thành các quy tắc (Rules) định hướng AI sinh lỗi, đục lỗ và tạo bẫy.
-// Cập nhật V2.2: [ID STANDARDIZATION] Quy chuẩn hóa toàn bộ 19 mã định danh bẫy Tiếng Trung theo cấu trúc zh_hsk_[pattern].
+// Cập nhật V2.4: [CREATIVE FREEDOM] Chuyển đổi toàn bộ Vi lệnh (Micro-prompts) Tiếng Trung sang triết lý "Định hướng sáng tạo", loại bỏ các từ cấm đoán để giải phóng tốc độ suy luận của LLM. Giữ nguyên hệ Tiếng Anh.
 // ==================================================================================
 window.IoeDataEngine = {
 // 1. NGỮ CẢNH TRÌNH ĐỘ (Định hướng Từ vựng và Cấu trúc chung)
 GRADE_CONTEXTS: {
-zh_level_1: 'HSK 1 (150 words). ƯU TIÊN CAO NHẤT: 1) Dùng phó từ mức độ trước tính từ vị ngữ (VD: 我很忙, không dùng 我是忙). 2) Xếp thời gian và địa điểm TRƯỚC động từ chính (VD: 我今天在家看书). 3) Phân biệt phủ định Không (不) và Chưa/Không có (没).',
-zh_level_2: 'HSK 2 (300 words). ƯU TIÊN CAO NHẤT: 1) Trong câu so sánh 比, KHUYẾN KHÍCH dùng 一点儿/得多, tránh dùng phó từ mức độ như 很/非常. 2) Dùng chính xác Bổ ngữ trạng thái (得) và Trợ từ động thái (着/过). 3) Phân biệt điểm xuất phát 从 và khoảng cách 离.',
-zh_level_3: 'HSK 3 (600 words). Tuân thủ nghiêm ngặt từ vựng và ngữ pháp HSK3 theo Giáo trình Hán ngữ Quyển 3.',
-zh_level_4: 'HSK 4 (1200 words). ƯU TIÊN CAO NHẤT: 1) Câu bị động với 让/叫 bắt buộc phải có chủ thể tác động. 2) Nhấn mạnh 是...的: Dạng phủ định là 不是...的. 3) Trật tự chủ ngữ với cặp liên từ (VD: 不仅...而且, 即使...也).',
+zh_level_1: 'HSK 1 (150 words). ĐỊNH HƯỚNG: 1) Ưu tiên phó từ mức độ trước tính từ vị ngữ (VD: 我很忙, hạn chế dùng 我是忙). 2) Xếp thời gian và địa điểm trước động từ chính (VD: 我今天在家看书). 3) Khuyến khích phân biệt rõ phủ định 不 và 没.',
+zh_level_2: 'HSK 2 (300 words). ĐỊNH HƯỚNG: 1) Trong câu so sánh 比, ưu tiên dùng 一点儿/得多, hạn chế dùng phó từ mức độ như 很/非常. 2) Vận dụng khéo léo Bổ ngữ trạng thái (得) và Trợ từ động thái (着/过). 3) Tạo sự khác biệt giữa điểm xuất phát 从 và khoảng cách 离.',
+zh_level_3: 'HSK 3 (600 words). Bám sát từ vựng và ngữ pháp HSK3 theo Giáo trình Hán ngữ Quyển 3 để mang lại trải nghiệm tự nhiên nhất.',
+zh_level_4: 'HSK 4 (1200 words). ĐỊNH HƯỚNG: 1) Câu bị động với 让/叫 nên đi kèm chủ thể tác động. 2) Cấu trúc nhấn mạnh 是...的 và dạng phủ định 不是...的. 3) Thể hiện sự phong phú của trật tự chủ ngữ với các cặp liên từ (VD: 不仅...而且, 即使...也).',
 en_level_1: 'Kiddie (Pre-A1 / Lớp 1-2). ƯU TIÊN: Từ vựng trực quan (Màu sắc, đồ vật, con vật, gia đình). Cấu trúc rất ngắn và đơn giản (This is, I have, It is). KHÔNG dùng thì Quá khứ hay từ vựng trừu tượng.',
 en_level_2: 'Junior (A1 / Lớp 3-4). ƯU TIÊN: Chủ đề sinh hoạt hàng ngày, trường học. Ngữ pháp: Hiện tại đơn (To be, số ít/số nhiều), Hiện tại tiếp diễn (V-ing). KHÔNG dùng câu phức.',
 en_level_3: 'Junior+ (A1+ / Lớp 5). ƯU TIÊN: Quá khứ đơn cơ bản (Was/Were, Regular verbs), Tương lai gần (Be going to), Từ nối cơ bản (And, But, Because).',
@@ -4793,27 +4806,30 @@ MICRO_PROMPTS: {
 // GAME TRẮC NGHIỆM (QUIZ) - SINH ĐÁP ÁN NHIỄU
 // ====================================================
 quiz: {
-// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
-zh_hsk_separable_obj: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Động từ Ly hợp (như 帮忙, 结婚, 见面). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách ÉP động từ ly hợp mang tân ngữ trực tiếp ngay phía sau (Ví dụ: 帮忙他).",
-zh_hsk_adv_zhongyu: "CHIẾN LƯỢC BẪY: Từ mục tiêu liên quan đến phó từ 终于 (Cuối cùng). Yêu cầu: Tạo đáp án nhiễu sai vị trí bằng cách xếp phó từ này ra SAU động từ chính.",
-zh_hsk_adv_degree: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Phó từ chỉ mức độ. Yêu cầu: Tạo đáp án nhiễu bằng cách sử dụng sai cấu trúc của phó từ 极 (Ví dụ: Không có '了' phía sau) hoặc dùng sai quan hệ hô ứng của 越...越...",
-zh_hsk_prep_mismatch: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Giới từ. Yêu cầu: Tạo đáp án nhiễu bằng cách dùng sai ngữ cảnh của giới từ 根据 (căn cứ) hoặc 关于 (về việc).",
-zh_hsk_conj_mismatch: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Liên từ. Yêu cầu: Tạo đáp án nhiễu bằng cách phá vỡ cặp liên từ tăng tiến 不但...而且... (Ví dụ: ghép 不但 đi với 还是).",
-zh_hsk_noun_space: "CHIẾN LƯỢC BẪY: Từ mục tiêu là Danh từ chỉ nơi chốn/không gian. Yêu cầu: Tạo đáp án nhiễu bằng cách sử dụng danh từ không gian làm chủ ngữ một cách phi logic.",
-zh_hsk_rc_negation: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Kết quả (BNKQ). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách dùng 不 để phủ định BNKQ trong quá khứ thay vì dùng 没.",
-zh_hsk_rc_state: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Kết quả (BNKQ). Yêu cầu: Tạo đáp án nhiễu bằng cách thay đổi trạng thái kết quả của hành động sao cho sai lệch hoàn toàn logic (Ví dụ: Hành động thành công nhưng dùng sai chữ 错).",
-zh_hsk_pc_ability: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Khả năng (BNKN). Yêu cầu: Tạo đáp án nhiễu bằng cách nhầm lẫn cấu trúc 得/不 của BNKN với việc sử dụng động từ năng nguyện 能/不能.",
-zh_hsk_dc_location: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Xu hướng (BNXH). Yêu cầu: Tạo đáp án nhiễu sai vị trí bằng cách xếp Tân ngữ Địa điểm ra SAU chữ 来 hoặc 去 (Ví dụ: 走进来教室).",
-zh_hsk_dc_direction: "CHIẾN LƯỢC BẪY: Câu chứa Bổ ngữ Xu hướng (BNXH). Yêu cầu: Tạo đáp án nhiễu bằng cách đảo ngược hướng di chuyển so với người nói (Ví dụ: Đang đi tới thì dùng 去 thay vì 来).",
-zh_hsk_ba_indefinite: "CHIẾN LƯỢC BẪY: Câu chữ 把 (Ba). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách sử dụng Tân ngữ không xác định (Ví dụ: 把一本书 thay vì 把那本书).",
-zh_hsk_ba_result: "CHIẾN LƯỢC BẪY: Câu chữ 把 (Ba). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách bỏ trống thành phần kết quả/xử lý sau động từ chính.",
-zh_hsk_bei_reverse: "CHIẾN LƯỢC BẪY: Câu bị động chữ 被 (Bei). Yêu cầu: Tạo đáp án nhiễu mang nghĩa sai lệch bằng cách đảo ngược vai trò của Kẻ tác động và Nạn nhân.",
-zh_hsk_exist_order: "CHIẾN LƯỢC BẪY: Câu Tồn tại có chữ 着. Yêu cầu: Tạo đáp án nhiễu sai cấu trúc bằng cách đảo trật tự Trạng ngữ Nơi chốn ra sau Động từ (Ví dụ: 几个汉字写着在黑板上).",
-zh_hsk_emph_order: "CHIẾN LƯỢC BẪY: Câu nhấn mạnh 连...也/都... Yêu cầu: Tạo đáp án nhiễu sai trật tự bằng cách xếp đối tượng nhấn mạnh ra sau phó từ liên kết 也/都.",
-zh_hsk_emph_extreme: "CHIẾN LƯỢC BẪY: Câu nhấn mạnh 连...也/都... Yêu cầu: Tạo đáp án nhiễu sai logic bằng cách thay thế đối tượng nhấn mạnh bằng một sự vật bình thường, làm mất tính cực đoan của cấu trúc.",
-zh_hsk_paired_only_if: "CHIẾN LƯỢC BẪY: Cặp liên từ điều kiện 只有...才... Yêu cầu: Tạo đáp án nhiễu sai logic bằng cách phá vỡ sự hô ứng (Ví dụ: Lắp chữ 只有 đi kèm với chữ 就).",
-zh_hsk_paired_as_long_as: "CHIẾN LƯỢC BẪY: Cặp liên từ điều kiện 只要...就... Yêu cầu: Tạo đáp án nhiễu sai logic bằng cách phá vỡ sự hô ứng (Ví dụ: Lắp chữ 只要 đi kèm với chữ 才).",
-general_trap: "CHIẾN LƯỢC BẪY: Tạo đáp án nhiễu có nghĩa gần giống từ/câu gốc nhưng khác biệt tinh tế về sắc thái hoặc dùng sai từ loại trong ngữ cảnh.",
+// Bẫy Tiếng Trung
+zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Động từ Ly hợp (như 帮忙, 结婚). Bạn hãy tạo đáp án nhiễu tự nhiên bằng cách gắn thêm tân ngữ trực tiếp vào ngay sau động từ ly hợp để mô phỏng lỗi sai người học hay mắc phải.",
+zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là phó từ 终于. Bạn hãy khéo léo tạo đáp án nhiễu bằng cách đổi vị trí phó từ này ra sau động từ chính.",
+zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Điểm nhấn là Phó từ chỉ mức độ. Bạn có thể sáng tạo đáp án nhiễu bằng cách thiết kế sai cấu trúc của phó từ 极 (như lược bỏ chữ 了) hoặc ghép sai cặp hô ứng 越...越...",
+zh_hsk_prep_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là Giới từ. Hãy thử tạo nhiễu bằng cách dùng một giới từ có vẻ hợp lý nhưng lại sai ngữ cảnh (ví dụ nhầm lẫn giữa 根据 và 关于).",
+zh_hsk_conj_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Tập trung vào Liên từ. Hãy sáng tạo đáp án nhiễu bằng cách làm gãy cặp liên từ tăng tiến 不但...而且... và ghép chúng với những từ không liên quan.",
+zh_hsk_noun_space: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào Danh từ không gian. Bạn hãy tạo nhiễu bằng cách đưa danh từ không gian lên làm chủ ngữ một cách phi logic.",
+zh_hsk_rc_negation: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc là Bổ ngữ Kết quả trong quá khứ. Hãy tạo đáp án nhiễu bằng cách dùng 不 để phủ định thay vì dùng 没.",
+zh_hsk_rc_state: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là Bổ ngữ Kết quả. Bạn hãy sáng tạo nhiễu bằng cách thay đổi trạng thái kết quả của hành động sao cho sai lệch logic tự nhiên với ngữ cảnh.",
+zh_hsk_pc_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là Bổ ngữ Khả năng. Bạn hãy tạo nhiễu bằng cách phối hợp sai cấu trúc 得/不 hoặc nhầm lẫn sang động từ năng nguyện 能/不能.",
+zh_hsk_dc_location: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Bổ ngữ Xu hướng. Hãy tạo nhiễu bằng cách đặt Tân ngữ Địa điểm ra phía sau chữ 来 hoặc 去.",
+zh_hsk_dc_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Điểm nhấn là Bổ ngữ Xu hướng. Hãy sáng tạo đáp án nhiễu bằng cách đảo ngược hướng di chuyển so với góc nhìn thực tế của người nói.",
+zh_hsk_ba_indefinite: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 把. Hãy tạo nhiễu bằng cách dùng một Tân ngữ không xác định (như 一本书 thay cho 那本书) để thay đổi tính chất câu.",
+zh_hsk_ba_result: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 把. Bạn có thể tạo nhiễu bằng cách để trống thành phần kết quả hoặc cách xử lý ở cuối câu.",
+zh_hsk_bei_reverse: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 被. Hãy tạo đáp án nhiễu thú vị bằng cách đảo ngược vị trí giữa chủ thể tác động và đối tượng tiếp nhận.",
+zh_hsk_exist_order: "ĐỊNH HƯỚNG SÁNG TẠO: Câu tồn tại với 着. Hãy tạo nhiễu bằng cách dời Trạng ngữ Nơi chốn ra phía sau Động từ.",
+zh_hsk_emph_order: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc nhấn mạnh 连...也/都. Bạn hãy tạo nhiễu bằng cách đặt sai vị trí của đối tượng được nhấn mạnh ra sau phó từ.",
+zh_hsk_emph_extreme: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc 连...也/都. Hãy thử tạo nhiễu bằng cách thay thế đối tượng nhấn mạnh bằng một thứ gì đó quá đỗi bình thường, làm mất đi tính cực đoan vốn có.",
+zh_hsk_paired_only_if: "ĐỊNH HƯỚNG SÁNG TẠO: Cặp 只有...才... Hãy tạo đáp án nhiễu bằng cách thay đổi từ hô ứng (như thay 才 bằng 就).",
+zh_hsk_paired_as_long_as: "ĐỊNH HƯỚNG SÁNG TẠO: Cặp 只要...就... Hãy tạo đáp án nhiễu bằng cách thay đổi từ hô ứng (như thay 就 bằng 才).",
+zh_hsk_dist_li: "ĐỊNH HƯỚNG SÁNG TẠO: Khoảng cách với 离. Bạn hãy tạo nhiễu bằng cách sử dụng giới từ 从 thay cho 离 một cách tự nhiên.",
+zh_hsk_comp_bi: "ĐỊNH HƯỚNG SÁNG TẠO: Câu so sánh với 比. Bạn có thể tạo nhiễu bằng cách chèn thêm các phó từ chỉ mức độ (như 很, 非常) vào ngay trước tính từ.",
+zh_hsk_except_chule: "ĐỊNH HƯỚNG SÁNG TẠO: Ngoại trừ 除了...以外. Hãy tạo nhiễu bằng cách ghép sai cặp hô ứng ở vế sau, ví dụ dùng 但是 thay cho 还/也.",
+general_trap: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sáng tạo các đáp án nhiễu mang sắc thái ý nghĩa hoặc từ loại gần giống với câu gốc nhưng sai lệch một cách tinh tế.",
 // Bẫy Tiếng Anh
 eng_article_an: "CHIẾN LƯỢC BẪY: Mạo từ (A/An). Yêu cầu: Tạo đáp án nhiễu sai ngữ pháp bằng cách dùng 'a' trước nguyên âm (vd: a apple, a elephant) hoặc 'an' trước phụ âm (vd: an cat).",
 eng_plural_s: "CHIẾN LƯỢC BẪY: Danh từ số nhiều. Yêu cầu: Tạo đáp án nhiễu bằng cách thêm 's' vào danh từ bất quy tắc (vd: childs, sheeps) hoặc bỏ quên 'es' sau ch/sh/x/o.",
@@ -4830,27 +4846,30 @@ eng_vietglish_collocation: "CHIẾN LƯỢC BẪY: Cụm từ cố định (Coll
 // GAME TÌM LỖI SAI (SPOT MISTAKE) - TẠO LỖI 1-VỊ-TRÍ
 // ====================================================
 spot_mistake: {
-// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
-zh_hsk_separable_obj: "MỤC TIÊU BÓP MÉO: Động từ ly hợp. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách ép động từ ly hợp mang tân ngữ trực tiếp ngay phía sau (VD: 帮忙他 thay vì 帮他的忙).",
-zh_hsk_adv_zhongyu: "MỤC TIÊU BÓP MÉO: Phó từ 终于. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đặt sai vị trí phó từ 终于 ra sau động từ chính.",
-zh_hsk_adv_degree: "MỤC TIÊU BÓP MÉO: Phó từ mức độ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dùng sai cấu trúc 越...越... hoặc dùng chữ 极 mà thiếu chữ 了.",
-zh_hsk_prep_mismatch: "MỤC TIÊU BÓP MÉO: Giới từ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay giới từ đúng bằng một giới từ sai hoàn toàn về ngữ cảnh (VD: 根据 thay bằng 关于).",
-zh_hsk_conj_mismatch: "MỤC TIÊU BÓP MÉO: Liên từ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách phá vỡ cặp liên từ 不但...而且..., ghép sai với một từ khác.",
-zh_hsk_noun_space: "MỤC TIÊU BÓP MÉO: Danh từ không gian. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thêm thừa các chữ như 上, 里 vào sau các danh từ đã mang sẵn nghĩa địa điểm.",
-zh_hsk_rc_negation: "MỤC TIÊU BÓP MÉO: Phủ định BNKQ. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dùng chữ 不 để phủ định Bổ ngữ kết quả trong quá khứ thay vì dùng chữ 没.",
-zh_hsk_rc_state: "MỤC TIÊU BÓP MÉO: Bổ ngữ kết quả. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay Bổ ngữ kết quả bằng một chữ mang ý nghĩa trái ngược hoàn toàn logic của câu.",
-zh_hsk_pc_ability: "MỤC TIÊU BÓP MÉO: Bổ ngữ khả năng. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách nhầm lẫn cấu trúc 得/不 của BNKN với việc sử dụng động từ năng nguyện 能/不能.",
-zh_hsk_dc_location: "MỤC TIÊU BÓP MÉO: Bổ ngữ xu hướng. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đặt Tân ngữ Địa điểm ra SAU động từ xu hướng 来 hoặc 去 (VD: 走进来教室).",
-zh_hsk_dc_direction: "MỤC TIÊU BÓP MÉO: Bổ ngữ xu hướng. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách dùng sai chữ 来 hoặc 去, khiến nó ngược với hướng di chuyển của người nói.",
-zh_hsk_ba_indefinite: "MỤC TIÊU BÓP MÉO: Câu chữ 把. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách biến Tân ngữ thành Cụm số lượng từ KHÔNG xác định (VD: 把一本书).",
-zh_hsk_ba_result: "MỤC TIÊU BÓP MÉO: Câu chữ 把. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xóa bỏ hoàn toàn phần thành phần khác (kết quả/xử lý) đứng sau động từ chính.",
-zh_hsk_bei_reverse: "MỤC TIÊU BÓP MÉO: Câu chữ 被. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đảo ngược logic giữa Chủ thể tác động và Đối tượng chịu tác động.",
-zh_hsk_exist_order: "MỤC TIÊU BÓP MÉO: Câu Tồn tại (着). YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xếp Trạng ngữ chỉ Nơi chốn ra SAU Động từ (VD: 几个汉字写着在黑板上).",
-zh_hsk_emph_order: "MỤC TIÊU BÓP MÉO: Câu nhấn mạnh 连...也/都. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách xếp sai vị trí đối tượng nhấn mạnh ra sau chữ 也/都.",
-zh_hsk_emph_extreme: "MỤC TIÊU BÓP MÉO: Câu nhấn mạnh 连...也/都. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thay đối tượng nhấn mạnh bằng một sự vật bình thường, làm mất tính cực đoan.",
-zh_hsk_paired_only_if: "MỤC TIÊU BÓP MÉO: Cặp 只有...才... YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách phá vỡ cặp hô ứng, thay thế chữ 才 bằng chữ 就.",
-zh_hsk_paired_as_long_as: "MỤC TIÊU BÓP MÉO: Cặp 只要...就... YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách phá vỡ cặp hô ứng, thay thế chữ 就 bằng chữ 才.",
-general_mistake: "MỤC TIÊU BÓP MÉO: Lỗi tổng hợp. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách lạm dụng sai ngữ cảnh một từ vựng bất kỳ trong câu hoặc dùng sai từ loại.",
+// Bẫy Tiếng Trung
+zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Động từ ly hợp. Bạn hãy khéo léo bóp méo câu gốc bằng cách gắn tân ngữ trực tiếp vào ngay sau động từ ly hợp để tạo một lỗi sai tự nhiên.",
+zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào phó từ 终于. Bạn hãy tạo một lỗi sai tinh tế bằng cách dịch chuyển vị trí của 终于 ra sau động từ chính.",
+zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Tập trung vào phó từ mức độ. Hãy thử bóp méo cấu trúc 越...越... hoặc dùng phó từ 极 mà cố ý để sót chữ 了.",
+zh_hsk_prep_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là Giới từ. Bạn hãy tạo lỗi sai bằng cách thay thế giới từ đúng bằng một giới từ khác không hợp văn cảnh (VD: thay 根据 bằng 关于).",
+zh_hsk_conj_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Liên từ. Hãy sáng tạo một lỗi sai bằng cách phá vỡ cặp liên từ 不但...而且..., ghép sai với một liên từ khác.",
+zh_hsk_noun_space: "ĐỊNH HƯỚNG SÁNG TẠO: Danh từ không gian. Bạn hãy thêm các phương vị từ như 上, 里 vào sau những danh từ đã vốn mang nghĩa địa điểm để tạo lỗi dư thừa.",
+zh_hsk_rc_negation: "ĐỊNH HƯỚNG SÁNG TẠO: Phủ định Bổ ngữ kết quả. Hãy tạo lỗi sai bằng cách dùng chữ 不 để phủ định một hành động đã hoàn tất trong quá khứ.",
+zh_hsk_rc_state: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ kết quả. Bạn hãy thay đổi bổ ngữ kết quả bằng một từ mang ý nghĩa trái ngược với logic thực tế của câu.",
+zh_hsk_pc_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ khả năng. Hãy tạo lỗi sai bằng cách nhầm lẫn cấu trúc 得/不 với động từ năng nguyện 能/不能.",
+zh_hsk_dc_location: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ xu hướng. Hãy bóp méo câu bằng cách dời Tân ngữ Địa điểm ra sau động từ xu hướng 来 hoặc 去.",
+zh_hsk_dc_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ xu hướng. Bạn hãy tạo lỗi sai bằng cách chọn sai chữ 来 hoặc 去, khiến nó ngược lại với hướng đi của nhân vật.",
+zh_hsk_ba_indefinite: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 把. Hãy tạo lỗi sai bằng cách đổi Tân ngữ thành một cụm số lượng không xác định (như 一本书).",
+zh_hsk_ba_result: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 把. Bạn hãy bóp méo bằng cách loại bỏ phần kết quả hoặc cách xử lý đứng sau động từ chính.",
+zh_hsk_bei_reverse: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 被. Hãy tạo một lỗi sai thú vị bằng cách hoán đổi logic giữa người tác động và người bị tác động.",
+zh_hsk_exist_order: "ĐỊNH HƯỚNG SÁNG TẠO: Câu tồn tại (着). Bạn hãy tạo lỗi sai bằng cách dời Trạng ngữ chỉ Nơi chốn ra phía sau cụm Động từ.",
+zh_hsk_emph_order: "ĐỊNH HƯỚNG SÁNG TẠO: Câu nhấn mạnh 连...也/都. Hãy bóp méo câu bằng cách xếp đối tượng nhấn mạnh ra sau chữ 也 hoặc 都.",
+zh_hsk_emph_extreme: "ĐỊNH HƯỚNG SÁNG TẠO: Câu nhấn mạnh 连...也/都. Bạn hãy làm sai lệch câu bằng cách đổi đối tượng nhấn mạnh thành một sự vật hết sức bình thường.",
+zh_hsk_paired_only_if: "ĐỊNH HƯỚNG SÁNG TẠO: Cặp 只有...才... Hãy tạo lỗi sai bằng cách thay từ hô ứng 才 bằng chữ 就.",
+zh_hsk_paired_as_long_as: "ĐỊNH HƯỚNG SÁNG TẠO: Cặp 只要...就... Hãy tạo lỗi sai bằng cách thay từ hô ứng 就 bằng chữ 才.",
+zh_hsk_dist_li: "ĐỊNH HƯỚNG SÁNG TẠO: Khoảng cách với 离. Bạn hãy bóp méo bằng cách thay chữ 离 bằng chữ 从.",
+zh_hsk_comp_bi: "ĐỊNH HƯỚNG SÁNG TẠO: Câu so sánh 比. Hãy tạo lỗi sai bằng cách tự nhiên thêm phó từ mức độ (như 很 hoặc 非常) vào trước tính từ.",
+zh_hsk_except_chule: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc 除了...以外. Bạn hãy tạo lỗi sai bằng cách thay thế chữ 还 hoặc 也 ở vế sau bằng chữ 但是.",
+general_mistake: "ĐỊNH HƯỚNG SÁNG TẠO: Lỗi tổng hợp. Hãy sáng tạo một lỗi sai duy nhất bằng cách thay đổi một từ vựng bất kỳ sao cho không phù hợp với văn cảnh.",
 // Bẫy Tiếng Anh
 eng_article_an: "MỤC TIÊU BÓP MÉO: Mạo từ A/An. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách đảo ngược cách dùng mạo từ (vd: a orange, an book).",
 eng_plural_s: "MỤC TIÊU BÓP MÉO: Danh từ số nhiều. YÊU CẦU: Tạo MỘT lỗi sai duy nhất bằng cách thêm 's' vào một danh từ số nhiều bất quy tắc (vd: childrens).",
@@ -4867,27 +4886,30 @@ eng_vietglish_collocation: "MỤC TIÊU BÓP MÉO: Collocation. YÊU CẦU: Tạ
 // GAME ĐIỀN TỪ (FILL BLANK) - ĐỤC CHỖ HIỂM & SINH NHIỄU
 // ====================================================
 fill_blank: {
-// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
-zh_hsk_separable_obj: "MỤC TIÊU ĐỤC LỖ: Động từ ly hợp. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 cụm từ nhiễu là động từ ly hợp nhưng mang tân ngữ ghép dính sai quy tắc (VD: đáp án đúng là 帮忙, nhiễu là 帮忙他) hoặc các động từ sai nghĩa.",
-zh_hsk_adv_zhongyu: "MỤC TIÊU ĐỤC LỖ: Phó từ 终于. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ chỉ thời gian hoặc mức độ không hợp logic với kết quả cuối cùng (như 已经, 正在, 刚).",
-zh_hsk_adv_degree: "MỤC TIÊU ĐỤC LỖ: Phó từ mức độ (极, 越). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ mức độ khác nhưng sai cấu trúc hô ứng hoặc không tương thích với chữ 了 phía sau (như 很, 非常, 最).",
-zh_hsk_prep_mismatch: "MỤC TIÊU ĐỤC LỖ: Giới từ (根据, 关于). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 giới từ khác hoàn toàn sai ngữ cảnh (như 对, 向, 为).",
-zh_hsk_conj_mismatch: "MỤC TIÊU ĐỤC LỖ: Liên từ (不但, 而且). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 liên từ phá vỡ logic tăng tiến (như 还是, 或者, 虽然).",
-zh_hsk_noun_space: "MỤC TIÊU ĐỤC LỖ: Danh từ không gian/phương hướng (上, 里). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 từ chỉ phương hướng ngược lại hoặc sai logic vật lý (như 外, 下, 前).",
-zh_hsk_rc_negation: "MỤC TIÊU ĐỤC LỖ: Phó từ phủ định 没 trước Bổ ngữ Kết quả. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 từ phủ định sai ngữ pháp cho quá khứ (như 不, 别, 未).",
-zh_hsk_rc_state: "MỤC TIÊU ĐỤC LỖ: Bổ ngữ Kết quả (错, 对, 好). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 Bổ ngữ trạng thái kết quả có ý nghĩa trái ngược hoàn toàn với logic vế câu (như 坏, 完, 满).",
-zh_hsk_pc_ability: "MỤC TIÊU ĐỤC LỖ: Trợ từ 得 hoặc 不 trong Bổ ngữ Khả năng. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 trợ từ kết cấu hoặc động từ năng nguyện sai cấu trúc (như 的, 地, 能).",
-zh_hsk_dc_location: "MỤC TIÊU ĐỤC LỖ: Tân ngữ Địa điểm đứng trước 来/去. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 danh từ chung không mang tính chất không gian/địa điểm để dụ học viên điền sai.",
-zh_hsk_dc_direction: "MỤC TIÊU ĐỤC LỖ: Động từ xu hướng (来, 去). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 hướng di chuyển ngược lại với logic của người nói trong ngữ cảnh (như 进, 出, 回 nếu không hợp).",
-zh_hsk_ba_indefinite: "MỤC TIÊU ĐỤC LỖ: Lượng từ/Chỉ thị từ xác định trong câu chữ 把 (như 这, 那). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 cụm số lượng từ không xác định (như 一, 几) để phá vỡ quy tắc câu chữ 把.",
-zh_hsk_ba_result: "MỤC TIÊU ĐỤC LỖ: Động từ hoặc Bổ ngữ kết quả trong câu chữ 把. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 động từ đứng độc lập không tạo ra sự xử lý/kết quả (như 听, 看, 想).",
-zh_hsk_bei_reverse: "MỤC TIÊU ĐỤC LỖ: Giới từ bị động 被 (hoặc 叫, 让). YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 giới từ mang tính chủ động (như 把, 对, 为) để lừa đảo chiều tác động.",
-zh_hsk_exist_order: "MỤC TIÊU ĐỤC LỖ: Trợ từ động thái 着 trong câu tồn tại. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 trợ từ động thái/kết cấu sai quy tắc (như 了, 过, 在).",
-zh_hsk_emph_order: "MỤC TIÊU ĐỤC LỖ: Chữ 连 trong cấu trúc nhấn mạnh. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ/liên từ không tạo thành cặp hô ứng với 也/都 (như 就, 才, 还).",
-zh_hsk_emph_extreme: "MỤC TIÊU ĐỤC LỖ: Phó từ hô ứng 也 hoặc 都 sau chữ 连. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ sai ngữ pháp không dùng trong câu nhấn mạnh (như 就, 才, 却).",
-zh_hsk_paired_only_if: "MỤC TIÊU ĐỤC LỖ: Chữ 才 hô ứng với 只有. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ phá vỡ cặp hô ứng điều kiện duy nhất (như 就, 还, 也).",
-zh_hsk_paired_as_long_as: "MỤC TIÊU ĐỤC LỖ: Chữ 就 hô ứng với 只要. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 phó từ phá vỡ cặp hô ứng điều kiện đủ (như 才, 还, 也).",
-general_blank: "MỤC TIÊU ĐỤC LỖ: Một Động từ hoặc Tính từ cốt lõi mang ý nghĩa quyết định của câu. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 từ cùng từ loại (đều là động từ/tính từ) nhưng sai hoàn toàn về mặt ý nghĩa văn cảnh.",
+// Bẫy Tiếng Trung
+zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Động từ ly hợp. Hãy sáng tạo 3 đáp án nhiễu là các động từ ly hợp bị ghép dính tân ngữ sai quy tắc hoặc mang ý nghĩa không phù hợp ngữ cảnh.",
+zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Phó từ 终于. Bạn hãy sinh ra các phó từ nhiễu chỉ thời gian/mức độ mâu thuẫn với kết quả ở vế sau (như 已经, 正在).",
+zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Phó từ mức độ (极, 越). Hãy tạo các phó từ nhiễu sai cấu trúc hô ứng hoặc không tương thích với văn cảnh (như 很, 非常).",
+zh_hsk_prep_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Giới từ (根据, 关于). Bạn hãy đưa ra các giới từ nhiễu sai hoàn toàn về ngữ nghĩa (như 对, 向, 为).",
+zh_hsk_conj_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Liên từ (不但, 而且). Hãy sáng tạo các liên từ nhiễu phá vỡ logic tăng tiến của câu (như 还是, 或者).",
+zh_hsk_noun_space: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Phương vị từ (上, 里). Bạn hãy sinh ra các từ chỉ phương hướng nhiễu ngược lại logic vật lý của ngữ cảnh (như 外, 下).",
+zh_hsk_rc_negation: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Phó từ phủ định 没. Hãy dùng các từ phủ định nhiễu sai ngữ pháp đối với quá khứ (như 不, 别) để thử thách người học.",
+zh_hsk_rc_state: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Bổ ngữ Kết quả. Bạn hãy sinh ra các Bổ ngữ nhiễu có ý nghĩa trái ngược hẳn với diễn biến của câu.",
+zh_hsk_pc_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Trợ từ 得 hoặc 不. Hãy tạo các đáp án nhiễu bằng trợ từ kết cấu hoặc động từ năng nguyện sai cấu trúc (như 的, 能).",
+zh_hsk_dc_location: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Tân ngữ Địa điểm. Hãy đưa ra các danh từ chung chung không mang tính địa điểm để làm nhiễu.",
+zh_hsk_dc_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Động từ xu hướng (来, 去). Bạn hãy sinh ra các hướng di chuyển nhiễu ngược lại với logic của câu chuyện.",
+zh_hsk_ba_indefinite: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Lượng từ/Chỉ thị từ trong câu chữ 把. Hãy tạo các đáp án nhiễu bằng những cụm số lượng từ không xác định (như 一, 几).",
+zh_hsk_ba_result: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là phần Kết quả trong câu chữ 把. Bạn hãy sinh ra các động từ nhiễu độc lập không biểu đạt sự xử lý hay kết quả.",
+zh_hsk_bei_reverse: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Giới từ bị động 被. Hãy dùng các giới từ nhiễu mang tính chủ động (như 把, 对) để đánh lừa chiều tác động.",
+zh_hsk_exist_order: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Trợ từ động thái 着. Hãy tạo các đáp án nhiễu bằng những trợ từ sai quy tắc tồn tại (như 了, 过, 在).",
+zh_hsk_emph_order: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 连. Bạn hãy đưa ra các phó từ/liên từ nhiễu không thể tạo cặp hô ứng với 也 hoặc 都.",
+zh_hsk_emph_extreme: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại phó từ hô ứng 也 hoặc 都. Hãy dùng các phó từ nhiễu không phù hợp trong câu nhấn mạnh (như 就, 才).",
+zh_hsk_paired_only_if: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 才 hô ứng với 只有. Hãy sáng tạo các đáp án nhiễu phá vỡ cặp hô ứng điều kiện duy nhất này (như 就, 还).",
+zh_hsk_paired_as_long_as: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 就 hô ứng với 只要. Hãy sáng tạo các đáp án nhiễu phá vỡ cặp hô ứng điều kiện đủ này (như 才, 还).",
+zh_hsk_dist_li: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 离. Bạn hãy sinh ra các giới từ nhiễu sai cấu trúc khoảng cách để đánh lừa (như 从, 在, 到).",
+zh_hsk_comp_bi: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 比. Hãy tạo các từ nối nhiễu sai hoàn toàn về ngữ cảnh so sánh (như 和, 跟).",
+zh_hsk_except_chule: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại cụm 除了 hoặc 以外. Hãy sinh ra các liên từ nhiễu có logic sai lệch hẳn (như 只有, 如果).",
+general_blank: "ĐỊNH HƯỚNG SÁNG TẠO: Điểm đục lỗ là một Động từ/Tính từ then chốt. Hãy sáng tạo các đáp án nhiễu cùng từ loại nhưng mang ý nghĩa sai lệch với văn cảnh.",
 // Bẫy Tiếng Anh
 eng_article_an: "MỤC TIÊU ĐỤC LỖ: Mạo từ A/An. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra 3 mạo từ hoặc đại từ sai quy tắc (vd: the, some, any) để đánh lừa.",
 eng_plural_s: "MỤC TIÊU ĐỤC LỖ: Danh từ số nhiều bất quy tắc. YÊU CẦU ĐÁP ÁN NHIỄU: Sinh ra các dạng số nhiều sai (vd: childs, childrens, childrenes).",
@@ -4904,27 +4926,30 @@ eng_vietglish_collocation: "MỤC TIÊU ĐỤC LỖ: Động từ trong Cụm t�
 // GAME GHÉP CÂU (SCRAMBLE NOISE) - SINH TỪ RÁC (DISTRACTORS)
 // ====================================================
 scramble: {
-// Bẫy Tiếng Trung (Đã chuẩn hóa ID)
-zh_hsk_separable_obj: "MỤC TIÊU: Động từ ly hợp. YÊU CẦU: Hãy sinh ra các TỪ RÁC là Đại từ nhân xưng (như 他, 我) hoặc Danh từ chỉ người để lừa học viên ghép nó trực tiếp vào ngay sau động từ ly hợp (VD: tạo chữ 他 để lừa ghép thành 帮忙他).",
-zh_hsk_adv_zhongyu: "MỤC TIÊU: Phó từ 终于. YÊU CẦU: Hãy sinh ra các TỪ RÁC là các từ chỉ thời gian (như 昨天) hoặc giới từ (như 在) để làm rối loạn trật tự, lừa học viên xếp 终于 ra sau động từ chính.",
-zh_hsk_adv_degree: "MỤC TIÊU: Phó từ mức độ. YÊU CẦU: Hãy sinh ra TỪ RÁC là '很' hoặc '非常' để lừa học viên ghép sai vào cấu trúc '越...越...' hoặc lừa đặt trước tính từ đã có chữ '极'.",
-zh_hsk_prep_mismatch: "MỤC TIÊU: Giới từ. YÊU CẦU: Hãy sinh ra TỪ RÁC là giới từ sai ngữ cảnh (như '对于', '对') để lừa học viên thay thế cho các giới từ như 根据 hay 关于.",
-zh_hsk_conj_mismatch: "MỤC TIÊU: Cặp liên từ 不但...而且. YÊU CẦU: Hãy sinh ra TỪ RÁC là liên từ sai cặp như '还是', '或者' hoặc '但是' để lừa học viên phá vỡ cấu trúc hô ứng.",
-zh_hsk_noun_space: "MỤC TIÊU: Danh từ không gian. YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '里' hoặc '上' dư thừa để lừa học viên nhét vào sau các danh từ đã mang sẵn nghĩa địa điểm (như 图书馆里).",
-zh_hsk_rc_negation: "MỤC TIÊU: Phủ định Bổ ngữ Kết quả. YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '不' (Không) để lừa học viên sử dụng sai thay vì dùng chữ '没' (Chưa) trong câu nói về quá khứ.",
-zh_hsk_rc_state: "MỤC TIÊU: Bổ ngữ Kết quả. YÊU CẦU: Hãy sinh ra TỪ RÁC là một Động từ/Tính từ biểu thị kết quả (như 错, 坏, 完) trái ngược hoàn toàn với logic của câu gốc.",
-zh_hsk_pc_ability: "MỤC TIÊU: Bổ ngữ Khả năng (得/不). YÊU CẦU: Hãy sinh ra TỪ RÁC là Động từ năng nguyện '能' hoặc '不能' để lừa học viên nhầm lẫn cấu trúc biểu đạt khả năng.",
-zh_hsk_dc_location: "MỤC TIÊU: Bổ ngữ Xu hướng mang Tân ngữ Địa điểm. YÊU CẦU: Hãy sinh ra TỪ RÁC là Giới từ '在' hoặc '到' để lừa học viên xếp sai Tân ngữ Địa điểm ra sau chữ 来/去 (VD: 走进来在教室).",
-zh_hsk_dc_direction: "MỤC TIÊU: Bổ ngữ Xu hướng. YÊU CẦU: Hãy sinh ra TỪ RÁC là động từ xu hướng (như 去, 出) ngược chiều với hướng di chuyển của câu gốc để lừa học viên.",
-zh_hsk_ba_indefinite: "MỤC TIÊU: Câu chữ 把 (Bǎ). YÊU CẦU: Hãy sinh ra TỪ RÁC là Cụm số lượng từ KHÔNG xác định (như 一个, 一本) hoặc chữ '被' để lừa học viên phá vỡ quy tắc tân ngữ xác định của câu chữ 把.",
-zh_hsk_ba_result: "MỤC TIÊU: Câu chữ 把. YÊU CẦU: Hãy sinh ra TỪ RÁC là một động từ độc lập không có thành phần kết quả (như 看看, 玩) để lừa học viên ghép vào cuối câu thay vì động từ chính xác.",
-zh_hsk_bei_reverse: "MỤC TIÊU: Câu bị động chữ 被 (Bèi). YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '把' (Bǎ) để lừa học viên nhầm lẫn cấu trúc Chủ động và Bị động.",
-zh_hsk_exist_order: "MỤC TIÊU: Câu Tồn tại (着). YÊU CẦU: Hãy sinh ra TỪ RÁC là Giới từ '在' để lừa học viên xếp phần Trạng ngữ chỉ Nơi chốn ra cuối câu thay vì đầu câu.",
-zh_hsk_emph_order: "MỤC TIÊU: Cấu trúc nhấn mạnh 连...也/都. YÊU CẦU: Hãy sinh ra TỪ RÁC là Phó từ '就' hoặc '还' để lừa học viên làm rối loạn cặp hô ứng.",
-zh_hsk_emph_extreme: "MỤC TIÊU: Cấu trúc 连...也/都. YÊU CẦU: Hãy sinh ra TỪ RÁC là một danh từ chung chung, bình thường (không mang tính cực đoan) để lừa học viên đặt sau chữ 连.",
-zh_hsk_paired_only_if: "MỤC TIÊU: Cấu trúc 只有...才... (Chỉ có... mới...). YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '就' để lừa học viên ghép sai cặp hô ứng điều kiện.",
-zh_hsk_paired_as_long_as: "MỤC TIÊU: Cấu trúc 只要...就... (Chỉ cần... là...). YÊU CẦU: Hãy sinh ra TỪ RÁC là chữ '才' để lừa học viên ghép sai cặp hô ứng điều kiện.",
-general_noise: "MỤC TIÊU: Tạo nhiễu chung. YÊU CẦU: Hãy sinh ra các TỪ RÁC là các Hư từ (的, 了, 是) hoặc Giới từ (在, 比) không phù hợp với cấu trúc câu gốc để lừa học viên ghép sai ngữ pháp.",
+// Bẫy Tiếng Trung
+zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là Động từ ly hợp. Bạn hãy sinh ra những từ rác là Đại từ nhân xưng hoặc Danh từ để dụ dỗ người học ghép nó trực tiếp vào ngay sau động từ ly hợp.",
+zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Phó từ 终于. Bạn hãy tạo từ rác là các trạng từ chỉ thời gian để đánh lừa người học dời 终于 ra sau động từ chính.",
+zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào Phó từ mức độ. Hãy tạo từ rác như '很' hoặc '非常' để gây nhầm lẫn khi người học sắp xếp cấu trúc '越...越...' hoặc '极'.",
+zh_hsk_prep_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Giới từ. Bạn hãy sinh ra từ rác là một giới từ sai ngữ cảnh (như '对') để lừa học viên thay thế cho giới từ đúng trong câu.",
+zh_hsk_conj_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Cặp liên từ 不但...而且. Hãy tạo từ rác là một liên từ sai cặp (như '还是') để thử thách khả năng ghi nhớ cặp hô ứng.",
+zh_hsk_noun_space: "ĐỊNH HƯỚNG SÁNG TẠO: Danh từ không gian. Bạn hãy sinh ra từ rác là các chữ '里' hoặc '上' dư thừa để dụ người học ghép vào sau các danh từ đã mang nghĩa địa điểm.",
+zh_hsk_rc_negation: "ĐỊNH HƯỚNG SÁNG TẠO: Phủ định Bổ ngữ Kết quả. Bạn hãy sinh ra từ rác '不' để lừa học viên dùng sai từ phủ định cho quá khứ thay vì dùng '没'.",
+zh_hsk_rc_state: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ Kết quả. Hãy tạo từ rác là một Động từ/Tính từ biểu thị trạng thái kết quả trái ngược hẳn với logic ban đầu của câu.",
+zh_hsk_pc_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ Khả năng (得/不). Bạn hãy sinh ra từ rác là động từ năng nguyện '能' hoặc '不能' để đánh lừa cấu trúc.",
+zh_hsk_dc_location: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ Xu hướng & Địa điểm. Bạn hãy tạo từ rác là giới từ '在' để thử thách người học đặt sai vị trí địa điểm.",
+zh_hsk_dc_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Bổ ngữ Xu hướng. Hãy sinh ra từ rác là động từ xu hướng (như 去, 来) ngược lại với hướng đi của câu gốc.",
+zh_hsk_ba_indefinite: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 把. Bạn hãy sinh ra từ rác là các từ chỉ số lượng không xác định (như 一个) để dụ người học phá vỡ quy tắc tân ngữ xác định.",
+zh_hsk_ba_result: "ĐỊNH HƯỚNG SÁNG TẠO: Câu chữ 把. Hãy tạo từ rác là một động từ độc lập không kèm theo thành phần kết quả để thử thách người học.",
+zh_hsk_bei_reverse: "ĐỊNH HƯỚNG SÁNG TẠO: Câu bị động chữ 被. Bạn hãy sinh ra từ rác là chữ '把' để thử xem học viên có nhầm lẫn giữa cấu trúc Chủ động và Bị động hay không.",
+zh_hsk_exist_order: "ĐỊNH HƯỚNG SÁNG TẠO: Câu Tồn tại (着). Hãy tạo từ rác là chữ '在' để dụ dỗ người học kéo Trạng ngữ Nơi chốn xuống cuối câu.",
+zh_hsk_emph_order: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc 连...也/都. Bạn hãy sinh ra từ rác là chữ '就' hoặc '还' để làm rối loạn cặp hô ứng nhấn mạnh.",
+zh_hsk_emph_extreme: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc 连...也/都. Hãy tạo từ rác là một danh từ chung chung, bình thường để lừa học viên đánh mất đi tính cực đoan của câu.",
+zh_hsk_paired_only_if: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc 只有...才... Bạn hãy sinh ra từ rác là chữ '就' để người học dễ ghép sai cặp hô ứng điều kiện.",
+zh_hsk_paired_as_long_as: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc 只要...就... Bạn hãy sinh ra từ rác là chữ '才' để thử thách người học ghép sai cặp hô ứng.",
+zh_hsk_dist_li: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc khoảng cách 离. Hãy tạo từ rác là chữ 从 hoặc 在 để đánh lừa người học ghép sai giới từ chỉ khoảng cách.",
+zh_hsk_comp_bi: "ĐỊNH HƯỚNG SÁNG TẠO: Câu so sánh 比. Bạn hãy sinh ra từ rác là phó từ mức độ 很 hoặc 非常 để dụ học viên đặt vào trước tính từ so sánh.",
+zh_hsk_except_chule: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc 除了...以外. Hãy tạo từ rác là liên từ 虽然 hoặc 但是 để thử thách sự nhạy bén về ngữ pháp của người học.",
+general_noise: "ĐỊNH HƯỚNG SÁNG TẠO: Tạo nhiễu chung. Bạn hãy sinh ra các từ rác là Hư từ (的, 了, 是) hoặc Giới từ (在, 比) không phù hợp với văn cảnh để tăng độ khó logic.",
 // Bẫy Tiếng Anh
 eng_article_an: "MỤC TIÊU: Mạo từ A/An. YÊU CẦU: Sinh ra TỪ RÁC là mạo từ sai (vd: 'a' nếu danh từ bắt đầu bằng nguyên âm) để lừa học viên ghép sai.",
 eng_plural_s: "MỤC TIÊU: Danh từ số nhiều. YÊU CẦU: Sinh ra TỪ RÁC là dạng có '-s' hoặc '-es' bị chia sai của danh từ trong câu.",
