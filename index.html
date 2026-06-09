@@ -558,10 +558,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.10
-// Last Updated: 2026-06-07 07:50
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.11
+// Last Updated: 2026-06-09 16:30
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.10: [MAXIMUM FIREPOWER] Tối ưu hóa thời gian Đóng băng Round-Robin. Key thành công (OK) chỉ nghỉ 15s. Key lỗi (429) nghỉ 60s, lỗi (503) nghỉ 20s. Giải phóng 100% công suất của 25 API Keys.
+// Cập nhật V2.11: [CREATIVE FREEDOM & SMART SCHEMA] Đại vi phẫu hàm fillCardWithAi. Loại bỏ logic truy vấn khuyết thiếu gây mâu thuẫn nhận thức. Tự động xóa trường sinoViet khỏi JSON Schema đối với Tiếng Anh/Việt để chấm dứt tình trạng nghẽn Thoughts Tokens (lỗi 429/28s). Tối ưu nội suy biến System Prompt.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -769,7 +769,8 @@ const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 const currentLevel = localStorage.getItem('fc_current_level_' + lang) ? localStorage.getItem('fc_current_level_' + lang).replace(/"/g, '') : (lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4'));
 const predefinedTopics = window.IoeDataEngine?.TOPICS?.[currentLevel] || [];
 const topicRestriction = predefinedTopics.length > 0 ? ` Mục topic BẮT BUỘC chọn chính xác 1 từ khóa trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.` : '';
-const fullProperties = {
+// 1. Khai báo Full Schema chuẩn chỉnh
+const propertiesToFetch = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
 definition: { type: "STRING" },
@@ -781,26 +782,18 @@ example: { type: "STRING" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
 };
-let propertiesToFetch = {};
-let requiredFields = [];
-let promptRequest = "";
-if (targetFields && Array.isArray(targetFields) && targetFields.length > 0) {
-targetFields.forEach(field => {
-const schemaKey = (field === 'image') ? 'image_keyword' : field;
-if (fullProperties[schemaKey]) {
-propertiesToFetch[schemaKey] = fullProperties[schemaKey];
-requiredFields.push(schemaKey);
+let requiredFields = ["term", "pronunciation", "definition", "partOfSpeech", "topic", "analysis", "sinoViet", "example", "image_keyword", "grammar_type"];
+// 2. [LÕI VI PHẪU] Bỏ trường sinoViet khỏi JSON Schema nếu không phải tiếng Trung
+if (lang !== 'zh') {
+delete propertiesToFetch.sinoViet;
+requiredFields = requiredFields.filter(f => f !== 'sinoViet');
 }
-});
-promptRequest = `Chỉ phân tích và trả về thông tin cho các mục sau: ${requiredFields.join(", ")}. Các mục khác bỏ qua. Bắt buộc suy luận chủ đề (topic) nếu được yêu cầu.${targetFields.includes('topic') ? topicRestriction : ''}`;
-} else {
-propertiesToFetch = fullProperties;
-requiredFields = ["term", "pronunciation", "definition", "partOfSpeech", "topic", "analysis", "sinoViet", "example", "image_keyword", "grammar_type"];
-promptRequest = `Phân tích đầy đủ tất cả các trường thông tin, đặc biệt là tự động phân loại chủ đề (topic).${topicRestriction}`;
-}
+// 3. Nội suy System Prompt
 const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
-const basePrompt = window.DEFAULT_PROMPTS[promptKey];
-const userQuery = `Hãy phân tích ${typeLabel} này theo chuẩn JSON: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). ${promptRequest}`;
+let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
+basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
+// 4. Lệnh gọi mạch lạc, không cấm đoán chắp vá
+const userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}`;
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
 systemInstruction: { parts: [{ text: basePrompt }] },
