@@ -87,10 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.2
-// Last Updated: 2026-06-09 10:28
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.3
+// Last Updated: 2026-06-09 15:35
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V3.2: [PRE-COMPUTATION SYNC] Đồng bộ toàn bộ 52 định danh bẫy Tiếng Anh mới (Pre-A1, A1, A1+) vào IoeEnumRegistry và DEFAULT_PROMPTS.
+// Cập nhật V3.3: [PRE-COMPUTATION SYNC] Đồng bộ toàn bộ 20 định danh bẫy Tiếng Anh A2 vào en_level_4 của IoeEnumRegistry và nâng cấp Radar AI nhận diện nhãn tại DEFAULT_PROMPTS.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -133,7 +133,7 @@ zh_level_4: ['zh_hsk_emph_order', 'zh_hsk_emph_extreme', 'zh_hsk_paired_only_if'
 en_level_1: ['pre_a1_article_an', 'pre_a1_plural_s', 'pre_a1_tobe_match', 'pre_a1_this_that', 'pre_a1_like_plural', 'pre_a1_commands', 'pre_a1_adj_order', 'pre_a1_he_she', 'pre_a1_have_has', 'pre_a1_prepositions', 'pre_a1_yesno_order', 'pre_a1_can_cant'],
 en_level_2: ['eng_a1_pres_3rd_person', 'eng_a1_pres_tobe_verb_clash', 'eng_a1_pres_auxiliary', 'eng_a1_adv_frequency_pos', 'eng_a1_pres_cont_missing_be', 'eng_a1_pres_cont_base_verb', 'eng_a1_tense_clash', 'eng_a1_past_tobe_agreement', 'eng_a1_past_tobe_verb_clash', 'eng_a1_past_missing_ed', 'eng_a1_modal_can_to', 'eng_a1_modal_can_s', 'eng_a1_would_like', 'eng_a1_possessive_adj', 'eng_a1_demonstrative_clash', 'eng_a1_uncountable_plural', 'eng_a1_prep_time', 'eng_a1_prep_place_vn', 'eng_a1_conjunction_logic', 'eng_a1_wh_question_match'],
 en_level_3: ['eng_a1p_tense_clash', 'eng_a1p_past_ed', 'eng_a1p_past_double', 'eng_a1p_past_be_vs_do', 'eng_a1p_comp_double', 'eng_a1p_comp_irregular', 'eng_a1p_comp_than', 'eng_a1p_quant_some_any', 'eng_a1p_quant_much_many', 'eng_a1p_quant_a_lot_of', 'eng_a1p_conj_because_so', 'eng_a1p_adv_very_verb', 'eng_a1p_adv_too_much', 'eng_a1p_job_article', 'eng_a1p_modal_to', 'eng_a1p_modal_s', 'eng_a1p_emotion_ed_ing', 'eng_a1p_tag_question', 'eng_a1p_phrasal_prep', 'eng_a1p_time_quarter'],
-en_level_4: ['eng_past_irregular', 'eng_comparative_double', 'eng_much_many', 'eng_vietglish_collocation'],
+en_level_4: ['eng_a2_past_interrupt', 'eng_a2_pres_perf_form', 'eng_a2_pres_perf_ever', 'eng_a2_future_will_going', 'eng_a2_although_but', 'eng_a2_because_so', 'eng_a2_if_type1_will', 'eng_a2_when_while_swap', 'eng_a2_adv_of_manner', 'eng_a2_comparative_double', 'eng_a2_superlative_missing_the', 'eng_a2_irregular_adj', 'eng_a2_modal_plus_to', 'eng_a2_modal_plus_ving', 'eng_a2_have_to_conjugation', 'eng_a2_mustn_dont_have_to', 'eng_a2_much_many', 'eng_a2_few_little', 'eng_a2_make_do_swap', 'eng_a2_phrasal_prep'],
 en_level_5: ['eng_since_for', 'eng_passive_missing_be', 'eng_vietglish_collocation']
 },
 // Phương thức truy xuất nhanh
@@ -151,7 +151,7 @@ enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term
 1. Nếu câu mang cấu trúc bình thường, hãy trả về mảng rỗng [].
 2. Hãy chọn lọc 1 đến 2 mã cốt lõi nhất phản ánh đúng đặc trưng ngữ pháp của câu.
 3. TIẾNG TRUNG chọn trong: [zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as, zh_hsk_dist_li, zh_hsk_comp_bi, zh_hsk_except_chule].
-4. TIẾNG ANH chọn trong: [pre_a1_article_an, pre_a1_plural_s, pre_a1_tobe_match, pre_a1_this_that, pre_a1_like_plural, pre_a1_commands, pre_a1_adj_order, pre_a1_he_she, pre_a1_have_has, pre_a1_prepositions, pre_a1_yesno_order, pre_a1_can_cant, eng_a1_pres_3rd_person, eng_a1_pres_tobe_verb_clash, eng_a1_pres_auxiliary, eng_a1_adv_frequency_pos, eng_a1_pres_cont_missing_be, eng_a1_pres_cont_base_verb, eng_a1_tense_clash, eng_a1_past_tobe_agreement, eng_a1_past_tobe_verb_clash, eng_a1_past_missing_ed, eng_a1_modal_can_to, eng_a1_modal_can_s, eng_a1_would_like, eng_a1_possessive_adj, eng_a1_demonstrative_clash, eng_a1_uncountable_plural, eng_a1_prep_time, eng_a1_prep_place_vn, eng_a1_conjunction_logic, eng_a1_wh_question_match, eng_a1p_tense_clash, eng_a1p_past_ed, eng_a1p_past_double, eng_a1p_past_be_vs_do, eng_a1p_comp_double, eng_a1p_comp_irregular, eng_a1p_comp_than, eng_a1p_quant_some_any, eng_a1p_quant_much_many, eng_a1p_quant_a_lot_of, eng_a1p_conj_because_so, eng_a1p_adv_very_verb, eng_a1p_adv_too_much, eng_a1p_job_article, eng_a1p_modal_to, eng_a1p_modal_s, eng_a1p_emotion_ed_ing, eng_a1p_tag_question, eng_a1p_phrasal_prep, eng_a1p_time_quarter, eng_article_an, eng_plural_s, eng_present_cont, eng_this_these, eng_past_irregular, eng_comparative_double, eng_much_many, eng_since_for, eng_passive_missing_be, eng_vietglish_collocation].
+4. TIẾNG ANH chọn trong: [pre_a1_article_an, pre_a1_plural_s, pre_a1_tobe_match, pre_a1_this_that, pre_a1_like_plural, pre_a1_commands, pre_a1_adj_order, pre_a1_he_she, pre_a1_have_has, pre_a1_prepositions, pre_a1_yesno_order, pre_a1_can_cant, eng_a1_pres_3rd_person, eng_a1_pres_tobe_verb_clash, eng_a1_pres_auxiliary, eng_a1_adv_frequency_pos, eng_a1_pres_cont_missing_be, eng_a1_pres_cont_base_verb, eng_a1_tense_clash, eng_a1_past_tobe_agreement, eng_a1_past_tobe_verb_clash, eng_a1_past_missing_ed, eng_a1_modal_can_to, eng_a1_modal_can_s, eng_a1_would_like, eng_a1_possessive_adj, eng_a1_demonstrative_clash, eng_a1_uncountable_plural, eng_a1_prep_time, eng_a1_prep_place_vn, eng_a1_conjunction_logic, eng_a1_wh_question_match, eng_a1p_tense_clash, eng_a1p_past_ed, eng_a1p_past_double, eng_a1p_past_be_vs_do, eng_a1p_comp_double, eng_a1p_comp_irregular, eng_a1p_comp_than, eng_a1p_quant_some_any, eng_a1p_quant_much_many, eng_a1p_quant_a_lot_of, eng_a1p_conj_because_so, eng_a1p_adv_very_verb, eng_a1p_adv_too_much, eng_a1p_job_article, eng_a1p_modal_to, eng_a1p_modal_s, eng_a1p_emotion_ed_ing, eng_a1p_tag_question, eng_a1p_phrasal_prep, eng_a1p_time_quarter, eng_a2_past_interrupt, eng_a2_pres_perf_form, eng_a2_pres_perf_ever, eng_a2_future_will_going, eng_a2_although_but, eng_a2_because_so, eng_a2_if_type1_will, eng_a2_when_while_swap, eng_a2_adv_of_manner, eng_a2_comparative_double, eng_a2_superlative_missing_the, eng_a2_irregular_adj, eng_a2_modal_plus_to, eng_a2_modal_plus_ving, eng_a2_have_to_conjugation, eng_a2_mustn_dont_have_to, eng_a2_much_many, eng_a2_few_little, eng_a2_make_do_swap, eng_a2_phrasal_prep, eng_article_an, eng_plural_s, eng_present_cont, eng_this_these, eng_past_irregular, eng_comparative_double, eng_much_many, eng_since_for, eng_passive_missing_be, eng_vietglish_collocation].
 Vui lòng chỉ sử dụng các mã có sẵn trong danh sách trên).`,
 // --- 2. TRẮC NGHIỆM (QUIZ) ---
 quiz_word: `Bạn là chuyên gia thiết kế bài tập ngôn ngữ. Hãy tạo 3 đáp án nhiễu (distractors) cho từ vựng: "{baseText}" (Nghĩa đúng: "{targetText}").
@@ -4778,10 +4778,10 @@ addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 1, 'General Practice');
 return blueprint;
 }
 };
-// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.7
-// Last Updated: 2026-06-09 10:15
+// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.8
+// Last Updated: 2026-06-09 15:18
 // Nhiệm vụ: Số hóa Khung năng lực ngôn ngữ (HSK/CEFR) thành các quy tắc (Rules) định hướng AI sinh lỗi, đục lỗ và tạo bẫy.
-// Cập nhật V2.7: [A1+ INTEGRATION & CREATIVE FREEDOM] Tích hợp 20 bẫy sư phạm Tiếng Anh cấp độ A1+ (Upper Elementary). Duy trì triết lý "Định hướng sáng tạo", tập trung triệt tiêu các lỗi Vietglish kinh điển và xung đột thì.
+// Cập nhật V2.8: [A2 INTEGRATION & CREATIVE FREEDOM] Tích hợp 20 bẫy sư phạm Tiếng Anh cấp độ A2 (Lớp 6, 7). Tập trung triệt tiêu thói quen dịch word-by-word (Although... but, Because... so), sự phối thì, và sai lệch hình thái từ.
 // ==================================================================================
 window.IoeDataEngine = {
 // 1. NGỮ CẢNH TRÌNH ĐỘ (Định hướng Từ vựng và Cấu trúc chung)
@@ -4885,6 +4885,27 @@ eng_a1p_emotion_ed_ing: "ĐỊNH HƯỚNG SÁNG TẠO: Tính từ chỉ cảm x�
 eng_a1p_tag_question: "ĐỊNH HƯỚNG SÁNG TẠO: Câu hỏi đuôi. Hãy tạo đáp án nhiễu bằng cách dùng sai thể khẳng định/phủ định (ngược cực) ở phần đuôi.",
 eng_a1p_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Cụm động từ. Bạn hãy tạo nhiễu bằng cách bỏ quên giới từ đi kèm với động từ (vd: turn the TV thay vì turn on).",
 eng_a1p_time_quarter: "ĐỊNH HƯỚNG SÁNG TẠO: Thời gian. Hãy tạo đáp án nhiễu bằng cách đảo lộn vị trí của 'past' và 'to' khi nói giờ kém/giờ hơn.",
+// Bẫy Tiếng Anh (A2)
+eng_a2_past_interrupt: "ĐỊNH HƯỚNG SÁNG TẠO: Hành động cắt ngang. Bạn hãy tạo đáp án nhiễu bằng cách đảo ngược thì giữa hành động đang xảy ra (quá khứ tiếp diễn) và hành động cắt ngang (quá khứ đơn).",
+eng_a2_pres_perf_form: "ĐỊNH HƯỚNG SÁNG TẠO: Hiện tại hoàn thành. Hãy tạo đáp án nhiễu bằng cách lược bỏ trợ động từ have/has hoặc dùng dạng quá khứ V2 thay vì V3/ed.",
+eng_a2_pres_perf_ever: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí Ever/Never. Bạn hãy sinh ra đáp án nhiễu bằng cách đặt sai vị trí của từ ever hoặc never trong cấu trúc hiện tại hoàn thành.",
+eng_a2_future_will_going: "ĐỊNH HƯỚNG SÁNG TẠO: Thì tương lai. Hãy tạo đáp án nhiễu bằng cách bỏ quên to-be trong cấu trúc 'be going to' hoặc dùng 'will' cho một kế hoạch đã định sẵn.",
+eng_a2_although_but: "ĐỊNH HƯỚNG SÁNG TẠO: Mặc dù... nhưng. Bạn hãy tạo đáp án nhiễu tự nhiên bằng cách chèn thừa chữ 'but' vào mệnh đề thứ hai sau 'Although'.",
+eng_a2_because_so: "ĐỊNH HƯỚNG SÁNG TẠO: Bởi vì... cho nên. Hãy sinh ra đáp án nhiễu bằng cách chèn thừa chữ 'so' vào mệnh đề thứ hai sau 'Because'.",
+eng_a2_if_type1_will: "ĐỊNH HƯỚNG SÁNG TẠO: Câu điều kiện loại 1. Bạn hãy tạo đáp án nhiễu bằng cách nhét thừa trợ động từ 'will' vào ngay mệnh đề chứa 'If'.",
+eng_a2_when_while_swap: "ĐỊNH HƯỚNG SÁNG TẠO: When/While. Hãy tạo đáp án nhiễu bằng cách dùng 'While' trước hành động cắt ngang, hoặc 'When' trước hành động đang diễn ra.",
+eng_a2_adv_of_manner: "ĐỊNH HƯỚNG SÁNG TẠO: Trạng từ thể cách. Bạn hãy sinh ra đáp án nhiễu bằng cách dùng một Tính từ thay cho Trạng từ để bổ nghĩa cho động từ thường.",
+eng_a2_comparative_double: "ĐỊNH HƯỚNG SÁNG TẠO: So sánh kép. Hãy tạo đáp án nhiễu bằng cách chèn dư chữ 'more' trước một tính từ ngắn đã được thêm đuôi '-er'.",
+eng_a2_superlative_missing_the: "ĐỊNH HƯỚNG SÁNG TẠO: So sánh nhất. Bạn hãy sinh ra đáp án nhiễu bằng cách lược bỏ mạo từ 'the' đứng trước cấu trúc so sánh nhất.",
+eng_a2_irregular_adj: "ĐỊNH HƯỚNG SÁNG TẠO: Tính từ bất quy tắc. Hãy tạo đáp án nhiễu bằng cách chia sai tính từ bất quy tắc (như good/bad) theo công thức thêm đuôi thông thường.",
+eng_a2_modal_plus_to: "ĐỊNH HƯỚNG SÁNG TẠO: Động từ khuyết thiếu. Bạn hãy sinh ra đáp án nhiễu bằng cách chèn thừa giới từ 'to' vào ngay sau động từ khuyết thiếu.",
+eng_a2_modal_plus_ving: "ĐỊNH HƯỚNG SÁNG TẠO: Động từ khuyết thiếu. Hãy tạo đáp án nhiễu bằng cách chia động từ ở dạng V-ing thay vì nguyên thể ngay sau động từ khuyết thiếu.",
+eng_a2_have_to_conjugation: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc Have to. Bạn hãy sinh ra đáp án nhiễu bằng cách quên chia 'have to' thành 'has to' đối với chủ ngữ ngôi thứ 3 số ít.",
+eng_a2_mustn_dont_have_to: "ĐỊNH HƯỚNG SÁNG TẠO: Mustn't và Don't have to. Hãy tạo đáp án nhiễu bằng cách tráo đổi ý nghĩa giữa sự cấm đoán và sự không bắt buộc.",
+eng_a2_much_many: "ĐỊNH HƯỚNG SÁNG TẠO: Much/Many. Bạn hãy sinh ra đáp án nhiễu bằng cách dùng 'many' cho danh từ không đếm được hoặc 'much' cho danh từ số nhiều.",
+eng_a2_few_little: "ĐỊNH HƯỚNG SÁNG TẠO: A few/A little. Hãy tạo đáp án nhiễu bằng cách dùng sai 'a few' cho danh từ không đếm được hoặc ngược lại.",
+eng_a2_make_do_swap: "ĐỊNH HƯỚNG SÁNG TẠO: Collocation Make/Do. Bạn hãy sinh ra đáp án nhiễu bằng cách tráo đổi cách dùng giữa động từ 'make' và 'do' trong các cụm cố định.",
+eng_a2_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Cụm động từ (Phrasal Verbs). Hãy tạo đáp án nhiễu bằng cách thay thế sai giới từ đi kèm trong các cụm động từ quen thuộc.",
 // Bẫy Tiếng Anh (General Legacy)
 eng_article_an: "ĐỊNH HƯỚNG SÁNG TẠO: Mạo từ A/An. Hãy tạo các đáp án nhiễu tự nhiên bằng cách dùng sai mạo từ trước nguyên âm/phụ âm.",
 eng_plural_s: "ĐỊNH HƯỚNG SÁNG TẠO: Danh từ số nhiều. Bạn hãy sinh ra các đáp án nhiễu bằng cách áp dụng sai quy tắc thêm 's'/'es' hoặc chia sai danh từ bất quy tắc.",
@@ -4980,6 +5001,27 @@ eng_a1p_emotion_ed_ing: "ĐỊNH HƯỚNG SÁNG TẠO: Tính từ chỉ cảm x�
 eng_a1p_tag_question: "ĐỊNH HƯỚNG SÁNG TẠO: Câu hỏi đuôi. Hãy bóp méo phần đuôi câu hỏi bằng cách giữ nguyên thể khẳng định/phủ định thay vì đảo cực.",
 eng_a1p_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Cụm động từ. Bạn hãy tạo lỗi sai bằng cách lược bỏ giới từ trong phrasal verb.",
 eng_a1p_time_quarter: "ĐỊNH HƯỚNG SÁNG TẠO: Thời gian. Hãy làm sai lệch thời gian bằng cách đổi 'past' thành 'to' hoặc ngược lại.",
+// Bẫy Tiếng Anh (A2)
+eng_a2_past_interrupt: "ĐỊNH HƯỚNG SÁNG TẠO: Hành động cắt ngang. Bạn hãy tạo lỗi sai bằng cách đảo ngược thì giữa hành động đang xảy ra (quá khứ tiếp diễn) và hành động cắt ngang (quá khứ đơn).",
+eng_a2_pres_perf_form: "ĐỊNH HƯỚNG SÁNG TẠO: Hiện tại hoàn thành. Hãy bóp méo câu bằng cách lược bỏ trợ động từ have/has hoặc dùng quá khứ V2 thay vì V3/ed.",
+eng_a2_pres_perf_ever: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí Ever/Never. Bạn hãy tạo lỗi sai bằng cách đặt từ ever hoặc never sai vị trí trong câu hiện tại hoàn thành.",
+eng_a2_future_will_going: "ĐỊNH HƯỚNG SÁNG TẠO: Thì tương lai. Hãy bóp méo câu bằng cách lược bỏ to-be trong cấu trúc 'be going to' hoặc dùng 'will' cho kế hoạch định sẵn.",
+eng_a2_although_but: "ĐỊNH HƯỚNG SÁNG TẠO: Mặc dù... nhưng. Bạn hãy tạo lỗi sai kinh điển bằng cách chèn thừa chữ 'but' vào mệnh đề chính sau 'Although'.",
+eng_a2_because_so: "ĐỊNH HƯỚNG SÁNG TẠO: Bởi vì... cho nên. Hãy tạo lỗi sai bằng cách chèn thừa chữ 'so' vào mệnh đề chính sau 'Because'.",
+eng_a2_if_type1_will: "ĐỊNH HƯỚNG SÁNG TẠO: Câu điều kiện loại 1. Bạn hãy bóp méo câu bằng cách nhét thừa trợ động từ 'will' vào ngay mệnh đề giả thiết 'If'.",
+eng_a2_when_while_swap: "ĐỊNH HƯỚNG SÁNG TẠO: When/While. Hãy tạo lỗi sai bằng cách hoán đổi cách dùng của 'While' và 'When' cho hành động đang diễn ra và cắt ngang.",
+eng_a2_adv_of_manner: "ĐỊNH HƯỚNG SÁNG TẠO: Trạng từ thể cách. Bạn hãy bóp méo câu bằng cách dùng một Tính từ thay vì Trạng từ để bổ nghĩa cho động từ thường.",
+eng_a2_comparative_double: "ĐỊNH HƯỚNG SÁNG TẠO: So sánh kép. Hãy tạo lỗi sai bằng cách nhét thừa chữ 'more' trước một tính từ ngắn đã có đuôi '-er'.",
+eng_a2_superlative_missing_the: "ĐỊNH HƯỚNG SÁNG TẠO: So sánh nhất. Bạn hãy tạo lỗi sai bằng cách lược bỏ mạo từ 'the' phía trước cấu trúc so sánh nhất.",
+eng_a2_irregular_adj: "ĐỊNH HƯỚNG SÁNG TẠO: Tính từ bất quy tắc. Hãy bóp méo câu bằng cách chia sai tính từ bất quy tắc theo công thức thêm đuôi thông thường.",
+eng_a2_modal_plus_to: "ĐỊNH HƯỚNG SÁNG TẠO: Động từ khuyết thiếu. Bạn hãy tạo lỗi sai bằng cách chèn thừa giới từ 'to' vào sau động từ khuyết thiếu.",
+eng_a2_modal_plus_ving: "ĐỊNH HƯỚNG SÁNG TẠO: Động từ khuyết thiếu. Hãy tạo lỗi sai bằng cách chia động từ ở dạng V-ing thay vì nguyên thể sau modal verb.",
+eng_a2_have_to_conjugation: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc Have to. Bạn hãy bóp méo câu bằng cách chia sai 'have to' thành 'has to' hoặc ngược lại so với chủ ngữ.",
+eng_a2_mustn_dont_have_to: "ĐỊNH HƯỚNG SÁNG TẠO: Mustn't và Don't have to. Hãy tạo lỗi sai bằng cách tráo đổi ý nghĩa giữa sự cấm đoán và sự không bắt buộc.",
+eng_a2_much_many: "ĐỊNH HƯỚNG SÁNG TẠO: Much/Many. Bạn hãy bóp méo câu bằng cách dùng sai 'many' cho danh từ không đếm được hoặc ngược lại.",
+eng_a2_few_little: "ĐỊNH HƯỚNG SÁNG TẠO: A few/A little. Hãy tạo lỗi sai bằng cách hoán đổi cách dùng 'a few' và 'a little' cho các loại danh từ.",
+eng_a2_make_do_swap: "ĐỊNH HƯỚNG SÁNG TẠO: Collocation Make/Do. Bạn hãy bóp méo câu bằng cách hoán đổi động từ 'make' và 'do' trong các cụm cố định.",
+eng_a2_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Cụm động từ. Hãy tạo lỗi sai bằng cách dùng sai giới từ đi kèm trong các Phrasal Verbs phổ biến.",
 // Bẫy Tiếng Anh (General Legacy)
 eng_article_an: "ĐỊNH HƯỚNG SÁNG TẠO: Mạo từ A/An. Bạn hãy bóp méo câu bằng cách đảo ngược cách dùng mạo từ trước nguyên âm/phụ âm.",
 eng_plural_s: "ĐỊNH HƯỚNG SÁNG TẠO: Danh từ số nhiều. Hãy tạo một lỗi sai bằng cách chia sai dạng số nhiều của danh từ bất quy tắc.",
@@ -5075,6 +5117,27 @@ eng_a1p_emotion_ed_ing: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Tính t
 eng_a1p_tag_question: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại phần Đuôi câu hỏi. Bạn hãy sinh ra các phần đuôi nhiễu không đảo cực với mệnh đề chính.",
 eng_a1p_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Giới từ trong cụm động từ. Hãy đưa ra các giới từ sai hoặc đại từ làm nhiễu.",
 eng_a1p_time_quarter: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 'past' hoặc 'to' chỉ thời gian. Bạn hãy hoán đổi chúng thành đáp án nhiễu.",
+// Bẫy Tiếng Anh (A2)
+eng_a2_past_interrupt: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại động từ chính. Bạn hãy sinh ra các đáp án nhiễu đảo ngược thì giữa quá khứ tiếp diễn và quá khứ đơn.",
+eng_a2_pres_perf_form: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Động từ V3/ed hoặc trợ động từ have/has. Hãy đưa ra các đáp án nhiễu chia sai dạng V2 hoặc thiếu trợ động từ.",
+eng_a2_pres_perf_ever: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ Ever hoặc Never. Bạn hãy sinh ra các trạng từ khác hoặc cấu trúc sai vị trí để làm nhiễu.",
+eng_a2_future_will_going: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại 'be going to' hoặc 'will'. Hãy đưa ra các đáp án nhiễu thiếu to-be hoặc dùng nhầm giữa kế hoạch và dự đoán.",
+eng_a2_although_but: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 'Although'. Bạn hãy sinh ra các liên từ nhiễu như 'But' hoặc 'So' để lừa người học.",
+eng_a2_because_so: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 'Because'. Hãy đưa ra các liên từ nhiễu như 'So' hoặc 'Although' để bẫy người học.",
+eng_a2_if_type1_will: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại động từ trong mệnh đề If. Bạn hãy sinh ra các đáp án nhiễu bị gắn thêm 'will' phía trước.",
+eng_a2_when_while_swap: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại 'When' hoặc 'While'. Hãy đưa ra các liên từ thời gian nhiễu bị đảo ngược cách dùng.",
+eng_a2_adv_of_manner: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Trạng từ thể cách. Bạn hãy sinh ra các Tính từ nhiễu (không có đuôi -ly) để bẫy người học.",
+eng_a2_comparative_double: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Tính từ so sánh hơn. Hãy đưa ra các đáp án nhiễu bị chèn dư chữ 'more' trước tính từ ngắn.",
+eng_a2_superlative_missing_the: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại mạo từ 'the' của so sánh nhất. Bạn hãy sinh ra các mạo từ sai hoặc giới từ làm đáp án nhiễu.",
+eng_a2_irregular_adj: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Tính từ so sánh bất quy tắc. Hãy đưa ra các đáp án nhiễu bị chia sai theo công thức thêm -er/est.",
+eng_a2_modal_plus_to: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại động từ sau khuyết thiếu. Bạn hãy sinh ra các đáp án nhiễu bị gắn thêm giới từ 'to'.",
+eng_a2_modal_plus_ving: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại động từ sau khuyết thiếu. Hãy đưa ra các đáp án nhiễu ở dạng V-ing thay vì nguyên thể.",
+eng_a2_have_to_conjugation: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại 'have to' hoặc 'has to'. Bạn hãy sinh ra các đáp án nhiễu bị chia sai ngôi.",
+eng_a2_mustn_dont_have_to: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại 'mustn\\'t' hoặc 'don\\'t have to'. Hãy đưa ra các khuyết thiếu nhiễu bị tráo đổi ý nghĩa.",
+eng_a2_much_many: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Much/Many. Bạn hãy sinh ra lượng từ nhiễu không khớp với tính chất đếm được của danh từ.",
+eng_a2_few_little: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại A few/A little. Hãy đưa ra các lượng từ nhiễu hoán đổi cách dùng của danh từ đếm được và không đếm được.",
+eng_a2_make_do_swap: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại động từ 'make' hoặc 'do'. Bạn hãy sinh ra các đáp án nhiễu tráo đổi hai động từ này.",
+eng_a2_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại giới từ của Phrasal verb. Hãy đưa ra các giới từ nhiễu làm thay đổi sai lệch ý nghĩa của cụm động từ.",
 // Bẫy Tiếng Anh (General Legacy)
 eng_article_an: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Mạo từ A/An. Bạn hãy sinh ra các mạo từ hoặc từ chỉ lượng sai quy tắc để đánh lừa.",
 eng_plural_s: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Danh từ. Hãy tạo các đáp án nhiễu là dạng số nhiều bị chia sai của danh từ bất quy tắc.",
@@ -5170,6 +5233,27 @@ eng_a1p_emotion_ed_ing: "ĐỊNH HƯỚNG SÁNG TẠO: Tính từ chỉ cảm x�
 eng_a1p_tag_question: "ĐỊNH HƯỚNG SÁNG TẠO: Câu hỏi đuôi. Hãy tạo từ rác là trợ động từ hoặc đại từ sai cực (phủ định/khẳng định) so với vế trước.",
 eng_a1p_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Cụm động từ. Bạn hãy sinh ra từ rác là các giới từ sai để làm hỏng cụm phrasal verb.",
 eng_a1p_time_quarter: "ĐỊNH HƯỚNG SÁNG TẠO: Thời gian. Hãy tạo từ rác là 'past' (nếu câu dùng to) hoặc ngược lại để gây nhầm lẫn.",
+// Bẫy Tiếng Anh (A2)
+eng_a2_past_interrupt: "ĐỊNH HƯỚNG SÁNG TẠO: Hành động cắt ngang. Bạn hãy sinh ra từ rác là các trợ động từ (was/were, did) sai thì để lừa người học.",
+eng_a2_pres_perf_form: "ĐỊNH HƯỚNG SÁNG TẠO: Hiện tại hoàn thành. Hãy tạo từ rác là trợ động từ 'did' hoặc dạng V2 của động từ chính.",
+eng_a2_pres_perf_ever: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí Ever/Never. Bạn hãy sinh ra từ rác là các trạng từ thời gian quá khứ (như yesterday) để làm xáo trộn thì.",
+eng_a2_future_will_going: "ĐỊNH HƯỚNG SÁNG TẠO: Thì tương lai. Hãy tạo từ rác là 'will' (nếu câu dùng going to) hoặc ngược lại để dụ người học dùng sai thì.",
+eng_a2_although_but: "ĐỊNH HƯỚNG SÁNG TẠO: Mặc dù... nhưng. Bạn hãy sinh ra từ rác là chữ 'but' để dụ người học ghép thừa vào mệnh đề thứ hai.",
+eng_a2_because_so: "ĐỊNH HƯỚNG SÁNG TẠO: Bởi vì... cho nên. Hãy tạo từ rác là chữ 'so' để bẫy người học ghép thừa vào mệnh đề thứ hai.",
+eng_a2_if_type1_will: "ĐỊNH HƯỚNG SÁNG TẠO: Câu điều kiện. Bạn hãy sinh ra từ rác là chữ 'will' để dụ người học nhét thừa vào vế 'If'.",
+eng_a2_when_while_swap: "ĐỊNH HƯỚNG SÁNG TẠO: When/While. Hãy tạo từ rác là 'when' (nếu câu dùng while) hoặc ngược lại để lừa người học.",
+eng_a2_adv_of_manner: "ĐỊNH HƯỚNG SÁNG TẠO: Trạng từ thể cách. Bạn hãy sinh ra từ rác là một Tính từ (không có đuôi -ly) để bẫy người học ghép sau động từ thường.",
+eng_a2_comparative_double: "ĐỊNH HƯỚNG SÁNG TẠO: So sánh kép. Hãy tạo từ rác là chữ 'more' hoặc 'most' để dụ người học ghép dư vào cụm so sánh.",
+eng_a2_superlative_missing_the: "ĐỊNH HƯỚNG SÁNG TẠO: So sánh nhất. Bạn hãy sinh ra từ rác là mạo từ 'a' hoặc 'an' để làm xáo trộn cụm so sánh nhất.",
+eng_a2_irregular_adj: "ĐỊNH HƯỚNG SÁNG TẠO: Tính từ bất quy tắc. Hãy tạo từ rác là dạng thêm '-er' sai của tính từ bất quy tắc.",
+eng_a2_modal_plus_to: "ĐỊNH HƯỚNG SÁNG TẠO: Động từ khuyết thiếu. Bạn hãy sinh ra từ rác là chữ 'to' để dụ người học nhét thừa sau động từ khuyết thiếu.",
+eng_a2_modal_plus_ving: "ĐỊNH HƯỚNG SÁNG TẠO: Động từ khuyết thiếu. Hãy tạo từ rác là động từ có đuôi '-ing' để bẫy người học ghép sau modal verb.",
+eng_a2_have_to_conjugation: "ĐỊNH HƯỚNG SÁNG TẠO: Cấu trúc Have to. Bạn hãy sinh ra từ rác là 'have' hoặc 'has' sai ngôi để làm nhiễu.",
+eng_a2_mustn_dont_have_to: "ĐỊNH HƯỚNG SÁNG TẠO: Mustn't và Don't have to. Hãy tạo từ rác là trợ động từ phủ định không liên quan để đánh lừa.",
+eng_a2_much_many: "ĐỊNH HƯỚNG SÁNG TẠO: Much/Many. Bạn hãy sinh ra từ rác là 'much' hoặc 'many' không khớp loại danh từ trong câu.",
+eng_a2_few_little: "ĐỊNH HƯỚNG SÁNG TẠO: A few/A little. Hãy tạo từ rác là 'few' hoặc 'little' đảo ngược cách dùng với danh từ.",
+eng_a2_make_do_swap: "ĐỊNH HƯỚNG SÁNG TẠO: Collocation Make/Do. Bạn hãy sinh ra từ rác là 'make' (nếu câu dùng do) hoặc ngược lại.",
+eng_a2_phrasal_prep: "ĐỊNH HƯỚNG SÁNG TẠO: Cụm động từ. Hãy tạo từ rác là một giới từ sai (như on, at, in) để làm hỏng cụm phrasal verb.",
 // Bẫy Tiếng Anh (General Legacy)
 eng_article_an: "MỤC TIÊU: Mạo từ A/An. YÊU CẦU: Sinh ra TỪ RÁC là mạo từ sai (vd: 'a' nếu danh từ bắt đầu bằng nguyên âm) để lừa học viên ghép sai.",
 eng_plural_s: "MỤC TIÊU: Danh từ số nhiều. YÊU CẦU: Sinh ra TỪ RÁC là dạng có '-s' hoặc '-es' bị chia sai của danh từ trong câu.",
