@@ -22441,11 +22441,11 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.03
-// Last Updated: 2026-06-06 17:30
+// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.04
+// Last Updated: 2026-06-09 18:50
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
 // Quy tắc: Tách biệt hoàn toàn logic chạy ngầm khỏi App Component chính. TUYỆT ĐỐI KHÔNG CẮT XÉN CODE. Tuân thủ Điều 3.
-// Cập nhật V1.03: [ANTI-BOMBING ENGINE] Đập bỏ cơ chế Batch Enrich bắn song song trong useEffect. Xây dựng hàng đợi tuần tự (enrichQueueRef) chạy nền 1 luồng duy nhất, cách nhau 5000ms để chống lỗi 429/503.
+// Cập nhật V1.04: [DYNAMIC VALIDATION] Sửa lỗi "Mù ngôn ngữ" ở processAiQueue và handleAiEnrichCard. Chuyển mảng requiredFields thành mảng động, chỉ yêu cầu sinoViet nếu lang === 'zh' để ngăn chặn vòng lặp gọi AI vô tận đối với thẻ Tiếng Anh/Việt.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -22570,8 +22570,9 @@ if (!currentApiKey) { aiQueueRef.current.shift(); continue; }
 try {
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
-// [HOTFIX v1.02] Thêm grammar_type vào mảng cần kiểm tra để AI chạy ngầm
-const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'sinoViet', 'example', 'image', 'grammar_type'];
+// [HOTFIX v1.04] Mảng kiểm tra động (Không đòi sinoViet nếu không phải Tiếng Trung)
+const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image', 'grammar_type'];
+if (core.lang === 'zh') requiredFields.push('sinoViet');
 const missingFields = noteCard ? requiredFields.filter(field => {
 const val = noteCard[field];
 if (field === 'grammar_type') {
@@ -22637,8 +22638,10 @@ processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
 const currentCard = latestStateRef.current.cards.find(c => c.term === cardTerm);
-// [HOTFIX v1.02] Bổ sung grammar_type vào mảng lọc thông tin bị thiếu
-const missingFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'sinoViet', 'example', 'image', 'grammar_type'].filter(f => {
+// [HOTFIX v1.04] Mảng kiểm tra động (Không đòi sinoViet nếu không phải Tiếng Trung)
+const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image', 'grammar_type'];
+if (core.lang === 'zh') requiredFields.push('sinoViet');
+const missingFields = requiredFields.filter(f => {
 if (f === 'grammar_type') {
 const val = currentCard?.[f];
 return !val || (Array.isArray(val) && val.length === 0) || (typeof val === 'string' && val.trim() === '');
