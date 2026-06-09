@@ -87,10 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.3
-// Last Updated: 2026-06-09 15:35
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.4
+// Last Updated: 2026-06-10 12:25
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V3.3: [PRE-COMPUTATION SYNC] Đồng bộ toàn bộ 20 định danh bẫy Tiếng Anh A2 vào en_level_4 của IoeEnumRegistry và nâng cấp Radar AI nhận diện nhãn tại DEFAULT_PROMPTS.
+// Cập nhật V3.4: [PRE-COMPUTATION SYNC] Đồng bộ toàn bộ 32 định danh bẫy Tiếng Trung (HSK 1 & HSK 2) vào IoeEnumRegistry và nâng cấp Radar AI nhận diện nhãn tại DEFAULT_PROMPTS.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -125,10 +125,10 @@ window.IoeEnumRegistry = {
 // Bản đồ phân cấp: Level -> Danh sách bẫy được phép dùng
 LEVEL_TO_TRAPS: {
 // --- HỆ TIẾNG TRUNG (HSK) ---
-zh_level_1: ['zh_hsk_adv_degree', 'zh_hsk_prep_mismatch', 'zh_hsk_noun_space'],
-zh_level_2: ['zh_hsk_separable_obj', 'zh_hsk_rc_negation', 'zh_hsk_rc_state', 'zh_hsk_dc_direction', 'zh_hsk_dc_location', 'zh_hsk_dist_li', 'zh_hsk_comp_bi'],
+zh_level_1: ['zh_hsk1_pronoun_gender', 'zh_hsk1_pronoun_location', 'zh_hsk1_question_quantity', 'zh_hsk1_number_liang', 'zh_hsk1_measure_mismatch', 'zh_hsk1_negation_bumei', 'zh_hsk1_modal_ability', 'zh_hsk1_verb_direction', 'zh_hsk1_adj_predicate_shi', 'zh_hsk1_particle_de_redundant', 'zh_hsk1_exclam_tai_le', 'zh_hsk1_question_ma_ne', 'zh_hsk1_serial_verb_order', 'zh_hsk1_time_order', 'zh_hsk1_place_order'],
+zh_level_2: ['zh_hsk2_pronoun_ta_mismatch', 'zh_hsk2_pronoun_mei_measure', 'zh_hsk2_number_er_liang', 'zh_hsk2_measure_mismatch', 'zh_hsk2_adv_you_zai', 'zh_hsk2_adv_jiu_pos', 'zh_hsk2_prep_gei_order', 'zh_hsk2_conj_missing_pair', 'zh_hsk2_conj_logic_clash', 'zh_hsk2_state_comp_missing_verb', 'zh_hsk2_state_comp_obj_pos', 'zh_hsk2_compare_bi_adv', 'zh_hsk2_prog_zhengzai_clash', 'zh_hsk2_approx_duo_less10', 'zh_hsk2_approx_duo_more10', 'zh_hsk2_prep_cong_li', 'zh_hsk2_aspect_zhe_le'],
 zh_level_3: ['zh_hsk_ba_indefinite', 'zh_hsk_ba_result', 'zh_hsk_bei_reverse', 'zh_hsk_exist_order', 'zh_hsk_pc_ability', 'zh_hsk_conj_mismatch', 'zh_hsk_except_chule'],
-zh_level_4: ['zh_hsk_emph_order', 'zh_hsk_emph_extreme', 'zh_hsk_paired_only_if', 'zh_hsk_paired_as_long_as', 'zh_hsk_adv_zhongyu'],
+zh_level_4: ['zh_hsk_emph_order', 'zh_hsk_emph_extreme', 'zh_hsk_paired_only_if', 'zh_hsk_paired_as_long_as', 'zh_hsk_adv_zhongyu', 'zh_hsk_separable_obj', 'zh_hsk_adv_degree', 'zh_hsk_prep_mismatch', 'zh_hsk_noun_space', 'zh_hsk_rc_negation', 'zh_hsk_rc_state', 'zh_hsk_dc_direction', 'zh_hsk_dc_location', 'zh_hsk_dist_li', 'zh_hsk_comp_bi'],
 // --- HỆ TIẾNG ANH (CEFR) ---
 en_level_1: ['pre_a1_article_an', 'pre_a1_plural_s', 'pre_a1_tobe_match', 'pre_a1_this_that', 'pre_a1_like_plural', 'pre_a1_commands', 'pre_a1_adj_order', 'pre_a1_he_she', 'pre_a1_have_has', 'pre_a1_prepositions', 'pre_a1_yesno_order', 'pre_a1_can_cant'],
 en_level_2: ['eng_a1_pres_3rd_person', 'eng_a1_pres_tobe_verb_clash', 'eng_a1_pres_auxiliary', 'eng_a1_adv_frequency_pos', 'eng_a1_pres_cont_missing_be', 'eng_a1_pres_cont_base_verb', 'eng_a1_tense_clash', 'eng_a1_past_tobe_agreement', 'eng_a1_past_tobe_verb_clash', 'eng_a1_past_missing_ed', 'eng_a1_modal_can_to', 'eng_a1_modal_can_s', 'eng_a1_would_like', 'eng_a1_possessive_adj', 'eng_a1_demonstrative_clash', 'eng_a1_uncountable_plural', 'eng_a1_prep_time', 'eng_a1_prep_place_vn', 'eng_a1_conjunction_logic', 'eng_a1_wh_question_match'],
@@ -150,7 +150,7 @@ enrich_word: `Phân tích từ vựng "{term}" ({lang}->Vi). ĐỊNH HƯỚNG S�
 enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). JSON fields: term, pronunciation, definition(việt), partOfSpeech(Ghi là "Câu văn"), topic(Phân loại chủ đề), analysis(cấu trúc ngữ pháp), example(Tạo 1 câu ví dụ có cấu trúc tương tự + Dịch), image_keyword(English), grammar_type(ĐỊNH HƯỚNG GẮN NHÃN:
 1. Nếu câu mang cấu trúc bình thường, hãy trả về mảng rỗng [].
 2. Hãy chọn lọc 1 đến 2 mã cốt lõi nhất phản ánh đúng đặc trưng ngữ pháp của câu.
-3. TIẾNG TRUNG chọn trong: [zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as, zh_hsk_dist_li, zh_hsk_comp_bi, zh_hsk_except_chule].
+3. TIẾNG TRUNG chọn trong: [zh_hsk1_pronoun_gender, zh_hsk1_pronoun_location, zh_hsk1_question_quantity, zh_hsk1_number_liang, zh_hsk1_measure_mismatch, zh_hsk1_negation_bumei, zh_hsk1_modal_ability, zh_hsk1_verb_direction, zh_hsk1_adj_predicate_shi, zh_hsk1_particle_de_redundant, zh_hsk1_exclam_tai_le, zh_hsk1_question_ma_ne, zh_hsk1_serial_verb_order, zh_hsk1_time_order, zh_hsk1_place_order, zh_hsk2_pronoun_ta_mismatch, zh_hsk2_pronoun_mei_measure, zh_hsk2_number_er_liang, zh_hsk2_measure_mismatch, zh_hsk2_adv_you_zai, zh_hsk2_adv_jiu_pos, zh_hsk2_prep_gei_order, zh_hsk2_conj_missing_pair, zh_hsk2_conj_logic_clash, zh_hsk2_state_comp_missing_verb, zh_hsk2_state_comp_obj_pos, zh_hsk2_compare_bi_adv, zh_hsk2_prog_zhengzai_clash, zh_hsk2_approx_duo_less10, zh_hsk2_approx_duo_more10, zh_hsk2_prep_cong_li, zh_hsk2_aspect_zhe_le, zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as, zh_hsk_dist_li, zh_hsk_comp_bi, zh_hsk_except_chule].
 4. TIẾNG ANH chọn trong: [pre_a1_article_an, pre_a1_plural_s, pre_a1_tobe_match, pre_a1_this_that, pre_a1_like_plural, pre_a1_commands, pre_a1_adj_order, pre_a1_he_she, pre_a1_have_has, pre_a1_prepositions, pre_a1_yesno_order, pre_a1_can_cant, eng_a1_pres_3rd_person, eng_a1_pres_tobe_verb_clash, eng_a1_pres_auxiliary, eng_a1_adv_frequency_pos, eng_a1_pres_cont_missing_be, eng_a1_pres_cont_base_verb, eng_a1_tense_clash, eng_a1_past_tobe_agreement, eng_a1_past_tobe_verb_clash, eng_a1_past_missing_ed, eng_a1_modal_can_to, eng_a1_modal_can_s, eng_a1_would_like, eng_a1_possessive_adj, eng_a1_demonstrative_clash, eng_a1_uncountable_plural, eng_a1_prep_time, eng_a1_prep_place_vn, eng_a1_conjunction_logic, eng_a1_wh_question_match, eng_a1p_tense_clash, eng_a1p_past_ed, eng_a1p_past_double, eng_a1p_past_be_vs_do, eng_a1p_comp_double, eng_a1p_comp_irregular, eng_a1p_comp_than, eng_a1p_quant_some_any, eng_a1p_quant_much_many, eng_a1p_quant_a_lot_of, eng_a1p_conj_because_so, eng_a1p_adv_very_verb, eng_a1p_adv_too_much, eng_a1p_job_article, eng_a1p_modal_to, eng_a1p_modal_s, eng_a1p_emotion_ed_ing, eng_a1p_tag_question, eng_a1p_phrasal_prep, eng_a1p_time_quarter, eng_a2_past_interrupt, eng_a2_pres_perf_form, eng_a2_pres_perf_ever, eng_a2_future_will_going, eng_a2_although_but, eng_a2_because_so, eng_a2_if_type1_will, eng_a2_when_while_swap, eng_a2_adv_of_manner, eng_a2_comparative_double, eng_a2_superlative_missing_the, eng_a2_irregular_adj, eng_a2_modal_plus_to, eng_a2_modal_plus_ving, eng_a2_have_to_conjugation, eng_a2_mustn_dont_have_to, eng_a2_much_many, eng_a2_few_little, eng_a2_make_do_swap, eng_a2_phrasal_prep, eng_article_an, eng_plural_s, eng_present_cont, eng_this_these, eng_past_irregular, eng_comparative_double, eng_much_many, eng_since_for, eng_passive_missing_be, eng_vietglish_collocation].
 Vui lòng chỉ sử dụng các mã có sẵn trong danh sách trên).`,
 // --- 2. TRẮC NGHIỆM (QUIZ) ---
@@ -4787,10 +4787,10 @@ addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 1, 'General Practice');
 return blueprint;
 }
 };
-// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.8
-// Last Updated: 2026-06-09 15:18
+// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.10
+// Last Updated: 2026-06-10 00:12
 // Nhiệm vụ: Số hóa Khung năng lực ngôn ngữ (HSK/CEFR) thành các quy tắc (Rules) định hướng AI sinh lỗi, đục lỗ và tạo bẫy.
-// Cập nhật V2.8: [A2 INTEGRATION & CREATIVE FREEDOM] Tích hợp 20 bẫy sư phạm Tiếng Anh cấp độ A2 (Lớp 6, 7). Tập trung triệt tiêu thói quen dịch word-by-word (Although... but, Because... so), sự phối thì, và sai lệch hình thái từ.
+// Cập nhật V2.10: [HSK 2 INTEGRATION] Tích hợp 17 bẫy sư phạm Tiếng Trung cấp độ HSK 2. Tập trung triệt tiêu lỗi thừa phó từ trong câu so sánh 比, sai cấu trúc bổ ngữ trạng thái 得, và nhầm lẫn lượng số 二/两, trợ từ 着/了.
 // ==================================================================================
 window.IoeDataEngine = {
 // 1. NGỮ CẢNH TRÌNH ĐỘ (Định hướng Từ vựng và Cấu trúc chung)
@@ -4815,7 +4815,41 @@ MICRO_PROMPTS: {
 // GAME TRẮC NGHIỆM (QUIZ) - SINH ĐÁP ÁN NHIỄU
 // ====================================================
 quiz: {
-// Bẫy Tiếng Trung
+// Bẫy Tiếng Trung (HSK 1)
+zh_hsk1_pronoun_gender: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào đại từ nhân xưng. Hãy tạo đáp án nhiễu bằng cách dùng sai đại từ giới tính (như dùng 他 cho nữ hoặc 她 cho nam).",
+zh_hsk1_pronoun_location: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào đại từ chỉ thị. Hãy tạo nhiễu bằng cách nhầm lẫn giữa đại từ chỉ vật (这/那) và đại từ chỉ nơi chốn (这儿/那儿).",
+zh_hsk1_question_quantity: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào từ để hỏi số lượng. Hãy tạo nhiễu bằng cách dùng sai ngữ cảnh của 几 và 多少 (ví dụ dùng 几 mà không có lượng từ).",
+zh_hsk1_number_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào số đếm. Hãy tạo nhiễu bằng cách dùng số đếm 二 đứng trước lượng từ thay vì dùng lượng số 两.",
+zh_hsk1_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào lượng từ. Hãy tạo đáp án nhiễu bằng cách ghép sai lượng từ với danh từ (như 一个书 thay vì 一本书).",
+zh_hsk1_negation_bumei: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào phó từ phủ định. Hãy tạo nhiễu bằng cách dùng 不 để phủ định quá khứ/sở hữu, hoặc dùng 没 cho tương lai.",
+zh_hsk1_modal_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào động từ năng nguyện. Hãy tạo nhiễu bằng cách tráo đổi cách dùng của 会 (kỹ năng) và 能 (khả năng vật lý).",
+zh_hsk1_verb_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào hướng di chuyển. Hãy tạo nhiễu bằng cách dùng ngược động từ 去 và 来 so với bối cảnh của người nói.",
+zh_hsk1_adj_predicate_shi: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào câu vị ngữ tính từ. Hãy tạo nhiễu bằng cách chèn thừa động từ 是 vào trước tính từ y hệt ngữ pháp tiếng Việt.",
+zh_hsk1_particle_de_redundant: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào trợ từ 的. Hãy tạo nhiễu bằng cách lạm dụng 的 tạo ra sở hữu kép, hoặc lược bỏ 的 khi bắt buộc phải có.",
+zh_hsk1_exclam_tai_le: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào cấu trúc 太...了. Hãy tạo nhiễu bằng cách gắn thêm đuôi 了 vào dạng phủ định 不太.",
+zh_hsk1_question_ma_ne: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào trợ từ nghi vấn. Hãy tạo nhiễu bằng cách gắn 吗 vào câu đã có từ để hỏi, hoặc xếp sai vị trí chữ 呢.",
+zh_hsk1_serial_verb_order: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào câu liên động. Hãy tạo nhiễu bằng cách đẩy cụm địa điểm ra phía sau động từ chính theo thói quen dịch word-by-word.",
+zh_hsk1_time_order: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào trạng ngữ thời gian. Hãy tạo nhiễu bằng cách dời từ chỉ thời gian xuống cuối câu.",
+zh_hsk1_place_order: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào trạng ngữ địa điểm (在). Hãy tạo nhiễu bằng cách đặt cụm giới từ 在 + Địa điểm ra sau động từ.",
+// Bẫy Tiếng Trung (HSK 2)
+zh_hsk2_pronoun_ta_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào đại từ. Hãy tạo đáp án nhiễu bằng cách dùng sai đại từ chỉ người/vật (như dùng 它 cho người hoặc 他 cho con vật).",
+zh_hsk2_pronoun_mei_measure: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào đại từ 每. Hãy tạo đáp án nhiễu bằng cách lược bỏ lượng từ đứng giữa chữ 每 và danh từ.",
+zh_hsk2_number_er_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào số lượng. Hãy tạo đáp án nhiễu bằng cách dùng số đếm 二 đứng trước lượng từ thay vì dùng 两.",
+zh_hsk2_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào lượng từ. Hãy tạo đáp án nhiễu bằng cách ghép sai lượng từ chuyên biệt (như dùng 张 cho quần áo hoặc 件 cho giấy).",
+zh_hsk2_adv_you_zai: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào phó từ lặp lại. Hãy tạo đáp án nhiễu bằng cách hoán đổi cách dùng của 又 (quá khứ) và 再 (tương lai).",
+zh_hsk2_adv_jiu_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào phó từ 就. Hãy tạo đáp án nhiễu bằng cách đặt chữ 就 lên trước danh từ chỉ thời gian.",
+zh_hsk2_prep_gei_order: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào giới từ 给. Hãy tạo đáp án nhiễu bằng cách đặt cụm '给 + Tân ngữ' ra phía sau động từ chính.",
+zh_hsk2_conj_missing_pair: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào câu ghép. Hãy tạo đáp án nhiễu bằng cách cố tình bỏ quên một vế của cặp liên từ hô ứng (như có 因为 nhưng thiếu 所以).",
+zh_hsk2_conj_logic_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào logic liên từ. Hãy tạo đáp án nhiễu bằng cách ghép sai hai nửa của các cặp liên từ (như ghép 因为 với 但是).",
+zh_hsk2_state_comp_missing_verb: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào bổ ngữ trạng thái. Hãy tạo đáp án nhiễu bằng cách không lặp lại động từ khi câu có mang tân ngữ.",
+zh_hsk2_state_comp_obj_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào bổ ngữ trạng thái. Hãy tạo đáp án nhiễu bằng cách dời tân ngữ ra phía sau trợ từ 得.",
+zh_hsk2_compare_bi_adv: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào câu so sánh 比. Hãy tạo đáp án nhiễu bằng cách chèn thừa phó từ mức độ tuyệt đối (như 很, 非常) vào trước tính từ.",
+zh_hsk2_prog_zhengzai_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào trạng thái tiếp diễn. Hãy tạo đáp án nhiễu bằng cách thay 正在 bằng phó từ chỉ sự hoàn tất (như 已经) nhưng vẫn giữ đuôi 呢.",
+zh_hsk2_approx_duo_less10: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào ước lượng số nhỏ (<10). Hãy tạo đáp án nhiễu bằng cách đặt chữ 多 lên trước lượng từ.",
+zh_hsk2_approx_duo_more10: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào ước lượng số lớn (>=10). Hãy tạo đáp án nhiễu bằng cách đặt chữ 多 ra phía sau lượng từ.",
+zh_hsk2_prep_cong_li: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào giới từ khoảng cách. Hãy tạo đáp án nhiễu bằng cách hoán đổi cách dùng của 从 (điểm bắt đầu) và 离 (khoảng cách tĩnh).",
+zh_hsk2_aspect_zhe_le: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào trợ từ động thái. Hãy tạo đáp án nhiễu bằng cách dùng 了 (đã xong) thay cho 着 (đang duy trì trạng thái).",
+// Bẫy Tiếng Trung (HSK Legacy - Dành cho HSK 3/4)
 zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Động từ Ly hợp (như 帮忙, 结婚). Bạn hãy tạo đáp án nhiễu tự nhiên bằng cách gắn thêm tân ngữ trực tiếp vào ngay sau động từ ly hợp để mô phỏng lỗi sai người học hay mắc phải.",
 zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là phó từ 终于. Bạn hãy khéo léo tạo đáp án nhiễu bằng cách đổi vị trí phó từ này ra sau động từ chính.",
 zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Điểm nhấn là Phó từ chỉ mức độ. Bạn có thể sáng tạo đáp án nhiễu bằng cách thiết kế sai cấu trúc của phó từ 极 (như lược bỏ chữ 了) hoặc ghép sai cặp hô ứng 越...越...",
@@ -4931,7 +4965,41 @@ eng_vietglish_collocation: "ĐỊNH HƯỚNG SÁNG TẠO: Cụm từ cố địn
 // GAME TÌM LỖI SAI (SPOT MISTAKE) - TẠO LỖI 1-VỊ-TRÍ
 // ====================================================
 spot_mistake: {
-// Bẫy Tiếng Trung
+// Bẫy Tiếng Trung (HSK 1)
+zh_hsk1_pronoun_gender: "ĐỊNH HƯỚNG SÁNG TẠO: Bạn hãy bóp méo câu bằng cách hoán đổi đại từ giới tính (他/她) sai với nhân vật.",
+zh_hsk1_pronoun_location: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách dùng đại từ chỉ vật (这/那) thay cho đại từ chỉ địa điểm (这儿/那儿) hoặc ngược lại.",
+zh_hsk1_question_quantity: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách tráo đổi 几 và 多少, hoặc bỏ quên lượng từ đi sau chữ 几.",
+zh_hsk1_number_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Bạn hãy tạo lỗi sai kinh điển bằng cách dùng số đếm 二 thay cho lượng số 两 trước lượng từ.",
+zh_hsk1_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dùng một lượng từ hoàn toàn không phù hợp với danh từ đi kèm.",
+zh_hsk1_negation_bumei: "ĐỊNH HƯỚNG SÁNG TẠO: Bạn hãy tạo lỗi sai bằng cách dùng chữ 不 để phủ định động từ 有 hoặc phủ định một hành động trong quá khứ.",
+zh_hsk1_modal_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách hoán đổi cách sử dụng của hai động từ năng nguyện 会 và 能.",
+zh_hsk1_verb_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Bạn hãy tạo lỗi sai bằng cách dùng ngược hướng di chuyển (thay 去 bằng 来 hoặc ngược lại).",
+zh_hsk1_adj_predicate_shi: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách chèn động từ 是 vào trước tính từ làm vị ngữ.",
+zh_hsk1_particle_de_redundant: "ĐỊNH HƯỚNG SÁNG TẠO: Bạn hãy tạo lỗi sai bằng cách lạm dụng trợ từ 的 (sở hữu kép) hoặc xóa bỏ nó ở cụm danh từ phức tạp.",
+zh_hsk1_exclam_tai_le: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách gắn đuôi 了 vào sau cấu trúc phủ định 不太.",
+zh_hsk1_question_ma_ne: "ĐỊNH HƯỚNG SÁNG TẠO: Bạn hãy tạo lỗi sai bằng cách chèn chữ 吗 vào một câu đã có từ để hỏi (như 谁, 什么).",
+zh_hsk1_serial_verb_order: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dời cụm từ chỉ địa điểm ra phía sau động từ chính.",
+zh_hsk1_time_order: "ĐỊNH HƯỚNG SÁNG TẠO: Bạn hãy tạo lỗi sai bằng cách dời trạng ngữ chỉ thời gian xuống cuối câu.",
+zh_hsk1_place_order: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dời cụm giới từ 在 + Địa điểm ra phía sau động từ chính.",
+// Bẫy Tiếng Trung (HSK 2)
+zh_hsk2_pronoun_ta_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dùng sai đại từ chỉ người (他/她) cho đồ vật/động vật, hoặc ngược lại.",
+zh_hsk2_pronoun_mei_measure: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách xóa bỏ lượng từ đứng giữa đại từ 每 và danh từ.",
+zh_hsk2_number_er_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dùng số đếm 二 thay cho lượng số 两 khi đứng trước lượng từ.",
+zh_hsk2_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách dùng một lượng từ hoàn toàn sai lệch với danh từ đặc trưng (như dùng 张 cho quần áo).",
+zh_hsk2_adv_you_zai: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách tráo đổi cách dùng của phó từ lặp lại 又 và 再.",
+zh_hsk2_adv_jiu_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách dời phó từ 就 lên trước danh từ chỉ thời gian.",
+zh_hsk2_prep_gei_order: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dời cụm giới từ 给 + Tân ngữ ra phía sau động từ chính.",
+zh_hsk2_conj_missing_pair: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách xóa bỏ một vế của cặp liên từ hô ứng (ví dụ có 因为 nhưng mất 所以).",
+zh_hsk2_conj_logic_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách ghép hai nửa của hai cặp liên từ khác nhau (như 因为... 但是...).",
+zh_hsk2_state_comp_missing_verb: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách không lặp lại động từ trước chữ 得 khi câu có tân ngữ.",
+zh_hsk2_state_comp_obj_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dời tân ngữ ra phía sau trợ từ 得.",
+zh_hsk2_compare_bi_adv: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách chèn thừa một phó từ mức độ (như 很, 非常) vào trước tính từ trong câu so sánh 比.",
+zh_hsk2_prog_zhengzai_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách thay 正在 bằng 已经 nhưng vẫn giữ nguyên đuôi 呢.",
+zh_hsk2_approx_duo_less10: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách dời chữ 多 lên trước lượng từ đối với số đếm nhỏ hơn 10.",
+zh_hsk2_approx_duo_more10: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dời chữ 多 ra sau lượng từ đối với số chẵn từ 10 trở lên.",
+zh_hsk2_prep_cong_li: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy tạo lỗi sai bằng cách dùng Từ chỉ điểm xuất phát (从) thay cho Từ chỉ khoảng cách (离).",
+zh_hsk2_aspect_zhe_le: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy bóp méo câu bằng cách dùng trợ từ 了 thay cho trợ từ 着 trong ngữ cảnh đang duy trì trạng thái.",
+// Bẫy Tiếng Trung (HSK Legacy - Dành cho HSK 3/4)
 zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Động từ ly hợp. Bạn hãy khéo léo bóp méo câu gốc bằng cách gắn tân ngữ trực tiếp vào ngay sau động từ ly hợp để tạo một lỗi sai tự nhiên.",
 zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào phó từ 终于. Bạn hãy tạo một lỗi sai tinh tế bằng cách dịch chuyển vị trí của 终于 ra sau động từ chính.",
 zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Tập trung vào phó từ mức độ. Hãy thử bóp méo cấu trúc 越...越... hoặc dùng phó từ 极 mà cố ý để sót chữ 了.",
@@ -5047,7 +5115,41 @@ eng_vietglish_collocation: "ĐỊNH HƯỚNG SÁNG TẠO: Collocation. Hãy bóp
 // GAME ĐIỀN TỪ (FILL BLANK) - ĐỤC CHỖ HIỂM & SINH NHIỄU
 // ====================================================
 fill_blank: {
-// Bẫy Tiếng Trung
+// Bẫy Tiếng Trung (HSK 1)
+zh_hsk1_pronoun_gender: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Đại từ nhân xưng. Hãy sinh ra các đại từ nhiễu mang giới tính hoặc số lượng không phù hợp.",
+zh_hsk1_pronoun_location: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Đại từ chỉ thị. Hãy sinh ra các đại từ chỉ vật nhiễu thay vì đại từ chỉ nơi chốn.",
+zh_hsk1_question_quantity: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Từ để hỏi số lượng. Hãy sinh ra các đáp án nhiễu là 几 hoặc 多少 không hợp logic ngữ pháp.",
+zh_hsk1_number_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Số lượng từ 两. Hãy đưa ra số đếm 二 hoặc các số khác làm đáp án nhiễu.",
+zh_hsk1_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Lượng từ. Hãy sinh ra các lượng từ nhiễu hoàn toàn không khớp với danh từ phía sau.",
+zh_hsk1_negation_bumei: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Phó từ phủ định. Hãy đưa ra các đáp án nhiễu sai thì hoặc sai cấu trúc (như dùng 不 cho quá khứ).",
+zh_hsk1_modal_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Động từ năng nguyện. Hãy sinh ra các động từ nhiễu sai bản chất khả năng (như dùng 会 thay cho 能).",
+zh_hsk1_verb_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Động từ hướng di chuyển. Hãy đưa ra động từ hướng ngược lại làm đáp án nhiễu.",
+zh_hsk1_adj_predicate_shi: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Phó từ mức độ trước Tính từ. Hãy đưa ra động từ 是 hoặc các phó từ sai làm nhiễu.",
+zh_hsk1_particle_de_redundant: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Trợ từ 的. Hãy sinh ra các trợ từ kết cấu khác (như 得, 地) làm đáp án nhiễu.",
+zh_hsk1_exclam_tai_le: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 太 hoặc 了. Hãy sinh ra các phó từ hoặc trợ từ nhiễu làm hỏng cấu trúc cảm thán.",
+zh_hsk1_question_ma_ne: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Trợ từ nghi vấn. Hãy sinh ra các trợ từ nhiễu sai chức năng (như 呢 thay cho 吗).",
+zh_hsk1_serial_verb_order: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Động từ đi lại (去/来). Hãy đưa ra các động từ nhiễu làm hỏng logic chuỗi hành động.",
+zh_hsk1_time_order: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Trạng từ thời gian. Hãy đưa ra các trạng từ nhiễu có mốc thời gian mâu thuẫn với câu.",
+zh_hsk1_place_order: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Giới từ 在. Hãy đưa ra các giới từ nhiễu sai chức năng địa điểm.",
+// Bẫy Tiếng Trung (HSK 2)
+zh_hsk2_pronoun_ta_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Đại từ. Hãy đưa ra các đại từ nhiễu sai bản chất người/vật (như 它 thay vì 他).",
+zh_hsk2_pronoun_mei_measure: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Lượng từ sau chữ 每. Hãy đưa ra các danh từ hoặc phó từ nhiễu để đánh lừa.",
+zh_hsk2_number_er_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Số lượng 两. Hãy đưa ra số đếm 二 hoặc các số sai khác làm đáp án nhiễu.",
+zh_hsk2_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Lượng từ. Hãy đưa ra các lượng từ nhiễu không phù hợp với danh từ phía sau.",
+zh_hsk2_adv_you_zai: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Phó từ 又 hoặc 再. Hãy đưa ra từ còn lại làm đáp án nhiễu để bẫy logic thời gian.",
+zh_hsk2_adv_jiu_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Phó từ 就. Hãy đưa ra các phó từ nhiễu sai ngữ nghĩa hoặc sai cấu trúc nhấn mạnh.",
+zh_hsk2_prep_gei_order: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Giới từ 给. Hãy đưa ra các giới từ nhiễu sai chức năng (như 对, 从).",
+zh_hsk2_conj_missing_pair: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại một vế của Liên từ hô ứng. Hãy đưa ra các liên từ nhiễu sai cặp (như 但是 thay cho 所以).",
+zh_hsk2_conj_logic_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Liên từ. Hãy đưa ra các liên từ nhiễu gây xung đột logic nguyên nhân - tương phản.",
+zh_hsk2_state_comp_missing_verb: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Động từ lặp lại trước chữ 得. Hãy đưa ra các danh từ hoặc phó từ làm đáp án nhiễu.",
+zh_hsk2_state_comp_obj_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Trợ từ 得. Hãy đưa ra các trợ từ nhiễu (như 的, 地) hoặc đặt sai vị trí.",
+zh_hsk2_compare_bi_adv: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Tính từ trong câu so sánh 比. Hãy sinh ra đáp án nhiễu bằng cách gắn thừa chữ 很 hoặc 非常 trước tính từ.",
+zh_hsk2_prog_zhengzai_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Phó từ 正在. Hãy đưa ra phó từ nhiễu 已经 để gây xung đột với đuôi 呢.",
+zh_hsk2_approx_duo_less10: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 多. Hãy đưa ra các phó từ hoặc lượng từ nhiễu sai cấu trúc.",
+zh_hsk2_approx_duo_more10: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại chữ 多. Hãy đưa ra các đáp án nhiễu đảo lộn vị trí của 多 và lượng từ.",
+zh_hsk2_prep_cong_li: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Giới từ 离 hoặc 从. Hãy đưa ra giới từ còn lại làm đáp án nhiễu chính.",
+zh_hsk2_aspect_zhe_le: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Trợ từ 着. Hãy đưa ra trợ từ 了 hoặc 过 làm đáp án nhiễu.",
+// Bẫy Tiếng Trung (HSK Legacy - Dành cho HSK 3/4)
 zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Động từ ly hợp. Hãy sáng tạo 3 đáp án nhiễu là các động từ ly hợp bị ghép dính tân ngữ sai quy tắc hoặc mang ý nghĩa không phù hợp ngữ cảnh.",
 zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Phó từ 终于. Bạn hãy sinh ra các phó từ nhiễu chỉ thời gian/mức độ mâu thuẫn với kết quả ở vế sau (như 已经, 正在).",
 zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Vị trí đục lỗ là Phó từ mức độ (极, 越). Hãy tạo các phó từ nhiễu sai cấu trúc hô ứng hoặc không tương thích với văn cảnh (như 很, 非常).",
@@ -5163,7 +5265,41 @@ eng_vietglish_collocation: "ĐỊNH HƯỚNG SÁNG TẠO: Đục lỗ tại Đ�
 // GAME GHÉP CÂU (SCRAMBLE NOISE) - SINH TỪ RÁC (DISTRACTORS)
 // ====================================================
 scramble: {
-// Bẫy Tiếng Trung
+// Bẫy Tiếng Trung (HSK 1)
+zh_hsk1_pronoun_gender: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là đại từ sai giới tính (他/她) để lừa học viên ghép sai nhân vật.",
+zh_hsk1_pronoun_location: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là đại từ chỉ vật (这/那) để dụ học viên dùng sai thay cho nơi chốn.",
+zh_hsk1_question_quantity: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là 几 hoặc 多少 sai logic số lượng để bẫy người học.",
+zh_hsk1_number_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là số đếm 二 để dụ người học ghép vào trước lượng từ.",
+zh_hsk1_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là một lượng từ sai hoàn toàn với danh từ trong câu.",
+zh_hsk1_negation_bumei: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 不 (nếu câu dùng 没) hoặc ngược lại để lừa học viên.",
+zh_hsk1_modal_ability: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là 会 hoặc 能 dùng sai tính chất khả năng để làm nhiễu.",
+zh_hsk1_verb_direction: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là 去 hoặc 来 ngược hướng với câu gốc.",
+zh_hsk1_adj_predicate_shi: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 是 để dụ học viên ghép vào trước tính từ vị ngữ.",
+zh_hsk1_particle_de_redundant: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 的 để dụ học viên tạo ra sở hữu kép sai ngữ pháp.",
+zh_hsk1_exclam_tai_le: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 了 để bẫy học viên gắn vào dạng phủ định 不太.",
+zh_hsk1_question_ma_ne: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 吗 để dụ học viên gắn vào câu đã có từ để hỏi.",
+zh_hsk1_serial_verb_order: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là giới từ 在 để dụ học viên ghép sai cụm địa điểm.",
+zh_hsk1_time_order: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là trạng từ thời gian sai mốc để làm rối loạn trật tự câu.",
+zh_hsk1_place_order: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 从 hoặc 到 để bẫy học viên dùng sai giới từ 在.",
+// Bẫy Tiếng Trung (HSK 2)
+zh_hsk2_pronoun_ta_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là đại từ 它/他/她 sai bản chất với đối tượng trong câu để bẫy người học.",
+zh_hsk2_pronoun_mei_measure: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 每 hoặc một danh từ để dụ học viên ghép trực tiếp mà bỏ quên lượng từ.",
+zh_hsk2_number_er_liang: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là số đếm 二 để dụ người học ghép vào trước lượng từ thay vì 两.",
+zh_hsk2_measure_mismatch: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là một lượng từ sai hoàn toàn với danh từ đặc trưng trong câu.",
+zh_hsk2_adv_you_zai: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 又 (nếu câu dùng 再) hoặc ngược lại để lừa logic thời gian.",
+zh_hsk2_adv_jiu_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là các phó từ khác để dụ học viên xếp sai vị trí chữ 就.",
+zh_hsk2_prep_gei_order: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là một động từ khác để dụ học viên dời cụm 给 ra phía sau.",
+zh_hsk2_conj_missing_pair: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là liên từ sai cặp (ví dụ 但是) để bẫy học viên thay thế cho vế đúng.",
+zh_hsk2_conj_logic_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là liên từ có logic đối lập với câu (như 虽然 cho câu nguyên nhân).",
+zh_hsk2_state_comp_missing_verb: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 的 để dụ học viên dùng sai cấu trúc bổ ngữ trạng thái.",
+zh_hsk2_state_comp_obj_pos: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là tân ngữ dư thừa để dụ học viên xếp sai vị trí sau chữ 得.",
+zh_hsk2_compare_bi_adv: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 很 hoặc 非常 để dụ học viên nhét thừa vào trước tính từ so sánh.",
+zh_hsk2_prog_zhengzai_clash: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 已经 để dụ học viên thay thế cho 正在 trong câu tiếp diễn.",
+zh_hsk2_approx_duo_less10: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là các số đếm sai để dụ học viên xếp chữ 多 sai vị trí.",
+zh_hsk2_approx_duo_more10: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 几 để làm nhiễu vị trí của chữ 多.",
+zh_hsk2_prep_cong_li: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 从 để bẫy học viên dùng sai thay cho 离.",
+zh_hsk2_aspect_zhe_le: "ĐỊNH HƯỚNG SÁNG TẠO: Hãy sinh ra từ rác là chữ 了 để dụ học viên gắn sai vào câu đang duy trì trạng thái.",
+// Bẫy Tiếng Trung (HSK Legacy - Dành cho HSK 3/4)
 zh_hsk_separable_obj: "ĐỊNH HƯỚNG SÁNG TẠO: Trọng điểm là Động từ ly hợp. Bạn hãy sinh ra những từ rác là Đại từ nhân xưng hoặc Danh từ để dụ dỗ người học ghép nó trực tiếp vào ngay sau động từ ly hợp.",
 zh_hsk_adv_zhongyu: "ĐỊNH HƯỚNG SÁNG TẠO: Mục tiêu là Phó từ 终于. Bạn hãy tạo từ rác là các trạng từ chỉ thời gian để đánh lừa người học dời 终于 ra sau động từ chính.",
 zh_hsk_adv_degree: "ĐỊNH HƯỚNG SÁNG TẠO: Nhắm vào Phó từ mức độ. Hãy tạo từ rác như '很' hoặc '非常' để gây nhầm lẫn khi người học sắp xếp cấu trúc '越...越...' hoặc '极'.",
