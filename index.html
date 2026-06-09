@@ -22483,11 +22483,11 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.04
-// Last Updated: 2026-06-09 18:50
+// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.05
+// Last Updated: 2026-06-09 22:15
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
 // Quy tắc: Tách biệt hoàn toàn logic chạy ngầm khỏi App Component chính. TUYỆT ĐỐI KHÔNG CẮT XÉN CODE. Tuân thủ Điều 3.
-// Cập nhật V1.04: [DYNAMIC VALIDATION] Sửa lỗi "Mù ngôn ngữ" ở processAiQueue và handleAiEnrichCard. Chuyển mảng requiredFields thành mảng động, chỉ yêu cầu sinoViet nếu lang === 'zh' để ngăn chặn vòng lặp gọi AI vô tận đối với thẻ Tiếng Anh/Việt.
+// Cập nhật V1.05: [KILL SWITCH] Bổ sung cơ chế Phanh khẩn cấp (AbortController) vào useEffect. Khi người dùng tắt công tắc AI hoặc chuyển sang màn hình khác, hệ thống sẽ chém đứt lập tức mọi kết nối mạng đang treo và dập tắt vòng lặp retry ngầm của AI.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -22770,6 +22770,10 @@ isProcessingEnrichQueue.current = false;
 // Effect: Batch Enrich (Chạy Tuần Tự)
 useEffect(() => {
 if (core.viewMode === 'learn' && core.isAiModeLearn && core.cards.length > 0 && apiKey) {
+// Đảm bảo Controller luôn sẵn sàng cho luồng chạy
+if (!window.__currentGameAbortController || window.__currentGameAbortController.signal.aborted) {
+window.__currentGameAbortController = new AbortController();
+}
 const currentTerm = core.cards[core.currentCardIndex]?.term;
 if (!currentTerm) return;
 const nextTerms = [];
@@ -22793,6 +22797,12 @@ processEnrichQueue();
 } else {
 // Dọn dẹp hàng đợi nếu tắt tính năng hoặc thoát màn hình
 enrichQueueRef.current = [];
+// [HOTFIX V1.05] Kích hoạt Kill Switch: Chém đứt mọi tiến trình đang bay trên mạng
+if (window.__currentGameAbortController) {
+window.__currentGameAbortController.abort("User toggled off AI");
+// Khởi tạo lại Controller mới ngay lập tức để không cản trở các lệnh gọi thủ công tiếp theo
+window.__currentGameAbortController = new AbortController();
+}
 }
 }, [core.currentCardIndex, core.isAiModeLearn, core.viewMode, apiKey]);
 return {
