@@ -7454,19 +7454,21 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.07
-// Last Updated: 2026-06-05 08:08
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.08
+// Last Updated: 2026-06-09 21:35
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
-// Cập nhật: [VI PHẪU THUẬT CỘT 10] Bổ sung trường grammar_type vào ManualInputModal.
+// Cập nhật V1.08: [SMART ABORT MECHANISM] Khắc phục lỗi "Kiểm tra Key chạy ngầm". Bổ sung abortTestRef để ngắt mạch vòng lặp pingGeminiKey khi người dùng bấm "Dừng kiểm tra" hoặc khi Modal bị đóng (unmounted).
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
 const [isTesting, setIsTesting] = React.useState(false);
 const [testResults, setTestResults] = React.useState({});
 const [newKeyInput, setNewKeyInput] = React.useState('');
+const abortTestRef = React.useRef(false); // [HOTFIX V1.08] Cờ ngắt mạch
 React.useEffect(() => {
 if (isOpen) {
+abortTestRef.current = false; // Reset cờ khi mở
 const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
 const currentKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '';
 // Đảm bảo currentKey luôn nằm ở đầu nếu chưa có trong pool
@@ -7480,6 +7482,9 @@ setKeyPool(initialPool);
 setNewKeyInput('');
 setTestResults({});
 }
+return () => {
+abortTestRef.current = true; // [HOTFIX V1.08] Giết vòng lặp khi đóng cửa sổ
+};
 }, [isOpen]);
 const handleAddKey = () => {
 const k = newKeyInput.trim();
@@ -7508,16 +7513,26 @@ window.Utils.safeLocalStorageSet('fc_apikey_pool', newPool);
 setApiKey(k);
 if (window.globalShowToast) window.globalShowToast("Đã đổi Key ưu tiên!", "success");
 };
-// [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích
+// [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích có ngắt mạch
 const handleTestKeys = async () => {
+// [HOTFIX V1.08] Biến nút thành công tắc Bật/Tắt
+if (isTesting) {
+abortTestRef.current = true;
+setIsTesting(false);
+if (window.globalShowToast) window.globalShowToast("Đã dừng kiểm tra!", "warning");
+return;
+}
 if (keyPool.length === 0) return;
 setIsTesting(true);
+abortTestRef.current = false; // Reset cờ trước khi chạy
 const results = { ...testResults };
 for (const k of keyPool) {
+if (abortTestRef.current) break; // [HOTFIX V1.08] Ngắt mạch giữa chừng
 results[k] = 'testing';
 setTestResults({ ...results });
 if (window.Utils && window.Utils.pingGeminiKey) {
 const res = await window.Utils.pingGeminiKey(k);
+if (abortTestRef.current) break; // [HOTFIX V1.08] Kiểm tra lại sau khi Ping xong
 results[k] = res.status;
 } else {
 results[k] = 0; // Fallback nếu chưa có hàm ping
@@ -7526,8 +7541,10 @@ setTestResults({ ...results });
 // Delay nhỏ để tránh spam quá nhanh
 await new Promise(r => setTimeout(r, 500));
 }
+if (!abortTestRef.current) {
 setIsTesting(false);
 if (window.globalShowToast) window.globalShowToast("Đã hoàn tất kiểm tra kho đạn!", "info");
+}
 };
 const getStatusBadge = (status) => {
 if (status === 'testing') return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 animate-pulse">Đang thử...</span>;
@@ -7571,9 +7588,18 @@ placeholder={t('apiKeyPlace')}
 <div className="space-y-3 border-t pt-4">
 <div className="flex justify-between items-center">
 <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Kho đạn dự phòng ({keyPool.length})</label>
-<button onClick={handleTestKeys} disabled={isTesting || keyPool.length === 0} className="text-[10px] font-bold px-3 py-1.5 bg-blue-100 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-200 disabled:opacity-50 flex items-center gap-1 transition-all active:scale-95">
-{isTesting ? <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div> : <window.Icons.Search size={14} />}
+<button onClick={handleTestKeys} disabled={keyPool.length === 0} className={`text-[10px] font-bold px-3 py-1.5 border rounded-lg flex items-center gap-1 transition-all active:scale-95 ${isTesting ? 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200' : 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 disabled:opacity-50'}`}>
+{isTesting ? (
+<>
+<div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+Dừng kiểm tra
+</>
+) : (
+<>
+<window.Icons.Search size={14} />
 Kiểm tra sức khỏe
+</>
+)}
 </button>
 </div>
 {keyPool.length === 0 ? (
