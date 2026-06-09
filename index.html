@@ -558,10 +558,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.11
-// Last Updated: 2026-06-09 16:30
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.12
+// Last Updated: 2026-06-09 21:05
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.11: [CREATIVE FREEDOM & SMART SCHEMA] Đại vi phẫu hàm fillCardWithAi. Loại bỏ logic truy vấn khuyết thiếu gây mâu thuẫn nhận thức. Tự động xóa trường sinoViet khỏi JSON Schema đối với Tiếng Anh/Việt để chấm dứt tình trạng nghẽn Thoughts Tokens (lỗi 429/28s). Tối ưu nội suy biến System Prompt.
+// Cập nhật V2.12: [DEEP FREEZE MECHANISM] Khắc phục triệt để lỗi "Xả đạn liên thanh" khi API Key bị lỗi 403 (Forbidden). Bổ sung cờ "allKeysDead" để ngắt mạch vòng lặp sớm. Phạt đóng băng 24h đối với các Key chết thay vì 5s.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -656,34 +656,40 @@ dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 }
 } catch(e) {}
 let attempts = 0;
-const maxAttempts = Math.max(10, keyPool.length * 3); // Chống kẹt vòng lặp vô tận
+const maxAttempts = Math.max(10, keyPool.length * 3);
 while (attempts < maxAttempts) {
 attempts++;
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("User exited", "AbortError");
-// --- THUẬT TOÁN TÌM KEY RẢNH RỖI (ROUND-ROBIN) ---
+// --- THUẬT TOÁN TÌM KEY RẢNH RỖI VÀ NGẮT MẠCH SỚM ---
 let targetKey = null;
 let shortestWaitMs = Infinity;
+let allKeysDead = true; // [HOTFIX V2.12] Cờ chống Spam
 for (const rawK of keyPool) {
 if (!rawK || rawK.length < 10) continue;
 const cleanK = rawK.replace(/["'\s]/g, "");
 const cooldownUntil = window.__apiCooldowns[cleanK] || 0;
 const waitMs = cooldownUntil - Date.now();
+// Nếu có bất kỳ Key nào hồi phục dưới 1 giờ, hệ thống vẫn còn hi vọng
+if (waitMs < 3600000) allKeysDead = false;
 if (waitMs <= 0) {
 targetKey = cleanK;
-break; // Tìm thấy Key đang rảnh, bốc luôn!
+break;
 }
 if (waitMs < shortestWaitMs) {
-shortestWaitMs = waitMs; // Ghi nhớ Key sắp "mãn hạn tù" sớm nhất
+shortestWaitMs = waitMs;
 }
 }
-// Nếu TẤT CẢ các Key đều đang nằm trong Hàng đợi OK/NG (Đang đóng băng)
+// [HOTFIX V2.12] Nếu toàn bộ Key bị lỗi 403 (Đóng băng 24h), ngắt vòng lặp lập tức!
+if (allKeysDead) {
+throw new Error("Tất cả API Key đều bị vô hiệu hóa (Lỗi 403/Hết hạn). Vui lòng cập nhật Key mới.");
+}
 if (!targetKey) {
 console.warn(`%c[Round-Robin] Kho đạn đang nạp. Chờ ${Math.ceil(shortestWaitMs/1000)}s...`, "color: #8b5cf6; font-weight: bold; font-size: 11px;");
-await new Promise(r => setTimeout(r, shortestWaitMs + 50)); // Ngủ đông đợi Key nhanh nhất hồi phục
-continue; // Quay lại vòng lặp để bốc cái Key vừa hồi phục
+await new Promise(r => setTimeout(r, shortestWaitMs + 50));
+continue;
 }
-// --- THỰC THI BẮN API VỚI TARGET KEY ---
+// --- THỰC THI BẮN API ---
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
@@ -712,32 +718,37 @@ reject(new Error(`API Timeout (${Math.round(dynamicTimeoutMs/1000)}s)`));
 const res = await Promise.race([fetchPromise, timeoutPromise]);
 const d = await res.json();
 if (d.error) {
-if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED') throw new Error(`429: ${d.error.message}`);
+if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || (d.error.message && d.error.message.includes('quota'))) throw new Error(`429: ${d.error.message}`);
 if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) throw new Error(`503: ${d.error.message}`);
+// [HOTFIX V2.12] Phân tách rõ ràng lỗi 403 / Lỗi quyền
+if (d.error.code === 403 || d.error.code === 400 || (d.error.message && (d.error.message.includes('API key') || d.error.message.includes('unregistered')))) throw new Error(`403: ${d.error.message}`);
 throw new Error(d.error.message);
 }
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
-// --- XỬ LÝ KHI THÀNH CÔNG (HÀNG ĐỢI OK) ---
+// --- XỬ LÝ KHI THÀNH CÔNG ---
 resultText = d.candidates[0].content.parts[0].text;
 if (d.usageMetadata) tokenMetadata = d.usageMetadata;
 successKey = targetKey;
-// ÉP KEY VỪA THÀNH CÔNG NGHỈ 15 GIÂY NẾU CÓ NHIỀU KEY
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 30000; // 30 giây
+window.__apiCooldowns[targetKey] = Date.now() + 30000;
 console.log(`%c[Round-Robin OK] Key ...${targetKey.slice(-5)} thành công. Ép nghỉ 30s.`, "color: #10b981; font-weight: bold; font-size: 11px;");
 }
-break; // Thoát vòng lặp, hoàn thành nhiệm vụ
+break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
-// --- XỬ LÝ KHI THẤT BẠI (HÀNG ĐỢI NG) ---
+// --- XỬ LÝ KHI THẤT BẠI ---
 if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[targetKey] = Date.now() + 80000; // Nghỉ 80 giây
-console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 60s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+window.__apiCooldowns[targetKey] = Date.now() + 80000;
+console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 80s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
-window.__apiCooldowns[targetKey] = Date.now() + 20000; // Nghỉ 20 giây
+window.__apiCooldowns[targetKey] = Date.now() + 20000;
 console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
+} else if (e.message && e.message.includes('403')) {
+// [HOTFIX V2.12] Đóng băng vĩnh cửu (24h) cho Key đã chết
+window.__apiCooldowns[targetKey] = Date.now() + 86400000;
+console.error(`%c[Round-Robin FATAL] Key ...${targetKey.slice(-5)} bị từ chối (403). Đóng băng 24h.`, "color: #dc2626; font-weight: bold; font-size: 11px;");
 } else {
-window.__apiCooldowns[targetKey] = Date.now() + 8000; // Nghỉ 8 giây cho lỗi vặt
+window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
 lastError = e;
 }
@@ -769,7 +780,6 @@ const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 const currentLevel = localStorage.getItem('fc_current_level_' + lang) ? localStorage.getItem('fc_current_level_' + lang).replace(/"/g, '') : (lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4'));
 const predefinedTopics = window.IoeDataEngine?.TOPICS?.[currentLevel] || [];
 const topicRestriction = predefinedTopics.length > 0 ? ` Mục topic BẮT BUỘC chọn chính xác 1 từ khóa trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.` : '';
-// 1. Khai báo Full Schema chuẩn chỉnh
 const propertiesToFetch = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
@@ -783,16 +793,13 @@ image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
 };
 let requiredFields = ["term", "pronunciation", "definition", "partOfSpeech", "topic", "analysis", "sinoViet", "example", "image_keyword", "grammar_type"];
-// 2. [LÕI VI PHẪU] Bỏ trường sinoViet khỏi JSON Schema nếu không phải tiếng Trung
 if (lang !== 'zh') {
 delete propertiesToFetch.sinoViet;
 requiredFields = requiredFields.filter(f => f !== 'sinoViet');
 }
-// 3. Nội suy System Prompt
 const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
 basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
-// 4. Lệnh gọi mạch lạc, không cấm đoán chắp vá
 const userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}`;
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
@@ -816,14 +823,16 @@ while (attempts < maxAttempts) {
 attempts++;
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("User exited", "AbortError");
-// --- THUẬT TOÁN TÌM KEY RẢNH RỖI (ROUND-ROBIN) ---
+// --- THUẬT TOÁN TÌM KEY RẢNH RỖI VÀ NGẮT MẠCH SỚM ---
 let targetKey = null;
 let shortestWaitMs = Infinity;
+let allKeysDead = true; // [HOTFIX V2.12]
 for (const rawK of keyPool) {
 if (!rawK || rawK.length < 10) continue;
 const cleanK = rawK.replace(/["'\s]/g, "");
 const cooldownUntil = window.__apiCooldowns[cleanK] || 0;
 const waitMs = cooldownUntil - Date.now();
+if (waitMs < 3600000) allKeysDead = false;
 if (waitMs <= 0) {
 targetKey = cleanK;
 break;
@@ -832,12 +841,15 @@ if (waitMs < shortestWaitMs) {
 shortestWaitMs = waitMs;
 }
 }
+// [HOTFIX V2.12]
+if (allKeysDead) {
+throw new Error("Tất cả API Key đều bị vô hiệu hóa (Lỗi 403/Hết hạn). Vui lòng cập nhật Key mới.");
+}
 if (!targetKey) {
 console.warn(`%c[Round-Robin SmartFill] Đang chờ đạn. Ngủ đông ${Math.ceil(shortestWaitMs/1000)}s...`, "color: #8b5cf6; font-weight: bold; font-size: 11px;");
 await new Promise(r => setTimeout(r, shortestWaitMs + 50));
 continue;
 }
-// --- THỰC THI BẮN API ---
 try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
@@ -852,29 +864,33 @@ if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
 const data = await res.json();
 if (data.error) {
-if (data.error.code === 429 || data.error.message.includes('quota') || data.error.status === 'RESOURCE_EXHAUSTED') throw new Error(`429: ${data.error.message}`);
+if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || (data.error.message && data.error.message.includes('quota'))) throw new Error(`429: ${data.error.message}`);
 if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) throw new Error(`503: ${data.error.message}`);
+// [HOTFIX V2.12]
+if (data.error.code === 403 || data.error.code === 400 || (data.error.message && (data.error.message.includes('API key') || data.error.message.includes('unregistered')))) throw new Error(`403: ${data.error.message}`);
 throw new Error(data.error.message);
 }
-// --- XỬ LÝ KHI THÀNH CÔNG (HÀNG ĐỢI OK) ---
 finalResult = data;
 successKey = targetKey;
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 30000; // 30 giây
+window.__apiCooldowns[targetKey] = Date.now() + 30000;
 console.log(`%c[Round-Robin OK] SmartFill Key ...${targetKey.slice(-5)} thành công. Cất vào kho 30s.`, "color: #10b981; font-weight: bold; font-size: 11px;");
 }
 break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('User exited'))) throw e;
-// --- XỬ LÝ KHI THẤT BẠI (HÀNG ĐỢI NG) ---
 if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[targetKey] = Date.now() + 80000; // 80 giây
+window.__apiCooldowns[targetKey] = Date.now() + 80000;
 console.warn(`%c[Round-Robin NG] SmartFill Key ...${targetKey.slice(-5)} dính 429. Đóng băng 80s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
-window.__apiCooldowns[targetKey] = Date.now() + 20000; // 20 giây
+window.__apiCooldowns[targetKey] = Date.now() + 20000;
 console.warn(`%c[Round-Robin NG] SmartFill Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
+} else if (e.message && e.message.includes('403')) {
+// [HOTFIX V2.12] Đóng băng vĩnh cửu
+window.__apiCooldowns[targetKey] = Date.now() + 86400000;
+console.error(`%c[Round-Robin FATAL] SmartFill Key ...${targetKey.slice(-5)} bị từ chối (403). Đóng băng 24h.`, "color: #dc2626; font-weight: bold; font-size: 11px;");
 } else {
-window.__apiCooldowns[targetKey] = Date.now() + 5000; // 5 giây
+window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
 lastError = e;
 }
