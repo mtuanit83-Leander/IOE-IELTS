@@ -6392,10 +6392,10 @@ Thứ tự từng nét
 };
 // EXPORT GLOBAL
 window.HanziWriterModal = HanziWriterModal;
-// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.05
-// Last Updated: 2026-05-14 14:31
+// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.06
+// Last Updated: 2026-06-10 15:20
 // Nhiệm vụ: Chứa giao diện Cài đặt toàn hệ thống (Giao diện, Phông chữ, Âm thanh, Auto-play, SRS, System Logs).
-// Cập nhật: [HỘP ĐEN SỰ KIỆN - MŨI NHỌN 1] Nâng cấp UI Nhật ký hệ thống để phân tích và hiển thị trực quan các "Technical Details" (Mã lỗi sâu) được đẩy xuống từ API window.logSystemEvent. Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật V1.06: [MEMORY ISOLATION] Nâng cấp nút "Làm mới Ngân hàng đề AI" để quét và dọn dẹp triệt để 3 vùng nhớ phân mảnh theo ngôn ngữ (en, zh, vi), tương thích với kiến trúc chống rò rỉ Token (Token Leakage) mới.
 // ==================================================================================
 // Helper Components cho SRS Settings
 const NumberUnitInput = ({ value, onChange, label }) => (
@@ -6540,7 +6540,10 @@ document.addEventListener('touchend', up);
 };
 const handleResetAIBank = () => {
 if (confirm("Bạn có chắc chắn muốn làm mới Ngân hàng đề AI?\n\nHành động này sẽ xóa trí nhớ của AI. Trong các lượt chơi tiếp theo, AI có thể sẽ ra lại những từ vựng cơ bản mà bạn đã gặp trước đó.")) {
-localStorage.removeItem('fc_ai_memory');
+localStorage.removeItem('fc_ai_memory_en');
+localStorage.removeItem('fc_ai_memory_zh');
+localStorage.removeItem('fc_ai_memory_vi');
+localStorage.removeItem('fc_ai_memory'); // Dọn dẹp rác legacy (nếu còn)
 localStorage.removeItem('fc_match_history');
 if (window.globalShowToast) {
 window.globalShowToast("Đã làm mới! Hệ thống đang tải lại...", "success");
@@ -22324,11 +22327,11 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.04
-// Last Updated: 2026-05-15 16:13
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.05
+// Last Updated: 2026-06-10 15:35
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật: [KHÔI PHỤC PHANH AI] Bổ sung `uiCooldown: 9` vào `DEFAULT_AI_CONFIG` phục vụ cấu hình thời gian làm nguội của các Game.
+// Cập nhật V1.05: [MEMORY ISOLATION] Tích hợp cơ chế dọn dẹp RAM (Volatile Memory) khi chuyển đổi ngôn ngữ. Xóa bỏ rác Legacy fc_ai_memory để hoàn tất chiến dịch chống rò rỉ Token (Token Leakage).
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -22526,7 +22529,12 @@ if (prevLangRef.current !== lang) {
 setCurrentCardIndex(0);
 setIsStudyingNotebook(false);
 setStudySourceName(null);
+// [MEMORY ISOLATION V1.05] Dọn dẹp RAM và Cache khi chuyển hệ ngôn ngữ
 aiQueueRef.current = [];
+localStorage.removeItem('fc_ai_memory'); // Tiêu diệt rác legacy dùng chung
+if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
+window.ExamEngine.clearVolatileMemory();
+}
 const defLvl = lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4');
 const savedLvl = localStorage.getItem('fc_current_level_' + lang);
 setCurrentLevel(savedLvl ? savedLvl.replace(/"/g, '') : defLvl);
@@ -24435,10 +24443,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.21
-// Last Updated: 2026-05-30 08:55
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.22
+// Last Updated: 2026-06-10 15:15
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, tự động lưu Snapshot và Xuất dữ liệu.
-// Cập nhật V1.21: [ĐÁNH THỨC AUDIO AN TOÀN] Cấy ghép chốt chặn `window.fc_audioCtx.resume()` vào `startExam` và `resumeExam` để mở khóa loa phần cứng an toàn trên iOS/Edge, thay thế hoàn toàn cho `silentUtterance` độc hại.
+// Cập nhật V1.22: [MEMORY ISOLATION] Thay thế bộ nhớ dùng chung bằng cơ chế Cấp phát bộ nhớ động theo ngôn ngữ (fc_ai_memory_en, zh, vi). Triệt tiêu hoàn toàn rủi ro Token Leakage (Bóng ma quá khứ) khi tạo câu hỏi.
 // ==================================================================================
 window.useExamLogic = function(apiKey, handleAutoHarvestToPool) {
 const [examState, setExamState] = React.useState({
@@ -24495,8 +24503,11 @@ window.FcDB.set(prev.sessionId, updatedState, 'exam_sessions').catch(e => consol
 if (window.STORAGE_KEYS && window.STORAGE_KEYS.ACTIVE_EXAM) {
 localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 }
-// Dọn dẹp bộ nhớ AI khi hết giờ
-localStorage.setItem('fc_ai_memory', '[]');
+// Dọn dẹp bộ nhớ AI khi hết giờ (Cách ly ngôn ngữ)
+localStorage.setItem('fc_ai_memory_en', '[]');
+localStorage.setItem('fc_ai_memory_zh', '[]');
+localStorage.setItem('fc_ai_memory_vi', '[]');
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
@@ -24557,8 +24568,9 @@ try {
 // Khử Thundering Herd bằng Staggered Delay ngẫu nhiên (200ms - 800ms)
 const staggerDelay = Math.floor(Math.random() * 600) + 200;
 await new Promise(r => setTimeout(r, staggerDelay));
-// Bắt buộc trích xuất RAM mới nhất trước MỖI VIÊN ĐẠN để cập nhật trí nhớ AI
-const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
+// Bắt buộc trích xuất RAM mới nhất trước MỖI VIÊN ĐẠN để cập nhật trí nhớ AI (Định tuyến ngôn ngữ)
+const trackLang = meta.track === 'hsk' ? 'zh' : (meta.track === 'vi' ? 'vi' : 'en');
+const freshHistory = window.Utils ? window.Utils.safeJsonParse(`fc_ai_memory_${trackLang}`, []) : [];
 const qData = await window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory);
 if (isExamActiveRef.current && qData) {
 // Gửi hàng vào Kho thu hoạch AI (Đã bọc giáp try..catch an toàn chống Crash Queue)
@@ -24600,8 +24612,11 @@ const loadQuestion = async (index, currentState) => {
 const targetState = currentState || examState;
 if (!targetState.blueprint || index >= targetState.blueprint.length) {
 setExamState(prev => ({ ...prev, status: 'completed' }));
-// Dọn dẹp bộ nhớ AI khi kết thúc
-localStorage.setItem('fc_ai_memory', '[]');
+// Dọn dẹp bộ nhớ AI khi kết thúc (Cách ly ngôn ngữ)
+localStorage.setItem('fc_ai_memory_en', '[]');
+localStorage.setItem('fc_ai_memory_zh', '[]');
+localStorage.setItem('fc_ai_memory_vi', '[]');
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
@@ -24727,8 +24742,11 @@ setCurrentQuestion(null);
 setCachedCount(0);
 setExamCooldown(0);
 streakTrackerRef.current = []; // Reset trí nhớ Anti-Streak
-// Tẩy não AI triệt để ngay khi bắt đầu bài thi mới
-localStorage.setItem('fc_ai_memory', '[]');
+// Tẩy não AI triệt để ngay khi bắt đầu bài thi mới (Cách ly ngôn ngữ)
+localStorage.setItem('fc_ai_memory_en', '[]');
+localStorage.setItem('fc_ai_memory_zh', '[]');
+localStorage.setItem('fc_ai_memory_vi', '[]');
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
@@ -24851,8 +24869,11 @@ window.FcDB.set(completedState.sessionId, completedState, 'exam_sessions').catch
 }
 localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 isTransitioningRef.current = false;
-// Dọn dẹp bộ nhớ AI khi kết thúc tự nhiên
-localStorage.setItem('fc_ai_memory', '[]');
+// Dọn dẹp bộ nhớ AI khi kết thúc tự nhiên (Cách ly ngôn ngữ)
+localStorage.setItem('fc_ai_memory_en', '[]');
+localStorage.setItem('fc_ai_memory_zh', '[]');
+localStorage.setItem('fc_ai_memory_vi', '[]');
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
@@ -24863,8 +24884,11 @@ const nextPhase = prev.blueprint[nextIndex]?.phase;
 const isPhaseTransition = currentPhase && nextPhase && currentPhase !== nextPhase;
 if (isPhaseTransition) {
 console.log(`[Phase Transition] Chuyển từ Phase ${currentPhase} sang Phase ${nextPhase}. Đang tiến hành tẩy não AI...`);
-// 1. Tẩy não AI trên Ổ cứng và RAM
-localStorage.setItem('fc_ai_memory', '[]');
+// 1. Tẩy não AI trên Ổ cứng và RAM (Cách ly ngôn ngữ)
+localStorage.setItem('fc_ai_memory_en', '[]');
+localStorage.setItem('fc_ai_memory_zh', '[]');
+localStorage.setItem('fc_ai_memory_vi', '[]');
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
@@ -24924,8 +24948,11 @@ return updatedState;
 });
 localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 }, 0);
-// Dọn dẹp bộ nhớ AI khi nộp bài sớm
-localStorage.setItem('fc_ai_memory', '[]');
+// Dọn dẹp bộ nhớ AI khi nộp bài sớm (Cách ly ngôn ngữ)
+localStorage.setItem('fc_ai_memory_en', '[]');
+localStorage.setItem('fc_ai_memory_zh', '[]');
+localStorage.setItem('fc_ai_memory_vi', '[]');
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
@@ -24982,8 +25009,11 @@ streakTrackerRef.current = []; // Reset trí nhớ
 localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 setCachedCount(0);
-// Dọn dẹp bộ nhớ AI khi thoát ngang
-localStorage.setItem('fc_ai_memory', '[]');
+// Dọn dẹp bộ nhớ AI khi thoát ngang (Cách ly ngôn ngữ)
+localStorage.setItem('fc_ai_memory_en', '[]');
+localStorage.setItem('fc_ai_memory_zh', '[]');
+localStorage.setItem('fc_ai_memory_vi', '[]');
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
