@@ -1507,10 +1507,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.7
-// Last Updated: 2026-06-08 14:35
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.81
+// Last Updated: 2026-06-10 10:15
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.7: [CREATIVE FREEDOM] Đại vi phẫu gọt bỏ toàn bộ các lệnh cấm đoán (CRITICAL, BẮT BUỘC, TUYỆT ĐỐI KHÔNG) trong Prompt. Chuyển đổi sang triết lý "Định hướng Sáng tạo" để giải phóng tốc độ suy luận của LLM, giảm độ trễ từ 25s xuống 3-5s. Giữ nguyên Thuật toán Nội suy Kép.
+// Cập nhật V1.8: [LANGUAGE-AWARE FUZZY ROUTING] Cấy ghép thuật toán định tuyến mờ thông minh. Tự động nhận diện ngôn ngữ từ Tag và cho phép dùng chung các bẫy có cùng "lõi sư phạm" xuyên cấp độ (Ví dụ HSK1 dùng chung bẫy của HSK2). Ngăn chặn 100% tình trạng Fallback vô ích, duy trì tốc độ suy luận LLM ở mức siêu tốc (3-5s).
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -1528,6 +1528,45 @@ let contextDesc = window.IoeDataEngine && window.IoeDataEngine.GRADE_CONTEXTS ? 
 if (!contextDesc) return "";
 return "\n[ĐỊNH HƯỚNG TRÌNH ĐỘ]: Người học đang ở cấp độ [" + mappedKey + "]. Ngữ cảnh: " + contextDesc + ". Hãy ưu tiên sử dụng từ vựng và cấu trúc ngữ pháp phù hợp với cấp độ này để mang lại trải nghiệm học tự nhiên nhất.";
 },
+// [LÕI ĐỊNH TUYẾN MỜ V1.8] Tự động chắp vá Micro-prompts xuyên cấp độ nhưng khóa cứng ngôn ngữ
+_getFuzzyMicroPrompt: function(card, gameType) {
+const pool = window.IoeDataEngine?.MICRO_PROMPTS?.[gameType];
+if (!pool) return "";
+// [HOTFIX V1.81] Dịch chuyển Lưới Cứu Hộ lên đầu để hứng thẻ khuyết ngữ pháp
+const fallbacks = {
+quiz: 'general_trap',
+spot_mistake: 'general_mistake',
+fill_blank: 'general_blank',
+scramble: 'general_noise'
+};
+const defaultFallback = pool[fallbacks[gameType]] || "";
+if (!card || !card.grammar_type) return defaultFallback;
+let tags = card.grammar_type;
+if (typeof tags === 'string') {
+tags = tags.split(',').map(s => s.trim()).filter(Boolean);
+}
+if (!Array.isArray(tags) || tags.length === 0) return defaultFallback;
+// Bốc thăm ngẫu nhiên 1 Nhãn ngữ pháp từ Thẻ
+const targetTag = tags[Math.floor(Math.random() * tags.length)];
+// BƯỚC 1: EXACT MATCH (So khớp tuyệt đối)
+if (pool[targetTag]) return pool[targetTag];
+// BƯỚC 2: LANGUAGE-AWARE FUZZY MATCH (Xuyên cấp độ, Cùng ngôn ngữ)
+// Tự động nhận diện ngôn ngữ thông qua tiền tố của Tag (Đảm bảo Tiếng Anh không dùng bẫy Tiếng Trung)
+const isChinese = targetTag.startsWith('zh_');
+const isEnglish = targetTag.startsWith('eng_') || targetTag.startsWith('pre_a1_');
+// Rút trích Lõi Sư Phạm (Loại bỏ tiền tố level)
+const coreTrap = targetTag.replace(/^(zh_hsk\d*_|eng_a\d+p?_|pre_a1_)/, '');
+const possibleKeys = Object.keys(pool).filter(key => {
+const isCorrectLang = isChinese ? key.startsWith('zh_') : (isEnglish ? (key.startsWith('eng_') || key.startsWith('pre_')) : true);
+return isCorrectLang && key.includes(coreTrap);
+});
+// Nếu tìm thấy các bẫy có chung "lõi", bốc ngẫu nhiên 1 bẫy ra dùng
+if (possibleKeys.length > 0) {
+return pool[possibleKeys[Math.floor(Math.random() * possibleKeys.length)]];
+}
+// BƯỚC 3: LƯỚI CỨU HỘ CUỐI CÙNG
+return defaultFallback;
+},
 // 1. ĐỘNG CƠ TẠO LỖI SAI TRỰC TUYẾN (Spot Mistake)
 ai_distort: async function(text, lang, type, apiKey, level = "", topic = "", card = null) {
 let prompt = "";
@@ -1535,8 +1574,9 @@ let schema = {};
 const levelContext = window.GameAiEngine._getLevelContext(level);
 const langStr = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
 let microPrompt = "";
-if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
-const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'spot_mistake');
+// [HOTFIX V1.8] Sử dụng Lõi Định Tuyến Mờ tự chủ
+if (card) {
+const mp = this._getFuzzyMicroPrompt(card, 'spot_mistake');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 }
 let injectedRule = "";
@@ -1591,22 +1631,18 @@ if (typeof cardOrText === 'string') {
 term = cardOrText;
 definition = cardOrText;
 } else if (cardOrText) {
-// [VÁ LỖI 20s - COGNITIVE DISSONANCE]
-// KHÔNG BAO GIỜ gán ngược term = Tiếng Việt, definition = Tiếng Trung.
-// Biến term phải luôn giữ nguyên bản chất là Ngoại ngữ, definition là Tiếng Việt.
 term = cardOrText.term;
 definition = cardOrText.definition;
 }
 let microPrompt = "";
-if (typeof cardOrText === 'object' && cardOrText !== null && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
-const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(cardOrText, 'quiz');
+// [HOTFIX V1.8] Sử dụng Lõi Định Tuyến Mờ tự chủ
+if (typeof cardOrText === 'object' && cardOrText !== null) {
+const mp = this._getFuzzyMicroPrompt(cardOrText, 'quiz');
 if (mp) {
 // [THUẬT TOÁN NỘI SUY KÉP (DUAL-CONTEXT INTERPOLATION)]
 if (!isReverse) {
-// Chế độ Thường (Hỏi Trung -> Chọn Việt): Giải thích cho AI hiểu phải lừa bằng tiếng Việt
 microPrompt = `\n[PHÂN TÍCH NGỮ PHÁP VÀ LỪA NGHĨA]: Câu gốc ngoại ngữ mang đặc trưng ngữ pháp sau: "${mp}". Bạn hãy tự phân tích xem trọng điểm ngữ pháp này nằm ở chữ nào trong câu ngoại ngữ. Sau đó, TẠO RA CÁC ĐÁP ÁN NHIỄU BẰNG TIẾNG VIỆT bằng cách dịch sai hoặc hiểu nhầm chính trọng điểm ngữ pháp đó.\n`;
 } else {
-// Chế độ Đảo ngược (Hỏi Việt -> Chọn Trung): Áp dụng trực tiếp bẫy tiếng Trung
 microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: ${mp}\n`;
 }
 }
@@ -1620,7 +1656,6 @@ prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
 } else {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
-// [VÁ LỖI 20s] Lắp ráp chính xác biến vào chuỗi để AI không bị mâu thuẫn
 prompt += `Mục tiêu tiếng Việt: "${definition}"\nNghĩa đúng (đáp án chuẩn): "${term}"\n`;
 prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề, và có độ dài tương đối với đáp án đúng. `;
 if (distractorLang === 'zh') {
@@ -1632,7 +1667,7 @@ prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["exce
 }
 }
 if (type === 'sentence') {
-prompt += `\n[ĐỊNH HƯỚNG CẤU TRÚC]: Các đáp án nhiễu nên là những CÂU HOÀN CHỈNH. Hãy cố gắng giữ trọn vẹn nhịp điệu và độ dài tương đương câu gốc để học viên phải tư duy logic mới tìm ra lỗi sai.\n`;
+prompt += `\n[ĐỊNH HƯỚNG CẤU TRÚC]: Hãy viết các đáp án nhiễu dưới dạng CÂU HOÀN CHỈNH. Hãy cố gắng giữ trọn vẹn nhịp điệu và độ dài tương đương câu gốc để học viên phải tư duy logic mới tìm ra lỗi sai.\n`;
 }
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOptionsRule) {
@@ -1661,11 +1696,11 @@ return dists.slice(0, count);
 ai_getNoise: async function(correctText, lang, type, apiKey, count = 2, level = "", topic = "", card = null) {
 let prompt = "";
 let microPrompt = "";
-if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
-const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'scramble');
+// [HOTFIX V1.8] Sử dụng Lõi Định Tuyến Mờ tự chủ
+if (card) {
+const mp = this._getFuzzyMicroPrompt(card, 'scramble');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 }
-// [VÁ LỖI V1.3] Tiêm Persona và Few-Shot
 if (type === 'word') {
 if (lang === 'zh') {
 prompt = `Nhiệm vụ: Đóng vai giáo viên tiếng Trung. Từ gốc: "${correctText}".\nHãy tạo ra ${count} chữ Hán (Hanzi) ngẫu nhiên có cùng bộ thủ hoặc đồng âm với từ gốc để làm nhiễu người học. Vui lòng chỉ trả về các chữ Hán đó.`;
@@ -1709,11 +1744,11 @@ const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vie
 // Mượn chỉ thị gốc từ 2.1a
 let prompt = window.Utils.getPrompt('fillblank_sentence', { term: text, definition: hintFallback, lang: targetLang });
 let microPrompt = "";
-if (card && window.GameAlgoEngine && window.GameAlgoEngine.GrammarRouter) {
-const mp = window.GameAlgoEngine.GrammarRouter.getMicroPrompt(card, 'fill_blank');
+// [HOTFIX V1.8] Sử dụng Lõi Định Tuyến Mờ tự chủ
+if (card) {
+const mp = this._getFuzzyMicroPrompt(card, 'fill_blank');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 }
-// [VÁ LỖI V1.3] Tiêm Vắc-xin Few-Shot
 let examples = "\n\nMỘT SỐ VÍ DỤ MINH HỌA:\n";
 if (lang === 'zh') {
 examples += `- Câu gốc: "我喜欢吃苹果。" -> displaySentence: "我喜欢吃[__________]。", targetWord: "苹果", distractors: ["香蕉", "汽车", "跑"]\n`;
