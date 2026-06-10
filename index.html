@@ -3171,10 +3171,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.28
-// Last Updated: 2026-06-10 14:46
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.29
+// Last Updated: 2026-06-10 21:20
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.28: [TẨY RỬA PROMPT TUYỆT ĐỐI] Bóc tách triệt để các tàn dư tiếng Anh cuối cùng (CEFR Tagging & Cambridge Topics) ra khỏi luồng xử lý tiếng Trung. Đảm bảo Prompt hệ tiếng Trung đạt độ tinh khiết 100%.
+// Cập nhật V1.29: [VÁ LỖI KIẾN TRÚC PAYLOAD] Bổ sung definition và displaySentence vào Schema của Quiz. Sửa lại Prompt để phân biệt rõ dataMode 'vocab' và 'sentence', chấm dứt tình trạng Lệch pha Câu/Từ và Trắng màn hình khi Đảo ngược.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -3275,7 +3275,7 @@ prompt += `STRICT LEXICAL MARTIAL LAW: HSK ALIGNMENT IS MANDATORY. You MUST audi
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
 }
 if (dataMode === 'sentence' || subType === 'grammar_mcq') {
-prompt += `STRICT FORMAT MARTIAL LAW: The target and ALL options/distractors MUST be FULL, complete sentences. NEVER return short fragments or isolated words. They must mirror the length and structure of the original sentence.\n`;
+prompt += `STRICT FORMAT MARTIAL LAW: The 'displaySentence' and ALL options/distractors MUST be FULL, complete sentences. NEVER return short fragments or isolated words for options in sentence mode.\n`;
 } else {
 if (lang === 'zh') {
 prompt += `STRICT LENGTH MARTIAL LAW: If the target level is HSK 1 or HSK 2, ALL options/distractors MUST BE STRICTLY SHORT (1-4 characters). Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
@@ -3332,10 +3332,23 @@ prompt += `CRITICAL RULE 1: DO NOT insert '[__________]' into the sentence. The 
 prompt += `RULES: The 'hint' field MUST BE the Vietnamese translation of the entire sentence.\n`;
 } else if (subType === 'vocab_mcq' || subType === 'grammar_mcq') {
 prompt += `TASK: Generate a multiple-choice question for ${dataMode === 'sentence' ? 'sentence comprehension' : 'vocabulary recognition'} at level ${cefrLevel}.\n`;
+prompt += `JSON DATA BINDING RULES:\n`;
+prompt += `- 'term': The target core word/phrase in ${targetLang}.\n`;
+prompt += `- 'definition': A concise Vietnamese translation of the 'term' (CRUCIAL for Reverse Mode).\n`;
+if (dataMode === 'sentence' || subType === 'grammar_mcq') {
+prompt += `- 'displaySentence': A FULL, complete sentence in ${targetLang} demonstrating the 'term'.\n`;
 if (actualIsReverse) {
-prompt += `FORMAT: Provide the target ${dataMode === 'sentence' ? 'sentence' : 'word/phrase'} in VIETNAMESE in the 'term' field. Provide exactly 4 options as complete ${targetLang} items (1 correct translation, 3 distractors).\n`;
+prompt += `- 'options': 4 COMPLETE sentences in ${targetLang} (1 correct, 3 distractors).\n`;
 } else {
-prompt += `FORMAT: Provide the target ${dataMode === 'sentence' ? 'sentence' : 'word/phrase'} in ${targetLang} in the 'term' field. Provide exactly 4 options in VIETNAMESE (1 correct translation, 3 distractors).\n`;
+prompt += `- 'options': 4 COMPLETE sentences in VIETNAMESE translating the 'displaySentence' (1 correct translation, 3 distractors).\n`;
+}
+} else {
+prompt += `- 'displaySentence': A short example sentence in ${targetLang}.\n`;
+if (actualIsReverse) {
+prompt += `- 'options': 4 short words/phrases in ${targetLang} translating the 'definition' (1 correct, 3 distractors).\n`;
+} else {
+prompt += `- 'options': 4 short words/phrases in VIETNAMESE translating the 'term' (1 correct, 3 distractors).\n`;
+}
 }
 prompt += `SEMANTIC DECOUPLING RULE: The 3 distractors MUST belong to the same broad topic but MUST be VISUALLY DISTINCT objects or completely different sub-categories.\n`;
 if (subType === 'vocab_mcq') {
@@ -3370,7 +3383,7 @@ if (subType === 'pronunciation') return { type: "OBJECT", properties: { term: { 
 }
 if (forgeType === 'context') {
 if (subType === 'fill_blank') return { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" }, ...commonProps }, required: ["displaySentence", "targetWord", "hint", ...commonRequired] };
-if (subType === 'vocab_mcq' || subType === 'grammar_mcq') return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["term", "options", "image_keyword", "explanation", ...commonRequired] };
+if (subType === 'vocab_mcq' || subType === 'grammar_mcq') return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, displaySentence: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["term", "definition", "displaySentence", "options", "image_keyword", "explanation", ...commonRequired] };
 if (subType === 'spot_mistake') return { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["wrongSentence", "wrongWord", "correction", "explanation", ...commonRequired] };
 if (subType === 'listening') return { type: "OBJECT", properties: { audioScript: { type: "STRING" }, question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, ...commonProps }, required: ["audioScript", "question", "options", "explanation", ...commonRequired] };
 if (subType === 'reading_passage') return { type: "OBJECT", properties: { passage: { type: "STRING" }, questions: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, questionText: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, correctAnswer: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["type", "questionText", "correctAnswer", "explanation"] } }, ...commonProps }, required: ["passage", "questions", ...commonRequired] };
@@ -11239,10 +11252,10 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.15
-// Last Updated: 2026-06-02 18:15
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.16
+// Last Updated: 2026-06-10 21:30
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.15: [VÁ LỖI BĂNG ĐẠN ẢO] Lột bỏ hoàn toàn queueLength, sử dụng trực tiếp aiAmmoCount từ Tầng 5.6 để phản ánh trung thực số lượng đạn do AI tạo ra trên giao diện.
+// Cập nhật V1.16: [VÁ LỖI LỆCH PHA CÂU/TỪ] Nâng cấp questionText: Ưu tiên in displaySentence khi ở chế độ Câu văn. Thiết lập Fallback an toàn chống hiện tượng trắng màn hình ở chế độ Đảo ngược.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -11385,7 +11398,7 @@ onStartRound, onEndGame, onPause, onBack, feedbackType, isPaused,
 correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode,
 hardMode, listenPlayCount, sourceMode, config,
 aiWaitTime, resultTimer, isResultPaused, toggleResultPause, onNext,
-aiAmmoCount = 0 // [QA FIX V1.15] Nhận duy nhất tham số Đạn xịn (AI) từ Tầng 5.6
+aiAmmoCount = 0
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
@@ -11404,7 +11417,7 @@ return <div className="w-full h-full bg-gray-50 flex items-center justify-center
 return (
 <window.GlobalLoadingScreen
 onCancel={() => onEndGame()}
-queueLength={aiAmmoCount} // [QA FIX V1.15] Truyền số lượng Đạn xịn cho Loading Screen
+queueLength={aiAmmoCount}
 text={sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
 levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
@@ -11445,7 +11458,11 @@ const totalOptions = currentQuestionData?.options?.length || 0;
 const isOddOptions = totalOptions % 2 !== 0;
 const labels = ['A', 'B', 'C', 'D', 'E'];
 const isReverse = askMode === 'def';
-const questionText = isReverse ? currentQuestionData?.question?.definition : currentQuestionData?.question?.term;
+// [QA FIX V1.16] Logic hiển thị thông minh Câu/Từ và Fallback Đảo ngược
+const isSentenceMode = config?.dataMode === 'sentence';
+const questionText = isReverse
+? (currentQuestionData?.question?.definition || currentQuestionData?.question?.term || '...')
+: ((isSentenceMode && currentQuestionData?.question?.displaySentence) ? currentQuestionData.question.displaySentence : (currentQuestionData?.question?.term || '...'));
 const showPronunciation = !isReverse && showPronun && currentQuestionData?.question?.pronunciation;
 const isLimitedListen = gameMode === 'listen' && hardMode && !timerMode;
 const isListenExhausted = isLimitedListen && listenPlayCount >= 2;
@@ -11557,7 +11574,7 @@ title="Lưu vào Sổ tay"
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{/* [QA FIX V1.15] Băng đạn chỉ báo Đạn AI thật */}
+{/* Băng đạn chỉ báo Đạn AI thật */}
 {(isAiMode || sourceMode === 'ai_pure') && aiAmmoCount > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${aiAmmoCount} câu AI`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {aiAmmoCount}
@@ -11666,9 +11683,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.18
-// Last Updated: 2026-06-02 18:05
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.19
+// Last Updated: 2026-06-10 21:36
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
+// Cập nhật V1.19: [VÁ LỖI PHÁT ÂM & ĐẢO NGƯỢC CHẾ ĐỘ CÂU VĂN] Đồng bộ hóa textToPlay và correctOptText theo chế độ Câu văn (displaySentence), giải quyết dứt điểm lỗi lệch pha phát âm và đảo ngược bị trắng chữ hoặc sai chiều ngôn ngữ.
 // Cập nhật V1.18: [VÁ LỖI BĂNG ĐẠN ẢO] Nâng cấp queueScanner, áp dụng thuật toán đếm "đạn xịn" dựa trên cờ isAiGenerated thông qua getPendingItems(), truyền biến aiAmmoCount xuống UI để báo cáo trung thực số đạn AI.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
@@ -11928,8 +11946,12 @@ try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.curren
 let distractors = [];
 let isAiGenerated = card.isAiGenerated || false;
 const numOptions = 4;
+// [QA FIX V1.19] Cập nhật logic đồng bộ correctOptText với dataMode
 const isReverse = askMode === 'def';
-const correctOptText = isReverse ? card.term : card.definition;
+const isSentenceMode = configRef.current?.dataMode === 'sentence';
+const correctOptText = isReverse
+? (isSentenceMode ? (card.displaySentence || card.term) : card.term)
+: card.definition;
 const correctOpt = { text: correctOptText, isCorrect: true };
 const textSafe = correctOptText || '';
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(textSafe) : textSafe.includes(' ');
@@ -11981,7 +12003,13 @@ pool = [...pool, ...newFbs];
 }
 const needed = (numOptions - 1) - distractors.length;
 let randomOthers = window.Utils.shuffleArray(pool).slice(0, needed);
-distractors.push(...randomOthers.map(c => ({ text: isReverse ? c.term : c.definition, isCorrect: false })));
+// [QA FIX V1.19] Định dạng text của đáp án nhiễu offline đồng bộ theo Chế độ Câu văn
+distractors.push(...randomOthers.map(c => ({
+text: isReverse
+? (isSentenceMode ? (c.displaySentence || c.term) : c.term)
+: c.definition,
+isCorrect: false
+})));
 }
 while (distractors.length < numOptions - 1) {
 distractors.push({ text: correctOptText + " " + (distractors.length + 1), isCorrect: false });
@@ -12243,7 +12271,11 @@ if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 const playFn = () => {
 if (!isGameActiveRef.current) return;
 setHasStartedListening(true); setIsAudioPlaying(true);
-const textToPlay = qData.question.term;
+// [QA FIX V1.19] Cập nhật textToPlay để phát âm đúng dữ liệu
+const isSentenceMode = configRef.current?.dataMode === 'sentence';
+const textToPlay = (isSentenceMode && qData.question?.displaySentence)
+? qData.question.displaySentence
+: (qData.question?.term || '');
 onPlay(textToPlay, null, null, () => { if (isGameActiveRef.current) setIsAudioPlaying(false); });
 };
 if (delay > 0) audioTimeoutRef.current = setTimeout(playFn, delay); else playFn();
@@ -12258,7 +12290,11 @@ return () => clearTimeout(timerRef.current);
 const handleAnswer = (index, isCorrect, isTimeout = false, isForceReveal = false) => {
 if (isChecking) return;
 cleanupTimers();
-const textToPlay = currentQuestionData.question.term;
+// [QA FIX V1.19] Cập nhật textToPlay để phát âm đúng sau khi trả lời
+const isSentenceMode = configRef.current?.dataMode === 'sentence';
+const textToPlay = (isSentenceMode && currentQuestionData?.question?.displaySentence)
+? currentQuestionData.question.displaySentence
+: (currentQuestionData?.question?.term || '');
 const proceedToNext = (defaultDelayMs) => {
 if (isGameActiveRef.current) {
 let delaySec = Math.ceil(defaultDelayMs / 1000);
