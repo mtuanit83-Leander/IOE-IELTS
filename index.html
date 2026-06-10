@@ -1140,10 +1140,10 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.09
-// Last Updated: 2026-06-05 16:00
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.10
+// Last Updated: 2026-06-10 14:03
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
-// Cập nhật V1.09: [KỶ LUẬT ĐỊNH DẠNG - ANTI-FRAGMENT] Cấy ghép Chỉ thị Vàng "antiFragmentRule" vào các bẫy Options để diệt tận gốc hiện tượng AI trả về đáp án cụt lủn ở Game Trắc nghiệm câu văn.
+// Cập nhật V1.10: [LANGUAGE-ISOLATED PROMPTING] Tách biệt hoàn toàn thiết quân luật từ vựng (Lexical Martial Law) và độ dài (Length Martial Law) giữa tiếng Trung và tiếng Anh. Ngăn chặn hiện tượng ô nhiễm Prompt (Cross-language Contamination) gây ảo giác cho AI.
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -1415,12 +1415,21 @@ let prompt = `You are an expert ${targetLang} language tutor generating content 
 prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
+// [TÁCH BIỆT THIẾT QUÂN LUẬT TỪ VỰNG - V1.10]
+if (lang === 'zh') {
+prompt += `STRICT LEXICAL MARTIAL LAW: HSK ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is HSK 1/2, you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (HSK 4+). Strictly use basic daily vocabulary. If target is HSK 4+, DO NOT use basic HSK 1 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${level} standard.\n`;
+} else {
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
+}
 // [VÁ LỖI CỤT LỦN & BỐC HƠI TOKEN] Tách biệt thiết quân luật cho Từ Vựng và Câu Văn
 if (dataMode === 'sentence') {
 prompt += `STRICT FORMAT MARTIAL LAW: The target and ALL options/distractors MUST be FULL, complete sentences. NEVER return short fragments or isolated words. They must mirror the length and structure of the original sentence.\n`;
 } else {
+if (lang === 'zh') {
+prompt += `STRICT LENGTH MARTIAL LAW: If the target level is HSK 1 or HSK 2, ALL options/distractors MUST BE STRICTLY SHORT (1-4 characters). Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
+} else {
 prompt += `STRICT LENGTH MARTIAL LAW: If the target level is Pre-A1, A1, or A2 (e.g., Kiddie, Junior, Starters, Movers, Flyers), ALL options/distractors MUST BE STRICTLY LESS THAN 8 WORDS. Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
+}
 }
 prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
 // [TOPIC FREEDOM] Đặc xá chủ đề cho các game kỹ thuật
@@ -3162,10 +3171,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.25
-// Last Updated: 2026-06-04 15:22
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.26
+// Last Updated: 2026-06-10 13:51
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.25: [VÁ LỖI CẤY GHÉP GRAMMAR TYPE] Mở rộng Schema JSON trong `_getMasterSchema` (nhánh base_card) để hứng trường `grammar_type` khi người dùng bấm tia chớp làm giàu thẻ.
+// Cập nhật V1.26: [ĐỘNG CƠ NHẬN DIỆN NGỮ CẢNH] Cấy ghép tham số `dataMode` và `isReverse` vào toàn bộ hệ thống Lò đúc và System Prompt. Khắc phục triệt để lỗi AI đục lỗ sai quy cách khi người dùng yêu cầu tạo bài Trắc nghiệm Câu văn ở chế độ Đảo ngược (Pure AI Mode).
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -3245,7 +3254,7 @@ return "\n\nCRITICAL ANTI-DUPLICATION RULE:\nABSOLUTELY DO NOT USE CONCEPTS, TOP
 // ============================================================================
 // 2. MASTER PROMPT BUILDER & SCHEMAS (Internal)
 // ============================================================================
-_buildSystemPrompt: function(forgeType, subType, level, lang, topic, dataMode) {
+_buildSystemPrompt: function(forgeType, subType, level, lang, topic, dataMode = 'vocab', isReverse = false) {
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'vi' ? 'Vietnamese' : 'English');
 const cefrLevel = window.ExamProfiles && window.ExamProfiles.getCefrLevel ? window.ExamProfiles.getCefrLevel(level) : "Intermediate";
 let prompt = `You are an expert ${targetLang} language tutor generating content for an educational app.\n`;
@@ -3307,12 +3316,28 @@ prompt += `CRITICAL RULE 1: DO NOT insert '[__________]' into the sentence. The 
 const clozeRule = window.IoeDataEngine?.getMicroTierClozeRule ? window.IoeDataEngine.getMicroTierClozeRule(targetLang, dataMode, level, topic) : "";
 if (clozeRule) prompt += clozeRule + "\n";
 prompt += `RULES: The 'hint' field MUST BE the Vietnamese translation of the entire sentence.\n`;
-} else if (subType === 'vocab_mcq') {
+} else if (subType === 'vocab_mcq' || subType === 'grammar_mcq') {
+if (dataMode === 'sentence') {
+prompt += `TASK: Generate a multiple-choice sentence translation/comprehension question matching level ${cefrLevel}.\n`;
+if (isReverse) {
+prompt += `FORMAT: Provide the target sentence in VIETNAMESE in the 'term' field. Provide exactly 4 options as COMPLETE ${targetLang} SENTENCES (1 correct translation, 3 distractors).\n`;
+} else {
+prompt += `FORMAT: Provide the target sentence in ${targetLang} in the 'term' field. Provide exactly 4 options as COMPLETE VIETNAMESE SENTENCES (1 correct translation, 3 distractors).\n`;
+}
+prompt += `REQUIREMENT: The distractors must be grammatically valid but semantically incorrect or slightly inaccurate translations to challenge the student.\n`;
+} else {
 prompt += `TASK: Generate a multiple-choice question for vocabulary recognition at level ${cefrLevel}.\n`;
+if (isReverse) {
+prompt += `FORMAT: Provide the target word/phrase in VIETNAMESE in the 'term' field. Provide exactly 4 options in ${targetLang} (1 correct translation, 3 distractors).\n`;
+} else {
 prompt += `FORMAT: Provide the target word/phrase in ${targetLang} in the 'term' field. Provide exactly 4 options in VIETNAMESE (1 correct translation, 3 distractors).\n`;
-prompt += `SEMANTIC DECOUPLING RULE: The 3 distractors MUST belong to the same broad topic but MUST be VISUALLY DISTINCT objects or completely different sub-categories. DO NOT use closely related items that look similar (e.g., if the answer is 'Lamp', do NOT use 'Bulb' or 'Flashlight' as distractors. Use 'Table', 'Chair', etc.).\n`;
+}
+prompt += `SEMANTIC DECOUPLING RULE: The 3 distractors MUST belong to the same broad topic but MUST be VISUALLY DISTINCT objects or completely different sub-categories.\n`;
+if (subType === 'vocab_mcq') {
 prompt += `IMAGE KEYWORD RULE: Provide a highly specific English 'image_keyword' for the correct term, appending 'isolated white background clipart' to ensure clear image search results.\n`;
-prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
+}
+}
+prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, explaining why the correct option fits and why the distractors are wrong.\n`;
 } else if (subType === 'spot_mistake') {
 prompt += `TASK: Generate a ${targetLang} sentence matching level ${cefrLevel} that contains EXACTLY ONE subtle grammar or vocabulary mistake.\n`;
 prompt += `RULES: Provide the wrong sentence, the wrong word, the correct word, and an explanation in VIETNAMESE.\n`;
@@ -3327,11 +3352,6 @@ const readRule = window.IoeDataEngine?.getMicroTierReadingRule ? window.IoeDataE
 if (readRule) prompt += readRule + "\n";
 prompt += `QUESTIONS REQUIREMENT: Include a mix of Multiple Choice (type: "mcq") and True/False/Not Given (type: "tfng") or Fill Blank (type: "fill_blank").\n`;
 prompt += `RULES: The 'explanation' for each question MUST BE 100% IN VIETNAMESE, citing the relevant part of the text.\n`;
-} else if (subType === 'grammar_mcq') {
-prompt += `TASK: Generate a multiple-choice grammar/vocabulary question matching level ${cefrLevel}.\n`;
-prompt += `FORMAT: Create a complete ${targetLang} sentence but replace the target word/phrase with '[__________]'. Put this sentence into the 'term' field.\n`;
-prompt += `REQUIREMENT: Provide exactly 4 options. Only 1 option is grammatically and semantically correct for the blank.\n`;
-prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, explaining why the correct option fits and why the distractors are wrong.\n`;
 }
 }
 const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -3342,7 +3362,6 @@ _getMasterSchema: function(forgeType, subType) {
 const commonProps = { cefr_level: { type: "STRING" } };
 const commonRequired = ["cefr_level"];
 if (forgeType === 'base_card') {
-// [CẤY GHÉP MỞ RỘNG] Hứng grammar_type cho tất cả các thẻ được AI sinh mới hoặc làm giàu
 return {
 type: "OBJECT",
 properties: {
@@ -3394,10 +3413,10 @@ return null;
 // ============================================================================
 // 3. LÒ ĐÚC 1: LÒ ĐÚC CƠ SỞ (FORGE BASE CARD)
 // ============================================================================
-forgeBaseCard: async function(level, lang, apiKey, topic = "", historyPrompt = "", dataMode = 'vocab') {
+forgeBaseCard: async function(level, lang, apiKey, topic = "", historyPrompt = "", dataMode = 'vocab', isReverse = false) {
 let timeoutId;
 try {
-let prompt = this._buildSystemPrompt('base_card', null, level, lang, topic, dataMode);
+let prompt = this._buildSystemPrompt('base_card', null, level, lang, topic, dataMode, isReverse);
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('base_card', null);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
@@ -3431,10 +3450,10 @@ throw e;
 // ============================================================================
 // 4. LÒ ĐÚC 2: LÒ ĐÚC MA TRẬN (FORGE MATRIX)
 // ============================================================================
-forgeMatrix: async function(subType, level, lang, apiKey, topic = "", historyPrompt = "", dataMode = 'vocab') {
+forgeMatrix: async function(subType, level, lang, apiKey, topic = "", historyPrompt = "", dataMode = 'vocab', isReverse = false) {
 let timeoutId;
 try {
-let prompt = this._buildSystemPrompt('matrix', subType, level, lang, topic, dataMode);
+let prompt = this._buildSystemPrompt('matrix', subType, level, lang, topic, dataMode, isReverse);
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('matrix', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
@@ -3470,10 +3489,10 @@ throw e;
 // ============================================================================
 // 5. LÒ ĐÚC 3: LÒ ĐÚC NGỮ CẢNH (FORGE CONTEXT)
 // ============================================================================
-forgeContext: async function(subType, level, lang, apiKey, topic = "", historyPrompt = "") {
+forgeContext: async function(subType, level, lang, apiKey, topic = "", historyPrompt = "", dataMode = 'vocab', isReverse = false) {
 let timeoutId;
 try {
-let prompt = this._buildSystemPrompt('context', subType, level, lang, topic, 'sentence');
+let prompt = this._buildSystemPrompt('context', subType, level, lang, topic, dataMode, isReverse);
 if (historyPrompt) prompt += historyPrompt;
 const schema = this._getMasterSchema('context', subType);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
