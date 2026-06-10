@@ -3171,10 +3171,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.27
-// Last Updated: 2026-06-10 14:35
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.28
+// Last Updated: 2026-06-10 14:46
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.27: [TỐI HẬU THƯ] Tiêu diệt triệt để hiện tượng "Ô nhiễm chéo ngôn ngữ". Xóa bỏ hardcode tiếng Anh, ép hệ thống áp dụng luật HSK cho tiếng Trung. Bổ sung Động cơ Tự động Nội suy (Auto-detect) chế độ Đảo ngược từ LocalStorage để chữa lỗi Tầng 5 không truyền tham số.
+// Cập nhật V1.28: [TẨY RỬA PROMPT TUYỆT ĐỐI] Bóc tách triệt để các tàn dư tiếng Anh cuối cùng (CEFR Tagging & Cambridge Topics) ra khỏi luồng xử lý tiếng Trung. Đảm bảo Prompt hệ tiếng Trung đạt độ tinh khiết 100%.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -3255,7 +3255,6 @@ return "\n\nCRITICAL ANTI-DUPLICATION RULE:\nABSOLUTELY DO NOT USE CONCEPTS, TOP
 // 2. MASTER PROMPT BUILDER & SCHEMAS (Internal Lõi Bọc Thép)
 // ============================================================================
 _buildSystemPrompt: function(forgeType, subType, level, lang, topic, dataMode = 'vocab', isReverse = false) {
-// [ĐỘNG CƠ NỘI SUY] Tự động soi LocalStorage để cứu hộ nếu Tầng 5 quên truyền tham số isReverse
 let actualIsReverse = isReverse;
 try {
 const settingsStr = localStorage.getItem(window.STORAGE_KEYS?.SETTINGS || 'fc_settings');
@@ -3270,13 +3269,11 @@ let prompt = `You are an expert ${targetLang} language tutor generating content 
 prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
-// [CÁCH LY NGÔN NGỮ TUYỆT ĐỐI V1.27] Tiêu diệt râu ông nọ cắm cằm bà kia
 if (lang === 'zh') {
 prompt += `STRICT LEXICAL MARTIAL LAW: HSK ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is HSK 1/2, you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (HSK 4+). Strictly use basic daily vocabulary. If target is HSK 4+, DO NOT use basic HSK 1 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${level} standard.\n`;
 } else {
 prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
 }
-// [KỶ LUẬT ĐỘ DÀI]
 if (dataMode === 'sentence' || subType === 'grammar_mcq') {
 prompt += `STRICT FORMAT MARTIAL LAW: The target and ALL options/distractors MUST be FULL, complete sentences. NEVER return short fragments or isolated words. They must mirror the length and structure of the original sentence.\n`;
 } else {
@@ -3286,10 +3283,16 @@ prompt += `STRICT LENGTH MARTIAL LAW: If the target level is HSK 1 or HSK 2, ALL
 prompt += `STRICT LENGTH MARTIAL LAW: If the target level is Pre-A1, A1, or A2 (e.g., Kiddie, Junior, Starters, Movers, Flyers), ALL options/distractors MUST BE STRICTLY LESS THAN 8 WORDS. Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
 }
 }
+// [CÁCH LY LEVEL TAGGING V1.28] Tẩy rửa hoàn toàn tàn dư tiếng Anh CEFR
+if (lang === 'zh') {
+prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the HSK level of the generated content in the 'cefr_level' field (e.g., 'HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 5', 'HSK 6'). Incorrect level declaration is a severe violation.\n`;
+} else {
 prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
+}
 const isTopicFree = topic === 'ANY' || subType === 'pronunciation' || subType === 'odd_one_out' || subType === 'spot_mistake';
 if (isTopicFree) {
-prompt += `TOPIC FREEDOM: You have absolute freedom to use vocabulary from ALL 26 Cambridge topics. Focus entirely on the technical mechanics of the question.\n`;
+// [CÁCH LY TOPIC FREEDOM V1.28] Xóa bỏ ranh giới chủ đề Cambridge đối với tiếng Trung
+prompt += `TOPIC FREEDOM: You have absolute freedom to use vocabulary from ALL 26 ${lang === 'zh' ? 'daily life' : 'Cambridge'} topics. Focus entirely on the technical mechanics of the question.\n`;
 } else if (topic) {
 prompt += `TOPIC FOCUS: Strictly related to "${topic}".\n`;
 }
