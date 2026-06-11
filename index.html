@@ -2863,10 +2863,11 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.10
-// Last Updated: 2026-06-05 22:24
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.11
+// Last Updated: 2026-06-11 11:00
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật V1.10: [CÔNG TẮC HỦY DIỆT - KILL SWITCH] Cấy ghép The Global Abort Controller. Tự động bóp cò ngắt toàn bộ Zombie Request (Lỗi mạng treo) ngay khi người dùng đóng Game.
+// Cập nhật V1.11: [DIỆT ZOMBIE THREADS TRIỆT ĐỂ] Sửa lỗi đứt gãy tín hiệu Kill Switch. Bắt buộc tiêu diệt Controller cũ trước khi cấp mới, và ép huỷ trực tiếp biến toàn cục window.__currentGameAbortController trong hàm destroy() để cắt đứt 100% vòng lặp Retry của Tầng 2.1c.
+// Cập nhật V1.10: [CÔNG TẮC HỦY DIỆT - KILL SWITCH] Cấy ghép The Global Abort Controller.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Sequential Early Resolve - Boomerang Principle)
@@ -2881,6 +2882,10 @@ if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
 }
 } catch (e) { console.warn("Lỗi đọc fc_ai_config", e); }
 const maxConcurrent = aiConfig.maxAmmo;
+// [VÁ LỖI V1.11] Tiêu diệt Zombie cũ trước khi cấp phát Controller mới
+if (window.__currentGameAbortController) {
+try { window.__currentGameAbortController.abort("New coordinator initialized"); } catch(e) {}
+}
 // Khởi tạo Kíp nổ C4 cho phiên làm việc mới
 const abortCtrl = new AbortController();
 window.__currentGameAbortController = abortCtrl;
@@ -2976,12 +2981,14 @@ peek: function() { return this.queue.length > 0 ? this.queue[0] : null; },
 destroy: function() {
 this.isActive = false;
 this.queue = [];
-// [CÔNG TẮC HỦY DIỆT] Kích nổ tín hiệu kết thúc ngay khi phá hủy Coordinator
+// [CÔNG TẮC HỦY DIỆT V1.11] Kích nổ quyết liệt mọi tín hiệu kết thúc
 if (this._abortCtrl) {
-this._abortCtrl.abort("User exited");
-if (window.__currentGameAbortController === this._abortCtrl) {
-window.__currentGameAbortController = null;
+try { this._abortCtrl.abort("User exited"); } catch(e) {}
 }
+// Chém đứt đuôi biến toàn cục, bóp nát mọi vòng lặp Retry mạng đang bám vào nó
+if (window.__currentGameAbortController) {
+try { window.__currentGameAbortController.abort("User exited"); } catch(e) {}
+window.__currentGameAbortController = null;
 }
 },
 length: function() { return this.queue.length; },
@@ -3000,6 +3007,9 @@ if (cfg.maxAmmo) aiConfig.maxAmmo = cfg.maxAmmo;
 }
 } catch (e) { console.warn("Lỗi đọc fc_ai_config", e); }
 const maxConcurrent = aiConfig.maxAmmo;
+if (window.__currentGameAbortController) {
+try { window.__currentGameAbortController.abort("New coordinator initialized"); } catch(e) {}
+}
 const abortCtrl = new AbortController();
 window.__currentGameAbortController = abortCtrl;
 return {
@@ -3085,10 +3095,11 @@ destroy: function() {
 this.isActive = false;
 this.queue = [];
 if (this._abortCtrl) {
-this._abortCtrl.abort("User exited");
-if (window.__currentGameAbortController === this._abortCtrl) {
-window.__currentGameAbortController = null;
+try { this._abortCtrl.abort("User exited"); } catch(e) {}
 }
+if (window.__currentGameAbortController) {
+try { window.__currentGameAbortController.abort("User exited"); } catch(e) {}
+window.__currentGameAbortController = null;
 }
 },
 length: function() { return this.queue.length; },
@@ -3097,6 +3108,9 @@ getPendingItems: function() { return [...this.queue]; }
 },
 // ĐỘNG CƠ NẠP ĐỢT CHO BÀI THI TỔNG HỢP (MOCK TEST CHUNKING)
 createMockTestCoordinator: function(fetchChunkFn, chunkSize = 10, prefetchThreshold = 3) {
+if (window.__currentGameAbortController) {
+try { window.__currentGameAbortController.abort("New mock test initialized"); } catch(e) {}
+}
 const abortCtrl = new AbortController();
 window.__currentGameAbortController = abortCtrl;
 return {
@@ -3144,10 +3158,11 @@ destroy: function() {
 this.isActive = false;
 this.queue = [];
 if (this._abortCtrl) {
-this._abortCtrl.abort("User exited");
-if (window.__currentGameAbortController === this._abortCtrl) {
-window.__currentGameAbortController = null;
+try { this._abortCtrl.abort("User exited"); } catch(e) {}
 }
+if (window.__currentGameAbortController) {
+try { window.__currentGameAbortController.abort("User exited"); } catch(e) {}
+window.__currentGameAbortController = null;
 }
 },
 length: function() { return this.queue.length; },
