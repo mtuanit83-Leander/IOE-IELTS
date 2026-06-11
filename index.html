@@ -2863,13 +2863,33 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.12
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.13
 // Last Updated: 2026-06-11 11:20
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật V1.12: [VÁ LỖI ZOMBIE RETRY 429] Triển khai thuật toán "Trì hoãn dọn dẹp" (Delayed Nullification). Giữ nguyên trạng thái Aborted của biến toàn cục trong 5 giây sau khi thoát Game để ép mọi vòng lặp Retry (thử lại) của ExamEngine đâm vào tường và tự hủy, triệt tiêu hoàn toàn bão request 429 ngầm.
-// Cập nhật V1.11: [DIỆT ZOMBIE THREADS TRIỆT ĐỂ] Sửa lỗi đứt gãy tín hiệu Kill Switch.
+// Cập nhật V1.13: [ĐÁNH CHẶN ZOMBIE TUYỆT ĐỐI] Thuật toán "Delayed Nullification" thất bại do controller bị ghi đè bởi hệ thống khác. Triển khai phương án "Surgical Interception": QueueEngine tạm thời đóng băng (monkey-patch) Lò đúc AiFactoryEngine trong 1.5 giây khi thoát game, ép mọi vòng lặp Retry thây ma nổ tung từ bên trong mà không kịp gửi request nào lên mạng.
 // ==================================================================================
 window.QueueEngine = {
+// ĐỘNG CƠ TIÊU DIỆT THÂY MA NGẦM (ZOMBIE KILLER INJECTION)
+_triggerZombieKiller: function() {
+if (window.AiFactoryEngine && !window.__zombieKillerActive) {
+window.__zombieKillerActive = true;
+const origContext = window.AiFactoryEngine.forgeContext;
+const origMatrix = window.AiFactoryEngine.forgeMatrix;
+const origBase = window.AiFactoryEngine.forgeBaseCard;
+// Thuốc độc bóp chết mọi nỗ lực gọi AI của vòng lặp Retry
+const killSwitch = async () => { throw new DOMException("Zombies Terminated", "AbortError"); };
+window.AiFactoryEngine.forgeContext = killSwitch;
+window.AiFactoryEngine.forgeMatrix = killSwitch;
+window.AiFactoryEngine.forgeBaseCard = killSwitch;
+// Giải phóng phong ấn sau 1.5 giây (Đủ thời gian vắt kiệt 5 vòng lặp siêu tốc)
+setTimeout(() => {
+window.AiFactoryEngine.forgeContext = origContext;
+window.AiFactoryEngine.forgeMatrix = origMatrix;
+window.AiFactoryEngine.forgeBaseCard = origBase;
+window.__zombieKillerActive = false;
+}, 1500);
+}
+},
 // ĐỘNG CƠ ĐA LUỒNG (Kiến trúc Sequential Early Resolve - Boomerang Principle)
 createQueueCoordinator: function(fetchDataFn, defaultMaxConcurrent = 4) {
 let aiConfig = { loadingTime: 22, delayMs: 2500, maxAmmo: defaultMaxConcurrent };
@@ -2983,17 +3003,10 @@ if (this._abortCtrl) {
 try { this._abortCtrl.abort("User exited"); } catch(e) {}
 }
 if (window.__currentGameAbortController) {
-const ctrl = window.__currentGameAbortController;
-try { ctrl.abort("User exited"); } catch(e) {}
-// [VÁ LỖI 1.12] Trì hoãn gỡ bỏ biến toàn cục 5 giây
-// Mục đích: Ép mọi vòng lặp Retry (nếu có) phải đâm vào cờ .aborted để tự hủy,
-// chặn đứng việc sinh ra các request thây ma.
-setTimeout(() => {
-if (window.__currentGameAbortController === ctrl) {
-window.__currentGameAbortController = null;
+try { window.__currentGameAbortController.abort("User exited"); } catch(e) {}
 }
-}, 5000);
-}
+// V1.13: Ném thuốc độc tiêu diệt mọi nỗ lực gọi AI từ các tiến trình cũ
+window.QueueEngine._triggerZombieKiller();
 },
 length: function() { return this.queue.length; },
 getPendingItems: function() { return [...this.queue]; }
@@ -3102,14 +3115,9 @@ if (this._abortCtrl) {
 try { this._abortCtrl.abort("User exited"); } catch(e) {}
 }
 if (window.__currentGameAbortController) {
-const ctrl = window.__currentGameAbortController;
-try { ctrl.abort("User exited"); } catch(e) {}
-setTimeout(() => {
-if (window.__currentGameAbortController === ctrl) {
-window.__currentGameAbortController = null;
+try { window.__currentGameAbortController.abort("User exited"); } catch(e) {}
 }
-}, 5000);
-}
+window.QueueEngine._triggerZombieKiller();
 },
 length: function() { return this.queue.length; },
 getPendingItems: function() { return [...this.queue]; }
@@ -3170,14 +3178,9 @@ if (this._abortCtrl) {
 try { this._abortCtrl.abort("User exited"); } catch(e) {}
 }
 if (window.__currentGameAbortController) {
-const ctrl = window.__currentGameAbortController;
-try { ctrl.abort("User exited"); } catch(e) {}
-setTimeout(() => {
-if (window.__currentGameAbortController === ctrl) {
-window.__currentGameAbortController = null;
+try { window.__currentGameAbortController.abort("User exited"); } catch(e) {}
 }
-}, 5000);
-}
+window.QueueEngine._triggerZombieKiller();
 },
 length: function() { return this.queue.length; },
 getTotalLoaded: function() { return this.totalLoaded; },
