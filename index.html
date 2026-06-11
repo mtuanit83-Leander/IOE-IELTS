@@ -4073,11 +4073,11 @@ formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' }
 }
 return formattedData;
 };
-// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.7
-// Last Updated: 2026-06-11 22:58
+// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.8
+// Last Updated: 2026-06-12 06:35
 // Nhiệm vụ: Động cơ nạp đề thi nguyên tử. Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer.
-// Cập nhật V2.7: [GRACEFUL DEGRADATION FIX] Sửa lỗi màng lọc RAM quá khắt khe khiến hệ thống vứt bỏ "Thẻ của tôi" và rơi xuống Fallback tĩnh. Áp dụng Field Swapping ép tráo trường `term` và `definition` ở chế độ Đảo ngược để UI kết xuất chính xác, bơm cảnh báo "(Thẻ khuyết nghĩa)" chặn đứng hiện tượng in ra dấu "...".
-// Cập nhật V2.6: [JIT FALLBACK ARCHITECTURE] Thanh lọc băng đạn, tách biệt API Cứu hộ.
+// Cập nhật V2.8: [UNIVERSAL LOCAL FALLBACK] Gỡ bỏ chốt chặn isMinigame trong động cơ cứu hộ getEmergencyFallback. Ưu tiên quét và sử dụng "Thẻ của tôi" để làm phao cứu sinh cho TẤT CẢ mọi chế độ (Bao gồm cả AI tự sinh). Chỉ gọi dữ liệu mẫu giáo từ Fallback tĩnh khi kho thẻ người dùng thực sự rỗng (0 thẻ).
+// Cập nhật V2.7: [GRACEFUL DEGRADATION FIX] Sửa lỗi màng lọc RAM, áp dụng Field Swapping.
 // ==================================================================================
 // Khởi tạo Base Object nếu chưa tồn tại
 window.ExamEngine = window.ExamEngine || {};
@@ -4510,7 +4510,7 @@ return atomicQuestion;
 // ============================================================================
 // 2. BỘ MÁY CỨU HỘ TOÀN CỤC (UNIVERSAL JIT FALLBACK ENGINE)
 // ============================================================================
-// [BẢN VÁ 2.7] Đóng gói logic cứu hộ. Xử lý triệt để Field Swapping và Graceful Degradation
+// [BẢN VÁ 2.8] Đóng gói logic cứu hộ. Xử lý triệt để Field Swapping, Graceful Degradation và Ưu tiên dùng Thẻ của tôi ở mọi chế độ
 window.ExamEngine.getEmergencyFallback = function(metadata, passedLocalDeck = null, passedIndex = null) {
 try {
 const { id, track, level, type, topic, index, mode } = metadata;
@@ -4519,13 +4519,13 @@ const metaLang = metadata.lang || metadata.language;
 const localLang = window.localStorage ? localStorage.getItem('fc_lang') : 'en';
 const targetLang = metaLang ? metaLang : ((track === 'hsk' || String(level).startsWith('zh')) ? 'zh' : ((track === 'vi' || String(level).startsWith('vi')) ? 'vi' : (localLang || 'en')));
 let rescuedData = null;
-if (isMinigame) {
-console.log("[EmergencyFallback] Kích hoạt Cứu hộ Tức thời (JIT) cho Minigame.");
+console.log("[EmergencyFallback] Kích hoạt Cứu hộ Tức thời (JIT) Toàn cục.");
 const rawLocalDeck = passedLocalDeck || (window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : []);
 const isReverse = metadata.askMode === 'def';
-// [BẢN VÁ 2.7] Nới lỏng màng lọc RAM: Bất kể Đảo ngược hay không, chỉ cần có term là giữ lại. Cấm vứt thẻ của người dùng.
+// Màng lọc RAM: Bất kể Đảo ngược hay không, chỉ cần có term là giữ lại. Cấm vứt thẻ của người dùng.
 const validLocalDeck = rawLocalDeck.filter(c => c.term && c.term.trim() !== '');
 let fallbackCard = null;
+// LUÔN ƯU TIÊN SỬ DỤNG "THẺ CỦA TÔI" NẾU CÓ DỮ LIỆU BẤT KỂ LÀ MOCK TEST HAY MINIGAME
 if (validLocalDeck.length > 0) {
 let safeIndex = passedIndex !== null ? passedIndex : index;
 if (safeIndex === undefined || safeIndex === null || isNaN(safeIndex)) {
@@ -4540,7 +4540,7 @@ rescuedData = JSON.parse(JSON.stringify(fallbackCard));
 const tType = (metadata.type || type).toLowerCase();
 const isMCQ = tType.includes('multiple_choice') || tType.includes('match') || tType.includes('image_quiz') || tType.includes('quiz');
 if (isMCQ) {
-// [BẢN VÁ 2.7] Xử lý Graceful Degradation: Nếu thẻ khuyết nghĩa, chèn nhãn cảnh báo thay vì để trống
+// Xử lý Graceful Degradation: Nếu thẻ khuyết nghĩa, chèn nhãn cảnh báo thay vì để trống
 const safeDef = (rescuedData.definition && rescuedData.definition.trim() !== '')
 ? rescuedData.definition
 : `(Thẻ khuyết nghĩa) ${rescuedData.term}`;
@@ -4562,7 +4562,7 @@ dists = ["(Ngoại tuyến) Đáp án A", "(Ngoại tuyến) Đáp án B", "(Ngo
 const correctOpt = { text: correctText, isCorrect: true };
 const wrongOpts = dists.slice(0, 3).map(d => ({ text: d, isCorrect: false }));
 rescuedData.options = window.Utils.shuffleArray([...wrongOpts, correctOpt]);
-// [BẢN VÁ 2.7] DATA MAPPING ÉP BUỘC CHO UI: UI luôn đọc trường .term để in câu hỏi chính
+// DATA MAPPING ÉP BUỘC CHO UI: UI luôn đọc trường .term để in câu hỏi chính
 if (isReverse) {
 rescuedData.term = safeDef; // Tráo nghĩa (hoặc nhãn cảnh báo) lên trường term
 }
@@ -4587,8 +4587,13 @@ rescuedData.oddWord = rescuedData.term;
 } else if (tType.includes('scramble')) {
 rescuedData.noise = ["rác1", "rác2"];
 }
+} else {
+// CHỈ KHI KHO THẺ CỦA NGƯỜI DÙNG RỖNG 0 THẺ, MỚI DÙNG DỮ LIỆU TĨNH TỪ ENGINE
+if (!isMinigame && this._generateFallbackData) {
+console.log("[EmergencyFallback] Kéo cáp cứu hộ Mock Test cho dạng bài: " + (metadata.type || type));
+const rescueIndex = passedIndex !== null ? passedIndex : (index || 0);
+rescuedData = this._generateFallbackData(metadata.type || type, level, track, rescueIndex);
 } else if (window.FallbackDataEngine && window.FallbackDataEngine.getGameReadyFallback) {
-// Chỉ kích hoạt khi mảng thẻ của người dùng thực sự rỗng (Ví dụ: Chơi game khi chưa Add thẻ nào)
 let fbType = 'quiz';
 const tType = (metadata.type || type).toLowerCase();
 if (tType.includes('match')) fbType = 'match';
@@ -4601,12 +4606,6 @@ else if (tType.includes('pronunciation')) fbType = 'pronunciation';
 else if (tType.includes('listening')) fbType = 'listening';
 else if (tType.includes('reading')) fbType = 'reading';
 rescuedData = window.FallbackDataEngine.getGameReadyFallback(fbType, targetLang, level, metadata);
-}
-} else {
-console.log("[EmergencyFallback] Kéo cáp cứu hộ Mock Test cho dạng bài: " + (metadata.type || type));
-const rescueIndex = passedIndex !== null ? passedIndex : (index || 0);
-if (this._generateFallbackData) {
-rescuedData = this._generateFallbackData(metadata.type || type, level, track, rescueIndex);
 }
 }
 // Chốt chặn cuối cùng chống sập UI nếu mọi thuật toán cứu hộ đều trắng tay
