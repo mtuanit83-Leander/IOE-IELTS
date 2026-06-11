@@ -4073,11 +4073,11 @@ formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' }
 }
 return formattedData;
 };
-// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.6
-// Last Updated: 2026-06-11 22:31
+// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.7
+// Last Updated: 2026-06-11 22:58
 // Nhiệm vụ: Động cơ nạp đề thi nguyên tử. Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer.
-// Cập nhật V2.6: [JIT FALLBACK ARCHITECTURE] Thanh lọc băng đạn. Cắt bỏ toàn bộ logic tự cứu hộ ngầm ra khỏi Hydrator. Đóng gói thành Bộ máy Cứu hộ Toàn cục (getEmergencyFallback) để Tầng 6 trực tiếp gọi. Đảm bảo Băng đạn 100% chỉ chứa đạn xịn do AI sinh ra.
-// Cập nhật V2.5: [SMART OFFLINE FILTER] Tích hợp màng lọc thẻ khuyết tật trên RAM.
+// Cập nhật V2.7: [GRACEFUL DEGRADATION FIX] Sửa lỗi màng lọc RAM quá khắt khe khiến hệ thống vứt bỏ "Thẻ của tôi" và rơi xuống Fallback tĩnh. Áp dụng Field Swapping ép tráo trường `term` và `definition` ở chế độ Đảo ngược để UI kết xuất chính xác, bơm cảnh báo "(Thẻ khuyết nghĩa)" chặn đứng hiện tượng in ra dấu "...".
+// Cập nhật V2.6: [JIT FALLBACK ARCHITECTURE] Thanh lọc băng đạn, tách biệt API Cứu hộ.
 // ==================================================================================
 // Khởi tạo Base Object nếu chưa tồn tại
 window.ExamEngine = window.ExamEngine || {};
@@ -4260,7 +4260,6 @@ isFromHarvestPool = !passageSet._isNewHarvest;
 generatedData = tempGeneratedData;
 } catch (e) {
 console.error("[ExamEngine] Passage Cocoon break failed for " + groupId + ":", e.message);
-// [BẢN VÁ 2.6] Ném thẳng lỗi ra ngoài để QueueEngine đếm Bankrupt. Không tự ý cứu hộ.
 throw e;
 }
 }
@@ -4490,7 +4489,6 @@ isNewHarvest = true;
 }
 generatedData = tempGeneratedData;
 } catch (error) {
-// [BẢN VÁ 2.6] KHÔNG tự ý cứu hộ nữa. Ném thẳng lỗi ra ngoài để Queue đếm Bankrupt.
 console.error(`[ExamEngine] Lỗi đúc AI cho ${type}. Từ chối nạp đạn. Lỗi: ${error.message}`);
 throw error;
 }
@@ -4512,7 +4510,7 @@ return atomicQuestion;
 // ============================================================================
 // 2. BỘ MÁY CỨU HỘ TOÀN CỤC (UNIVERSAL JIT FALLBACK ENGINE)
 // ============================================================================
-// [BẢN VÁ 2.6] Đóng gói logic cứu hộ thành API độc lập chạy đồng bộ trên RAM
+// [BẢN VÁ 2.7] Đóng gói logic cứu hộ. Xử lý triệt để Field Swapping và Graceful Degradation
 window.ExamEngine.getEmergencyFallback = function(metadata, passedLocalDeck = null, passedIndex = null) {
 try {
 const { id, track, level, type, topic, index, mode } = metadata;
@@ -4525,14 +4523,8 @@ if (isMinigame) {
 console.log("[EmergencyFallback] Kích hoạt Cứu hộ Tức thời (JIT) cho Minigame.");
 const rawLocalDeck = passedLocalDeck || (window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : []);
 const isReverse = metadata.askMode === 'def';
-// Màng lọc RAM: Chặn đứng thẻ khuyết tật
-const validLocalDeck = rawLocalDeck.filter(c => {
-if (isReverse) {
-return c.definition && c.definition.trim() !== '' && c.term && c.term.trim() !== '';
-} else {
-return c.term && c.term.trim() !== '';
-}
-});
+// [BẢN VÁ 2.7] Nới lỏng màng lọc RAM: Bất kể Đảo ngược hay không, chỉ cần có term là giữ lại. Cấm vứt thẻ của người dùng.
+const validLocalDeck = rawLocalDeck.filter(c => c.term && c.term.trim() !== '');
 let fallbackCard = null;
 if (validLocalDeck.length > 0) {
 let safeIndex = passedIndex !== null ? passedIndex : index;
@@ -4548,8 +4540,12 @@ rescuedData = JSON.parse(JSON.stringify(fallbackCard));
 const tType = (metadata.type || type).toLowerCase();
 const isMCQ = tType.includes('multiple_choice') || tType.includes('match') || tType.includes('image_quiz') || tType.includes('quiz');
 if (isMCQ) {
-const correctText = isReverse ? rescuedData.term : (rescuedData.definition || rescuedData.targetWord || rescuedData.term);
-const baseTextForTrap = isReverse ? rescuedData.term : rescuedData.definition;
+// [BẢN VÁ 2.7] Xử lý Graceful Degradation: Nếu thẻ khuyết nghĩa, chèn nhãn cảnh báo thay vì để trống
+const safeDef = (rescuedData.definition && rescuedData.definition.trim() !== '')
+? rescuedData.definition
+: `(Thẻ khuyết nghĩa) ${rescuedData.term}`;
+const correctText = isReverse ? rescuedData.term : safeDef;
+const baseTextForTrap = isReverse ? rescuedData.term : safeDef;
 let dists = [];
 if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
 try {
@@ -4566,6 +4562,11 @@ dists = ["(Ngoại tuyến) Đáp án A", "(Ngoại tuyến) Đáp án B", "(Ngo
 const correctOpt = { text: correctText, isCorrect: true };
 const wrongOpts = dists.slice(0, 3).map(d => ({ text: d, isCorrect: false }));
 rescuedData.options = window.Utils.shuffleArray([...wrongOpts, correctOpt]);
+// [BẢN VÁ 2.7] DATA MAPPING ÉP BUỘC CHO UI: UI luôn đọc trường .term để in câu hỏi chính
+if (isReverse) {
+rescuedData.term = safeDef; // Tráo nghĩa (hoặc nhãn cảnh báo) lên trường term
+}
+rescuedData.questionText = rescuedData.term; // Back-up cho các Game đọc questionText
 if (tType.includes('image')) {
 rescuedData.options = rescuedData.options.map(opt => ({
 ...opt,
@@ -4587,6 +4588,7 @@ rescuedData.oddWord = rescuedData.term;
 rescuedData.noise = ["rác1", "rác2"];
 }
 } else if (window.FallbackDataEngine && window.FallbackDataEngine.getGameReadyFallback) {
+// Chỉ kích hoạt khi mảng thẻ của người dùng thực sự rỗng (Ví dụ: Chơi game khi chưa Add thẻ nào)
 let fbType = 'quiz';
 const tType = (metadata.type || type).toLowerCase();
 if (tType.includes('match')) fbType = 'match';
