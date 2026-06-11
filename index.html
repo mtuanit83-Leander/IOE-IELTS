@@ -2902,11 +2902,11 @@ return [];
 }
 }
 };
-// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.15
-// Last Updated: 2026-06-11 21:26
+// Block2.5: TẦNG 2: HẠ TẦNG ĐIỀU PHỐI (Queue Infrastructure) - Version 1.16
+// Last Updated: 2026-06-11 22:48
 // Nhiệm vụ: Tách biệt hệ thống Đa luồng & Nạp đạn ngầm (QueueCoordinator) ra khỏi GameAlgoEngine.
-// Cập nhật V1.15: [ANTI-CLINICAL DEATH] Đưa try...catch vào BÊN TRONG vòng lặp while của các Động cơ. Bổ sung cờ isBankrupt và bộ đếm consecutiveFailures. Nếu lỗi 3 lần liên tiếp, bật cờ Bankrupt để phá vỡ vòng lặp, cho phép Tầng 6 (UI) nhận diện và báo lỗi thay vì chết ngầm vô thời hạn.
-// Cập nhật V1.14: [GLOBAL FAILURE COOLDOWN] Cấy ghép cơ chế đóng băng 10 giây vào khối catch khi bắt được lỗi mạng.
+// Cập nhật V1.16: [RELENTLESS BACKGROUND WORKER] Gỡ bỏ cơ chế tự sát (Kill-switch) sau 3 lần lỗi. Động cơ ngầm giờ đây sẽ lặp vô hạn việc gọi API (mỗi 10s một lần khi có lỗi) cho đến khi mạng khôi phục để đảm bảo bơm đạn xịn liên tục vào hàng đợi theo mô hình JIT Fallback.
+// Cập nhật V1.15: [ANTI-CLINICAL DEATH] Đưa try...catch vào BÊN TRONG vòng lặp while của các Động cơ.
 // ==================================================================================
 window.QueueEngine = {
 // ĐỘNG CƠ TIÊU DIỆT THÂY MA NGẦM (ZOMBIE KILLER INJECTION)
@@ -2984,7 +2984,6 @@ resolveOuter();
 }
 };
 const runBackground = async () => {
-let consecutiveFailures = 0;
 while (this.queue.length < maxConcurrent && this.isActive) {
 try {
 const data = await fetchDataFn(1);
@@ -2995,7 +2994,6 @@ this.queue.push(...data);
 } else {
 this.queue.push(data);
 }
-consecutiveFailures = 0;
 if (this.queue.length < maxConcurrent && this.isActive) {
 await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
@@ -3004,15 +3002,9 @@ break;
 }
 } catch (e) {
 if (e.name === 'AbortError' || e.message?.includes('User exited')) break;
-consecutiveFailures++;
-console.warn(`[QueueEngine] Worker Error (Lần ${consecutiveFailures}):`, e.message);
 if (this.isActive) {
+console.warn("[QueueEngine] Tạm ngưng 10s do API lỗi:", e.message);
 await new Promise(r => setTimeout(r, 10000));
-if (consecutiveFailures >= 3) {
-console.error("[QueueEngine] Máy chủ sập. Đánh cờ isBankrupt.");
-this.isBankrupt = true;
-break;
-}
 } else {
 break;
 }
@@ -3111,14 +3103,12 @@ this._isResolved = false;
 this._currentPromise = new Promise((resolveOuter) => {
 this._resolveEarly = () => { if (!this._isResolved) { this._isResolved = true; resolveOuter(); } };
 const runBackground = async () => {
-let consecutiveFailures = 0;
 while (this.queue.length < maxConcurrent && this.isActive) {
 try {
 const data = await fetchDataFn();
 if (!this.isActive) break;
 if (data) {
 this.queue.push(data);
-consecutiveFailures = 0;
 if (this.queue.length < maxConcurrent && this.isActive) {
 await new Promise(r => setTimeout(r, aiConfig.delayMs));
 }
@@ -3127,15 +3117,9 @@ break;
 }
 } catch (e) {
 if (e.name === 'AbortError' || e.message?.includes('User exited')) break;
-consecutiveFailures++;
-console.warn(`[QueueEngine] Batch Error (Lần ${consecutiveFailures}):`, e.message);
 if (this.isActive) {
+console.warn("[QueueEngine] Batch tạm ngưng 10s do API lỗi:", e.message);
 await new Promise(r => setTimeout(r, 10000));
-if (consecutiveFailures >= 3) {
-console.error("[QueueEngine] Máy chủ Batch sập. Đánh cờ isBankrupt.");
-this.isBankrupt = true;
-break;
-}
 } else {
 break;
 }
@@ -3195,7 +3179,6 @@ queue: [],
 isFetching: false,
 isActive: true,
 isBankrupt: false,
-consecutiveFailures: 0,
 _currentPromise: null,
 totalLoaded: 0,
 _abortCtrl: abortCtrl,
@@ -3211,18 +3194,12 @@ const chunkData = await fetchChunkFn(chunkSize);
 if (chunkData && Array.isArray(chunkData) && this.isActive) {
 this.queue.push(...chunkData);
 this.totalLoaded += chunkData.length;
-this.consecutiveFailures = 0;
 }
 } catch (e) {
 if (e.name !== 'AbortError' && !e.message?.includes('User exited')) {
-this.consecutiveFailures++;
-console.warn(`[QueueEngine] MockTest Error (Lần ${this.consecutiveFailures}):`, e.message);
 if (this.isActive) {
+console.warn("[QueueEngine] MockTest tạm ngưng 10s do API lỗi:", e.message);
 await new Promise(r => setTimeout(r, 10000));
-if (this.consecutiveFailures >= 3) {
-console.error("[QueueEngine] MockTest sập. Đánh cờ isBankrupt.");
-this.isBankrupt = true;
-}
 }
 }
 } finally {
@@ -4096,16 +4073,16 @@ formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' }
 }
 return formattedData;
 };
-// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.4
-// Last Updated: 2026-06-11 21:40
-// Nhiệm vụ: Động cơ nạp đề thi nguyên tử (hydrateQuestion). Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer và Fallback.
-// Cập nhật V2.4: [ROBUST OFFLINE DEGRADATION] Sửa lỗi Mù ngôn ngữ (Language Blindness) và Toán học NaN trong chế độ "AI tự sinh". Ép đọc ngôn ngữ chuẩn xác từ metadata/localStorage. Chuyển sang bốc thẻ ngẫu nhiên nếu index bị khuyết, đảm bảo hạ cấp ngoại tuyến hoạt động trơn tru 100%.
-// Cập nhật V2.3: [OFFLINE DEGRADATION] Xây dựng cơ chế "Hạ cấp ngoại tuyến". Khi API sập trong Minigame, tự động tìm thẻ gốc để băm nhỏ đáp án nhiễu trực tiếp trên RAM.
+// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.6
+// Last Updated: 2026-06-11 22:31
+// Nhiệm vụ: Động cơ nạp đề thi nguyên tử. Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer.
+// Cập nhật V2.6: [JIT FALLBACK ARCHITECTURE] Thanh lọc băng đạn. Cắt bỏ toàn bộ logic tự cứu hộ ngầm ra khỏi Hydrator. Đóng gói thành Bộ máy Cứu hộ Toàn cục (getEmergencyFallback) để Tầng 6 trực tiếp gọi. Đảm bảo Băng đạn 100% chỉ chứa đạn xịn do AI sinh ra.
+// Cập nhật V2.5: [SMART OFFLINE FILTER] Tích hợp màng lọc thẻ khuyết tật trên RAM.
 // ==================================================================================
 // Khởi tạo Base Object nếu chưa tồn tại
 window.ExamEngine = window.ExamEngine || {};
 // ============================================================================
-// 1. HYDRATION LOGIC (CỖ MÁY NẠP ĐẠN NGUYÊN TỬ ĐỘC TÔN)
+// 1. HYDRATION LOGIC (CỖ MÁY NẠP ĐẠN NGUYÊN TỬ TỐI THƯỢNG)
 // ============================================================================
 window.ExamEngine.hydrateQuestion = async function(metadata, apiKey, passedHistory = []) {
 const { id, track, level, type, topic, passageGroup, questionIndexInPassage, index, mode } = metadata;
@@ -4124,14 +4101,13 @@ return questionData;
 }
 console.log("[ExamEngine] Hydrating via Universal Engine for type: " + type);
 let generatedData = null;
-let finalError = null;
 let isFromHarvestPool = false;
 let harvestId = null;
 let isNewHarvest = false;
 let ratio = 70;
 let harvestPool = {};
 let userHistory = [];
-// [BẢN VÁ 2.4] Nội suy ngôn ngữ an toàn tuyệt đối (Chống Mù ngôn ngữ)
+// Nội suy ngôn ngữ an toàn tuyệt đối
 const metaLang = metadata.lang || metadata.language;
 const localLang = window.localStorage ? localStorage.getItem('fc_lang') : 'en';
 const targetLang = metaLang ? metaLang : ((track === 'hsk' || String(level).startsWith('zh')) ? 'zh' : ((track === 'vi' || String(level).startsWith('vi')) ? 'vi' : (localLang || 'en')));
@@ -4283,11 +4259,9 @@ tempGeneratedData._fullPassageData = passageSet;
 isFromHarvestPool = !passageSet._isNewHarvest;
 generatedData = tempGeneratedData;
 } catch (e) {
-console.error("[ExamEngine] Passage Cocoon break failed for " + groupId + ":", e);
-finalError = e;
-if (e.name === 'AbortError' || e.message?.includes('hủy thao tác')) {
+console.error("[ExamEngine] Passage Cocoon break failed for " + groupId + ":", e.message);
+// [BẢN VÁ 2.6] Ném thẳng lỗi ra ngoài để QueueEngine đếm Bankrupt. Không tự ý cứu hộ.
 throw e;
-}
 }
 }
 else {
@@ -4516,48 +4490,75 @@ isNewHarvest = true;
 }
 generatedData = tempGeneratedData;
 } catch (error) {
-finalError = error;
-if (error.name === 'AbortError' || error?.message?.includes('hủy thao tác')) {
+// [BẢN VÁ 2.6] KHÔNG tự ý cứu hộ nữa. Ném thẳng lỗi ra ngoài để Queue đếm Bankrupt.
+console.error(`[ExamEngine] Lỗi đúc AI cho ${type}. Từ chối nạp đạn. Lỗi: ${error.message}`);
 throw error;
-}
-console.warn(`[ExamEngine] Lỗi đúc AI cho ${type}. Nhường quyền cho Fallback. Lỗi: ${error.message}`);
 }
 }
 }
 if (!generatedData) {
-console.warn("[ExamEngine] AI Hydration FATALLY failed for " + id + ". KÍCH HOẠT QUY TRÌNH CỨU HỘ...");
+throw new Error("Dữ liệu AI trả về rỗng. Chặn nạp đạn khuyết tật vào Băng đạn.");
+}
+const atomicQuestion = {
+id: id,
+harvestId: harvestId,
+isNewHarvest: isNewHarvest,
+content: generatedData,
+metadata: metadata,
+timestamp: Date.now()
+};
+return atomicQuestion;
+};
+// ============================================================================
+// 2. BỘ MÁY CỨU HỘ TOÀN CỤC (UNIVERSAL JIT FALLBACK ENGINE)
+// ============================================================================
+// [BẢN VÁ 2.6] Đóng gói logic cứu hộ thành API độc lập chạy đồng bộ trên RAM
+window.ExamEngine.getEmergencyFallback = function(metadata, passedLocalDeck = null, passedIndex = null) {
 try {
+const { id, track, level, type, topic, index, mode } = metadata;
+const isMinigame = mode === 'minigame' || !['ioe', 'ielts', 'hsk'].includes(track);
+const metaLang = metadata.lang || metadata.language;
+const localLang = window.localStorage ? localStorage.getItem('fc_lang') : 'en';
+const targetLang = metaLang ? metaLang : ((track === 'hsk' || String(level).startsWith('zh')) ? 'zh' : ((track === 'vi' || String(level).startsWith('vi')) ? 'vi' : (localLang || 'en')));
 let rescuedData = null;
 if (isMinigame) {
-// --- BẢN VÁ 2.4: HẠ CẤP NGOẠI TUYẾN CHỐNG LỖI MÙ NGÔN NGỮ ---
-console.log("[ExamEngine] Kích hoạt Hạ cấp Ngoại tuyến (Offline Degradation) cho Minigame.");
-const localDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : [];
-let fallbackCard = null;
-// [BẢN VÁ 2.4] Giải quyết lỗi toán học NaN khi index bị khuyết
-let safeIndex = index;
-if (safeIndex === undefined || safeIndex === null || isNaN(safeIndex)) {
-safeIndex = Math.floor(Math.random() * (localDeck.length > 0 ? localDeck.length : 1));
+console.log("[EmergencyFallback] Kích hoạt Cứu hộ Tức thời (JIT) cho Minigame.");
+const rawLocalDeck = passedLocalDeck || (window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : []);
+const isReverse = metadata.askMode === 'def';
+// Màng lọc RAM: Chặn đứng thẻ khuyết tật
+const validLocalDeck = rawLocalDeck.filter(c => {
+if (isReverse) {
+return c.definition && c.definition.trim() !== '' && c.term && c.term.trim() !== '';
+} else {
+return c.term && c.term.trim() !== '';
 }
-if (metadata.term) fallbackCard = localDeck.find(c => c.term === metadata.term);
-if (!fallbackCard && id) fallbackCard = localDeck.find(c => c.term === id || c.id === id);
-if (!fallbackCard && localDeck.length > 0) fallbackCard = localDeck[safeIndex % localDeck.length];
+});
+let fallbackCard = null;
+if (validLocalDeck.length > 0) {
+let safeIndex = passedIndex !== null ? passedIndex : index;
+if (safeIndex === undefined || safeIndex === null || isNaN(safeIndex)) {
+safeIndex = Math.floor(Math.random() * validLocalDeck.length);
+}
+if (metadata.term) fallbackCard = validLocalDeck.find(c => c.term === metadata.term);
+if (!fallbackCard && id) fallbackCard = validLocalDeck.find(c => c.term === id || c.id === id);
+if (!fallbackCard) fallbackCard = validLocalDeck[safeIndex % validLocalDeck.length];
+}
 if (fallbackCard) {
 rescuedData = JSON.parse(JSON.stringify(fallbackCard));
 const tType = (metadata.type || type).toLowerCase();
 const isMCQ = tType.includes('multiple_choice') || tType.includes('match') || tType.includes('image_quiz') || tType.includes('quiz');
 if (isMCQ) {
-const isReverse = metadata.askMode === 'def';
 const correctText = isReverse ? rescuedData.term : (rescuedData.definition || rescuedData.targetWord || rescuedData.term);
 const baseTextForTrap = isReverse ? rescuedData.term : rescuedData.definition;
 let dists = [];
 if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
 try {
-dists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(baseTextForTrap, localDeck, targetLang, 'word', 3, isReverse);
+dists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(baseTextForTrap, validLocalDeck, targetLang, 'word', 3, isReverse);
 } catch(e) {}
 }
 if (!dists || dists.length < 3) {
 if (window.OfflineDistractorEngine && window.OfflineDistractorEngine.generate) {
-dists = window.OfflineDistractorEngine.generate(correctText, localDeck, targetLang, metadata.askMode);
+dists = window.OfflineDistractorEngine.generate(correctText, validLocalDeck, targetLang, metadata.askMode);
 } else {
 dists = ["(Ngoại tuyến) Đáp án A", "(Ngoại tuyến) Đáp án B", "(Ngoại tuyến) Đáp án C"];
 }
@@ -4586,7 +4587,6 @@ rescuedData.oddWord = rescuedData.term;
 rescuedData.noise = ["rác1", "rác2"];
 }
 } else if (window.FallbackDataEngine && window.FallbackDataEngine.getGameReadyFallback) {
-// Cứu cánh cuối cùng nếu cả kho Offline cũng rỗng
 let fbType = 'quiz';
 const tType = (metadata.type || type).toLowerCase();
 if (tType.includes('match')) fbType = 'match';
@@ -4601,34 +4601,34 @@ else if (tType.includes('reading')) fbType = 'reading';
 rescuedData = window.FallbackDataEngine.getGameReadyFallback(fbType, targetLang, level, metadata);
 }
 } else {
-console.log("[ExamEngine] Kéo cáp cứu hộ từ FallbackDataEngine cho Mock Test dạng bài: " + (metadata.type || type));
-const rescueIndex = index || 0;
-// Gọi Fallback từ Block 2.7b
+console.log("[EmergencyFallback] Kéo cáp cứu hộ Mock Test cho dạng bài: " + (metadata.type || type));
+const rescueIndex = passedIndex !== null ? passedIndex : (index || 0);
 if (this._generateFallbackData) {
 rescuedData = this._generateFallbackData(metadata.type || type, level, track, rescueIndex);
 }
 }
-if (rescuedData) {
-generatedData = rescuedData;
-generatedData.isAiGenerated = false;
-generatedData._isRescued = true;
-} else {
-throw new Error("Không có dữ liệu cứu hộ.");
+// Chốt chặn cuối cùng chống sập UI nếu mọi thuật toán cứu hộ đều trắng tay
+if (!rescuedData) {
+rescuedData = {
+term: "Lỗi kết xuất cứu hộ",
+definition: "Không tìm thấy dữ liệu an toàn",
+options: [{text: "A", isCorrect: true}, {text: "B", isCorrect: false}, {text: "C", isCorrect: false}, {text: "D", isCorrect: false}]
+};
 }
-} catch (rescueError) {
-console.error("[ExamEngine] Cứu hộ thất bại:", rescueError);
-throw new Error("Sinh dữ liệu và cứu hộ đều thất bại: " + finalError?.message);
-}
-}
-const atomicQuestion = {
-id: id,
-harvestId: harvestId,
-isNewHarvest: isNewHarvest,
-content: generatedData,
+rescuedData.isAiGenerated = false;
+rescuedData._isRescued = true;
+return {
+id: id || "rescue_" + Date.now(),
+harvestId: null,
+isNewHarvest: false,
+content: rescuedData,
 metadata: metadata,
 timestamp: Date.now()
 };
-return atomicQuestion;
+} catch (e) {
+console.error("[EmergencyFallback] Động cơ cứu hộ sập toàn tập:", e);
+return null;
+}
 };
 // Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.09
 // Last Updated: 2026-05-02 16:15
@@ -24653,10 +24653,11 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.22
-// Last Updated: 2026-06-10 15:15
+// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.23
+// Last Updated: 2026-06-11 22:39
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, tự động lưu Snapshot và Xuất dữ liệu.
-// Cập nhật V1.22: [MEMORY ISOLATION] Thay thế bộ nhớ dùng chung bằng cơ chế Cấp phát bộ nhớ động theo ngôn ngữ (fc_ai_memory_en, zh, vi). Triệt tiêu hoàn toàn rủi ro Token Leakage (Bóng ma quá khứ) khi tạo câu hỏi.
+// Cập nhật V1.23: [JIT FALLBACK ARCHITECTURE] Thanh lọc băng đạn, triệt tiêu độ trễ giữa game. fetchTask ném thẳng lỗi cho QueueEngine đếm Bankrupt thay vì tạo phao cứu sinh. UI khi bấm chuyển câu nếu gặp băng đạn rỗng sẽ gọi thẳng getEmergencyFallback để hiển thị lập tức (Zero-latency), chấm dứt màn hình chờ vô lý.
+// Cập nhật V1.22: [MEMORY ISOLATION] Thay thế bộ nhớ dùng chung bằng cơ chế Cấp phát bộ nhớ động theo ngôn ngữ.
 // ==================================================================================
 window.useExamLogic = function(apiKey, handleAutoHarvestToPool) {
 const [examState, setExamState] = React.useState({
@@ -24783,14 +24784,13 @@ const trackLang = meta.track === 'hsk' ? 'zh' : (meta.track === 'vi' ? 'vi' : 'e
 const freshHistory = window.Utils ? window.Utils.safeJsonParse(`fc_ai_memory_${trackLang}`, []) : [];
 const qData = await window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory);
 if (isExamActiveRef.current && qData) {
-// Gửi hàng vào Kho thu hoạch AI (Đã bọc giáp try..catch an toàn chống Crash Queue)
+// Gửi hàng vào Kho thu hoạch AI
 if (qData.isNewHarvest && typeof handleAutoHarvestToPool === 'function') {
 try {
 const targetLang = meta.track === 'hsk' ? 'zh' : (meta.track === 'vi' ? 'vi' : 'en');
 const contentToHarvest = qData.content._fullPassageData || qData.content;
 const typeToHarvest = qData.content._fullPassageData ? (meta.type.includes('reading') ? 'ielts_reading_passage' : meta.type) : meta.type;
 const safeTopic = meta.topic || 'General';
-// Bọc contentToHarvest vào object chuẩn { id, content } để khớp với Trạm gác Tầng 6.8
 const payloadToHarvest = {
 id: qData.harvestId || qData.id,
 content: contentToHarvest
@@ -24803,15 +24803,9 @@ console.error("[useExamLogic] Harvest delegation failed:", harvestErr);
 return qData;
 }
 } catch (e) {
-console.warn(`[useExamLogic] Fetch task failed for index ${targetIndex}:`, e);
-// Không tăng lại pointer (bỏ qua câu bị lỗi nặng), ném ra phao cứu sinh để QueueEngine không bị kẹt
-const fbData = window.ExamEngine._generateFallbackData ? window.ExamEngine._generateFallbackData(meta.type, meta.level, meta.track, targetIndex) : { term: "Lỗi mạng", definition: "Gián đoạn tải dữ liệu" };
-return {
-id: meta.id,
-metadata: meta,
-content: { ...fbData, isAiGenerated: false, _isRescued: true },
-timestamp: Date.now()
-};
+console.warn(`[useExamLogic] Fetch task failed for index ${targetIndex}. Bỏ qua câu này để nạp câu tiếp theo. Lỗi:`, e.message);
+// [BẢN VÁ 1.23] Ném thẳng lỗi ra ngoài để QueueEngine đếm Bankrupt. Cấm tạo phao cứu sinh tại đây.
+throw e;
 }
 return null;
 }, [apiKey, handleAutoHarvestToPool]);
@@ -24834,8 +24828,6 @@ return false;
 }
 setIsHydrating(true);
 const meta = targetState.blueprint[index];
-// Bơm trước Metadata ảo để Tầng 5 bung màn hình 20s NGAY LẬP TỨC che giấu thời gian đợi AI đúc đạn.
-setCurrentQuestion({ id: `optimistic_${meta.id}`, metadata: meta, content: null });
 // --- THUẬT TOÁN MÀNG LỌC ĐẠN (EXTRACT BEST BULLET) ---
 const extractBestBullet = () => {
 if (!coordinatorRef.current || !coordinatorRef.current.queue) return null;
@@ -24850,36 +24842,33 @@ queue.splice(i, 1);
 // 1. TÌM KIẾM CHÍNH XÁC (STRICT EXTRACTION) - LUẬT CẤM CƯỚP ĐẠN
 let validBullets = queue.filter(item => item.metadata && item.metadata.index === meta.index);
 if (validBullets.length === 0) return null;
-// 2. Phân loại: Tìm Golden Bullet (Ưu tiên đạn AI)
-let selectedBullet = validBullets.find(item => item.content && item.content.isAiGenerated);
-// 3. Nếu không có Golden Bullet, lấy Silver Bullet (Đạn Fallback) đầu tiên
-if (!selectedBullet) {
-selectedBullet = validBullets[0];
-}
+// 2. Vì băng đạn giờ CHỈ chứa đạn AI, ta bốc thẳng viên đầu tiên
+let selectedBullet = validBullets[0];
 const actualIdx = queue.indexOf(selectedBullet);
 if (actualIdx !== -1) {
 queue.splice(actualIdx, 1); // Trích xuất viên đạn khỏi băng đạn chung
-// Ngầm nạp đạn bù
-if (typeof coordinatorRef.current.maintain === 'function') {
-coordinatorRef.current.maintain(false, 30000);
-}
 return selectedBullet;
 }
 return null;
 };
 let qData = extractBestBullet();
+// [BẢN VÁ 1.23] JIT FALLBACK TỨC THỜI (ZERO-LATENCY)
+// Băng đạn rỗng -> Không bắt người chơi chờ đợi 30s giữa game nữa, gọi cứu hộ lập tức!
 if (!qData) {
+if (window.globalShowToast && index > 0) window.globalShowToast("Máy chủ bận, đã kích hoạt dữ liệu dự phòng!", "warning");
+// Kích hoạt động cơ background nạp đạn cho tương lai
 if (coordinatorRef.current && typeof coordinatorRef.current.maintain === 'function') {
-const maintainPromise = coordinatorRef.current.maintain(true, 30000);
-const emergencyTimeout = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 30000));
-await Promise.race([maintainPromise, emergencyTimeout]);
+coordinatorRef.current.maintain(false, 30000);
 }
-// Chờ xong thì thử trích xuất lại
-qData = extractBestBullet();
+const localLang = window.localStorage ? localStorage.getItem('fc_lang') : 'en';
+const targetLang = meta.lang || meta.language || (meta.track === 'hsk' || String(meta.level).startsWith('zh') ? 'zh' : (meta.track === 'vi' || String(meta.level).startsWith('vi') ? 'vi' : localLang));
+const localDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : [];
+// Gọi Bộ máy Cứu hộ Toàn cục
+if (window.ExamEngine && window.ExamEngine.getEmergencyFallback) {
+qData = window.ExamEngine.getEmergencyFallback(meta, localDeck, index);
 }
-// Cứu hộ khẩn cấp tại cửa ngõ cuối cùng nếu đạn vẫn rỗng (Chống Crash)
+// Cứu cánh OS nếu getEmergencyFallback hỏng
 if (!qData) {
-if (window.globalShowToast) window.globalShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
 const fbData = window.ExamEngine._generateFallbackData ? window.ExamEngine._generateFallbackData(meta.type, meta.level, meta.track, index) : { term: "Lỗi mạng", definition: "Vui lòng kiểm tra kết nối" };
 qData = {
 id: meta.id,
@@ -24887,6 +24876,7 @@ metadata: meta,
 content: { ...fbData, isAiGenerated: false, _isRescued: true },
 timestamp: Date.now()
 };
+}
 } else {
 // Ghi đè id và metadata để đồng bộ hoàn hảo với index hiện tại (Bảo vệ UI)
 qData.id = meta.id;
@@ -24992,24 +24982,29 @@ isExamActiveRef.current = false;
 return;
 }
 let countdownInterval;
-let isTimeoutReached = false;
 try {
-// Đồng hồ đếm lùi Timeout cứng 30s
+let aiConfig = { loadingTime: 22 };
+try {
+const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (cfg && cfg.loadingTime) aiConfig.loadingTime = cfg.loadingTime;
+} catch(e){}
+const timeoutMs = aiConfig.loadingTime * 1000;
+// Đồng hồ đếm lùi Timeout cứng cho Màn hình khởi tạo
 const timeoutPromise = new Promise(resolve => {
-let secondsLeft = 30;
+let secondsLeft = aiConfig.loadingTime;
+setExamState(prev => ({ ...prev, preloadCountdown: secondsLeft }));
 countdownInterval = setInterval(() => {
 secondsLeft--;
 setExamState(prev => ({ ...prev, preloadCountdown: secondsLeft }));
 if (secondsLeft <= 0) {
 clearInterval(countdownInterval);
-isTimeoutReached = true;
 resolve('TIMEOUT');
 }
 }, 1000);
 });
-const maintainPromise = coordinatorRef.current.maintain(true, 30000);
-// [KHÓA CỬA PHÒNG CHỜ] Ép buộc chờ đủ 30 giây dù AI nạp đạn xong sớm
-await Promise.all([maintainPromise, timeoutPromise]);
+const maintainPromise = coordinatorRef.current.maintain(true, timeoutMs);
+// [KHÓA CỬA PHÒNG CHỜ] Ép buộc chờ thời gian Load đầu game hoặc đi tiếp nếu AI nạp xong sớm
+await Promise.race([maintainPromise, timeoutPromise]);
 } catch (e) {
 console.error("Initial preload failed:", e);
 } finally {
@@ -25108,20 +25103,28 @@ coordinatorRef.current.queue = coordinatorRef.current.queue.filter(item => item.
 }
 // 3. Ép Pointer FetchTask chỉ định vào câu đầu tiên của Chặng mới
 blueprintIndexRef.current = Math.max(blueprintIndexRef.current, nextIndex);
-}
-// Lưu State và DB ngay lập tức TRƯỚC KHI chờ Cooldown (Cứu dữ liệu)
+// Lưu State và DB
 setExamState(updatedState);
 if (window.FcDB) {
 window.FcDB.set(updatedState.sessionId, updatedState, 'exam_sessions').catch(e => console.warn("[useExamLogic] Autosave failed:", e));
 }
-if (isPhaseTransition) {
-// Bỏ qua Cooldown thông thường, đánh thức Worker chạy ngầm để UI hiển thị màn hình nghỉ 20s
+// Gắn câu hỏi ảo để kích hoạt màn hình Intermission 20s của Tầng 5
+const nextMeta = prev.blueprint[nextIndex];
+setCurrentQuestion({ id: `optimistic_${nextMeta.id}`, metadata: nextMeta, content: null });
+// Mở khe cửa 20s cho AI nạp đạn của chặng mới trong lúc màn hình Intermission đang chạy
 if (coordinatorRef.current && typeof coordinatorRef.current.maintain === 'function') {
-coordinatorRef.current.maintain(true, 30000);
-}
+const maintainPromise = coordinatorRef.current.maintain(true, 20000);
+const emergencyTimeout = new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 20000));
+Promise.race([maintainPromise, emergencyTimeout]).then(() => {
 loadQuestion(nextIndex, updatedState).then(() => {
 isTransitioningRef.current = false;
 });
+});
+} else {
+loadQuestion(nextIndex, updatedState).then(() => {
+isTransitioningRef.current = false;
+});
+}
 } else {
 // Cooldown Lock (Thời gian chờ chuyển câu thông thường)
 const delaySecStr = localStorage.getItem('fc_mock_delay');
@@ -25191,6 +25194,31 @@ uiIndexRef.current = savedState.currentIndex;
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
+}
+// [ĐỒNG HỒ ĐẾM NGƯỢC KHI RESUME]
+let aiConfig = { loadingTime: 22 };
+try {
+const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+if (cfg && cfg.loadingTime) aiConfig.loadingTime = cfg.loadingTime;
+} catch(e){}
+let countdownInterval;
+try {
+const timeoutPromise = new Promise(resolve => {
+let secondsLeft = aiConfig.loadingTime;
+setExamState(prev => ({ ...prev, preloadCountdown: secondsLeft }));
+countdownInterval = setInterval(() => {
+secondsLeft--;
+setExamState(prev => ({ ...prev, preloadCountdown: secondsLeft }));
+if (secondsLeft <= 0) {
+clearInterval(countdownInterval);
+resolve('TIMEOUT');
+}
+}, 1000);
+});
+const maintainPromise = coordinatorRef.current.maintain(true, aiConfig.loadingTime * 1000);
+await Promise.race([maintainPromise, timeoutPromise]);
+} finally {
+if (countdownInterval) clearInterval(countdownInterval);
 }
 const isLoaded = await loadQuestion(savedState.currentIndex, loadingState);
 if (!isExamActiveRef.current) return false;
