@@ -3171,9 +3171,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.31
-// Last Updated: 2026-06-10 22:30
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.32
+// Last Updated: 2026-06-11 08:56
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.32: [VÁ LỖI LỆCH PHA CÂU/TỪ] Điều chỉnh biến 'definition' khi ở chế độ Câu văn + Đảo ngược để AI trả về BẢN DỊCH CỦA CẢ CÂU thay vì từ vựng ngắn. Khắc phục triệt để lỗi câu hỏi hiển thị 1 từ ngắn ngủn nhưng 4 đáp án lại là 4 câu văn dài.
 // Cập nhật V1.31: [VÁ LỖI MÙ TRẠNG THÁI] Hàm _buildSystemPrompt nay đã biết đọc LocalStorage của fc_quiz_config khi đúc câu hỏi trắc nghiệm (MCQ). Giải quyết dứt điểm lỗi Đảo ngược sinh đáp án tiếng Việt (Domino 1). Tuyệt đối bảo toàn quyền "Tự do sáng tác" của AI (Không ép độ dài).
 // Cập nhật V1.30: [TỐI ƯU HIỆU NĂNG] Thực hiện Prompt Relaxation. Gỡ bỏ các từ khóa ép buộc quá mức.
 // ==================================================================================
@@ -3349,15 +3350,18 @@ prompt += `RULES: The 'hint' field is the Vietnamese translation of the full sen
 prompt += `TASK: Generate a multiple-choice question for ${dataMode === 'sentence' ? 'sentence comprehension' : 'vocabulary recognition'} at level ${cefrLevel}.\n`;
 prompt += `JSON DATA BINDING RULES:\n`;
 prompt += `- 'term': The target core word/phrase in ${targetLang}.\n`;
-prompt += `- 'definition': A concise Vietnamese translation of the 'term' (Crucial for Reverse Mode).\n`;
+// [QA FIX V1.32] Phân tách rạch ròi quy tắc 'definition' dựa trên việc Chế độ học là Câu hay Từ
 if (dataMode === 'sentence' || subType === 'grammar_mcq') {
 prompt += `- 'displaySentence': A complete sentence in ${targetLang} demonstrating the 'term'.\n`;
 if (actualIsReverse) {
+prompt += `- 'definition': The COMPLETE Vietnamese translation of the 'displaySentence' (Crucial for Reverse Mode to show as the question).\n`;
 prompt += `- 'options': 4 complete sentences in ${targetLang} (1 correct, 3 distractors).\n`;
 } else {
+prompt += `- 'definition': A concise Vietnamese translation of the 'term'.\n`;
 prompt += `- 'options': 4 complete sentences in VIETNAMESE translating the 'displaySentence' (1 correct translation, 3 distractors).\n`;
 }
 } else {
+prompt += `- 'definition': A concise Vietnamese translation of the 'term' (Crucial for Reverse Mode).\n`;
 prompt += `- 'displaySentence': A short example sentence in ${targetLang}.\n`;
 if (actualIsReverse) {
 prompt += `- 'options': 4 short words/phrases in ${targetLang} translating the 'definition' (1 correct, 3 distractors).\n`;
