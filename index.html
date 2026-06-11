@@ -4096,11 +4096,11 @@ formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' }
 }
 return formattedData;
 };
-// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.3
-// Last Updated: 2026-06-11 21:36
+// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.4
+// Last Updated: 2026-06-11 21:40
 // Nhiệm vụ: Động cơ nạp đề thi nguyên tử (hydrateQuestion). Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer và Fallback.
-// Cập nhật V2.3: [OFFLINE DEGRADATION] Xây dựng cơ chế "Hạ cấp ngoại tuyến". Khi API sập trong Minigame (Thẻ của tôi), tuyệt đối không bốc thẻ rác từ FallbackDataEngine. Tự động tìm thẻ gốc trong LocalStorage và băm nhỏ thành đáp án nhiễu trực tiếp trên RAM, đảm bảo trải nghiệm liền mạch không độ trễ.
-// Cập nhật V2.2: [HYBRID MEMORY INTEGRATION] Chuyển đổi toàn bộ lệnh đọc fc_ai_memory từ LocalStorage sang đọc trực tiếp từ RAM thông qua AiMemoryManager để triệt tiêu nút thắt cổ chai I/O gây giật UI.
+// Cập nhật V2.4: [ROBUST OFFLINE DEGRADATION] Sửa lỗi Mù ngôn ngữ (Language Blindness) và Toán học NaN trong chế độ "AI tự sinh". Ép đọc ngôn ngữ chuẩn xác từ metadata/localStorage. Chuyển sang bốc thẻ ngẫu nhiên nếu index bị khuyết, đảm bảo hạ cấp ngoại tuyến hoạt động trơn tru 100%.
+// Cập nhật V2.3: [OFFLINE DEGRADATION] Xây dựng cơ chế "Hạ cấp ngoại tuyến". Khi API sập trong Minigame, tự động tìm thẻ gốc để băm nhỏ đáp án nhiễu trực tiếp trên RAM.
 // ==================================================================================
 // Khởi tạo Base Object nếu chưa tồn tại
 window.ExamEngine = window.ExamEngine || {};
@@ -4131,8 +4131,10 @@ let isNewHarvest = false;
 let ratio = 70;
 let harvestPool = {};
 let userHistory = [];
-// Nội suy ngôn ngữ an toàn
-const targetLang = (track === 'hsk' || String(level).startsWith('zh')) ? 'zh' : ((track === 'vi' || String(level).startsWith('vi')) ? 'vi' : 'en');
+// [BẢN VÁ 2.4] Nội suy ngôn ngữ an toàn tuyệt đối (Chống Mù ngôn ngữ)
+const metaLang = metadata.lang || metadata.language;
+const localLang = window.localStorage ? localStorage.getItem('fc_lang') : 'en';
+const targetLang = metaLang ? metaLang : ((track === 'hsk' || String(level).startsWith('zh')) ? 'zh' : ((track === 'vi' || String(level).startsWith('vi')) ? 'vi' : (localLang || 'en')));
 const safeTopic = topic || 'General';
 // Nạp cấu hình Offline
 if (window.FcDB && !isMinigame) {
@@ -4527,13 +4529,18 @@ console.warn("[ExamEngine] AI Hydration FATALLY failed for " + id + ". KÍCH HO�
 try {
 let rescuedData = null;
 if (isMinigame) {
-// --- BẢN VÁ 2.3: HẠ CẤP NGOẠI TUYẾN ---
-console.log("[ExamEngine] Kích hoạt Hạ cấp Ngoại tuyến (Offline Degradation) cho Thẻ của tôi.");
+// --- BẢN VÁ 2.4: HẠ CẤP NGOẠI TUYẾN CHỐNG LỖI MÙ NGÔN NGỮ ---
+console.log("[ExamEngine] Kích hoạt Hạ cấp Ngoại tuyến (Offline Degradation) cho Minigame.");
 const localDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : [];
 let fallbackCard = null;
+// [BẢN VÁ 2.4] Giải quyết lỗi toán học NaN khi index bị khuyết
+let safeIndex = index;
+if (safeIndex === undefined || safeIndex === null || isNaN(safeIndex)) {
+safeIndex = Math.floor(Math.random() * (localDeck.length > 0 ? localDeck.length : 1));
+}
 if (metadata.term) fallbackCard = localDeck.find(c => c.term === metadata.term);
 if (!fallbackCard && id) fallbackCard = localDeck.find(c => c.term === id || c.id === id);
-if (!fallbackCard && localDeck.length > 0) fallbackCard = localDeck[index % localDeck.length || 0];
+if (!fallbackCard && localDeck.length > 0) fallbackCard = localDeck[safeIndex % localDeck.length];
 if (fallbackCard) {
 rescuedData = JSON.parse(JSON.stringify(fallbackCard));
 const tType = (metadata.type || type).toLowerCase();
