@@ -3156,12 +3156,12 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.34
-// Last Updated: 2026-06-11 09:55
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.35
+// Last Updated: 2026-06-11 10:35
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.34: [VIỆT HÓA PROMPT] Chuyển đổi toàn bộ System Prompt sang Tiếng Việt để AI nắm bắt sắc thái sư phạm tự nhiên hơn. Các định danh JSON Key và yêu cầu sinh ảnh bắt buộc vẫn được giữ bằng Tiếng Anh để bảo vệ Schema.
-// Cập nhật V1.33: [VÁ LỖI BÃO 429] Đồng bộ cờ 'isSentenceTask' chi phối cả TASK và JSON RULES.
-// Cập nhật V1.32: [VÁ LỖI LỆCH PHA CÂU/TỪ] Điều chỉnh biến 'definition' khi ở chế độ Câu văn + Đảo ngược.
+// Cập nhật V1.35: [VÁ LỖI MẤT ĐÁP ÁN ĐÚNG] Trói buộc chặt chẽ 1 đáp án đúng trong mảng 'options' phải sao chép chính xác từ trường dữ liệu gốc (term, definition, displaySentence) tùy theo chế độ, tránh việc AI tự huyễn suy diễn câu đối đáp.
+// Cập nhật V1.34: [VIỆT HÓA PROMPT] Chuyển đổi toàn bộ System Prompt sang Tiếng Việt.
+// Cập nhật V1.33: [VÁ LỖI BÃO 429] Đồng bộ cờ 'isSentenceTask'.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -3334,18 +3334,18 @@ if (isSentenceTask) {
 prompt += `- 'displaySentence': Một câu văn hoàn chỉnh bằng ${targetLangName} chứa từ 'term'.\n`;
 if (actualIsReverse) {
 prompt += `- 'definition': BẢN DỊCH TIẾNG VIỆT HOÀN CHỈNH của 'displaySentence' (Điều này cực kỳ quan trọng đối với Chế độ Đảo ngược để dùng làm câu hỏi).\n`;
-prompt += `- 'options': 4 câu văn hoàn chỉnh bằng ${targetLangName} (1 câu đúng, 3 câu nhiễu).\n`;
+prompt += `- 'options': 4 câu văn hoàn chỉnh bằng ${targetLangName} (1 câu đúng, 3 câu nhiễu). TỐI QUAN TRỌNG: 1 đáp án đúng BẮT BUỘC PHẢI SAO CHÉP GIỐNG HỆT nội dung của trường 'displaySentence'.\n`;
 } else {
 prompt += `- 'definition': Bản dịch Tiếng Việt ngắn gọn của từ 'term'.\n`;
-prompt += `- 'options': 4 câu văn hoàn chỉnh bằng TIẾNG VIỆT dịch nghĩa cho 'displaySentence' (1 đáp án dịch đúng, 3 đáp án nhiễu).\n`;
+prompt += `- 'options': 4 câu văn hoàn chỉnh bằng TIẾNG VIỆT dịch nghĩa cho 'displaySentence' (1 đáp án dịch đúng, 3 đáp án nhiễu). TỐI QUAN TRỌNG: 1 đáp án đúng BẮT BUỘC PHẢI SAO CHÉP GIỐNG HỆT bản dịch tiếng Việt của 'displaySentence'.\n`;
 }
 } else {
 prompt += `- 'definition': Bản dịch Tiếng Việt ngắn gọn của 'term' (Quan trọng cho Chế độ Đảo ngược).\n`;
 prompt += `- 'displaySentence': Một câu ví dụ ngắn gọn bằng ${targetLangName}.\n`;
 if (actualIsReverse) {
-prompt += `- 'options': 4 từ/cụm từ ngắn bằng ${targetLangName} dịch từ 'definition' (1 đúng, 3 nhiễu).\n`;
+prompt += `- 'options': 4 từ/cụm từ ngắn bằng ${targetLangName} dịch từ 'definition' (1 đúng, 3 nhiễu). TỐI QUAN TRỌNG: 1 đáp án đúng BẮT BUỘC PHẢI SAO CHÉP GIỐNG HỆT nội dung của trường 'term'.\n`;
 } else {
-prompt += `- 'options': 4 từ/cụm từ ngắn bằng TIẾNG VIỆT dịch nghĩa cho 'term' (1 đúng, 3 nhiễu).\n`;
+prompt += `- 'options': 4 từ/cụm từ ngắn bằng TIẾNG VIỆT dịch nghĩa cho 'term' (1 đúng, 3 nhiễu). TỐI QUAN TRỌNG: 1 đáp án đúng BẮT BUỘC PHẢI SAO CHÉP GIỐNG HỆT nội dung của trường 'definition'.\n`;
 }
 }
 prompt += `ĐÁP ÁN NHIỄU (DISTRACTORS): Cung cấp 3 đáp án nhiễu sai nhưng có vẻ hợp lý và liên quan đến chủ đề.\n`;
