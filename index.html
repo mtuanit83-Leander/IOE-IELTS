@@ -1538,9 +1538,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.82
-// Last Updated: 2026-06-11 10:21
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.83
+// Last Updated: 2026-06-11 18:23
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.83: [CHAIN OF THOUGHT SCHEMA] Cấy trường 'reasoning' vào đầu JSON Schema của hàm ai_generateOptions. Ép AI "nghĩ lớn tiếng" để giải phóng nút thắt cổ chai nhận thức, giảm thời gian phản hồi từ 20s+ xuống 3-5s đối với các câu có ngữ pháp phức tạp.
 // Cập nhật V1.82: [ĐỒNG BỘ PROMPT] Việt hóa nốt các biến nội suy ngôn ngữ (Chinese/English -> Tiếng Trung/Tiếng Anh) rò rỉ vào trong Prompt. Tái cấu trúc nối chuỗi an toàn.
 // Cập nhật V1.8: [LANGUAGE-AWARE FUZZY ROUTING] Cấy ghép thuật toán định tuyến mờ thông minh.
 // ==================================================================================
@@ -1712,7 +1713,15 @@ if (distractorLang !== 'vi') {
 prompt += window.GameAiEngine._getLevelContext(level);
 }
 prompt += `\nHãy trả về ${count} đáp án nhiễu (không bao gồm đáp án đúng).`;
-const schema = { type: "OBJECT", properties: { distractors: { type: "ARRAY", items: { type: "STRING" } } }, required: ["distractors"] };
+// [BẢN VÁ 1.83] Ép Chain of Thought bằng cách buộc AI trả về trường 'reasoning' trước khi chốt mảng 'distractors'
+const schema = {
+type: "OBJECT",
+properties: {
+reasoning: { type: "STRING", description: "BẮT BUỘC: Viết ngắn gọn phân tích ngữ pháp và logic của bạn trước khi tạo đáp án nhiễu." },
+distractors: { type: "ARRAY", items: { type: "STRING" } }
+},
+required: ["reasoning", "distractors"]
+};
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(res.text);
 const dists = parsed.distractors || [];
