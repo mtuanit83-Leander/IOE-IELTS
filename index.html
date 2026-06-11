@@ -3171,11 +3171,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.31
-// Last Updated: 2026-06-10 22:30
+// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.28
+// Last Updated: 2026-06-10 14:46
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.31: [VÁ LỖI MÙ TRẠNG THÁI] Hàm _buildSystemPrompt nay đã biết đọc LocalStorage của fc_quiz_config khi đúc câu hỏi trắc nghiệm (MCQ). Giải quyết dứt điểm lỗi Đảo ngược sinh đáp án tiếng Việt (Domino 1). Tuyệt đối bảo toàn quyền "Tự do sáng tác" của AI (Không ép độ dài).
-// Cập nhật V1.30: [TỐI ƯU HIỆU NĂNG] Thực hiện Prompt Relaxation. Gỡ bỏ các từ khóa ép buộc quá mức.
+// Cập nhật V1.28: [TẨY RỬA PROMPT TUYỆT ĐỐI] Bóc tách triệt để các tàn dư tiếng Anh cuối cùng (CEFR Tagging & Cambridge Topics) ra khỏi luồng xử lý tiếng Trung. Đảm bảo Prompt hệ tiếng Trung đạt độ tinh khiết 100%.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -3250,8 +3249,7 @@ if (keywords) processedHistory.push(keywords);
 processedHistory.push(item);
 }
 });
-// Nới lỏng: Loại bỏ lệnh cấm cản khắt khe gây chẽo AI
-return "\n\nHISTORY: Please try to avoid repeating the following recent concepts to keep content fresh: [" + processedHistory.join(' | ') + "].\n";
+return "\n\nCRITICAL ANTI-DUPLICATION RULE:\nABSOLUTELY DO NOT USE CONCEPTS, TOPICS OR WORDS RELATED TO: [" + processedHistory.join(' | ') + "]. Be completely different.\n";
 },
 // ============================================================================
 // 2. MASTER PROMPT BUILDER & SCHEMAS (Internal Lõi Bọc Thép)
@@ -3264,125 +3262,98 @@ if (settingsStr) {
 const settings = JSON.parse(settingsStr);
 if (settings.startSide === 'def') actualIsReverse = true;
 }
-// [QA FIX V1.31] Chống mù trạng thái: Đọc cấu hình đặc thù của Quiz Game
-if (subType === 'vocab_mcq' || subType === 'grammar_mcq') {
-const quizConfigStr = localStorage.getItem('fc_quiz_config');
-if (quizConfigStr) {
-const quizConfig = JSON.parse(quizConfigStr);
-if (quizConfig.askMode === 'def') {
-actualIsReverse = true;
-} else if (quizConfig.askMode === 'term') {
-// Đè lại false nếu đang ở Quiz mà askMode là 'term'
-actualIsReverse = false;
-}
-}
-}
 } catch(e) {}
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'vi' ? 'Vietnamese' : 'English');
 const cefrLevel = window.ExamProfiles && window.ExamProfiles.getCefrLevel ? window.ExamProfiles.getCefrLevel(level) : "Intermediate";
-let prompt = `You are a helpful and expert ${targetLang} language tutor generating content for an educational app.\n`;
+let prompt = `You are an expert ${targetLang} language tutor generating content for an educational app.\n`;
 prompt += `TARGET LEVEL: ${level} (Equivalent standard: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
-if (levelContext) prompt += `CONTEXT: ${levelContext}\n`;
-// Nới lỏng: Loại bỏ STRICT LEXICAL MARTIAL LAW
+if (levelContext) prompt += `LEVEL CONTEXT: ${levelContext}\n`;
 if (lang === 'zh') {
-prompt += `VOCABULARY RULE: Please use vocabulary that generally aligns with the ${level} standard. For beginner levels (HSK 1-2), stick to basic daily words. For higher levels, use appropriately advanced vocabulary without being overly obscure.\n`;
+prompt += `STRICT LEXICAL MARTIAL LAW: HSK ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is HSK 1/2, you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (HSK 4+). Strictly use basic daily vocabulary. If target is HSK 4+, DO NOT use basic HSK 1 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${level} standard.\n`;
 } else {
-prompt += `VOCABULARY RULE: Please use vocabulary that aligns with the ${cefrLevel} standard. Ensure the difficulty matches the target learners.\n`;
+prompt += `STRICT LEXICAL MARTIAL LAW: CEFR ALIGNMENT IS MANDATORY. You MUST audit ALL generated vocabulary (including target words AND ALL distractors/options) before outputting. If target is Pre-A1/A1 (Kiddie/Junior/Starters), you are ABSOLUTELY FORBIDDEN from using intermediate/advanced words (B1+). Strictly use basic Cambridge YLE wordlists (e.g., use 'apple', 'ball', 'chair', NOT 'shovel', 'rake', 'hoe', 'hammer'). If target is B2/C1/C2 or IELTS 5.5+, DO NOT use basic A1/A2 words as the main focus. THE OVERALL VOCABULARY DIFFICULTY OF EVERY OPTION MUST EXACTLY MATCH ${cefrLevel}.\n`;
 }
-// Nới lỏng: Format Rule (Không ép độ dài tối đa nữa, cho AI tự do giải nghĩa dài nếu cần)
 if (dataMode === 'sentence' || subType === 'grammar_mcq') {
-prompt += `FORMAT RULE: The 'displaySentence' and all options should be complete, natural-sounding sentences.\n`;
+prompt += `STRICT FORMAT MARTIAL LAW: The target and ALL options/distractors MUST be FULL, complete sentences. NEVER return short fragments or isolated words. They must mirror the length and structure of the original sentence.\n`;
 } else {
 if (lang === 'zh') {
-prompt += `FORMAT RULE: For HSK 1 or 2, keep options relatively short and simple to read.\n`;
+prompt += `STRICT LENGTH MARTIAL LAW: If the target level is HSK 1 or HSK 2, ALL options/distractors MUST BE STRICTLY SHORT (1-4 characters). Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
 } else {
-prompt += `FORMAT RULE: For beginner levels (Pre-A1 to A2), keep options relatively simple to read.\n`;
+prompt += `STRICT LENGTH MARTIAL LAW: If the target level is Pre-A1, A1, or A2 (e.g., Kiddie, Junior, Starters, Movers, Flyers), ALL options/distractors MUST BE STRICTLY LESS THAN 8 WORDS. Absolutely do not write long sentences or wordy explanations for options at these basic levels.\n`;
 }
 }
-// Nới lỏng: Level Tagging
+// [CÁCH LY LEVEL TAGGING V1.28] Tẩy rửa hoàn toàn tàn dư tiếng Anh CEFR
 if (lang === 'zh') {
-prompt += `LEVEL TAGGING: Please declare the HSK level in the 'cefr_level' field (e.g., 'HSK 3').\n`;
+prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the HSK level of the generated content in the 'cefr_level' field (e.g., 'HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 5', 'HSK 6'). Incorrect level declaration is a severe violation.\n`;
 } else {
-prompt += `LEVEL TAGGING: Please declare the CEFR level in the 'cefr_level' field (e.g., 'B1').\n`;
+prompt += `STRICT LEVEL TAGGING: You MUST accurately declare the CEFR level of the generated content in the 'cefr_level' field (e.g., 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'). Incorrect level declaration is a severe violation.\n`;
 }
 const isTopicFree = topic === 'ANY' || subType === 'pronunciation' || subType === 'odd_one_out' || subType === 'spot_mistake';
 if (isTopicFree) {
-prompt += `TOPIC FREEDOM: You can freely choose from common ${lang === 'zh' ? 'daily life' : 'Cambridge'} topics.\n`;
+// [CÁCH LY TOPIC FREEDOM V1.28] Xóa bỏ ranh giới chủ đề Cambridge đối với tiếng Trung
+prompt += `TOPIC FREEDOM: You have absolute freedom to use vocabulary from ALL 26 ${lang === 'zh' ? 'daily life' : 'Cambridge'} topics. Focus entirely on the technical mechanics of the question.\n`;
 } else if (topic) {
-prompt += `TOPIC FOCUS: Please relate the content to the topic: "${topic}".\n`;
+prompt += `TOPIC FOCUS: Strictly related to "${topic}".\n`;
 }
 if (forgeType === 'base_card') {
-prompt += `TASK: Generate a single ${dataMode === 'sentence' ? 'sentence' : 'vocabulary item'} matching the level and topic.\n`;
+prompt += `TASK: Generate a single ${dataMode === 'sentence' ? 'sentence' : 'vocabulary item'} matching the exact standard level (${cefrLevel}) and topic.\n`;
 const typeRule = window.IoeDataEngine?.getMicroTierVocabTypeRule ? window.IoeDataEngine.getMicroTierVocabTypeRule(level) : "";
 if (typeRule && dataMode === 'vocab') {
 prompt += typeRule + "\n";
-prompt += `VISUAL CLARITY: For vocabulary, prefer concrete nouns where possible.\n`;
+prompt += `VISUAL CLARITY RULE: For vocabulary, strictly prefer concrete nouns with distinct shapes. Do not use A1 words if the level is B1 or B2.\n`;
 }
-prompt += `RULES: The 'definition' field should be a clear Vietnamese translation. Also provide a simple English 'image_keyword'.\n`;
+prompt += `RULES: The 'definition' field must be a clear Vietnamese translation. You MUST also provide an 'image_keyword' in English (e.g., 'red apple isolated cartoon').\n`;
 }
 else if (forgeType === 'matrix') {
 if (subType === 'match' || subType === 'match_hard') {
-prompt += `TASK: Generate 5 pairs of ${dataMode === 'sentence' ? 'sentences' : 'vocabulary items'} and their Vietnamese translations.\n`;
+prompt += `TASK: Generate exactly 5 pairs of ${dataMode === 'sentence' ? 'sentences' : 'vocabulary items'} and their exact Vietnamese translations.\n`;
 if (subType === 'match_hard') {
-prompt += `ADDITIONAL TASK: Generate 2 plausible TRAP items (wrong items) to challenge the student, with Vietnamese explanations.\n`;
+prompt += `ADDITIONAL TASK: Generate exactly 2 TRAP items (wrong items) at ${cefrLevel} to trick the student. Provide explanation in Vietnamese.\n`;
 }
 } else if (subType === 'odd_one_out') {
 const allTopics = ["Animals", "Food", "Colors", "Numbers", "Body parts", "Clothes", "House", "School", "Jobs", "Weather", "Sports", "Vehicles", "Nature", "Emotions", "Technology", "Space", "Art", "Music", "Medicine", "Business"];
 const shuffledTopics = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...allTopics]) : allTopics.sort(() => Math.random() - 0.5);
-prompt += `TASK: Generate an 'Odd One Out' question with 4 ${targetLang} words at level ${cefrLevel}.\n`;
-prompt += `SEEDING: Pick 3 items from [${shuffledTopics[0]}] and 1 odd item from [${shuffledTopics[1]}].\n`;
+prompt += `TASK: Generate an 'Odd One Out' question with exactly 4 ${targetLang} words matching standard level ${cefrLevel}.\n`;
+prompt += `DYNAMIC SEEDING RULE: You MUST pick 3 items belonging to semantic category [${shuffledTopics[0]}] and 1 odd item belonging to [${shuffledTopics[1]}].\n`;
 const oddRule = window.IoeDataEngine?.getMicroTierOddRule ? window.IoeDataEngine.getMicroTierOddRule(targetLang, dataMode, level, topic) : "";
 if (oddRule) prompt += oddRule + "\n";
-prompt += `RULES: The 'explanation' MUST BE in VIETNAMESE.\n`;
+prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'pronunciation') {
-prompt += `TASK: Generate a Pronunciation/Phonetics question with 4 ${targetLang} words at level ${cefrLevel}.\n`;
-prompt += `RULES: The 'explanation' MUST BE in VIETNAMESE.\n`;
+prompt += "TASK: Generate a Pronunciation/Phonetics question.\n";
+prompt += `REQUIREMENT: Provide 4 ${targetLang} words at standard level ${cefrLevel}.\n`;
+prompt += "RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, explaining the phonetics.\n";
 }
 }
 else if (forgeType === 'context') {
 if (subType === 'fill_blank') {
-prompt += `TASK: Generate a ${targetLang} sentence at level ${cefrLevel}. Choose ONE vocabulary word as the 'targetWord'.\n`;
-prompt += `CRITICAL: Do NOT insert '[__________]' into the sentence. The 'displaySentence' MUST contain the full untouched sentence.\n`;
-prompt += `RULES: The 'hint' field is the Vietnamese translation of the full sentence.\n`;
+prompt += `TASK: Generate a complete ${targetLang} sentence matching level ${cefrLevel}. Choose ONE important vocabulary word from that sentence to be the 'targetWord'.\n`;
+prompt += `CRITICAL RULE 1: DO NOT insert '[__________]' into the sentence. The 'displaySentence' field MUST contain the FULL, UNTOUCHED sentence.\n`;
+prompt += `RULES: The 'hint' field MUST BE the Vietnamese translation of the entire sentence.\n`;
 } else if (subType === 'vocab_mcq' || subType === 'grammar_mcq') {
 prompt += `TASK: Generate a multiple-choice question for ${dataMode === 'sentence' ? 'sentence comprehension' : 'vocabulary recognition'} at level ${cefrLevel}.\n`;
-prompt += `JSON DATA BINDING RULES:\n`;
-prompt += `- 'term': The target core word/phrase in ${targetLang}.\n`;
-prompt += `- 'definition': A concise Vietnamese translation of the 'term' (Crucial for Reverse Mode).\n`;
-if (dataMode === 'sentence' || subType === 'grammar_mcq') {
-prompt += `- 'displaySentence': A complete sentence in ${targetLang} demonstrating the 'term'.\n`;
 if (actualIsReverse) {
-prompt += `- 'options': 4 complete sentences in ${targetLang} (1 correct, 3 distractors).\n`;
+prompt += `FORMAT: Provide the target ${dataMode === 'sentence' ? 'sentence' : 'word/phrase'} in VIETNAMESE in the 'term' field. Provide exactly 4 options as complete ${targetLang} items (1 correct translation, 3 distractors).\n`;
 } else {
-prompt += `- 'options': 4 complete sentences in VIETNAMESE translating the 'displaySentence' (1 correct translation, 3 distractors).\n`;
+prompt += `FORMAT: Provide the target ${dataMode === 'sentence' ? 'sentence' : 'word/phrase'} in ${targetLang} in the 'term' field. Provide exactly 4 options in VIETNAMESE (1 correct translation, 3 distractors).\n`;
 }
-} else {
-prompt += `- 'displaySentence': A short example sentence in ${targetLang}.\n`;
-if (actualIsReverse) {
-prompt += `- 'options': 4 short words/phrases in ${targetLang} translating the 'definition' (1 correct, 3 distractors).\n`;
-} else {
-prompt += `- 'options': 4 short words/phrases in VIETNAMESE translating the 'term' (1 correct, 3 distractors).\n`;
-}
-}
-// Nới lỏng: Thay thế SEMANTIC DECOUPLING RULE căng thẳng bằng một câu đơn giản
-prompt += `DISTRACTORS: Provide 3 plausible but incorrect distractors related to the topic.\n`;
+prompt += `SEMANTIC DECOUPLING RULE: The 3 distractors MUST belong to the same broad topic but MUST be VISUALLY DISTINCT objects or completely different sub-categories.\n`;
 if (subType === 'vocab_mcq') {
-prompt += `IMAGE KEYWORD: Provide a simple English 'image_keyword' for the correct term.\n`;
+prompt += `IMAGE KEYWORD RULE: Provide a highly specific English 'image_keyword' for the correct term.\n`;
 }
-prompt += `RULES: The 'explanation' MUST BE in VIETNAMESE, explaining why the correct option fits and others do not.\n`;
+prompt += `RULES: The 'explanation' field MUST BE 100% IN VIETNAMESE, explaining why the correct option fits and why the distractors are wrong.\n`;
 } else if (subType === 'spot_mistake') {
-prompt += `TASK: Generate a ${targetLang} sentence at level ${cefrLevel} with ONE subtle mistake.\n`;
-prompt += `RULES: Provide the wrong sentence, wrong word, correct word, and explanation in VIETNAMESE.\n`;
+prompt += `TASK: Generate a ${targetLang} sentence matching level ${cefrLevel} that contains EXACTLY ONE subtle grammar or vocabulary mistake.\n`;
+prompt += `RULES: Provide the wrong sentence, the wrong word, the correct word, and an explanation in VIETNAMESE.\n`;
 } else if (subType === 'listening') {
-prompt += `TASK: Generate a listening comprehension script and a 4-option question at level ${cefrLevel}. Explanation in VIETNAMESE.\n`;
+prompt += `TASK: Generate a listening comprehension script and a corresponding multiple-choice question matching level ${cefrLevel}. Provide exactly 4 options with only 1 correct. The 'explanation' MUST BE 100% IN VIETNAMESE.\n`;
 } else if (subType === 'reading_passage') {
-prompt += `TASK: Generate a reading passage and comprehension questions at level ${cefrLevel}.\n`;
-prompt += `QUESTIONS: Mix Multiple Choice and True/False/Not Given or Fill Blank. Explanation in VIETNAMESE.\n`;
+prompt += `TASK: Generate a reading passage and a set of comprehension questions strictly matching level ${cefrLevel}.\n`;
+prompt += `QUESTIONS REQUIREMENT: Include a mix of Multiple Choice (type: "mcq") and True/False/Not Given (type: "tfng") or Fill Blank (type: "fill_blank"). The 'explanation' for each question MUST BE 100% IN VIETNAMESE.\n`;
 }
 }
 const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
-prompt += `\n[SEED: ${randomSeed}] CREATIVITY: Please keep the content varied and interesting.\n`;
+prompt += `\n[SYSTEM SEED: ${randomSeed}] CRITICAL: You MUST generate completely unique and highly creative content. DO NOT repeat standard or basic examples.\n`;
 return prompt;
 },
 _getMasterSchema: function(forgeType, subType) {
@@ -3399,7 +3370,7 @@ if (subType === 'pronunciation') return { type: "OBJECT", properties: { term: { 
 }
 if (forgeType === 'context') {
 if (subType === 'fill_blank') return { type: "OBJECT", properties: { displaySentence: { type: "STRING" }, targetWord: { type: "STRING" }, hint: { type: "STRING" }, ...commonProps }, required: ["displaySentence", "targetWord", "hint", ...commonRequired] };
-if (subType === 'vocab_mcq' || subType === 'grammar_mcq') return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, displaySentence: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["term", "definition", "displaySentence", "options", "image_keyword", "explanation", ...commonRequired] };
+if (subType === 'vocab_mcq' || subType === 'grammar_mcq') return { type: "OBJECT", properties: { term: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, image_keyword: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["term", "options", "image_keyword", "explanation", ...commonRequired] };
 if (subType === 'spot_mistake') return { type: "OBJECT", properties: { wrongSentence: { type: "STRING" }, wrongWord: { type: "STRING" }, correction: { type: "STRING" }, explanation: { type: "STRING" }, ...commonProps }, required: ["wrongSentence", "wrongWord", "correction", "explanation", ...commonRequired] };
 if (subType === 'listening') return { type: "OBJECT", properties: { audioScript: { type: "STRING" }, question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "OBJECT", properties: { text: { type: "STRING" }, isCorrect: { type: "BOOLEAN" } }, required: ["text", "isCorrect"] } }, explanation: { type: "STRING" }, ...commonProps }, required: ["audioScript", "question", "options", "explanation", ...commonRequired] };
 if (subType === 'reading_passage') return { type: "OBJECT", properties: { passage: { type: "STRING" }, questions: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, questionText: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, correctAnswer: { type: "STRING" }, explanation: { type: "STRING" } }, required: ["type", "questionText", "correctAnswer", "explanation"] } }, ...commonProps }, required: ["passage", "questions", ...commonRequired] };
@@ -3524,11 +3495,10 @@ throw e;
 }
 }
 };
-// Block 2.7a: TẦNG 2: TRẠM GÁC & BỘ NHỚ (Exam Memory & QA Guards) - Version 2.1
-// Last Updated: 2026-06-10 22:45
+// Block 2.7a: TẦNG 2: TRẠM GÁC & BỘ NHỚ (Exam Memory & QA Guards) - Version 2.0
+// Last Updated: 2026-05-28 11:30
 // Nhiệm vụ: Quản lý bộ nhớ tạm (Volatile RAM) và lưới lọc sư phạm (Sanitizer) cho Máy trộn đề ExamEngine.
-// Cập nhật V2.1: [TỰ DO HÓA AI] Đập bỏ hoàn toàn màng lọc "maxWords = 12" trong hàm _sanitizeAiItem. Chấm dứt tình trạng chặn đạn AI vô lý (nguyên nhân gốc rễ gây bão API 503) khi AI sinh đáp án giải nghĩa dài.
-// Cập nhật V2.0: Phân rã từ Block 2.7 nguyên khối. Sử dụng kỹ thuật gán nối tiếp (Mutation) bảo toàn Namespace.
+// Cập nhật: Phân rã từ Block 2.7 nguyên khối. Sử dụng kỹ thuật gán nối tiếp (Mutation) bảo toàn Namespace.
 // ==================================================================================
 // Khởi tạo Base Object nếu chưa tồn tại
 window.ExamEngine = window.ExamEngine || {};
@@ -3651,9 +3621,33 @@ if (expectedType.includes('fill_blank') && viChars.test(parsedData.displaySenten
 if (expectedType.includes('odd_one_out') && Array.isArray(parsedData.words) && parsedData.words.some(w => viChars.test(w || ''))) return false;
 if ((expectedType.includes('multiple_choice') || expectedType.includes('match')) && viChars.test(parsedData.term || '')) return false;
 }
-// 2. Lọc độ dài đáp án (Ám sát sư phạm) - ĐÃ BỊ LOẠI BỎ (Version 2.1)
-// Theo chỉ thị "Tự do hóa AI", gỡ bỏ hoàn toàn giới hạn maxWords = 12 ở cấp độ Basic.
-// Cho phép AI tự do sáng tác các câu giải nghĩa dài.
+// 2. Lọc độ dài đáp án (Ám sát sư phạm) - Đã nâng cấp đếm từ chuẩn
+const isBasicLevel = ['level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced', 'level_4_discovery_basic', 'level_5_discovery_advanced', 'en_level_1', 'en_level_2', 'en_level_3', 'en_level_4', 'en_level_5'].includes(level);
+if (isBasicLevel) {
+const maxWords = 12; // Vùng đệm 12 từ
+const countWords = (text) => {
+if (!text) return 0;
+// Xóa mọi dấu câu, ký tự đặc biệt, chỉ giữ chữ, số và khoảng trắng
+const cleaned = String(text).replace(/[^\p{L}\p{N}\s]/gu, '').trim();
+return cleaned ? cleaned.split(/\s+/).length : 0;
+};
+if (isOptionsType && Array.isArray(parsedData.options)) {
+for (const opt of parsedData.options) {
+if (countWords(opt.text) > maxWords) {
+console.warn("[Sanitizer] Bị chặn do đáp án quá dài:", opt.text, "| Đếm được:", countWords(opt.text));
+return false;
+}
+}
+}
+if (expectedType.includes('odd_one_out') && Array.isArray(parsedData.words)) {
+for (const w of parsedData.words) {
+if (countWords(w) > maxWords) {
+console.warn("[Sanitizer] Bị chặn do từ vựng quá dài:", w, "| Đếm được:", countWords(w));
+return false;
+}
+}
+}
+}
 // 3. Lưới lọc thép Cấu trúc (Structural Integrity)
 if (isOptionsType && !expectedType.includes('match')) {
 // Cấm mảng options bị rỗng hoặc thiếu
@@ -11245,10 +11239,10 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.16
-// Last Updated: 2026-06-10 21:30
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.15
+// Last Updated: 2026-06-02 18:15
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.16: [VÁ LỖI LỆCH PHA CÂU/TỪ] Nâng cấp questionText: Ưu tiên in displaySentence khi ở chế độ Câu văn. Thiết lập Fallback an toàn chống hiện tượng trắng màn hình ở chế độ Đảo ngược.
+// Cập nhật V1.15: [VÁ LỖI BĂNG ĐẠN ẢO] Lột bỏ hoàn toàn queueLength, sử dụng trực tiếp aiAmmoCount từ Tầng 5.6 để phản ánh trung thực số lượng đạn do AI tạo ra trên giao diện.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -11391,7 +11385,7 @@ onStartRound, onEndGame, onPause, onBack, feedbackType, isPaused,
 correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode,
 hardMode, listenPlayCount, sourceMode, config,
 aiWaitTime, resultTimer, isResultPaused, toggleResultPause, onNext,
-aiAmmoCount = 0
+aiAmmoCount = 0 // [QA FIX V1.15] Nhận duy nhất tham số Đạn xịn (AI) từ Tầng 5.6
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
@@ -11410,7 +11404,7 @@ return <div className="w-full h-full bg-gray-50 flex items-center justify-center
 return (
 <window.GlobalLoadingScreen
 onCancel={() => onEndGame()}
-queueLength={aiAmmoCount}
+queueLength={aiAmmoCount} // [QA FIX V1.15] Truyền số lượng Đạn xịn cho Loading Screen
 text={sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
 levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
@@ -11451,11 +11445,7 @@ const totalOptions = currentQuestionData?.options?.length || 0;
 const isOddOptions = totalOptions % 2 !== 0;
 const labels = ['A', 'B', 'C', 'D', 'E'];
 const isReverse = askMode === 'def';
-// [QA FIX V1.16] Logic hiển thị thông minh Câu/Từ và Fallback Đảo ngược
-const isSentenceMode = config?.dataMode === 'sentence';
-const questionText = isReverse
-? (currentQuestionData?.question?.definition || currentQuestionData?.question?.term || '...')
-: ((isSentenceMode && currentQuestionData?.question?.displaySentence) ? currentQuestionData.question.displaySentence : (currentQuestionData?.question?.term || '...'));
+const questionText = isReverse ? currentQuestionData?.question?.definition : currentQuestionData?.question?.term;
 const showPronunciation = !isReverse && showPronun && currentQuestionData?.question?.pronunciation;
 const isLimitedListen = gameMode === 'listen' && hardMode && !timerMode;
 const isListenExhausted = isLimitedListen && listenPlayCount >= 2;
@@ -11567,7 +11557,7 @@ title="Lưu vào Sổ tay"
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{/* Băng đạn chỉ báo Đạn AI thật */}
+{/* [QA FIX V1.15] Băng đạn chỉ báo Đạn AI thật */}
 {(isAiMode || sourceMode === 'ai_pure') && aiAmmoCount > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${aiAmmoCount} câu AI`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {aiAmmoCount}
@@ -11676,12 +11666,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.20
-// Last Updated: 2026-06-10 22:35
+// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.18
+// Last Updated: 2026-06-02 18:05
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.20: [CHỐNG TREO UI] Bao bọc try-catch và Promise.catch cho các lệnh coordinatorRef.maintain. Giúp Game tự động Fallback an toàn, tắt vòng quay Loading thay vì Crash ngầm khi gặp bão API (Lỗi 503).
-// Cập nhật V1.19: [VÁ LỖI PHÁT ÂM & ĐẢO NGƯỢC] Đồng bộ hóa textToPlay và correctOptText theo chế độ Câu văn.
-// Cập nhật V1.18: [VÁ LỖI BĂNG ĐẠN ẢO] Nâng cấp thuật toán đếm "đạn xịn" dựa trên cờ isAiGenerated.
+// Cập nhật V1.18: [VÁ LỖI BĂNG ĐẠN ẢO] Nâng cấp queueScanner, áp dụng thuật toán đếm "đạn xịn" dựa trên cờ isAiGenerated thông qua getPendingItems(), truyền biến aiAmmoCount xuống UI để báo cáo trung thực số đạn AI.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -11716,7 +11704,7 @@ const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
 // Biến đếm đạn và Phanh UI (UI Cooldown)
 const [queueLength, setQueueLength] = React.useState(0);
-const [aiAmmoCount, setAiAmmoCount] = React.useState(0);
+const [aiAmmoCount, setAiAmmoCount] = React.useState(0); // [NEW V1.18] Đếm đạn AI xịn
 const [aiWaitTime, setAiWaitTime] = React.useState(0);
 const audioTimeoutRef = React.useRef(null);
 const timerRef = React.useRef(null);
@@ -11730,7 +11718,9 @@ const stateRef = React.useRef({});
 const isInitializingRef = React.useRef(false);
 const aiGeneratedCountRef = React.useRef(0);
 const configRef = React.useRef(config);
+// [CHUẨN HÓA ANTI-STREAK] Trí nhớ lưu vết vị trí đáp án đúng 2 lượt gần nhất
 const streakTrackerRef = React.useRef([]);
+// Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
@@ -11739,7 +11729,7 @@ React.useEffect(() => {
 stateRef.current = { gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, deck: deckRef.current, isAiMode, listenPlayCount, aiWaitTime };
 }, [gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, listenPlayCount, aiWaitTime]);
 // ==================================================================================
-// HÀM TRIGGGER AUTO SAVE
+// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
 if (isGameActiveRef.current && onAutoSave && stateRef.current && stateRef.current.currentQuestionData) {
@@ -11775,17 +11765,18 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
-// ==================================================================================
-// ĐỒNG HỒ QUÉT ĐẠN & PHANH UI
-// ==================================================================================
+// ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER 500ms) - [VÁ LỖI BĂNG ĐẠN ẢO]
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
 if (coordinatorRef.current) {
+// 1. Quét tổng đạn (QueueLength truyền thống)
 if (typeof coordinatorRef.current.length === 'function') {
 setQueueLength(coordinatorRef.current.length());
 }
+// 2. Quét đạn xịn (AI Ammo) qua hàm getPendingItems()
 if (typeof coordinatorRef.current.getPendingItems === 'function') {
 const pending = coordinatorRef.current.getPendingItems();
+// Chỉ đếm những viên đạn có cờ isAiGenerated là True
 const realAiCount = pending.filter(item => item && item.isAiGenerated).length;
 setAiAmmoCount(realAiCount);
 }
@@ -11793,6 +11784,7 @@ setAiAmmoCount(realAiCount);
 }, 500);
 return () => clearInterval(queueScanner);
 }, []);
+// [VÁ LỖI DEADLOCK] ĐỒNG HỒ LÀM NGUỘI UI (UI COOLDOWN TIMER)
 React.useEffect(() => {
 let cdTimer = null;
 if (aiWaitTime > 0 && !isPaused && !isGenerating && !isResultPaused) {
@@ -11800,6 +11792,9 @@ cdTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
 }
 return () => { if (cdTimer) clearTimeout(cdTimer); };
 }, [aiWaitTime, isPaused, isGenerating, isResultPaused]);
+// ==================================================================================
+// HÀM TIỆN ÍCH ANTI-STREAK (BẺ GÃY CHUỖI ĐÁP ÁN TRÙNG LẶP)
+// ==================================================================================
 const applyAntiStreak = (data) => {
 if (data && Array.isArray(data.options)) {
 const options = data.options;
@@ -11817,12 +11812,16 @@ options[correctIdx] = options[swapIdx];
 options[swapIdx] = temp;
 correctIdx = swapIdx;
 shuffleCount++;
+console.log(`[Anti-Streak] Quiz Game: Bẻ gãy chuỗi đáp án tại vị trí mới: ${correctIdx}`);
 }
 streakTrackerRef.current = [correctIdx, ...streak].slice(0, 2);
 }
 }
 return data;
 };
+// ==================================================================================
+// BỘ NÃO TÚI NHÁP TOÀN CỤC (GLOBAL RETRY BAG LOGIC)
+// ==================================================================================
 const localPushToRetryBag = React.useCallback((question) => {
 if (addToRetryBag) addToRetryBag('quiz', question);
 }, [addToRetryBag]);
@@ -11841,7 +11840,7 @@ timestamp: Date.now()
 onLogWrong(mistakeCard);
 }, [onLogWrong, hardMode, gameMode, sourceMode]);
 // ==================================================================================
-// ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE)
+// ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
 let card = null;
@@ -11882,6 +11881,7 @@ if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Quiz
 }
 if (!card) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
+// [NỚI LỎNG BỘ LỌC] Chỉ yêu cầu có term, không yêu cầu definition để cho phép dịch ngầm JIT
 let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 4 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
@@ -11898,18 +11898,22 @@ deckRef.current = window.Utils.shuffleArray(validCards);
 }
 card = deckRef.current.shift();
 }
+// --- BẮT ĐẦU JIT PROCESSING (DỊCH NGẦM ĐƠN LẺ) ---
 if (card && sourceMode === 'card' && isAiMode && currentApiKey && (!card.definition || card.definition.trim() === '')) {
 try {
 const enrichedData = await window.Utils.fillCardWithAi(card.term, lang, currentApiKey, ['definition']);
 if (enrichedData && enrichedData.definition) {
 card.definition = enrichedData.definition;
+// Bắn sự kiện lưu sổ tay để cập nhật vĩnh viễn
 if (onUpdateCards) onUpdateCards([card]);
 }
 } catch (enrichError) {
 console.warn("[JIT Enrich] Lỗi khi dịch ngầm thẻ:", enrichError);
+// Fallback nghĩa tạm thời để game không sập nếu API lỗi
 card.definition = card.term;
 }
 }
+// --- KẾT THÚC JIT PROCESSING ---
 if (!card) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 return window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : { question: {term: "Fallback", definition: "Lỗi dữ liệu"}, options: [], isAiGenerated: false };
@@ -11925,10 +11929,7 @@ let distractors = [];
 let isAiGenerated = card.isAiGenerated || false;
 const numOptions = 4;
 const isReverse = askMode === 'def';
-const isSentenceMode = configRef.current?.dataMode === 'sentence';
-const correctOptText = isReverse
-? (isSentenceMode ? (card.displaySentence || card.term) : card.term)
-: card.definition;
+const correctOptText = isReverse ? card.term : card.definition;
 const correctOpt = { text: correctOptText, isCorrect: true };
 const textSafe = correctOptText || '';
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(textSafe) : textSafe.includes(' ');
@@ -11937,11 +11938,15 @@ try {
 if (hardMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
 const distractorLang = isReverse ? lang : 'vi';
+// [DYNAMIC TIMEOUT] Lấy cấu hình loadingTime từ AI Config, cộng thêm 5s đệm an toàn
 let dynamicTimeout = 25000;
 try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
-if (aiCfg && aiCfg.loadingTime) dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+if (aiCfg && aiCfg.loadingTime) {
+dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
+}
 } catch(e) {}
+// Gọi API sinh nhiễu
 const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(card, distractorLang, type, currentApiKey, numOptions - 1, configRef.current?.level || level, configRef.current?.topic, isReverse);
 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout")), dynamicTimeout));
 const dists = await Promise.race([aiCallPromise, timeoutPromise]);
@@ -11954,6 +11959,7 @@ localStorage.setItem('fc_total_tokens', currentTotal + 150);
 } catch (aiError) { console.warn("AI Quiz Preload Fallback:", aiError.message); }
 }
 if (distractors.length === 0 && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
+// Giữ bộ lọc chặt chẽ cho mảng mồi (Pool) để lấy đáp án nhiễu hợp lệ
 const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
 const distTexts = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(correctOptText, cleanDeckForTraps, lang, type, numOptions - 1, isReverse);
 distractors = distTexts.map(d => ({ text: d, isCorrect: false }));
@@ -11975,12 +11981,7 @@ pool = [...pool, ...newFbs];
 }
 const needed = (numOptions - 1) - distractors.length;
 let randomOthers = window.Utils.shuffleArray(pool).slice(0, needed);
-distractors.push(...randomOthers.map(c => ({
-text: isReverse
-? (isSentenceMode ? (c.displaySentence || c.term) : c.term)
-: c.definition,
-isCorrect: false
-})));
+distractors.push(...randomOthers.map(c => ({ text: isReverse ? c.term : c.definition, isCorrect: false })));
 }
 while (distractors.length < numOptions - 1) {
 distractors.push({ text: correctOptText + " " + (distractors.length + 1), isCorrect: false });
@@ -11991,11 +11992,9 @@ const finalOptions = [...distractors];
 finalOptions.splice(correctPos, 0, correctOpt);
 return { question: card, options: finalOptions, isAiGenerated };
 };
-// ==================================================================================
-// XỬ LÝ KHỞI ĐỘNG VÒNG ĐỜI (LATCHING) KÈM TRY-CATCH AN TOÀN
-// ==================================================================================
 const handleStartGame = async () => {
 if (sourceMode === 'card' && (!cards || cards.length < 2)) return;
+// Chỉ gọi resume đánh thức AudioContext cứng của Tầng 6
 if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
 window.fc_audioCtx.resume();
 }
@@ -12004,8 +12003,10 @@ setListenPlayCount(0);
 isInitializingRef.current = true;
 aiGeneratedCountRef.current = 0;
 streakTrackerRef.current = [];
+// [CẮT BỎ BATCH ENRICH Ở ĐÂY] Mọi việc dịch thuật đã được giao cho JIT trong fetchTask
 let currentDeck = sourceMode === 'card' ? [...(cardsRef.current || [])] : [];
 if (sourceMode === 'card') {
+// Nới lỏng lưới lọc: Chỉ cần có từ vựng (term) là được vào chơi
 let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 4) {
 safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
@@ -12039,18 +12040,11 @@ safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", 
 return;
 }
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
-// [QA FIX V1.20] Chống bão API 503 và Timeout làm crash quá trình khởi động
-try {
 await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
-} catch (queueErr) {
-console.warn("[Safe Fallback] Timeout hoặc lỗi nạp đạn AI khi khởi tạo:", queueErr);
-if (window.logSystemEvent) window.logSystemEvent("Queue Timeout/Lỗi vòng 1", queueErr.message);
-// Không chặn bằng return. Cứ tiếp tục để Fallback phía dưới cứu hộ.
-}
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Trắc nghiệm", "Kích hoạt Hard Fallback");
-if (showToast) safeShowToast("Máy chủ bận, đã kích hoạt dữ liệu dự phòng!", "warning");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
 }
@@ -12072,6 +12066,7 @@ setIsGenerating(false); isInitializingRef.current = false;
 onEndGame({ correct: score, wrong: wrongCount });
 }
 };
+// [DEEP DEBUG V2] Phục hồi Session
 const hasStartedRef = React.useRef(false);
 React.useEffect(() => {
 if (hasStartedRef.current) return;
@@ -12092,22 +12087,19 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
-coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).catch(err => {
-// Silently catch maintain background error during resume init
-console.warn("Background maintain error:", err);
-});
+coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
+// [BÍT LỖ HỔNG THOÁT NGANG] Xử lý cờ _needsNextOnResume
 if (savedState._needsNextOnResume) {
 setCurrentQuestionData(null);
 setIsGenerating(true);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
-// [QA FIX V1.20] Chống bão API 503 và Timeout làm crash Resume
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let qData = coordinatorRef.current.pop();
 if (!qData) {
-if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game", "Kích hoạt Hard Fallback");
-if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game Trắc nghiệm", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
 }
@@ -12122,21 +12114,6 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 safeShowToast("Lỗi tải dữ liệu. Buộc kết thúc.", "error");
-setIsGenerating(false);
-onEndGame({ correct: savedState.stats?.correct || 0, wrong: savedState.stats?.wrong || 0 });
-}
-}
-}).catch(queueErr => {
-console.warn("[Safe Fallback] Timeout Resume:", queueErr);
-if (isGameActiveRef.current) {
-if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-let qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
-if (qData) {
-setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
-if (savedState.gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(savedState.quizState?.aiWaitTime || 9);
-} else {
 setIsGenerating(false);
 onEndGame({ correct: savedState.stats?.correct || 0, wrong: savedState.stats?.wrong || 0 });
 }
@@ -12221,13 +12198,12 @@ setTimeout(() => triggerAutoSave(), 150);
 } else {
 setIsGenerating(true);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
-// [QA FIX V1.20] Chống bão API 503 và Timeout làm crash chuyển câu
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let qData = coordinatorRef.current.pop();
 if (!qData) {
-if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn chuyển vòng", "Kích hoạt Fallback");
-if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
+if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Trắc nghiệm", "Kích hoạt Hard Fallback");
+if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
 }
@@ -12241,23 +12217,7 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 }
 setAiWaitTime(currentCooldown);
 } else {
-safeShowToast("Lỗi tải dữ liệu. Buộc kết thúc.", "error");
-setIsGenerating(false);
-onEndGame({ correct: score, wrong: wrongCount });
-}
-setTimeout(() => triggerAutoSave(), 150);
-}
-}).catch(queueErr => {
-console.warn("[Safe Fallback] Timeout/Lỗi Next Round:", queueErr);
-if (isGameActiveRef.current) {
-if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-let qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
-if (qData) {
-setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
-if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(9);
-} else {
+safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
 onEndGame({ correct: score, wrong: wrongCount });
 }
@@ -12266,7 +12226,7 @@ setTimeout(() => triggerAutoSave(), 150);
 });
 }
 } catch (err) {
-console.error("Next Round Critical Error:", err);
+console.error("Next Round Error:", err);
 setIsGenerating(false);
 }
 };
@@ -12283,10 +12243,7 @@ if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 const playFn = () => {
 if (!isGameActiveRef.current) return;
 setHasStartedListening(true); setIsAudioPlaying(true);
-const isSentenceMode = configRef.current?.dataMode === 'sentence';
-const textToPlay = (isSentenceMode && qData.question?.displaySentence)
-? qData.question.displaySentence
-: (qData.question?.term || '');
+const textToPlay = qData.question.term;
 onPlay(textToPlay, null, null, () => { if (isGameActiveRef.current) setIsAudioPlaying(false); });
 };
 if (delay > 0) audioTimeoutRef.current = setTimeout(playFn, delay); else playFn();
@@ -12301,10 +12258,7 @@ return () => clearTimeout(timerRef.current);
 const handleAnswer = (index, isCorrect, isTimeout = false, isForceReveal = false) => {
 if (isChecking) return;
 cleanupTimers();
-const isSentenceMode = configRef.current?.dataMode === 'sentence';
-const textToPlay = (isSentenceMode && currentQuestionData?.question?.displaySentence)
-? currentQuestionData.question.displaySentence
-: (currentQuestionData?.question?.term || '');
+const textToPlay = currentQuestionData.question.term;
 const proceedToNext = (defaultDelayMs) => {
 if (isGameActiveRef.current) {
 let delaySec = Math.ceil(defaultDelayMs / 1000);
