@@ -987,10 +987,11 @@ const prompt = window.Utils.getPrompt('grammar', { sentence: cleanSentence, lang
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, null, apiKey);
 return { text: window.Utils.cleanText(text), _tokenUsage: tokenMetadata };
 };
-// Block 2.1d: TẦNG 2: CƠ SỞ DỮ LIỆU & ĐỒNG BỘ (Database & Memory Sync) - Version 2.0
-// Last Updated: 2026-05-28 11:30
+// Block 2.1d: TẦNG 2: CƠ SỞ DỮ LIỆU & ĐỒNG BỘ (Database & Memory Sync) - Version 2.1
+// Last Updated: 2026-06-12 09:56
 // Nhiệm vụ: Khởi tạo IndexedDB (FcDB) siêu tốc, quản lý lưu trữ offline và Động cơ Khóa nguyên tử Đa luồng (Atomic Lock).
-// Cập nhật: Phân rã từ Block 2.1 nguyên khối. Tích hợp Schema-Agnostic Validator hỗ trợ 10/10 Mini-games.
+// Cập nhật V2.1: [CROSS-LANGUAGE LEAK FIX] Phân rã túi lưu lỗi sai (Retry Bag) theo từng ngôn ngữ (fc_global_retry_bag_${lang}). Dập tắt hiện tượng "Bóng ma đa ngôn ngữ" do dùng chung túi nháp.
+// Cập nhật V2.0: Phân rã từ Block 2.1 nguyên khối. Tích hợp Schema-Agnostic Validator hỗ trợ 10/10 Mini-games.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -998,9 +999,10 @@ window.Utils = window.Utils || {};
 // 1. ĐỘNG CƠ RÚT THẺ CÓ KHÓA NGUYÊN TỬ (ATOMIC RETRY PULLER)
 // Xử lý triệt để lỗi bốc trùng 1 thẻ lỗi nhiều lần khi QueueEngine chạy đa luồng.
 // Tích hợp Validator Đa cấu trúc hỗ trợ 100% 10/10 Mini-games.
+// Bổ sung phân mảnh ngôn ngữ (Language Partitioning) chống tràn dữ liệu.
 // ============================================================================
 window.__retryMutexLock = false;
-window.Utils.pullRetryCardWithLock = (gameType, retryBagObject) => {
+window.Utils.pullRetryCardWithLock = (gameType, retryBagObject, lang = 'en') => {
 // 1. Kiểm tra khóa đa luồng
 if (window.__retryMutexLock) return null;
 // 2. Kiểm tra tính hợp lệ của túi nháp
@@ -1046,9 +1048,10 @@ default: return c.term === selectedCard.term;
 if (actualIndex > -1) {
 // Rút vĩnh viễn khỏi túi nháp RAM
 retryBagObject[gameType].splice(actualIndex, 1);
-// Ép lưu xuống DB ngầm để đồng bộ chéo
+// Ép lưu xuống DB ngầm để đồng bộ chéo theo ĐÚNG phân vùng ngôn ngữ
 if (window.FcDB) {
-window.FcDB.set('fc_global_retry_bag', retryBagObject).catch(() => {});
+const safeLang = lang || 'en';
+window.FcDB.set('fc_global_retry_bag_' + safeLang, retryBagObject).catch(() => {});
 }
 }
 // Tự động mở khóa sau 50ms (Nhường đường cho các vi luồng async khác)
@@ -1097,14 +1100,15 @@ console.log('[FcDB] Migrated Harvest Pool to IndexedDB successfully.');
 const oldRetryBagStr = localStorage.getItem('fc_global_retry_bag');
 if (oldRetryBagStr) {
 const oldBag = JSON.parse(oldRetryBagStr);
-await this.set('fc_global_retry_bag', oldBag);
+// Ép túi nháp lỗi thời sang vùng Tiếng Anh để triệt tiêu lỗi hiển thị nhầm vào game Tiếng Trung
+await this.set('fc_global_retry_bag_en', oldBag);
 localStorage.removeItem('fc_global_retry_bag');
-console.log('[FcDB] Migrated Global Retry Bag to IndexedDB successfully.');
+console.log('[FcDB] Migrated Legacy Global Retry Bag to English Partition successfully.');
 }
 const keysToMigrate = [];
 for (let i = 0; i < localStorage.length; i++) {
 const key = localStorage.key(i);
-if (key && (key.startsWith('fc_notebook_') || key.startsWith('fc_mastered_') || key.startsWith('fc_incorrect_list_'))) {
+if (key && (key.startsWith('fc_notebook_') || key.startsWith('fc_mastered_') || key.startsWith('fc_incorrect_list_') || key.startsWith('fc_global_retry_bag_'))) {
 keysToMigrate.push(key);
 }
 }
@@ -11814,12 +11818,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Sheet 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.20
-// Last Updated: 2026-06-10 22:35
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.22
+// Last Updated: 2026-06-12 10:23
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.20: [CHỐNG TREO UI] Bao bọc try-catch và Promise.catch cho các lệnh coordinatorRef.maintain. Giúp Game tự động Fallback an toàn, tắt vòng quay Loading thay vì Crash ngầm khi gặp bão API (Lỗi 503).
-// Cập nhật V1.19: [VÁ LỖI PHÁT ÂM & ĐẢO NGƯỢC] Đồng bộ hóa textToPlay và correctOptText theo chế độ Câu văn.
-// Cập nhật V1.18: [VÁ LỖI BĂNG ĐẠN ẢO] Nâng cấp thuật toán đếm "đạn xịn" dựa trên cờ isAiGenerated.
+// Cập nhật V1.22: [UNIVERSAL LOCAL FALLBACK ROUTING] Thay thế toàn bộ Static Fallback bằng window.ExamEngine.getEmergencyFallback. Truyền đủ meta dataMode để bảo toàn chế độ Câu văn/Từ vựng. Bơm Console.log truy xuất nguồn gốc cứu hộ (Thẻ của tôi / Kho tĩnh) phục vụ kiểm thử.
+// Cập nhật V1.21: [CROSS-LANGUAGE LEAK FIX] Phân rã luồng tải/ghi Túi nháp lỗi sai (Retry Bag).
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -11979,13 +11982,63 @@ timestamp: Date.now()
 onLogWrong(mistakeCard);
 }, [onLogWrong, hardMode, gameMode, sourceMode]);
 // ==================================================================================
+// ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN (VERSION 1.22)
+// ==================================================================================
+const getEmergencyQuizFallback = (index = 0) => {
+const meta = {
+id: `quiz_fallback_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
+type: 'quiz',
+level: configRef.current?.level || level || 'level_4_discovery_basic',
+topic: configRef.current?.topic || '',
+dataMode: configRef.current?.dataMode || dataMode || 'vocab',
+difficulty: hardMode ? 'hard' : 'easy',
+askMode: askMode,
+lang: lang,
+mode: 'minigame'
+};
+const localDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + lang, []) : [];
+let fallbackFormatted = null;
+// Ưu tiên 1: Cứu hộ cục bộ Toàn cục (Universal JIT - Thẻ của tôi)
+if (window.ExamEngine && window.ExamEngine.getEmergencyFallback) {
+const fbRaw = window.ExamEngine.getEmergencyFallback(meta, localDeck, index);
+if (fbRaw && fbRaw.content) {
+console.log(`[DEBUG FALLBACK] 🔵 NGUỒN: Thẻ của tôi | Loại: ${meta.dataMode}`, fbRaw.content);
+fallbackFormatted = {
+question: fbRaw.content,
+options: fbRaw.content.options || [],
+isAiGenerated: false,
+_isRescued: true
+};
+}
+}
+// Ưu tiên 2: Kho tĩnh mẫu giáo (Static FallbackDataEngine)
+if (!fallbackFormatted) {
+const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
+fallbackFormatted = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+if (fallbackFormatted) {
+console.log(`[DEBUG FALLBACK] 🟡 NGUỒN: Kho tĩnh dự phòng | Loại: ${meta.dataMode}`, fallbackFormatted);
+}
+}
+// Chốt chặn cuối cùng (Hardcoded Backup)
+if (!fallbackFormatted) {
+fallbackFormatted = {
+question: { term: "Lỗi đường truyền", definition: "Không thể kết xuất dữ liệu an toàn" },
+options: [{text: "A", isCorrect: true}, {text: "B", isCorrect: false}, {text: "C", isCorrect: false}, {text: "D", isCorrect: false}],
+isAiGenerated: false,
+_isRescued: true
+};
+console.log("[DEBUG FALLBACK] 🔴 NGUỒN: Chốt chặn an toàn (Lỗi)", fallbackFormatted);
+}
+return fallbackFormatted;
+};
+// ==================================================================================
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE)
 // ==================================================================================
 const fetchTask = async () => {
 let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if (window.Utils && window.Utils.pullRetryCardWithLock) {
-card = window.Utils.pullRetryCardWithLock('quiz', globalRetryBagRef.current);
+card = window.Utils.pullRetryCardWithLock('quiz', globalRetryBagRef.current, lang);
 }
 if (sourceMode === 'ai_pure' && !card) {
 if (!currentApiKey) {
@@ -12049,8 +12102,7 @@ card.definition = card.term;
 }
 }
 if (!card) {
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-return window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : { question: {term: "Fallback", definition: "Lỗi dữ liệu"}, options: [], isAiGenerated: false };
+return getEmergencyQuizFallback(0);
 }
 if (historyQueueRef.current) {
 if (!historyQueueRef.current.includes(card.term)) {
@@ -12177,20 +12229,17 @@ safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", 
 return;
 }
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
-// [QA FIX V1.20] Chống bão API 503 và Timeout làm crash quá trình khởi động
 try {
 await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
 } catch (queueErr) {
 console.warn("[Safe Fallback] Timeout hoặc lỗi nạp đạn AI khi khởi tạo:", queueErr);
 if (window.logSystemEvent) window.logSystemEvent("Queue Timeout/Lỗi vòng 1", queueErr.message);
-// Không chặn bằng return. Cứ tiếp tục để Fallback phía dưới cứu hộ.
 }
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Trắc nghiệm", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Máy chủ bận, đã kích hoạt dữ liệu dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+firstData = getEmergencyQuizFallback(0);
 }
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestionData(applyAntiStreak(firstData));
@@ -12231,7 +12280,6 @@ if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).catch(err => {
-// Silently catch maintain background error during resume init
 console.warn("Background maintain error:", err);
 });
 }
@@ -12239,15 +12287,13 @@ if (savedState._needsNextOnResume) {
 setCurrentQuestionData(null);
 setIsGenerating(true);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
-// [QA FIX V1.20] Chống bão API 503 và Timeout làm crash Resume
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let qData = coordinatorRef.current.pop();
 if (!qData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+qData = getEmergencyQuizFallback(0);
 }
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
@@ -12268,8 +12314,7 @@ onEndGame({ correct: savedState.stats?.correct || 0, wrong: savedState.stats?.wr
 console.warn("[Safe Fallback] Timeout Resume:", queueErr);
 if (isGameActiveRef.current) {
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-let qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+let qData = getEmergencyQuizFallback(0);
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (savedState.gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
@@ -12359,15 +12404,13 @@ setTimeout(() => triggerAutoSave(), 150);
 } else {
 setIsGenerating(true);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
-// [QA FIX V1.20] Chống bão API 503 và Timeout làm crash chuyển câu
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let qData = coordinatorRef.current.pop();
 if (!qData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn chuyển vòng", "Kích hoạt Fallback");
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+qData = getEmergencyQuizFallback(score);
 }
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
@@ -12389,8 +12432,7 @@ setTimeout(() => triggerAutoSave(), 150);
 console.warn("[Safe Fallback] Timeout/Lỗi Next Round:", queueErr);
 if (isGameActiveRef.current) {
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-let qData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+let qData = getEmergencyQuizFallback(score);
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
@@ -22511,11 +22553,12 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.05
-// Last Updated: 2026-06-10 15:35
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.06
+// Last Updated: 2026-06-12 10:00
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật V1.05: [MEMORY ISOLATION] Tích hợp cơ chế dọn dẹp RAM (Volatile Memory) khi chuyển đổi ngôn ngữ. Xóa bỏ rác Legacy fc_ai_memory để hoàn tất chiến dịch chống rò rỉ Token (Token Leakage).
+// Cập nhật V1.06: [CROSS-LANGUAGE LEAK FIX] Phân rã luồng tải/ghi Túi nháp (Retry Bag) theo từng ngôn ngữ (fc_global_retry_bag_${lang}). Tích hợp tẩy não AiMemoryManager.clear() triệt để khi đổi ngôn ngữ.
+// Cập nhật V1.05: [MEMORY ISOLATION] Tích hợp cơ chế dọn dẹp RAM (Volatile Memory) khi chuyển đổi ngôn ngữ.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -22657,9 +22700,7 @@ await window.FcDB.init();
 // 2. Nạp dữ liệu Kho AI
 const pool = await window.FcDB.get('fc_ai_harvest_pool');
 if (pool) setAiHarvestPool(pool);
-// 3. Nạp dữ liệu Tú Nháp
-const bag = await window.FcDB.get('fc_global_retry_bag');
-if (bag) setGlobalRetryBag(bag);
+// [BẢN VÁ 1.06] Đã di chuyển luồng tải Túi Nháp vào Effect đổi ngôn ngữ bên dưới
 setIsDbReady(true);
 console.log('[CoreState] IndexedDB ready. States hydrated.');
 } catch (e) {
@@ -22694,7 +22735,7 @@ window.speechSynthesis.onvoiceschanged = loadVoices;
 useEffect(() => {
 localStorage.setItem(window.STORAGE_KEYS.UI_LANG, JSON.stringify(uiLang));
 }, [uiLang]);
-// 3. EFFECT: Đổi Ngôn Ngữ -> Tải các Sổ tay và Khởi tạo Level
+// 3. EFFECT: Đổi Ngôn Ngữ -> Tải các Sổ tay, Túi Nháp (Retry Bag) và Khởi tạo Level
 useEffect(() => {
 localStorage.setItem(window.STORAGE_KEYS.LANG, JSON.stringify(lang));
 const loadUserData = async () => {
@@ -22702,9 +22743,12 @@ if (isDbReady && window.FcDB) {
 const savedNote = await window.FcDB.get('fc_notebook_' + lang) || [];
 const savedMaster = await window.FcDB.get('fc_mastered_' + lang) || [];
 const savedIncorrect = await window.FcDB.get(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang) || [];
+// [BẢN VÁ 1.06] Kéo túi nháp Lỗi sai theo đúng phân vùng ngôn ngữ
+const savedRetryBag = await window.FcDB.get('fc_global_retry_bag_' + lang) || {};
 setNotebook(savedNote);
 setMastered(savedMaster);
 setIncorrectList(savedIncorrect);
+setGlobalRetryBag(savedRetryBag);
 }
 };
 loadUserData();
@@ -22713,11 +22757,15 @@ if (prevLangRef.current !== lang) {
 setCurrentCardIndex(0);
 setIsStudyingNotebook(false);
 setStudySourceName(null);
-// [MEMORY ISOLATION V1.05] Dọn dẹp RAM và Cache khi chuyển hệ ngôn ngữ
+// [MEMORY ISOLATION V1.06] Dọn dẹp RAM và Cache khi chuyển hệ ngôn ngữ
 aiQueueRef.current = [];
 localStorage.removeItem('fc_ai_memory'); // Tiêu diệt rác legacy dùng chung
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
+}
+// [TẨY NÃO ẢO GIÁC AI] Dọn sạch trí nhớ ngầm Buffer của Gemini trên RAM
+if (window.Utils && window.Utils.AiMemoryManager && typeof window.Utils.AiMemoryManager.clear === 'function') {
+window.Utils.AiMemoryManager.clear();
 }
 const defLvl = lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4');
 const savedLvl = localStorage.getItem('fc_current_level_' + lang);
@@ -22769,9 +22817,10 @@ window.Utils?.safeLocalStorageSet('fc_ai_config', aiConfig);
 useEffect(() => {
 if (isDbReady && window.FcDB) window.FcDB.set('fc_ai_harvest_pool', aiHarvestPool);
 }, [aiHarvestPool, isDbReady]);
+// [BẢN VÁ 1.06] Ghi đè CSDL ngầm chuẩn xác xuống túi nháp của ngôn ngữ hiện tại
 useEffect(() => {
-if (isDbReady && window.FcDB) window.FcDB.set('fc_global_retry_bag', globalRetryBag);
-}, [globalRetryBag, isDbReady]);
+if (isDbReady && window.FcDB) window.FcDB.set('fc_global_retry_bag_' + lang, globalRetryBag);
+}, [globalRetryBag, isDbReady, lang]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_data_mode', dataMode); }, [dataMode]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_current_level_' + lang, currentLevel); }, [currentLevel, lang]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_current_topic_' + lang, currentTopic); }, [currentTopic, lang]);
