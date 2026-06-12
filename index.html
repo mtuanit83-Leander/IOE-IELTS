@@ -11834,11 +11834,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.26
-// Last Updated: 2026-06-12 17:35
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.27
+// Last Updated: 2026-06-12 19:15
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.26: [SEQUENTIAL AUDIO ENGINE] Nâng cấp hàm triggerAudio thành luồng Async/Await. Hỗ trợ đọc tuần tự (Nhãn A -> nghỉ 1.5s -> Đáp án A -> ...) cho chế độ Nghe Đảo Ngược. Cấy cầu dao audioSequenceAbortRef để chém đứt luồng đọc ngay lập tức khi thí sinh chốt đáp án hoặc bỏ qua.
-// Cập nhật V1.25: [PURE AMMO ENFORCEMENT] Nghiêm cấm fetchTask nuốt lỗi.
+// Cập nhật V1.27: [TTS SAFETY NET] Bổ sung lưới an toàn cho luồng Async Audio. Tự động resolve Promise nếu onPlay bị khuyết hoặc TTS trình duyệt bị lỗi, chống treo game.
+// Cập nhật V1.26: [SEQUENTIAL AUDIO ENGINE] Nâng cấp hàm triggerAudio thành luồng Async/Await. Hỗ trợ đọc tuần tự (Nhãn A -> nghỉ 1.5s -> Đáp án A -> ...) cho chế độ Nghe Đảo Ngược.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -11891,7 +11891,7 @@ const streakTrackerRef = React.useRef([]);
 const globalRetryBagRef = React.useRef(globalRetryBag);
 // Con trỏ cứu hộ tịnh tiến độc lập chống lặp
 const fallbackIndexRef = React.useRef(Math.floor(Math.random() * 10000));
-// [BẢN VÁ 1.26] Cầu dao ngắt luồng Audio Tuần tự
+// Cầu dao ngắt luồng Audio Tuần tự
 const audioSequenceAbortRef = React.useRef(false);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
@@ -12002,7 +12002,7 @@ timestamp: Date.now()
 onLogWrong(mistakeCard);
 }, [onLogWrong, hardMode, gameMode, sourceMode]);
 // ==================================================================================
-// ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN (VERSION 1.24)
+// ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN
 // ==================================================================================
 const getEmergencyQuizFallback = () => {
 const randomIndex = Math.floor(Math.random() * 1000000);
@@ -12358,7 +12358,7 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 };
 }, []);
 // ==================================================================================
-// [BẢN VÁ 1.26] BỔ SUNG LỆNH CẬP NHẬT CỜ NGẮT ÂM VÀO CLEANUP
+// XÓA TIMERS & CẬP NHẬT CỜ NGẮT ÂM THANH
 // ==================================================================================
 const cleanupTimers = () => {
 audioSequenceAbortRef.current = true; // Chém đứt luồng Sequential Audio
@@ -12476,7 +12476,7 @@ setIsGenerating(false);
 }
 };
 // ==================================================================================
-// [BẢN VÁ 1.26] NÂNG CẤP ĐỘNG CƠ ÂM THANH TUẦN TỰ (SEQUENTIAL AUDIO ENGINE)
+// NÂNG CẤP ĐỘNG CƠ ÂM THANH TUẦN TỰ (SEQUENTIAL AUDIO ENGINE)
 // ==================================================================================
 const triggerAudio = (qData = currentQuestionData, delay = 0, isManual = false) => {
 if (!qData || !isGameActiveRef.current) return;
@@ -12503,10 +12503,11 @@ const labels = ['A', 'B', 'C', 'D', 'E'];
 const options = qData.options || [];
 for (let i = 0; i < options.length; i++) {
 if (audioSequenceAbortRef.current) break; // Cầu dao chém đứt luồng
-// 1. Đọc nhãn A, B, C, D
+// 1. Đọc nhãn A, B, C, D (Kèm Safety Check cho onPlay)
 await new Promise(resolve => {
 if (audioSequenceAbortRef.current) return resolve();
-onPlay(labels[i], null, null, () => resolve());
+if (onPlay) onPlay(labels[i], null, null, () => resolve());
+else resolve();
 });
 if (audioSequenceAbortRef.current) break;
 // 2. Tạm nghỉ 1.5s (1500ms) theo yêu cầu UX
@@ -12515,7 +12516,8 @@ if (audioSequenceAbortRef.current) break;
 // 3. Đọc nội dung đáp án ngoại ngữ
 await new Promise(resolve => {
 if (audioSequenceAbortRef.current) return resolve();
-onPlay(options[i].text, null, null, () => resolve());
+if (onPlay) onPlay(options[i].text, null, null, () => resolve());
+else resolve();
 });
 if (audioSequenceAbortRef.current) break;
 // 4. Nghỉ 1s phân tách giữa các câu
@@ -12529,7 +12531,8 @@ const textToPlay = (isSentenceMode && qData.question?.displaySentence)
 : (qData.question?.term || '');
 await new Promise(resolve => {
 if (audioSequenceAbortRef.current) return resolve();
-onPlay(textToPlay, null, null, () => resolve());
+if (onPlay) onPlay(textToPlay, null, null, () => resolve());
+else resolve();
 });
 }
 // Báo cáo hoàn tất chuỗi Audio nếu không bị ngắt
