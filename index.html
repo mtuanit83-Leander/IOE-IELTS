@@ -11818,11 +11818,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.24
-// Last Updated: 2026-06-12 14:02
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.25
+// Last Updated: 2026-06-12 14:24
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.24: [RANDOM FALLBACK FIX] Hủy bỏ con trỏ tịnh tiến tuần tự. Thay thế bằng thuật toán sinh Random Index mật độ cao, khôi phục 100% tính ngẫu nhiên cho các viên đạn cứu hộ.
-// Cập nhật V1.23: [FALLBACK POINTER FIX] Cắt đứt liên kết giữa biến `score` và `index` cứu hộ.
+// Cập nhật V1.25: [PURE AMMO ENFORCEMENT] Nghiêm cấm fetchTask nuốt lỗi và tự ý nạp đạn lép (Fallback) vào băng đạn ngầm. Bắt buộc ném thẳng lỗi (throw e) ra ngoài để QueueEngine đếm Bankrupt và Retry, giải quyết triệt để ảo giác "đóng băng" do UI đếm sai đạn.
+// Cập nhật V1.24: [RANDOM FALLBACK FIX] Sinh Random Index mật độ cao cho đạn cứu hộ JIT.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -11873,6 +11873,8 @@ const aiGeneratedCountRef = React.useRef(0);
 const configRef = React.useRef(config);
 const streakTrackerRef = React.useRef([]);
 const globalRetryBagRef = React.useRef(globalRetryBag);
+// Con trỏ cứu hộ tịnh tiến độc lập chống lặp
+const fallbackIndexRef = React.useRef(Math.floor(Math.random() * 10000));
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
 React.useEffect(() => { configRef.current = config; }, [config]);
@@ -11985,7 +11987,6 @@ onLogWrong(mistakeCard);
 // ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN (VERSION 1.24)
 // ==================================================================================
 const getEmergencyQuizFallback = () => {
-// [BẢN VÁ 1.24] Quay lại cơ chế bốc ngẫu nhiên (Random Pick) thay vì Tuần tự
 const randomIndex = Math.floor(Math.random() * 1000000);
 const meta = {
 id: `quiz_fallback_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
@@ -12000,7 +12001,6 @@ mode: 'minigame'
 };
 const localDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + lang, []) : [];
 let fallbackFormatted = null;
-// Ưu tiên 1: Cứu hộ cục bộ Toàn cục (Universal JIT - Thẻ của tôi)
 if (window.ExamEngine && window.ExamEngine.getEmergencyFallback) {
 const fbRaw = window.ExamEngine.getEmergencyFallback(meta, localDeck, randomIndex);
 if (fbRaw && fbRaw.content) {
@@ -12013,7 +12013,6 @@ _isRescued: true
 };
 }
 }
-// Ưu tiên 2: Kho tĩnh mẫu giáo (Static FallbackDataEngine)
 if (!fallbackFormatted) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 fallbackFormatted = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
@@ -12021,7 +12020,6 @@ if (fallbackFormatted) {
 console.log(`[DEBUG FALLBACK] 🟡 NGUỒN: Kho tĩnh dự phòng | Loại: ${meta.dataMode}`, fallbackFormatted);
 }
 }
-// Chốt chặn cuối cùng (Hardcoded Backup)
 if (!fallbackFormatted) {
 fallbackFormatted = {
 question: { term: "Lỗi đường truyền", definition: "Không thể kết xuất dữ liệu an toàn" },
@@ -12070,6 +12068,9 @@ return qData.content;
 } catch (e) {
 console.warn("PureMode Forge Error:", e);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Quiz AI", e);
+// [BẢN VÁ 1.25] BẮT BUỘC ném lỗi ra ngoài để QueueEngine biết đường ngủ đông và Retry.
+// Không được nuốt lỗi ở đây.
+throw e;
 }
 }
 }
@@ -12104,7 +12105,9 @@ card.definition = card.term;
 }
 }
 if (!card) {
-return getEmergencyQuizFallback();
+// [BẢN VÁ 1.25] Tuyệt đối không gọi getEmergencyQuizFallback ở đây.
+// Ném lỗi để bảo vệ sự tinh khiết của băng đạn ngầm.
+throw new Error("Từ chối nạp đạn khuyết tật vào hàng đợi.");
 }
 if (historyQueueRef.current) {
 if (!historyQueueRef.current.includes(card.term)) {
