@@ -11387,10 +11387,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.16
-// Last Updated: 2026-06-10 21:30
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.17
+// Last Updated: 2026-06-12 16:54
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.16: [VÁ LỖI LỆCH PHA CÂU/TỪ] Nâng cấp questionText: Ưu tiên in displaySentence khi ở chế độ Câu văn. Thiết lập Fallback an toàn chống hiện tượng trắng màn hình ở chế độ Đảo ngược.
+// Cập nhật V1.17: [REVERSE LISTEN UI REWORK] Tái cấu trúc UI khi kết hợp Luyện Nghe + Đảo Ngược. Ép hiển thị câu hỏi tiếng Việt. Giấu chữ đáp án ngoại ngữ. Bơm nút Loa nhỏ (Local Speaker) vào từng đáp án để phát âm thanh cục bộ.
+// Cập nhật V1.16: [VÁ LỖI LỆCH PHA CÂU/TỪ] Nâng cấp questionText.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -11573,8 +11574,11 @@ Thoát về Menu
 }
 const isLocked = (timerMode && !isRoundStarted) || isPaused;
 const contentBlurClass = isLocked ? "blur-sm opacity-50 pointer-events-none select-none" : "";
+const isReverse = askMode === 'def';
+const isReverseListen = gameMode === 'listen' && isReverse;
 const getOptionClass = (opt, i) => {
-const isListenLocked = gameMode === 'listen' && !hasStartedListening;
+// [BẢN VÁ V1.17] Bỏ khóa Option ở chế độ Nghe Đảo ngược để người dùng bấm nút Loa nhỏ
+const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
 if (isListenLocked) return "bg-gray-50 border-gray-200 text-gray-400 opacity-80 cursor-not-allowed select-none";
 if (isChecking) {
 if (opt.isCorrect) return "bg-green-100 border-green-500 text-green-900 shadow-md transform scale-[1.02] font-bold";
@@ -11592,7 +11596,6 @@ return 'bg-white text-gray-500';
 const totalOptions = currentQuestionData?.options?.length || 0;
 const isOddOptions = totalOptions % 2 !== 0;
 const labels = ['A', 'B', 'C', 'D', 'E'];
-const isReverse = askMode === 'def';
 // [QA FIX V1.16] Logic hiển thị thông minh Câu/Từ và Fallback Đảo ngược
 const isSentenceMode = config?.dataMode === 'sentence';
 const questionText = isReverse
@@ -11734,7 +11737,8 @@ title={t('addToNotebook')}
 ><Icons.Bookmark size={22} fill={isInNotebook ? "currentColor" : "none"} /></button>
 )}
 <div className="text-center w-full px-6">
-{(gameMode === 'read' || isChecking) ? (
+{/* [BẢN VÁ V1.17] Ép hiển thị Câu hỏi nếu đang ở chế độ Nghe Đảo ngược (isReverseListen) */}
+{(gameMode === 'read' || isChecking || isReverseListen) ? (
 <div className="flex flex-col gap-2 animate-in fade-in items-center">
 <div className="text-gray-800 break-words leading-tight" style={{ fontWeight: settings?.fontWeight || 'bold', fontFamily: isReverse ? 'inherit' : window.Utils.getFontFamily(settings), fontSize: settings?.fontSize ? `${settings.fontSize}rem` : '1.875rem' }}>
 {questionText}
@@ -11765,18 +11769,30 @@ Không nghe được? (Chấp nhận sai để xem chữ)
 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 w-full`}>
 {currentQuestionData?.options?.map((opt, i) => {
 const btnClass = getOptionClass(opt, i);
-const isListenLocked = gameMode === 'listen' && !hasStartedListening;
+const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
 const isLastAndOdd = isOddOptions && (i === totalOptions - 1);
 const icon = (isChecking && opt.isCorrect) ? <Icons.CheckCircle size={20} className="text-green-700" /> :
 ((isChecking && i === selectedOptionIndex && !opt.isCorrect) || clickedWrongIndices.has(i)) ? <Icons.X size={20} className={clickedWrongIndices.has(i) ? "text-red-300" : "text-red-700"} /> : null;
+// [BẢN VÁ V1.17] Ẩn chữ đáp án khi ở chế độ Nghe Đảo ngược (chỉ hiện "Đáp án A, B, C, D")
+const optionDisplayText = (isReverseListen && !isChecking) ? `Đáp án ${labels[i]}` : opt.text;
 return (
 <button key={i} onClick={() => handleAnswer(i, opt.isCorrect)} disabled={isChecking || clickedWrongIndices.has(i) || isListenLocked} className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left flex items-center justify-between ${btnClass} ${isLastAndOdd ? 'sm:col-span-2' : ''}`}>
 <div className="flex items-center w-full">
 <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3 flex-none shadow-inner ${getLabelClass(opt, i)}`}>{labels[i]}</span>
-<span className={`break-words flex-1 ${clickedWrongIndices.has(i) ? 'line-through' : ''} ${isReverse ? 'text-gray-800' : ''}`} style={{ fontWeight: settings?.fontWeight || 'normal', fontSize: settings?.backFontSize ? `${settings.backFontSize}rem` : '1.125rem', fontFamily: isReverse ? window.Utils.getFontFamily(settings) : 'inherit' }}>
-{opt.text}
+<span className={`break-words flex-1 ${clickedWrongIndices.has(i) ? 'line-through' : ''} ${isReverse ? 'text-gray-800' : ''} ${isReverseListen && !isChecking ? 'italic text-gray-500' : ''}`} style={{ fontWeight: settings?.fontWeight || 'normal', fontSize: settings?.backFontSize ? `${settings.backFontSize}rem` : '1.125rem', fontFamily: isReverse && !isReverseListen ? window.Utils.getFontFamily(settings) : 'inherit' }}>
+{optionDisplayText}
 </span>
 </div>
+{/* [BẢN VÁ V1.17] Nút Loa cục bộ cho chế độ Nghe Đảo ngược */}
+{isReverseListen && (
+<div
+onClick={(e) => { e.stopPropagation(); if (onPlay && !isChecking) onPlay(opt.text); }}
+className={`ml-2 p-2 rounded-full flex-none transition-colors ${isChecking ? 'text-gray-300' : `text-${mainColor}-500 bg-${mainColor}-50 hover:bg-${mainColor}-100 active:scale-95`}`}
+title="Nghe đáp án này"
+>
+<Icons.Volume2 size={20} />
+</div>
+)}
 {icon && <div className="ml-2 flex-none">{icon}</div>}
 </button>
 );
@@ -11818,11 +11834,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.25
-// Last Updated: 2026-06-12 14:24
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.26
+// Last Updated: 2026-06-12 17:35
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.25: [PURE AMMO ENFORCEMENT] Nghiêm cấm fetchTask nuốt lỗi và tự ý nạp đạn lép (Fallback) vào băng đạn ngầm. Bắt buộc ném thẳng lỗi (throw e) ra ngoài để QueueEngine đếm Bankrupt và Retry, giải quyết triệt để ảo giác "đóng băng" do UI đếm sai đạn.
-// Cập nhật V1.24: [RANDOM FALLBACK FIX] Sinh Random Index mật độ cao cho đạn cứu hộ JIT.
+// Cập nhật V1.26: [SEQUENTIAL AUDIO ENGINE] Nâng cấp hàm triggerAudio thành luồng Async/Await. Hỗ trợ đọc tuần tự (Nhãn A -> nghỉ 1.5s -> Đáp án A -> ...) cho chế độ Nghe Đảo Ngược. Cấy cầu dao audioSequenceAbortRef để chém đứt luồng đọc ngay lập tức khi thí sinh chốt đáp án hoặc bỏ qua.
+// Cập nhật V1.25: [PURE AMMO ENFORCEMENT] Nghiêm cấm fetchTask nuốt lỗi.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -11875,6 +11891,8 @@ const streakTrackerRef = React.useRef([]);
 const globalRetryBagRef = React.useRef(globalRetryBag);
 // Con trỏ cứu hộ tịnh tiến độc lập chống lặp
 const fallbackIndexRef = React.useRef(Math.floor(Math.random() * 10000));
+// [BẢN VÁ 1.26] Cầu dao ngắt luồng Audio Tuần tự
+const audioSequenceAbortRef = React.useRef(false);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
 React.useEffect(() => { configRef.current = config; }, [config]);
@@ -12068,8 +12086,6 @@ return qData.content;
 } catch (e) {
 console.warn("PureMode Forge Error:", e);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Quiz AI", e);
-// [BẢN VÁ 1.25] BẮT BUỘC ném lỗi ra ngoài để QueueEngine biết đường ngủ đông và Retry.
-// Không được nuốt lỗi ở đây.
 throw e;
 }
 }
@@ -12105,8 +12121,6 @@ card.definition = card.term;
 }
 }
 if (!card) {
-// [BẢN VÁ 1.25] Tuyệt đối không gọi getEmergencyQuizFallback ở đây.
-// Ném lỗi để bảo vệ sự tinh khiết của băng đạn ngầm.
 throw new Error("Từ chối nạp đạn khuyết tật vào hàng đợi.");
 }
 if (historyQueueRef.current) {
@@ -12343,15 +12357,19 @@ window.speechSynthesis.cancel();
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 };
 }, []);
+// ==================================================================================
+// [BẢN VÁ 1.26] BỔ SUNG LỆNH CẬP NHẬT CỜ NGẮT ÂM VÀO CLEANUP
+// ==================================================================================
 const cleanupTimers = () => {
+audioSequenceAbortRef.current = true; // Chém đứt luồng Sequential Audio
+window.speechSynthesis.cancel();      // Tắt ngay TTS của OS đang đọc dở dang
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 if (timerRef.current) clearTimeout(timerRef.current);
 if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
 };
 React.useEffect(() => {
 if (isPaused) {
-if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
-if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
+cleanupTimers(); // Dừng đọc khi bấm Pause
 }
 }, [isPaused]);
 React.useEffect(() => {
@@ -12363,6 +12381,7 @@ handleNext();
 }
 }, [feedbackType, resultTimer, isPaused, isResultPaused, isGenerating]);
 const handleSaveAndBack = () => {
+cleanupTimers();
 const currentData = stateRef.current;
 let finalWrongCount = currentData.wrongCount;
 let finalStreak = currentData.streak;
@@ -12390,9 +12409,10 @@ onBack({ ...sessionData, timerMode, listenMode, hardMode, timeLimit });
 };
 const handleNext = async () => {
 if (!isGameActiveRef.current || isGenerating) return;
+cleanupTimers();
 setSelectedOptionIndex(null); setIsChecking(false); setFeedbackType(null); setClickedWrongIndices(new Set());
 setShowChanceToast(false); setIsAudioPlaying(false); setHasStartedListening(false);
-setTimeLeft(timeLimit); setIsRoundStarted(!timerMode); setListenPlayCount(0); cleanupTimers();
+setTimeLeft(timeLimit); setIsRoundStarted(!timerMode); setListenPlayCount(0);
 setResultTimer(0); setIsResultPaused(false);
 try {
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
@@ -12455,6 +12475,9 @@ console.error("Next Round Critical Error:", err);
 setIsGenerating(false);
 }
 };
+// ==================================================================================
+// [BẢN VÁ 1.26] NÂNG CẤP ĐỘNG CƠ ÂM THANH TUẦN TỰ (SEQUENTIAL AUDIO ENGINE)
+// ==================================================================================
 const triggerAudio = (qData = currentQuestionData, delay = 0, isManual = false) => {
 if (!qData || !isGameActiveRef.current) return;
 if (isManual && gameMode === 'listen' && hardMode && !timerMode) {
@@ -12464,17 +12487,61 @@ return;
 }
 setListenPlayCount(prev => prev + 1);
 }
+// Dập tắt ngay luồng cũ nếu đang chạy
+audioSequenceAbortRef.current = true;
+window.speechSynthesis.cancel();
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
-const playFn = () => {
+const playFn = async () => {
 if (!isGameActiveRef.current) return;
-setHasStartedListening(true); setIsAudioPlaying(true);
+audioSequenceAbortRef.current = false; // Reset cờ cho phiên làm việc mới
+setHasStartedListening(true);
+setIsAudioPlaying(true);
+const isReverseListen = gameMode === 'listen' && askMode === 'def';
+if (isReverseListen) {
+// CHẾ ĐỘ ĐẢO NGƯỢC: Đọc tuần tự A, B, C, D
+const labels = ['A', 'B', 'C', 'D', 'E'];
+const options = qData.options || [];
+for (let i = 0; i < options.length; i++) {
+if (audioSequenceAbortRef.current) break; // Cầu dao chém đứt luồng
+// 1. Đọc nhãn A, B, C, D
+await new Promise(resolve => {
+if (audioSequenceAbortRef.current) return resolve();
+onPlay(labels[i], null, null, () => resolve());
+});
+if (audioSequenceAbortRef.current) break;
+// 2. Tạm nghỉ 1.5s (1500ms) theo yêu cầu UX
+await new Promise(resolve => setTimeout(resolve, 1500));
+if (audioSequenceAbortRef.current) break;
+// 3. Đọc nội dung đáp án ngoại ngữ
+await new Promise(resolve => {
+if (audioSequenceAbortRef.current) return resolve();
+onPlay(options[i].text, null, null, () => resolve());
+});
+if (audioSequenceAbortRef.current) break;
+// 4. Nghỉ 1s phân tách giữa các câu
+await new Promise(resolve => setTimeout(resolve, 1000));
+}
+} else {
+// CHẾ ĐỘ BÌNH THƯỜNG: Chỉ đọc 1 câu hỏi rồi dừng
 const isSentenceMode = configRef.current?.dataMode === 'sentence';
 const textToPlay = (isSentenceMode && qData.question?.displaySentence)
 ? qData.question.displaySentence
 : (qData.question?.term || '');
-onPlay(textToPlay, null, null, () => { if (isGameActiveRef.current) setIsAudioPlaying(false); });
+await new Promise(resolve => {
+if (audioSequenceAbortRef.current) return resolve();
+onPlay(textToPlay, null, null, () => resolve());
+});
+}
+// Báo cáo hoàn tất chuỗi Audio nếu không bị ngắt
+if (isGameActiveRef.current && !audioSequenceAbortRef.current) {
+setIsAudioPlaying(false);
+}
 };
-if (delay > 0) audioTimeoutRef.current = setTimeout(playFn, delay); else playFn();
+if (delay > 0) {
+audioTimeoutRef.current = setTimeout(playFn, delay);
+} else {
+playFn();
+}
 };
 React.useEffect(() => {
 if (!isPaused && timerMode && isRoundStarted && !isChecking && !isGenerating && currentQuestionData) {
@@ -12543,6 +12610,7 @@ setTimeout(() => triggerAutoSave(), 150);
 };
 const handleSkip = () => {
 if (isChecking || isGenerating || aiWaitTime > 0) return;
+cleanupTimers(); // Dừng đọc âm thanh ngay lập tức
 setWrongCount(w => w + 1); setStreak(0);
 if (showToast) safeShowToast("Bỏ qua (+1 sai)", "warning");
 localPushToRetryBag(currentQuestionData.question);
