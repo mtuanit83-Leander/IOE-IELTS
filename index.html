@@ -11818,11 +11818,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.22
-// Last Updated: 2026-06-12 10:23
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.24
+// Last Updated: 2026-06-12 14:02
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.22: [UNIVERSAL LOCAL FALLBACK ROUTING] Thay thế toàn bộ Static Fallback bằng window.ExamEngine.getEmergencyFallback. Truyền đủ meta dataMode để bảo toàn chế độ Câu văn/Từ vựng. Bơm Console.log truy xuất nguồn gốc cứu hộ (Thẻ của tôi / Kho tĩnh) phục vụ kiểm thử.
-// Cập nhật V1.21: [CROSS-LANGUAGE LEAK FIX] Phân rã luồng tải/ghi Túi nháp lỗi sai (Retry Bag).
+// Cập nhật V1.24: [RANDOM FALLBACK FIX] Hủy bỏ con trỏ tịnh tiến tuần tự. Thay thế bằng thuật toán sinh Random Index mật độ cao, khôi phục 100% tính ngẫu nhiên cho các viên đạn cứu hộ.
+// Cập nhật V1.23: [FALLBACK POINTER FIX] Cắt đứt liên kết giữa biến `score` và `index` cứu hộ.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -11982,9 +11982,11 @@ timestamp: Date.now()
 onLogWrong(mistakeCard);
 }, [onLogWrong, hardMode, gameMode, sourceMode]);
 // ==================================================================================
-// ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN (VERSION 1.22)
+// ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN (VERSION 1.24)
 // ==================================================================================
-const getEmergencyQuizFallback = (index = 0) => {
+const getEmergencyQuizFallback = () => {
+// [BẢN VÁ 1.24] Quay lại cơ chế bốc ngẫu nhiên (Random Pick) thay vì Tuần tự
+const randomIndex = Math.floor(Math.random() * 1000000);
 const meta = {
 id: `quiz_fallback_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
 type: 'quiz',
@@ -12000,9 +12002,9 @@ const localDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + lang, [
 let fallbackFormatted = null;
 // Ưu tiên 1: Cứu hộ cục bộ Toàn cục (Universal JIT - Thẻ của tôi)
 if (window.ExamEngine && window.ExamEngine.getEmergencyFallback) {
-const fbRaw = window.ExamEngine.getEmergencyFallback(meta, localDeck, index);
+const fbRaw = window.ExamEngine.getEmergencyFallback(meta, localDeck, randomIndex);
 if (fbRaw && fbRaw.content) {
-console.log(`[DEBUG FALLBACK] 🔵 NGUỒN: Thẻ của tôi | Loại: ${meta.dataMode}`, fbRaw.content);
+console.log(`[DEBUG FALLBACK] 🔵 NGUỒN: Thẻ của tôi | Loại: ${meta.dataMode} | RandomIndex: ${randomIndex}`, fbRaw.content);
 fallbackFormatted = {
 question: fbRaw.content,
 options: fbRaw.content.options || [],
@@ -12102,7 +12104,7 @@ card.definition = card.term;
 }
 }
 if (!card) {
-return getEmergencyQuizFallback(0);
+return getEmergencyQuizFallback();
 }
 if (historyQueueRef.current) {
 if (!historyQueueRef.current.includes(card.term)) {
@@ -12239,7 +12241,7 @@ let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Trắc nghiệm", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Máy chủ bận, đã kích hoạt dữ liệu dự phòng!", "warning");
-firstData = getEmergencyQuizFallback(0);
+firstData = getEmergencyQuizFallback();
 }
 if (isGameActiveRef.current && firstData) {
 setCurrentQuestionData(applyAntiStreak(firstData));
@@ -12293,7 +12295,7 @@ let qData = coordinatorRef.current.pop();
 if (!qData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-qData = getEmergencyQuizFallback(0);
+qData = getEmergencyQuizFallback();
 }
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
@@ -12314,7 +12316,7 @@ onEndGame({ correct: savedState.stats?.correct || 0, wrong: savedState.stats?.wr
 console.warn("[Safe Fallback] Timeout Resume:", queueErr);
 if (isGameActiveRef.current) {
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-let qData = getEmergencyQuizFallback(0);
+let qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (savedState.gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
@@ -12410,7 +12412,7 @@ let qData = coordinatorRef.current.pop();
 if (!qData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn chuyển vòng", "Kích hoạt Fallback");
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-qData = getEmergencyQuizFallback(score);
+qData = getEmergencyQuizFallback();
 }
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
@@ -12432,7 +12434,7 @@ setTimeout(() => triggerAutoSave(), 150);
 console.warn("[Safe Fallback] Timeout/Lỗi Next Round:", queueErr);
 if (isGameActiveRef.current) {
 if (showToast) safeShowToast("Máy chủ bận, kích hoạt dự phòng!", "warning");
-let qData = getEmergencyQuizFallback(score);
+let qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
