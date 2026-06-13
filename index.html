@@ -1542,9 +1542,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.83
-// Last Updated: 2026-06-11 18:23
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.84
+// Last Updated: 2026-06-13 15:27
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.84: [BACKWARD COMPATIBILITY] Cấy màng lọc tương thích ngược vào _getFuzzyMicroPrompt. Trích xuất thuộc tính .prompt nếu dữ liệu là Object, bảo vệ Lò đúc khỏi lỗi [object Object] khi Block 2.9 chuẩn bị nâng cấp kiến trúc.
 // Cập nhật V1.83: [CHAIN OF THOUGHT SCHEMA] Cấy trường 'reasoning' vào đầu JSON Schema của hàm ai_generateOptions. Ép AI "nghĩ lớn tiếng" để giải phóng nút thắt cổ chai nhận thức, giảm thời gian phản hồi từ 20s+ xuống 3-5s đối với các câu có ngữ pháp phức tạp.
 // Cập nhật V1.82: [ĐỒNG BỘ PROMPT] Việt hóa nốt các biến nội suy ngôn ngữ (Chinese/English -> Tiếng Trung/Tiếng Anh) rò rỉ vào trong Prompt. Tái cấu trúc nối chuỗi an toàn.
 // Cập nhật V1.8: [LANGUAGE-AWARE FUZZY ROUTING] Cấy ghép thuật toán định tuyến mờ thông minh.
@@ -1569,6 +1570,11 @@ return "\n[ĐỊNH HƯỚNG TRÌNH ĐỘ]: Người học đang ở cấp độ 
 _getFuzzyMicroPrompt: function(card, gameType) {
 const pool = window.IoeDataEngine?.MICRO_PROMPTS?.[gameType];
 if (!pool) return "";
+// [BẢN VÁ 1.84] Hàm lọc tương thích ngược (Hỗ trợ cả chuỗi String cũ và Object {label, prompt} mới)
+const extractPrompt = (item) => {
+if (!item) return "";
+return typeof item === 'object' ? (item.prompt || "") : item;
+};
 // [HOTFIX V1.81] Dịch chuyển Lưới Cứu Hộ lên đầu để hứng thẻ khuyết ngữ pháp
 const fallbacks = {
 quiz: 'general_trap',
@@ -1577,16 +1583,16 @@ fill_blank: 'general_blank',
 scramble: 'general_noise'
 };
 const defaultFallback = pool[fallbacks[gameType]] || "";
-if (!card || !card.grammar_type) return defaultFallback;
+if (!card || !card.grammar_type) return extractPrompt(defaultFallback);
 let tags = card.grammar_type;
 if (typeof tags === 'string') {
 tags = tags.split(',').map(s => s.trim()).filter(Boolean);
 }
-if (!Array.isArray(tags) || tags.length === 0) return defaultFallback;
+if (!Array.isArray(tags) || tags.length === 0) return extractPrompt(defaultFallback);
 // Bốc thăm ngẫu nhiên 1 Nhãn ngữ pháp từ Thẻ
 const targetTag = tags[Math.floor(Math.random() * tags.length)];
 // BƯỚC 1: EXACT MATCH (So khớp tuyệt đối)
-if (pool[targetTag]) return pool[targetTag];
+if (pool[targetTag]) return extractPrompt(pool[targetTag]);
 // BƯỚC 2: LANGUAGE-AWARE FUZZY MATCH (Xuyên cấp độ, Cùng ngôn ngữ)
 const isChinese = targetTag.startsWith('zh_');
 const isEnglish = targetTag.startsWith('eng_') || targetTag.startsWith('pre_a1_');
@@ -1597,10 +1603,10 @@ return isCorrectLang && key.includes(coreTrap);
 });
 // Nếu tìm thấy các bẫy có chung "lõi", bốc ngẫu nhiên 1 bẫy ra dùng
 if (possibleKeys.length > 0) {
-return pool[possibleKeys[Math.floor(Math.random() * possibleKeys.length)]];
+return extractPrompt(pool[possibleKeys[Math.floor(Math.random() * possibleKeys.length)]]);
 }
 // BƯỚC 3: LƯỚI CỨU HỘ CUỐI CÙNG
-return defaultFallback;
+return extractPrompt(defaultFallback);
 },
 // 1. ĐỘNG CƠ TẠO LỖI SAI TRỰC TUYẾN (Spot Mistake)
 ai_distort: async function(text, lang, type, apiKey, level = "", topic = "", card = null) {
@@ -4077,11 +4083,11 @@ formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' }
 }
 return formattedData;
 };
-// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.8
-// Last Updated: 2026-06-12 06:35
+// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.9
+// Last Updated: 2026-06-13 15:59
 // Nhiệm vụ: Động cơ nạp đề thi nguyên tử. Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer.
-// Cập nhật V2.8: [UNIVERSAL LOCAL FALLBACK] Gỡ bỏ chốt chặn isMinigame trong động cơ cứu hộ getEmergencyFallback. Ưu tiên quét và sử dụng "Thẻ của tôi" để làm phao cứu sinh cho TẤT CẢ mọi chế độ (Bao gồm cả AI tự sinh). Chỉ gọi dữ liệu mẫu giáo từ Fallback tĩnh khi kho thẻ người dùng thực sự rỗng (0 thẻ).
-// Cập nhật V2.7: [GRACEFUL DEGRADATION FIX] Sửa lỗi màng lọc RAM, áp dụng Field Swapping.
+// Cập nhật V2.9: [GRAMMAR PIPELINE INJECTION] Xuyên thủng ống dẫn dữ liệu từ Tầng 5 xuống Lò đúc. Cấy hàm extractGrammarPrompt kèm màng lọc tương thích ngược, tiêm lén metadata.grammarId vào biến HistoryPrompt để điều hướng AI sinh câu hỏi đúng chủ điểm ngữ pháp mà không làm vỡ kiến trúc hàm.
+// Cập nhật V2.8: [UNIVERSAL LOCAL FALLBACK] Gỡ bỏ chốt chặn isMinigame trong động cơ cứu hộ getEmergencyFallback. Ưu tiên quét và sử dụng "Thẻ của tôi".
 // ==================================================================================
 // Khởi tạo Base Object nếu chưa tồn tại
 window.ExamEngine = window.ExamEngine || {};
@@ -4089,9 +4095,26 @@ window.ExamEngine = window.ExamEngine || {};
 // 1. HYDRATION LOGIC (CỖ MÁY NẠP ĐẠN NGUYÊN TỬ TỐI THƯỢNG)
 // ============================================================================
 window.ExamEngine.hydrateQuestion = async function(metadata, apiKey, passedHistory = []) {
-const { id, track, level, type, topic, passageGroup, questionIndexInPassage, index, mode } = metadata;
+const { id, track, level, type, topic, passageGroup, questionIndexInPassage, index, mode, grammarId } = metadata;
 let questionData = null;
 const isMinigame = mode === 'minigame' || !['ioe', 'ielts', 'hsk'].includes(track);
+// [BẢN VÁ 2.9] TRẠM TRÍCH XUẤT NGỮ PHÁP & MÀNG LỌC TƯƠNG THÍCH NGƯỢC
+const extractGrammarPrompt = (metaId) => {
+if (!metaId || !window.IoeDataEngine || !window.IoeDataEngine.MICRO_PROMPTS) return "";
+let foundGrammar = null;
+for (const poolKey in window.IoeDataEngine.MICRO_PROMPTS) {
+if (window.IoeDataEngine.MICRO_PROMPTS[poolKey][metaId]) {
+foundGrammar = window.IoeDataEngine.MICRO_PROMPTS[poolKey][metaId];
+break;
+}
+}
+if (foundGrammar) {
+const grammarStr = typeof foundGrammar === 'object' ? (foundGrammar.prompt || "") : foundGrammar;
+if (grammarStr) return `\n[YÊU CẦU NGỮ PHÁP ÉP BUỘC TỪ NGƯỜI DÙNG]: ${grammarStr}\n`;
+}
+return "";
+};
+const userGrammarConstraint = extractGrammarPrompt(grammarId);
 // Kiểm tra bộ nhớ đệm (Chỉ dành cho Mock Test)
 if (window.FcDB && !isMinigame) {
 try {
@@ -4161,6 +4184,7 @@ try {
 if (!apiKey) throw new Error("Missing API Key");
 let currentFreshHistory = window.Utils?.AiMemoryManager ? window.Utils.AiMemoryManager.get() : [];
 let historyPrompt = window.AiFactoryEngine && currentFreshHistory.length > 0 ? window.AiFactoryEngine.getHistoryPrompt(currentFreshHistory) : "";
+historyPrompt = userGrammarConstraint + historyPrompt; // Tiêm yêu cầu ngữ pháp
 const parsed = await window.AiFactoryEngine.forgeContext('reading_passage', level, targetLang, apiKey, topic, historyPrompt);
 if (!parsed || !parsed.passage || !parsed.questions || parsed.questions.length === 0) {
 throw new Error("Ảo giác AI: Tổ kén bị rỗng.");
@@ -4311,6 +4335,7 @@ let finalHistoryPrompt = "";
 if (window.AiFactoryEngine && currentFreshHistory.length > 0) {
 finalHistoryPrompt = window.AiFactoryEngine.getHistoryPrompt(currentFreshHistory);
 }
+finalHistoryPrompt = userGrammarConstraint + finalHistoryPrompt; // Tiêm yêu cầu ngữ pháp
 let tempGeneratedData = null;
 const tType = type.toLowerCase();
 const isMatch = tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_MATCH || tType === 'ioe_match';
@@ -4514,7 +4539,6 @@ return atomicQuestion;
 // ============================================================================
 // 2. BỘ MÁY CỨU HỘ TOÀN CỤC (UNIVERSAL JIT FALLBACK ENGINE)
 // ============================================================================
-// [BẢN VÁ 2.8] Đóng gói logic cứu hộ. Xử lý triệt để Field Swapping, Graceful Degradation và Ưu tiên dùng Thẻ của tôi ở mọi chế độ
 window.ExamEngine.getEmergencyFallback = function(metadata, passedLocalDeck = null, passedIndex = null) {
 try {
 const { id, track, level, type, topic, index, mode } = metadata;
@@ -4635,10 +4659,11 @@ console.error("[EmergencyFallback] Động cơ cứu hộ sập toàn tập:", e
 return null;
 }
 };
-// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.09
-// Last Updated: 2026-05-02 16:15
+// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.10
+// Last Updated: 2026-06-13 16:03
 // Nhiệm vụ: Chứa định nghĩa chi tiết (Blueprints) của 6 cấu trúc đề thi (IOE-Mini, IOE-Std, IELTS-Mini, IELTS-Std, HSK-Mini, HSK-Std) và Bảng Ánh xạ Trình độ (CEFR Mapping).
-// Cập nhật: [TOPIC FREEDOM] Cấy ghép cờ 'ANY' vào thuộc tính topic của các dạng bài đòi hỏi kỹ thuật cao (Odd One Out, Spot Mistake, Pronunciation) để giải phóng trí thông minh của AI. Tuân thủ Điều 3.
+// Cập nhật V1.10: [GRAMMAR TRAP INJECTION] Cấy động cơ bốc thăm `getRandomGrammarId` để tự động kéo các bẫy ngữ pháp từ Block 2.9 (MICRO_PROMPTS) và gắn vào blueprint của Mock Test. Kết nối hoàn chỉnh hệ sinh thái ngữ pháp.
+// Cập nhật V1.09: [TOPIC FREEDOM] Cấy ghép cờ 'ANY' vào thuộc tính topic.
 // ==================================================================================
 window.ExamProfiles = {
 // 1. TỪ ĐIỂN CẤU HÌNH ĐỀ THI TỔNG QUAN
@@ -4749,6 +4774,27 @@ const TYPE_LISTENING = types.IOE_LISTENING || 'ioe_listening';
 const TYPE_READING_PASSAGE = types.IELTS_READING_PASSAGE || 'ielts_reading_passage';
 // Xác định cấp Tiểu học (Để điều phối kết hợp Game Hình ảnh và Game Nghe)
 const isPrimary = ['en_level_1', 'en_level_2', 'en_level_3', 'level_1_kiddie', 'level_2_junior_basic', 'level_3_junior_advanced'].includes(targetLevel);
+// [BẢN VÁ 1.10] ĐỘNG CƠ BỐC THĂM BẪY NGỮ PHÁP TỪ BLOCK 2.9
+const getRandomGrammarId = (qType, levelStr, track) => {
+if (!window.IoeDataEngine || !window.IoeDataEngine.MICRO_PROMPTS) return null;
+let poolKey = 'quiz';
+const typeStr = String(qType).toLowerCase();
+if (typeStr.includes('spot_mistake')) poolKey = 'spot_mistake';
+else if (typeStr.includes('fill_blank')) poolKey = 'fill_blank';
+else if (typeStr.includes('scramble')) poolKey = 'scramble';
+const pool = window.IoeDataEngine.MICRO_PROMPTS[poolKey];
+if (!pool) return null;
+const isChinese = track === 'hsk' || String(levelStr).startsWith('zh');
+const isEnglish = track === 'ielts' || track === 'ioe' || String(levelStr).startsWith('en');
+const availableKeys = Object.keys(pool).filter(k => {
+if (isChinese && k.startsWith('zh_')) return true;
+if (isEnglish && (k.startsWith('eng_') || k.startsWith('pre_'))) return true;
+if (k.startsWith('general_')) return true;
+return false;
+});
+if (availableKeys.length === 0) return null;
+return availableKeys[Math.floor(Math.random() * availableKeys.length)];
+};
 // ============================================================================
 // [THUẬT TOÁN MỚI] TRIPLE-TOPIC HYBRID V2 (100% COVERAGE SCRIPTING)
 // ============================================================================
@@ -4821,6 +4867,16 @@ const isTopicFreeType = qType === TYPE_PRONUNCIATION || qType === types.IOE_ODD_
 if (isTopicFreeType) {
 microTopic = "ANY";
 }
+// [BẢN VÁ 1.10] Ép AI sử dụng bẫy ngữ pháp linh động từ kho
+let dynamicGrammarId = null;
+const isGrammarFocusType = qType === types.IOE_MULTIPLE_CHOICE || qType === 'ioe_multiple_choice' ||
+qType === types.IOE_SPOT_MISTAKE || qType === 'ioe_spot_mistake' ||
+qType === types.IOE_FILL_BLANK || qType === 'ioe_fill_blank' ||
+qType === types.IOE_SCRAMBLE || qType === 'ioe_scramble';
+// Tỷ lệ 70% ép khung ngữ pháp, 30% cho AI thả rông
+if (isGrammarFocusType && Math.random() > 0.3) {
+dynamicGrammarId = getRandomGrammarId(qType, targetLevel, config.track);
+}
 blueprint.push({
 id: `${profileId}_${targetLevel}_${qType}_${globalIndex}_${Date.now()}_${i}`,
 index: globalIndex,
@@ -4831,7 +4887,8 @@ level: targetLevel,
 type: qType,
 topic: microTopic,
 passageGroup: passageGroup,
-questionIndexInPassage: passageGroup ? i : null
+questionIndexInPassage: passageGroup ? i : null,
+grammarId: dynamicGrammarId
 });
 globalIndex++;
 }
@@ -4852,10 +4909,10 @@ addQuestions(TYPE_PRONUNCIATION, 5, 2, 'Ngữ âm & Trọng âm');
 addQuestions(types.IOE_ODD_ONE_OUT, 5, 2, 'Từ khác loại');
 // Phase 3 (10 câu)
 addQuestions(types.IOE_MATCH, 5, 3, 'Nhận diện Từ vựng');
-addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 3, 'Ngữ pháp Tổng hợp', null, 'Functional Grammar (Tenses, Prepositions, Articles, Conditionals)');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 3, 'Ngữ pháp Tổng hợp', null, 'Functional Grammar');
 // Phase 4 (10 câu)
 addQuestions(TYPE_READING_PASSAGE, 5, 4, 'Đọc hiểu Đoạn văn', `ioe_passage_mini_${Date.now()}`);
-addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 4, 'Ngữ pháp P2', null, 'Lexical Grammar (Word Forms, Collocations, Idioms)');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 4, 'Ngữ pháp P2', null, 'Lexical Grammar');
 // Phase 5 (10 câu)
 addQuestions(types.IOE_FILL_BLANK, 5, 5, 'Điền từ khóa');
 addQuestions(types.IOE_SCRAMBLE, 5, 5, 'Tái cấu trúc câu');
@@ -4867,10 +4924,10 @@ addQuestions(TYPE_PRONUNCIATION, 5, 2, 'Ngữ âm & Trọng âm');
 addQuestions(types.IOE_SPOT_MISTAKE, 5, 2, 'Săn lỗi sai Ngữ pháp');
 // Phase 3 (10 câu)
 addQuestions(types.IOE_MATCH, 5, 3, 'Nhận diện Từ vựng');
-addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 3, 'Ngữ pháp Tổng hợp', null, 'Functional Grammar (Tenses, Prepositions, Articles, Conditionals)');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 3, 'Ngữ pháp Tổng hợp', null, 'Functional Grammar');
 // Phase 4 (10 câu)
 addQuestions(TYPE_READING_PASSAGE, 5, 4, 'Đọc hiểu Đoạn văn', `ioe_passage_mini_${Date.now()}`);
-addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 4, 'Ngữ pháp P2', null, 'Lexical Grammar (Word Forms, Collocations, Idioms)');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 5, 4, 'Ngữ pháp P2', null, 'Lexical Grammar');
 // Phase 5 (10 câu)
 addQuestions(types.IOE_FILL_BLANK, 5, 5, 'Điền từ khóa');
 addQuestions(types.IOE_SCRAMBLE, 5, 5, 'Tái cấu trúc câu');
@@ -4895,9 +4952,9 @@ addQuestions(types.IOE_MATCH, 20, 3, 'Nhận diện Từ vựng - P1');
 addQuestions(types.IOE_MATCH, 10, 4, 'Nhận diện Từ vựng - P2');
 addQuestions(types.IOE_SPOT_MISTAKE, 10, 4, 'Săn lỗi sai Ngữ pháp');
 // Phase 5: Ngữ pháp 1 (20 câu)
-addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 5, 'Trắc nghiệm Ngữ pháp - P1', null, 'Functional Grammar (Tenses, Prepositions, Articles, Conditionals)');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 5, 'Trắc nghiệm Ngữ pháp - P1', null, 'Functional Grammar');
 // Phase 6: Ngữ pháp 2 (20 câu)
-addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 6, 'Trắc nghiệm Ngữ pháp - P2', null, 'Lexical Grammar (Word Forms, Collocations, Idioms)');
+addQuestions(types.IOE_MULTIPLE_CHOICE, 20, 6, 'Trắc nghiệm Ngữ pháp - P2', null, 'Lexical Grammar');
 // Phase 7: Đọc hiểu 1 (20 câu - 4 tổ kén)
 for (let p = 1; p <= 4; p++) {
 addQuestions(TYPE_READING_PASSAGE, 5, 7, `Đọc hiểu: Đoạn văn ${p}`, `ioe_passage_std_${p}_${Date.now()}`);
@@ -11387,11 +11444,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.18
-// Last Updated: 2026-06-13 14:30
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.19
+// Last Updated: 2026-06-13 22:45
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.18: [SUDDEN DEATH UI] Thêm công tắc "Chế độ Địa ngục" (Sudden Death) vào màn hình QuizSetup. Bật chế độ này sẽ tước bỏ cơ hội chọn lại lần 2.
-// Cập nhật V1.17: [REVERSE LISTEN UI REWORK] Tái cấu trúc UI khi kết hợp Luyện Nghe + Đảo Ngược. Ép hiển thị câu hỏi tiếng Việt. Giấu chữ đáp án ngoại ngữ. Bơm nút Loa nhỏ (Local Speaker) vào từng đáp án để phát âm thanh cục bộ.
+// Cập nhật V1.19: [GRAMMAR FOCUS UI] Cấy Dropdown chọn Chuyên đề Ngữ pháp từ Block 2.9. Kích hoạt khi dùng AI Tự sinh, hoặc khi dùng Thẻ cục bộ + Bật AI + Chế độ Câu văn. Hỗ trợ tùy chọn Trộn Ngẫu nhiên.
+// Cập nhật V1.18: [SUDDEN DEATH UI] Thêm công tắc "Chế độ Địa ngục".
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -11405,6 +11462,24 @@ const [askMode, setAskMode] = React.useState('term');
 const [showPronun, setShowPronun] = React.useState(false);
 const [autoReadAnswer, setAutoReadAnswer] = React.useState(false);
 const [suddenDeath, setSuddenDeath] = React.useState(false);
+const [grammarFocus, setGrammarFocus] = React.useState('random');
+// Trích xuất ngôn ngữ và chế độ dữ liệu từ LocalStorage
+const lang = window.localStorage ? localStorage.getItem('fc_lang') || 'en' : 'en';
+const dataMode = window.localStorage ? localStorage.getItem('fc_dataMode') || 'vocab' : 'vocab';
+// Lấy danh sách Ngữ pháp từ Tầng 2
+const grammarTopics = React.useMemo(() => {
+if (window.IoeDataEngine && window.IoeDataEngine.getGrammarTopics) {
+return window.IoeDataEngine.getGrammarTopics('quiz', lang);
+}
+return [];
+}, [lang]);
+const groupedTopics = React.useMemo(() => {
+return grammarTopics.reduce((acc, topic) => {
+if (!acc[topic.group]) acc[topic.group] = [];
+acc[topic.group].push(topic);
+return acc;
+}, {});
+}, [grammarTopics]);
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_quiz_config');
@@ -11420,11 +11495,12 @@ setAskMode(config.askMode ?? 'term');
 setShowPronun(config.showPronun ?? false);
 setAutoReadAnswer(config.autoReadAnswer ?? false);
 setSuddenDeath(config.suddenDeath ?? false);
+setGrammarFocus(config.grammarFocus ?? 'random');
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
 const handleStart = () => {
-const config = { timerMode, listenMode, hardMode, aiMode, timeLimit, askMode, showPronun, autoReadAnswer, sourceMode, suddenDeath };
+const config = { timerMode, listenMode, hardMode, aiMode, timeLimit, askMode, showPronun, autoReadAnswer, sourceMode, suddenDeath, grammarFocus };
 localStorage.setItem('fc_quiz_config', JSON.stringify(config));
 onStart('quiz', config);
 };
@@ -11434,6 +11510,7 @@ if (!val) setAiMode(false);
 };
 const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
+const canShowGrammar = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiMode && dataMode === 'sentence');
 return (
 <div className="relative z-10 flex flex-col items-center w-full max-w-sm h-full animate-in slide-in-from-right-8">
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
@@ -11468,6 +11545,29 @@ return (
 </button>
 </div>
 </div>
+{/* Bảng chọn Ngữ pháp (Chỉ hiện khi đủ điều kiện) */}
+{canShowGrammar && grammarTopics.length > 0 && (
+<div className="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-2xl animate-in fade-in">
+<label className="block text-sm font-bold text-indigo-800 mb-2 flex items-center gap-1.5">
+<Icons.Target size={16} /> Chuyên đề Ngữ pháp (Bẫy AI)
+</label>
+<select
+value={grammarFocus}
+onChange={(e) => setGrammarFocus(e.target.value)}
+className="w-full p-3 bg-white border border-indigo-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+>
+<option value="random">🎲 Trộn ngẫu nhiên toàn bộ</option>
+{Object.keys(groupedTopics).map(group => (
+<optgroup key={group} label={`--- ${group} ---`}>
+{groupedTopics[group].map(topic => (
+<option key={topic.id} value={topic.id}>{topic.label}</option>
+))}
+</optgroup>
+))}
+</select>
+<p className="text-[10px] text-indigo-500 mt-1.5 italic">* AI sẽ cố tình tạo đáp án sai xoay quanh ngữ pháp này.</p>
+</div>
+)}
 <MenuToggle active={askMode === 'def'} setActive={(val) => setAskMode(val ? 'def' : 'term')} icon={Icons.RefreshCw} color="teal" title="Chế độ Đảo ngược" subtitle={askMode === 'def' ? "Hỏi Nghĩa ➔ Chọn Từ" : "Hỏi Từ ➔ Chọn Nghĩa"} />
 <MenuToggle active={showPronun} setActive={setShowPronun} icon={Icons.Eye} color="indigo" title="Hiển thị phiên âm" subtitle="Gợi ý cách đọc (Tắt khi Luyện nghe)" disabled={askMode === 'def' || listenMode} />
 <MenuToggle active={autoReadAnswer} setActive={setAutoReadAnswer} icon={Icons.Volume2} color="pink" title="Đọc lại đáp án" subtitle="Chờ đọc xong đáp án mới chuyển câu" />
@@ -11837,11 +11937,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.29
-// Last Updated: 2026-06-13 14:16
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.31
+// Last Updated: 2026-06-13 23:11
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.29: [SUDDEN DEATH MODE] Tích hợp Cầu dao Địa ngục. Đọc biến `suddenDeath` từ config và vô hiệu hóa cơ hội thứ 2 tại hàm handleAnswer nếu được kích hoạt.
-// Cập nhật V1.28: [DISTRACTOR ROUTING FIX] Định tuyến lại bộ sinh đáp án nhiễu. Phân chia rõ ràng 3 nhánh bẫy.
+// Cập nhật V1.31: [LOCALSTORAGE GHOST FIX] Thêm màng lọc `canUseGrammar` vào `fetchTask` để chặn việc AI đọc lén cấu hình ngữ pháp cũ từ LocalStorage khi đang ở chế độ học Từ vựng, triệt tiêu ảo giác (Hallucination).
+// Cập nhật V1.30: [GRAMMAR ENGINE PIPELINE] Xử lý tùy chọn 'random' của UI: Tự động xóc xăm 1 bẫy ngữ pháp ngẫu nhiên cho MỖI câu hỏi. Bơm ID ngữ pháp vào `meta` (cho AI Tự sinh) và ép thuộc tính `grammar_type` vào thẻ nội bộ (cho AI bóp méo thẻ của tôi).
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12058,6 +12158,24 @@ return fallbackFormatted;
 const fetchTask = async () => {
 let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
+// [BẢN VÁ V1.31] GIẢI MÃ LỰA CHỌN NGỮ PHÁP TỪ UI KÈM CHỐT CHẶN BÓNG MA LOCALSTORAGE
+let activeGrammarId = null;
+const currentDataMode = configRef.current?.dataMode || dataMode;
+const canUseGrammar = sourceMode === 'ai_pure' || (sourceMode === 'card' && isAiMode && currentDataMode === 'sentence');
+if (canUseGrammar && configRef.current && configRef.current.grammarFocus) {
+if (configRef.current.grammarFocus === 'random') {
+// Thuật toán xóc xăm ngẫu nhiên 1 chủ điểm cho từng câu
+const availableTopics = window.IoeDataEngine ? window.IoeDataEngine.getGrammarTopics('quiz', lang) : [];
+if (availableTopics.length > 0) {
+// Ưu tiên lọc bỏ các lỗi phổ thông (general_) để tập trung vào ngữ pháp thật
+const nonGeneral = availableTopics.filter(t => !t.id.startsWith('general_'));
+const poolToUse = nonGeneral.length > 0 ? nonGeneral : availableTopics;
+activeGrammarId = poolToUse[Math.floor(Math.random() * poolToUse.length)].id;
+}
+} else {
+activeGrammarId = configRef.current.grammarFocus;
+}
+}
 if (window.Utils && window.Utils.pullRetryCardWithLock) {
 card = window.Utils.pullRetryCardWithLock('quiz', globalRetryBagRef.current, lang);
 }
@@ -12076,7 +12194,8 @@ dataMode: configRef.current?.dataMode || dataMode || 'vocab',
 difficulty: hardMode ? 'hard' : 'easy',
 hardMode: hardMode,
 askMode: askMode,
-mode: 'minigame'
+mode: 'minigame',
+grammarId: activeGrammarId // ỐNG DẪN 1: Bơm ID ngữ pháp xuống Lò đúc Tầng 2
 };
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
 const qData = await window.ExamEngine.hydrateQuestion(meta, currentApiKey, freshHistory);
@@ -12109,7 +12228,14 @@ validCards = [...validCards, ...newFbs];
 }
 deckRef.current = window.Utils.shuffleArray(validCards);
 }
-card = deckRef.current.shift();
+// Trích xuất thẻ theo cơ chế Shallow Copy để không làm ô nhiễm bộ bài gốc của người dùng
+card = { ...deckRef.current.shift() };
+}
+// ỐNG DẪN 2: ÉP THẺ CỤC BỘ MANG GEN NGỮ PHÁP DO NGƯỜI DÙNG CHỌN
+// Khi thẻ này được ném vào hàm ai_generateOptions bên dưới,
+// Block 2.3a sẽ tự động đọc gen này và sinh bẫy.
+if (activeGrammarId && sourceMode === 'card') {
+card.grammar_type = activeGrammarId;
 }
 if (card && sourceMode === 'card' && isAiMode && currentApiKey && (!card.definition || card.definition.trim() === '')) {
 try {
@@ -12600,7 +12726,7 @@ const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proce
 onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1000); } });
 } else proceedToNext(1500);
 } else {
-// [BẢN VÁ V1.29] CẦU DAO ĐỊA NGỤC (SUDDEN DEATH)
+// CẦU DAO ĐỊA NGỤC (SUDDEN DEATH)
 if (!clickedWrongIndices.has(index)) {
 const newWrong = new Set(clickedWrongIndices).add(index);
 setClickedWrongIndices(newWrong);
