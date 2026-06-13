@@ -11388,9 +11388,9 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
 // Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.18
-// Last Updated: 2026-06-12 22:20
+// Last Updated: 2026-06-13 14:30
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.18: [SECURITY FIX] Loại bỏ nút Bookmark rác bên trong thẻ câu hỏi để bít lỗ hổng rò rỉ đáp án ở chế độ Đảo ngược. Chỉ giữ lại nút Bookmark chuẩn trên thanh Header.
+// Cập nhật V1.18: [SUDDEN DEATH UI] Thêm công tắc "Chế độ Địa ngục" (Sudden Death) vào màn hình QuizSetup. Bật chế độ này sẽ tước bỏ cơ hội chọn lại lần 2.
 // Cập nhật V1.17: [REVERSE LISTEN UI REWORK] Tái cấu trúc UI khi kết hợp Luyện Nghe + Đảo Ngược. Ép hiển thị câu hỏi tiếng Việt. Giấu chữ đáp án ngoại ngữ. Bơm nút Loa nhỏ (Local Speaker) vào từng đáp án để phát âm thanh cục bộ.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
@@ -11404,6 +11404,7 @@ const [timeLimit, setTimeLimit] = React.useState(30);
 const [askMode, setAskMode] = React.useState('term');
 const [showPronun, setShowPronun] = React.useState(false);
 const [autoReadAnswer, setAutoReadAnswer] = React.useState(false);
+const [suddenDeath, setSuddenDeath] = React.useState(false);
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_quiz_config');
@@ -11418,11 +11419,12 @@ setTimeLimit(config.timeLimit ?? 30);
 setAskMode(config.askMode ?? 'term');
 setShowPronun(config.showPronun ?? false);
 setAutoReadAnswer(config.autoReadAnswer ?? false);
+setSuddenDeath(config.suddenDeath ?? false);
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
 const handleStart = () => {
-const config = { timerMode, listenMode, hardMode, aiMode, timeLimit, askMode, showPronun, autoReadAnswer, sourceMode };
+const config = { timerMode, listenMode, hardMode, aiMode, timeLimit, askMode, showPronun, autoReadAnswer, sourceMode, suddenDeath };
 localStorage.setItem('fc_quiz_config', JSON.stringify(config));
 onStart('quiz', config);
 };
@@ -11471,6 +11473,7 @@ return (
 <MenuToggle active={autoReadAnswer} setActive={setAutoReadAnswer} icon={Icons.Volume2} color="pink" title="Đọc lại đáp án" subtitle="Chờ đọc xong đáp án mới chuyển câu" />
 <MenuToggle active={hardMode} setActive={handleHardModeChange} icon={Icons.Layers} color="red" title="Chế độ Khó (Hard Mode)" subtitle={hardMode ? "Bẫy thông minh, bóp méo từ" : "Bẫy cơ bản"} />
 <MenuToggle active={aiMode} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={sourceMode === 'ai_pure' ? "(Chế độ Tự sinh đã bao gồm AI)" : (!hardMode ? "(Yêu cầu bật Chế độ Khó)" : (aiMode ? "AI tạo nhiễu thông minh" : "Thuật toán nội bộ"))} disabled={!hardMode || sourceMode === 'ai_pure'} />
+<MenuToggle active={suddenDeath} setActive={setSuddenDeath} icon={Icons.AlertCircle} color="slate" title="Chế độ Địa ngục" subtitle="Sai 1 lần là mất điểm ngay lập tức" />
 <MenuToggle active={listenMode} setActive={setListenMode} icon={Icons.Headphones} color="blue" title="Luyện Nghe" subtitle="Nghe âm thanh chọn đáp án" />
 <MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / câu` : 'Thoải mái thời gian'} extra={
 <div className="mt-3 pt-2 border-t border-orange-100 flex justify-between items-center animate-in fade-in">
@@ -11729,6 +11732,13 @@ title="Lưu vào Sổ tay"
 </span>
 </div>
 <div className={`w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative min-h-[160px] flex items-center justify-center animate-in transition-all duration-300 ${isLocked ? 'blur-md' : ''}`}>
+{gameMode === 'read' && (
+<button
+className={`absolute top-3 right-3 p-2 rounded-full transition-all ${isInNotebook ? 'text-yellow-500 bg-yellow-50 shadow-sm' : 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50'}`}
+onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark({ isSmartTarget: true, display: currentQuestionData.question.term, save: currentQuestionData.question.term, analysis: currentQuestionData.question.definition }); }}
+title={t('addToNotebook')}
+><Icons.Bookmark size={22} fill={isInNotebook ? "currentColor" : "none"} /></button>
+)}
 <div className="text-center w-full px-6">
 {/* [BẢN VÁ V1.17] Ép hiển thị Câu hỏi nếu đang ở chế độ Nghe Đảo ngược (isReverseListen) */}
 {(gameMode === 'read' || isChecking || isReverseListen) ? (
@@ -11827,11 +11837,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.28
-// Last Updated: 2026-06-13 14:01
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.29
+// Last Updated: 2026-06-13 14:16
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.28: [DISTRACTOR ROUTING FIX] Định tuyến lại bộ sinh đáp án nhiễu. Phân chia rõ ràng 3 nhánh: (Khó + AI), (Khó + Offline dùng hàm bóp méo chữ OfflineDistractorEngine), và (Cơ bản - bốc ngẫu nhiên). Triệt tiêu lỗi đồng hóa độ khó.
-// Cập nhật V1.27: [TTS SAFETY NET] Bổ sung lưới an toàn cho luồng Async Audio.
+// Cập nhật V1.29: [SUDDEN DEATH MODE] Tích hợp Cầu dao Địa ngục. Đọc biến `suddenDeath` từ config và vô hiệu hóa cơ hội thứ 2 tại hàm handleAnswer nếu được kích hoạt.
+// Cập nhật V1.28: [DISTRACTOR ROUTING FIX] Định tuyến lại bộ sinh đáp án nhiễu. Phân chia rõ ràng 3 nhánh bẫy.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12136,7 +12146,6 @@ const textSafe = correctOptText || '';
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(textSafe) : textSafe.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
 try {
-// [BẢN VÁ 1.28] NHÁNH 1: BẬT KHÓ VÀ BẬT AI -> Dùng AI đúc bẫy
 if (hardMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
 const distractorLang = isReverse ? lang : 'vi';
@@ -12156,7 +12165,6 @@ localStorage.setItem('fc_total_tokens', currentTotal + 150);
 }
 } catch (aiError) { console.warn("AI Quiz Preload Fallback:", aiError.message); }
 }
-// [BẢN VÁ 1.28] NHÁNH 2: BẬT KHÓ VÀ (TẮT AI HOẶC AI XỊT) -> Dùng bóp méo ký tự Offline
 if (distractors.length === 0 && hardMode && window.OfflineDistractorEngine && window.OfflineDistractorEngine.generate) {
 const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 const distTexts = window.OfflineDistractorEngine.generate(correctOptText, cleanDeckForTraps, lang, askMode);
@@ -12165,7 +12173,6 @@ distractors = distTexts.slice(0, numOptions - 1).map(d => ({ text: d, isCorrect:
 }
 }
 } catch(e) { console.warn("Fetch Options Error:", e); }
-// [BẢN VÁ 1.28] NHÁNH 3: CƠ BẢN HOẶC FALLBACK CUỐI CÙNG -> Vét kho bốc ngẫu nhiên (Dumb random)
 if (distractors.length < numOptions - 1) {
 const cleanDeckForPool = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
 let pool = cleanDeckForPool.filter(c => c.term !== card.term && !historyQueueRef.current.includes(c.term));
@@ -12593,10 +12600,17 @@ const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proce
 onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1000); } });
 } else proceedToNext(1500);
 } else {
+// [BẢN VÁ V1.29] CẦU DAO ĐỊA NGỤC (SUDDEN DEATH)
 if (!clickedWrongIndices.has(index)) {
 const newWrong = new Set(clickedWrongIndices).add(index);
 setClickedWrongIndices(newWrong);
-if (newWrong.size === 1) { setShowChanceToast(true); setTimeout(() => setShowChanceToast(false), 2000); return; }
+const isSuddenDeath = configRef.current?.suddenDeath || false;
+// Chỉ cho cơ hội thứ 2 nếu KHÔNG bật Chế độ Địa ngục
+if (!isSuddenDeath && newWrong.size === 1) {
+setShowChanceToast(true);
+setTimeout(() => setShowChanceToast(false), 2000);
+return;
+}
 }
 localPushToRetryBag(currentQuestionData.question);
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
