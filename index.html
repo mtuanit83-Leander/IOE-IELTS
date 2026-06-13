@@ -11827,11 +11827,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.27
-// Last Updated: 2026-06-12 19:15
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.28
+// Last Updated: 2026-06-13 14:01
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.27: [TTS SAFETY NET] Bổ sung lưới an toàn cho luồng Async Audio. Tự động resolve Promise nếu onPlay bị khuyết hoặc TTS trình duyệt bị lỗi, chống treo game.
-// Cập nhật V1.26: [SEQUENTIAL AUDIO ENGINE] Nâng cấp hàm triggerAudio thành luồng Async/Await. Hỗ trợ đọc tuần tự (Nhãn A -> nghỉ 1.5s -> Đáp án A -> ...) cho chế độ Nghe Đảo Ngược.
+// Cập nhật V1.28: [DISTRACTOR ROUTING FIX] Định tuyến lại bộ sinh đáp án nhiễu. Phân chia rõ ràng 3 nhánh: (Khó + AI), (Khó + Offline dùng hàm bóp méo chữ OfflineDistractorEngine), và (Cơ bản - bốc ngẫu nhiên). Triệt tiêu lỗi đồng hóa độ khó.
+// Cập nhật V1.27: [TTS SAFETY NET] Bổ sung lưới an toàn cho luồng Async Audio.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12136,6 +12136,7 @@ const textSafe = correctOptText || '';
 const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(textSafe) : textSafe.includes(' ');
 const type = isSentence ? 'sentence' : 'word';
 try {
+// [BẢN VÁ 1.28] NHÁNH 1: BẬT KHÓ VÀ BẬT AI -> Dùng AI đúc bẫy
 if (hardMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
 const distractorLang = isReverse ? lang : 'vi';
@@ -12155,12 +12156,16 @@ localStorage.setItem('fc_total_tokens', currentTotal + 150);
 }
 } catch (aiError) { console.warn("AI Quiz Preload Fallback:", aiError.message); }
 }
-if (distractors.length === 0 && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
-const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
-const distTexts = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(correctOptText, cleanDeckForTraps, lang, type, numOptions - 1, isReverse);
-distractors = distTexts.map(d => ({ text: d, isCorrect: false }));
+// [BẢN VÁ 1.28] NHÁNH 2: BẬT KHÓ VÀ (TẮT AI HOẶC AI XỊT) -> Dùng bóp méo ký tự Offline
+if (distractors.length === 0 && hardMode && window.OfflineDistractorEngine && window.OfflineDistractorEngine.generate) {
+const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
+const distTexts = window.OfflineDistractorEngine.generate(correctOptText, cleanDeckForTraps, lang, askMode);
+if (distTexts && distTexts.length > 0) {
+distractors = distTexts.slice(0, numOptions - 1).map(d => ({ text: d, isCorrect: false }));
+}
 }
 } catch(e) { console.warn("Fetch Options Error:", e); }
+// [BẢN VÁ 1.28] NHÁNH 3: CƠ BẢN HOẶC FALLBACK CUỐI CÙNG -> Vét kho bốc ngẫu nhiên (Dumb random)
 if (distractors.length < numOptions - 1) {
 const cleanDeckForPool = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
 let pool = cleanDeckForPool.filter(c => c.term !== card.term && !historyQueueRef.current.includes(c.term));
