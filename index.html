@@ -11476,11 +11476,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.20
-// Last Updated: 2026-06-14 10:05
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.21
+// Last Updated: 2026-06-14 11:51
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.20: [LAYOUT & RACE CONDITION FIX] Vá lỗi Dropdown ngữ pháp tàng hình bằng cơ chế Polling State thay cho useMemo. Tái cấu trúc layout Setup thành 2 cột (Grid) trên màn hình lớn (PC/iPad) để tối ưu không gian hiển thị.
-// Cập nhật V1.19: [GRAMMAR FOCUS UI] Cấy Dropdown chọn Chuyên đề Ngữ pháp từ Block 2.9.
+// Cập nhật V1.21: [STATE LEAK & UX FIX] Cấy động cơ đồng bộ State thời gian thực cho `lang` và `dataMode`. Sửa lỗi Dropdown tàng hình bằng cách luôn hiển thị khi bật AI, nhưng sẽ Khóa (Disable) kèm cảnh báo đỏ nếu người dùng đang ở chế độ Từ vựng. Vá lỗ hổng vòng lặp vô hạn của Polling ngữ pháp.
+// Cập nhật V1.20: [LAYOUT FIX] Tái cấu trúc layout Setup thành 2 cột (Grid) trên màn hình lớn.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -11496,27 +11496,46 @@ const [autoReadAnswer, setAutoReadAnswer] = React.useState(false);
 const [suddenDeath, setSuddenDeath] = React.useState(false);
 const [grammarFocus, setGrammarFocus] = React.useState('random');
 const [grammarTopics, setGrammarTopics] = React.useState([]);
-// Trích xuất ngôn ngữ và chế độ dữ liệu từ LocalStorage
-const lang = window.localStorage ? localStorage.getItem('fc_lang') || 'en' : 'en';
-const dataMode = window.localStorage ? localStorage.getItem('fc_dataMode') || 'vocab' : 'vocab';
-// [BẢN VÁ V1.20] Quét dữ liệu Tầng 2 bằng Polling để chống lỗi Race Condition khi Tầng 2 nạp chậm hơn UI
+// [BẢN VÁ V1.21] Động cơ đồng bộ State thời gian thực (Xóa bỏ Anti-pattern đọc một lần)
+const [localLang, setLocalLang] = React.useState(() => window.localStorage ? localStorage.getItem('fc_lang') || 'en' : 'en');
+const [localDataMode, setLocalDataMode] = React.useState(() => window.localStorage ? localStorage.getItem('fc_dataMode') || 'vocab' : 'vocab');
+React.useEffect(() => {
+const syncStorage = () => {
+if (window.localStorage) {
+const currentLang = localStorage.getItem('fc_lang') || 'en';
+const currentDataMode = localStorage.getItem('fc_dataMode') || 'vocab';
+setLocalLang(prev => prev !== currentLang ? currentLang : prev);
+setLocalDataMode(prev => prev !== currentDataMode ? currentDataMode : prev);
+}
+};
+const intervalId = setInterval(syncStorage, 500); // Polling nhẹ để bắt kịp thay đổi từ bên ngoài
+window.addEventListener('storage', syncStorage);
+return () => {
+clearInterval(intervalId);
+window.removeEventListener('storage', syncStorage);
+};
+}, []);
+// [BẢN VÁ V1.21] Polling an toàn: Chỉ chờ Hàm Tầng 2, dập tắt ngay khi bắt được tín hiệu
 React.useEffect(() => {
 let intervalId;
-const loadTopics = () => {
-if (window.IoeDataEngine && window.IoeDataEngine.getGrammarTopics) {
-const topics = window.IoeDataEngine.getGrammarTopics('quiz', lang);
-if (topics && topics.length > 0) {
-setGrammarTopics(topics);
-return true;
+const fetchAndSet = () => {
+if (window.IoeDataEngine && typeof window.IoeDataEngine.getGrammarTopics === 'function') {
+const topics = window.IoeDataEngine.getGrammarTopics('quiz', localLang);
+setGrammarTopics(topics || []);
+return true; // Đã bắt được Tầng 2
 }
-}
-return false;
+return false; // Tầng 2 chưa nạp xong
 };
-if (!loadTopics()) {
-intervalId = setInterval(loadTopics, 200);
+// Chạy thử lần 1, nếu xịt thì mới bật Polling
+if (!fetchAndSet()) {
+intervalId = setInterval(() => {
+if (fetchAndSet()) {
+clearInterval(intervalId); // Bắt được rồi -> Dập tắt vòng lặp ngay lập tức
+}
+}, 200);
 }
 return () => { if (intervalId) clearInterval(intervalId); };
-}, [lang]);
+}, [localLang]);
 const groupedTopics = React.useMemo(() => {
 return grammarTopics.reduce((acc, topic) => {
 if (!acc[topic.group]) acc[topic.group] = [];
@@ -11554,8 +11573,9 @@ if (!val) setAiMode(false);
 };
 const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
-const canShowGrammar = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiMode && dataMode === 'sentence');
-// [BẢN VÁ V1.20] Mở rộng max-w-sm thành max-w-3xl để chứa Grid 2 cột
+// [BẢN VÁ V1.21] Phân tách Logic: 1 biến quyết định Hiện/Ẩn, 1 biến quyết định Khóa/Mở
+const showGrammarSection = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiMode);
+const isGrammarDisabled = sourceMode === 'card' && localDataMode !== 'sentence';
 return (
 <div className="relative z-10 flex flex-col items-center w-full max-w-3xl h-full animate-in slide-in-from-right-8 px-2 sm:px-4">
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
@@ -11591,7 +11611,7 @@ return (
 </div>
 </div>
 {/* Bảng chọn Ngữ pháp */}
-{canShowGrammar && grammarTopics.length > 0 && (
+{showGrammarSection && grammarTopics.length > 0 && (
 <div className="mb-2 p-3 bg-indigo-50 border border-indigo-100 rounded-2xl animate-in fade-in">
 <label className="block text-sm font-bold text-indigo-800 mb-2 flex items-center gap-1.5">
 <Icons.Target size={16} /> Chuyên đề Ngữ pháp (Bẫy AI)
@@ -11599,7 +11619,8 @@ return (
 <select
 value={grammarFocus}
 onChange={(e) => setGrammarFocus(e.target.value)}
-className="w-full p-3 bg-white border border-indigo-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+disabled={isGrammarDisabled}
+className={`w-full p-3 border rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all ${isGrammarDisabled ? 'bg-gray-100 border-gray-200 text-gray-400 opacity-70 cursor-not-allowed' : 'bg-white border-indigo-200 text-gray-700'}`}
 >
 <option value="random">🎲 Trộn ngẫu nhiên toàn bộ</option>
 {Object.keys(groupedTopics).map(group => (
@@ -11610,10 +11631,13 @@ className="w-full p-3 bg-white border border-indigo-200 rounded-xl text-sm font-
 </optgroup>
 ))}
 </select>
+{isGrammarDisabled ? (
+<p className="text-[10px] text-red-500 mt-1.5 italic font-bold">⚠️ Tính năng bẫy ngữ pháp chỉ khả dụng khi bạn học thẻ Câu văn (Sentence).</p>
+) : (
 <p className="text-[10px] text-indigo-500 mt-1.5 italic">* AI sẽ cố tình tạo đáp án sai xoay quanh ngữ pháp này.</p>
+)}
 </div>
 )}
-{/* [BẢN VÁ V1.20] Lưới 2 cột cho các công tắc cài đặt trên màn hình lớn */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
 <div className="space-y-3">
 <MenuToggle active={askMode === 'def'} setActive={(val) => setAskMode(val ? 'def' : 'term')} icon={Icons.RefreshCw} color="teal" title="Chế độ Đảo ngược" subtitle={askMode === 'def' ? "Hỏi Nghĩa ➔ Chọn Từ" : "Hỏi Từ ➔ Chọn Nghĩa"} />
