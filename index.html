@@ -11476,14 +11476,15 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.21
-// Last Updated: 2026-06-14 11:51
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.22
+// Last Updated: 2026-06-14 12:14
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.21: [STATE LEAK & UX FIX] Cấy động cơ đồng bộ State thời gian thực cho `lang` và `dataMode`. Sửa lỗi Dropdown tàng hình bằng cách luôn hiển thị khi bật AI, nhưng sẽ Khóa (Disable) kèm cảnh báo đỏ nếu người dùng đang ở chế độ Từ vựng. Vá lỗ hổng vòng lặp vô hạn của Polling ngữ pháp.
-// Cập nhật V1.20: [LAYOUT FIX] Tái cấu trúc layout Setup thành 2 cột (Grid) trên màn hình lớn.
+// Cập nhật V1.22: [CLEAN ARCHITECTURE] Cắt bỏ hoàn toàn Anti-pattern đọc LocalStorage sinh ra ở V1.21. Chuyển sang nhận trực tiếp Props 'lang' và 'dataMode' từ Tầng 5.7. Xóa sổ triệt để lỗi Dropdown bị khóa oan và sai ngôn ngữ.
+// Cập nhật V1.21: [STATE LEAK & UX FIX] Sửa lỗi Dropdown tàng hình bằng cách luôn hiển thị khi bật AI, nhưng sẽ Khóa (Disable) kèm cảnh báo nếu ở chế độ Từ vựng. Vá lỗ hổng vòng lặp vô hạn của Polling ngữ pháp.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
-const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
+// Nhận trực tiếp lang và dataMode từ Tầng 5.7
+const QuizSetup = ({ t, mainColor, lang, dataMode, onStart, onBack, onOpenAiConfig }) => {
 const [sourceMode, setSourceMode] = React.useState('card');
 const [timerMode, setTimerMode] = React.useState(false);
 const [listenMode, setListenMode] = React.useState(false);
@@ -11496,31 +11497,12 @@ const [autoReadAnswer, setAutoReadAnswer] = React.useState(false);
 const [suddenDeath, setSuddenDeath] = React.useState(false);
 const [grammarFocus, setGrammarFocus] = React.useState('random');
 const [grammarTopics, setGrammarTopics] = React.useState([]);
-// [BẢN VÁ V1.21] Động cơ đồng bộ State thời gian thực (Xóa bỏ Anti-pattern đọc một lần)
-const [localLang, setLocalLang] = React.useState(() => window.localStorage ? localStorage.getItem('fc_lang') || 'en' : 'en');
-const [localDataMode, setLocalDataMode] = React.useState(() => window.localStorage ? localStorage.getItem('fc_dataMode') || 'vocab' : 'vocab');
-React.useEffect(() => {
-const syncStorage = () => {
-if (window.localStorage) {
-const currentLang = localStorage.getItem('fc_lang') || 'en';
-const currentDataMode = localStorage.getItem('fc_dataMode') || 'vocab';
-setLocalLang(prev => prev !== currentLang ? currentLang : prev);
-setLocalDataMode(prev => prev !== currentDataMode ? currentDataMode : prev);
-}
-};
-const intervalId = setInterval(syncStorage, 500); // Polling nhẹ để bắt kịp thay đổi từ bên ngoài
-window.addEventListener('storage', syncStorage);
-return () => {
-clearInterval(intervalId);
-window.removeEventListener('storage', syncStorage);
-};
-}, []);
-// [BẢN VÁ V1.21] Polling an toàn: Chỉ chờ Hàm Tầng 2, dập tắt ngay khi bắt được tín hiệu
+// Polling an toàn: Chỉ chờ Hàm Tầng 2, dập tắt ngay khi bắt được tín hiệu. Dùng trực tiếp prop 'lang'
 React.useEffect(() => {
 let intervalId;
 const fetchAndSet = () => {
 if (window.IoeDataEngine && typeof window.IoeDataEngine.getGrammarTopics === 'function') {
-const topics = window.IoeDataEngine.getGrammarTopics('quiz', localLang);
+const topics = window.IoeDataEngine.getGrammarTopics('quiz', lang);
 setGrammarTopics(topics || []);
 return true; // Đã bắt được Tầng 2
 }
@@ -11535,7 +11517,7 @@ clearInterval(intervalId); // Bắt được rồi -> Dập tắt vòng lặp ng
 }, 200);
 }
 return () => { if (intervalId) clearInterval(intervalId); };
-}, [localLang]);
+}, [lang]);
 const groupedTopics = React.useMemo(() => {
 return grammarTopics.reduce((acc, topic) => {
 if (!acc[topic.group]) acc[topic.group] = [];
@@ -11573,9 +11555,9 @@ if (!val) setAiMode(false);
 };
 const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
-// [BẢN VÁ V1.21] Phân tách Logic: 1 biến quyết định Hiện/Ẩn, 1 biến quyết định Khóa/Mở
+// Phân tách Logic: 1 biến quyết định Hiện/Ẩn, 1 biến quyết định Khóa/Mở (Dùng prop dataMode chuẩn)
 const showGrammarSection = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiMode);
-const isGrammarDisabled = sourceMode === 'card' && localDataMode !== 'sentence';
+const isGrammarDisabled = sourceMode === 'card' && dataMode !== 'sentence';
 return (
 <div className="relative z-10 flex flex-col items-center w-full max-w-3xl h-full animate-in slide-in-from-right-8 px-2 sm:px-4">
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
@@ -12859,10 +12841,11 @@ aiAmmoCount={aiAmmoCount}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block 5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.06
-// Last Updated: 2026-05-19 19:20
+// Block 5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.07
+// Last Updated: 2026-06-14 12:10
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
-// Cập nhật: [CHIẾN DỊCH VÔ HIỆU HÓA] Ẩn game Vua Ngữ Âm (pronunciation) trên giao diện khi người dùng đang học Tiếng Trung (lang === 'zh'). Tuân thủ Điều 3 Hiến Pháp.
+// Cập nhật V1.07: [PROPS INJECTION] Thông ống dẫn dữ liệu: Truyền 'lang' và 'dataMode' từ GameView xuống QuizSetup để sửa lỗi mất đồng bộ State gây khóa Dropdown ngữ pháp.
+// Cập nhật V1.06: [CHIẾN DỊCH VÔ HIỆU HÓA] Ẩn game Vua Ngữ Âm (pronunciation) trên giao diện khi người dùng đang học Tiếng Trung (lang === 'zh'). Tuân thủ Điều 3 Hiến Pháp.
 // ==================================================================================
 // --- BẢN VÁ LỖI ICON TOÀN CỤC (ICON POLYFILL) ---
 // Chạy ngay lập tức để bọc lót cho toàn bộ các Block phía sau
@@ -13162,7 +13145,7 @@ onClick={onOpenExamPoolManager}
 className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors shadow-sm flex items-center gap-1 active:scale-95"
 title="Quản lý Ngân hàng đề thi"
 >
-<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
 <span className="text-[10px] font-bold hidden sm:inline">Ngân hàng đề</span>
 </button>
 )}
@@ -13507,7 +13490,7 @@ onOpenAiConfig={onOpenAiConfig}
 <SafeExamUIShell examLogic={activeExamLogic} mainColor={mainColor} onExit={() => { if (activeExamLogic.quitExam) activeExamLogic.quitExam(); setGameState('menu'); }} onLogWrong={onLogWrong} onOpenIncorrect={onOpenIncorrect} onBookmark={onBookmark} notebook={notebook} onPlay={onPlay} lang={lang} />
 </div>
 )}
-{gameState === 'quiz_setup' && <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">{SafeQuizSetup && <SafeQuizSetup t={t} mainColor={mainColor} onStart={(type, config) => handleStartGame('quiz', { ...config, isAiMode: config.aiMode })} onBack={() => setGameState('menu')} />}</div>}
+{gameState === 'quiz_setup' && <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">{SafeQuizSetup && <SafeQuizSetup t={t} mainColor={mainColor} lang={lang} dataMode={dataMode} onStart={(type, config) => handleStartGame('quiz', { ...config, isAiMode: config.aiMode })} onBack={() => setGameState('menu')} />}</div>}
 {gameState === 'scramble_setup' && <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">{SafeScrambleSetup && <SafeScrambleSetup t={t} mainColor={mainColor} onStart={(type, config) => handleStartGame('scramble', { ...config, lang: lang })} onBack={() => setGameState('menu')} />}</div>}
 {gameState === 'match_setup' && <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">{SafeMatchSetup && <SafeMatchSetup t={t} mainColor={mainColor} onStart={(type, config) => handleStartGame('match', config)} onBack={() => setGameState('menu')} />}</div>}
 {gameState === 'fillblank_setup' && <div className="w-full h-full bg-white flex flex-col items-center justify-center p-6 overflow-hidden z-50">{SafeFillBlankSetup && <SafeFillBlankSetup t={t} mainColor={mainColor} onStart={(config) => handleStartGame('fillblank', config)} onBack={() => setGameState('menu')} />}</div>}
