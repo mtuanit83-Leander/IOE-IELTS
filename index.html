@@ -1542,9 +1542,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.86
-// Last Updated: 2026-06-14 22:06
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.87
+// Last Updated: 2026-06-14 22:39
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.87: [AUTO-DIAGNOSTIC FALLBACK] Nâng cấp cơ chế tạo bẫy cho thẻ cá nhân. Khi thẻ bị khuyết trường `grammar_type`, hệ thống tự động tiêm Prompt "Động cơ Tự chẩn đoán Ngữ pháp", ép AI tự phân tích cấu trúc câu và bẻ gãy nó. Khắc phục lỗi chính tả trong hàm `ai_getNoise`.
 // Cập nhật V1.86: [DYNAMIC FEW-SHOT] Khắc phục lỗi xung đột Prompt trong hàm `ai_generateOptions` ở chế độ Normal. Áp dụng kỹ thuật mớm ví dụ động theo loại dữ liệu (`type === 'word'` hay `'sentence'`) để tránh làm AI bị "lệch pha nhận thức", nâng cao chất lượng đáp án nhiễu.
 // Cập nhật V1.85: [GRAMMAR GENE SANITIZATION] Thực thi Mũi khoan 2: Thiết lập rào chắn tuyệt đối trong hàm `ai_generateOptions`. Chỉ cho phép gọi và sử dụng Prompt Ngữ pháp (Block 2.9) khi đang ở chế độ Đảo ngược (`isReverse === true`). Cắt bỏ hoàn toàn đoạn Prompt cố ép AI tạo lỗi ngữ pháp bằng tiếng Việt gây ảo giác.
 // Cập nhật V1.84: [BACKWARD COMPATIBILITY] Cấy màng lọc tương thích ngược vào _getFuzzyMicroPrompt. Trích xuất thuộc tính .prompt nếu dữ liệu là Object, bảo vệ Lò đúc khỏi lỗi [object Object] khi Block 2.9 chuẩn bị nâng cấp kiến trúc.
@@ -1616,8 +1617,13 @@ const levelContext = window.GameAiEngine._getLevelContext(level);
 const langStr = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
 let microPrompt = "";
 if (card) {
+if (card.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(card, 'spot_mistake');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+} else {
+// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
+microPrompt = "\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy đóng vai chuyên gia ngôn ngữ. Phân tích câu này để tìm ra một cấu trúc ngữ pháp cốt lõi (Ví dụ: liên từ, giới từ, trật tự từ, bổ ngữ...). Hãy tạo ra lỗi sai bằng cách bẻ gãy chính cấu trúc đó thay vì sai từ vựng thông thường.\n";
+}
 }
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierDistortionRule) {
@@ -1678,9 +1684,14 @@ let microPrompt = "";
 // Rào chắn tuyệt đối chống rò rỉ Prompt ngữ pháp.
 // Chỉ lấy và sử dụng Micro Prompt khi đang ở chế độ Đảo ngược (isReverse === true).
 if (isReverse && typeof cardOrText === 'object' && cardOrText !== null) {
+if (cardOrText.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(cardOrText, 'quiz');
 if (mp) {
 microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: ${mp}\n`;
+}
+} else {
+// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
+microPrompt = `\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy đóng vai chuyên gia ngôn ngữ. Phân tích câu ngoại ngữ chuẩn này để tìm ra một cấu trúc ngữ pháp cốt lõi (Ví dụ: liên từ, giới từ, trật tự từ, bổ ngữ...). Hãy sinh ra các đáp án nhiễu bằng cách bẻ gãy hoặc dùng sai chính cấu trúc đó. TUYỆT ĐỐI KHÔNG tạo đáp án nhiễu bằng cách dịch sai từ vựng thông thường.\n`;
 }
 }
 let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm.\n`;
@@ -1753,8 +1764,13 @@ ai_getNoise: async function(correctText, lang, type, apiKey, count = 2, level = 
 let prompt = "";
 let microPrompt = "";
 if (card) {
+if (card.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(card, 'scramble');
-if (mp) microPrompt = "\n[MỤC TINGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+} else {
+// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
+microPrompt = "\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy phân tích câu này để tìm ra cấu trúc ngữ pháp cốt lõi. Hãy sinh ra từ rác (noise) là các từ loại có thể làm rối loạn cấu trúc đó (VD: thừa giới từ, sai liên từ) thay vì từ rác ngẫu nhiên.\n";
+}
 }
 if (type === 'word') {
 if (lang === 'zh') {
@@ -1800,8 +1816,13 @@ const langName = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh
 let prompt = window.Utils.getPrompt('fillblank_sentence', { term: text, definition: hintFallback, lang: langName });
 let microPrompt = "";
 if (card) {
+if (card.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(card, 'fill_blank');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+} else {
+// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
+microPrompt = "\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy phân tích câu này và ưu tiên đục lỗ (mask) tại các vị trí ngữ pháp then chốt (như liên từ, giới từ, bổ ngữ) thay vì đục lỗ danh từ/động từ thông thường.\n";
+}
 }
 let examples = "\n\nMỘT SỐ VÍ DỤ MINH HỌA:\n";
 if (lang === 'zh') {
@@ -11514,11 +11535,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.24
-// Last Updated: 2026-06-14 17:24
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.25
+// Last Updated: 2026-06-14 22:50
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.25: [AUTO-DIAGNOSTIC UX] Khóa hoàn toàn Dropdown Ngữ pháp khi ở chế độ "Thẻ của tôi" (sourceMode === 'card'). Tính năng này chỉ mở cho "AI Tự Sinh". Thẻ cá nhân sẽ tự động dùng Gen có sẵn hoặc kích hoạt Động cơ Tự chẩn đoán.
 // Cập nhật V1.24: [UX CONSTRAINT] Khóa Dropdown Ngữ pháp khi "Chế độ Đảo ngược" bị TẮT (askMode !== 'def'). Bổ sung cảnh báo đỏ để triệt tiêu lỗi Xung đột Prompt khi AI sinh 4 đáp án bằng tiếng Việt ở chế độ Normal.
-// Cập nhật V1.23: [LEVEL FILTER PIPELINE] Nhận prop 'currentLevel' từ Tầng 5.7 và truyền xuống hàm 'getGrammarTopics' của Tầng 2 để chặn lỗi tràn ngữ pháp vượt cấp.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 // Nhận trực tiếp lang, dataMode và currentLevel từ Tầng 5.7
@@ -11595,9 +11616,9 @@ const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
 // Phân tách Logic: 1 biến quyết định Hiện/Ẩn, các biến quyết định Khóa/Mở theo Điều kiện kép
 const showGrammarSection = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiMode);
-const isGrammarDisabledByDataMode = sourceMode === 'card' && dataMode !== 'sentence';
+const isGrammarDisabledBySourceMode = sourceMode === 'card';
 const isGrammarDisabledByAskMode = askMode !== 'def';
-const isGrammarDisabled = isGrammarDisabledByDataMode || isGrammarDisabledByAskMode;
+const isGrammarDisabled = isGrammarDisabledBySourceMode || isGrammarDisabledByAskMode;
 return (
 <div className="relative z-10 flex flex-col items-center w-full max-w-3xl h-full animate-in slide-in-from-right-8 px-2 sm:px-4">
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
@@ -11655,7 +11676,7 @@ className={`w-full p-3 border rounded-xl text-sm font-medium focus:outline-none 
 </select>
 {isGrammarDisabled ? (
 <p className="text-[10px] text-red-500 mt-1.5 italic font-bold">
-⚠️ {isGrammarDisabledByAskMode ? "Bẫy ngữ pháp chỉ hoạt động khi bạn bật Chế độ Đảo ngược (Đáp án là ngoại ngữ)." : "Tính năng bẫy ngữ pháp chỉ khả dụng khi bạn học thẻ Câu văn (Sentence)."}
+⚠️ {isGrammarDisabledBySourceMode ? "Đã khóa: Thẻ cá nhân sẽ tự động dùng ngữ pháp gốc hoặc AI tự chẩn đoán." : "Bẫy ngữ pháp chỉ hoạt động khi bạn bật Chế độ Đảo ngược (Đáp án là ngoại ngữ)."}
 </p>
 ) : (
 <p className="text-[10px] text-indigo-500 mt-1.5 italic">* AI sẽ cố tình tạo đáp án sai xoay quanh ngữ pháp này.</p>
@@ -12037,9 +12058,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.34
-// Last Updated: 2026-06-14 17:52
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.35
+// Last Updated: 2026-06-14 22:42
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
+// Cập nhật V1.35: [AUTO-DIAGNOSTIC SYNC] Thực thi Mũi khoan 1: Gỡ bỏ đoạn code gán đè `card.grammar_type = activeGrammarId` để bảo toàn "Gen" ngữ pháp gốc của thẻ. Khóa biến `activeGrammarId` chỉ phục vụ duy nhất cho nguồn AI Tự sinh (`ai_pure`).
 // Cập nhật V1.34: [GRAMMAR GENE SANITIZATION] Thực thi Mũi khoan 1: Bổ sung lưới lọc tiệt trùng (delete card.grammar_type) vào hàm fetchTask để chặn đứng hiện tượng thẻ mang "gen ngữ pháp" từ CSDL đầu độc Lò đúc Tầng 2 khi đang chơi ở chế độ Normal.
 // Cập nhật V1.33: [UX CONSTRAINT SYNC] Đồng bộ logic với Tầng 5.5: Vô hiệu hóa việc gửi `grammarId` xuống Tầng 2 nếu người dùng TẮT Chế độ Đảo ngược (`askMode !== 'def'`).
 // ==================================================================================
@@ -12088,7 +12110,7 @@ const historyQueueRef = React.useRef([]);
 const cardsRef = React.useRef(cards);
 const stateRef = React.useRef({});
 const isInitializingRef = React.useRef(false);
-const aiGeneratedCountRef = React.useRef(0);
+const aiGeneratedCountRef = useRef(0);
 const configRef = React.useRef(config);
 const streakTrackerRef = React.useRef([]);
 const globalRetryBagRef = React.useRef(globalRetryBag);
@@ -12263,8 +12285,10 @@ let activeGrammarId = null;
 const currentDataMode = configRef.current?.dataMode || dataMode;
 const currentLevelStr = configRef.current?.level || level;
 const currentAskMode = configRef.current?.askMode || askMode;
-// Chỉ cho phép dùng Ngữ pháp khi đang ở Chế độ Đảo ngược (Hỏi Nghĩa -> Chọn Ngoại ngữ)
-const canUseGrammar = currentAskMode === 'def' && (sourceMode === 'ai_pure' || (sourceMode === 'card' && isAiMode && currentDataMode === 'sentence'));
+// [BẢN VÁ V1.35] AUTO-DIAGNOSTIC SYNC
+// Chỉ cho phép dùng Ngữ pháp (Dropdown UI) khi đang ở Chế độ Đảo ngược VÀ Nguồn AI Tự sinh.
+// Thẻ cá nhân (card) sẽ phớt lờ UI và sử dụng Gen có sẵn hoặc Fallback Tự chẩn đoán ở Tầng 2.3A.
+const canUseGrammar = currentAskMode === 'def' && sourceMode === 'ai_pure';
 if (canUseGrammar && configRef.current && configRef.current.grammarFocus) {
 if (configRef.current.grammarFocus === 'random') {
 // Thuật toán xóc xăm ngẫu nhiên 1 chủ điểm cho từng câu (Có lọc theo cấp độ)
@@ -12298,7 +12322,7 @@ difficulty: hardMode ? 'hard' : 'easy',
 hardMode: hardMode,
 askMode: askMode,
 mode: 'minigame',
-grammarId: activeGrammarId // ỐNG DẪN 1: Bơm ID ngữ pháp xuống Lò đúc Tầng 2 (Nếu null sẽ dùng Prompt mặc định)
+grammarId: activeGrammarId // ỐNG DẪN 1: Bơm ID ngữ pháp xuống Lò đúc Tầng 2 (Nếu null sẽ dùng Prompt mặc định/Tự chẩn đoán)
 };
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
 const qData = await window.ExamEngine.hydrateQuestion(meta, currentApiKey, freshHistory);
@@ -12340,12 +12364,9 @@ card = { ...deckRef.current.shift() };
 if (currentAskMode !== 'def') {
 delete card.grammar_type;
 }
-// ỐNG DẪN 2: ÉP THẺ CỤC BỘ MANG GEN NGỮ PHÁP DO NGƯỜI DÙNG CHỌN
-// Khi thẻ này được ném vào hàm ai_generateOptions bên dưới,
-// Block 2.3a sẽ tự động đọc gen này và sinh bẫy.
-if (activeGrammarId && sourceMode === 'card') {
-card.grammar_type = activeGrammarId;
-}
+// [BẢN VÁ V1.35] Đã gỡ bỏ đoạn code gán đè thẻ mang gen ngữ pháp từ Dropdown UI.
+// Thẻ sẽ được bảo toàn nguyên trạng. Nếu thẻ đã có gen từ DB, Tầng 2.3A sẽ dùng.
+// Nếu thẻ khuyết gen, Tầng 2.3A sẽ tự động kích hoạt Prompt "Động cơ Tự chẩn đoán".
 if (card && sourceMode === 'card' && isAiMode && currentApiKey && (!card.definition || card.definition.trim() === '')) {
 try {
 const enrichedData = await window.Utils.fillCardWithAi(card.term, lang, currentApiKey, ['definition']);
