@@ -1542,13 +1542,12 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.84
-// Last Updated: 2026-06-13 15:27
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.85
+// Last Updated: 2026-06-14 18:05
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.85: [GRAMMAR GENE SANITIZATION] Thực thi Mũi khoan 2: Thiết lập rào chắn tuyệt đối trong hàm `ai_generateOptions`. Chỉ cho phép gọi và sử dụng Prompt Ngữ pháp (Block 2.9) khi đang ở chế độ Đảo ngược (`isReverse === true`). Cắt bỏ hoàn toàn đoạn Prompt cố ép AI tạo lỗi ngữ pháp bằng tiếng Việt gây ảo giác.
 // Cập nhật V1.84: [BACKWARD COMPATIBILITY] Cấy màng lọc tương thích ngược vào _getFuzzyMicroPrompt. Trích xuất thuộc tính .prompt nếu dữ liệu là Object, bảo vệ Lò đúc khỏi lỗi [object Object] khi Block 2.9 chuẩn bị nâng cấp kiến trúc.
 // Cập nhật V1.83: [CHAIN OF THOUGHT SCHEMA] Cấy trường 'reasoning' vào đầu JSON Schema của hàm ai_generateOptions. Ép AI "nghĩ lớn tiếng" để giải phóng nút thắt cổ chai nhận thức, giảm thời gian phản hồi từ 20s+ xuống 3-5s đối với các câu có ngữ pháp phức tạp.
-// Cập nhật V1.82: [ĐỒNG BỘ PROMPT] Việt hóa nốt các biến nội suy ngôn ngữ (Chinese/English -> Tiếng Trung/Tiếng Anh) rò rỉ vào trong Prompt. Tái cấu trúc nối chuỗi an toàn.
-// Cập nhật V1.8: [LANGUAGE-AWARE FUZZY ROUTING] Cấy ghép thuật toán định tuyến mờ thông minh.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -1675,14 +1674,12 @@ term = cardOrText.term;
 definition = cardOrText.definition;
 }
 let microPrompt = "";
-if (typeof cardOrText === 'object' && cardOrText !== null) {
+// [BẢN VÁ V1.85] MŨI KHOAN 2: Rào chắn tuyệt đối chống rò rỉ Prompt ngữ pháp.
+// Chỉ lấy và sử dụng Micro Prompt khi đang ở chế độ Đảo ngược (isReverse === true).
+if (isReverse && typeof cardOrText === 'object' && cardOrText !== null) {
 const mp = this._getFuzzyMicroPrompt(cardOrText, 'quiz');
 if (mp) {
-if (!isReverse) {
-microPrompt = `\n[PHÂN TÍCH NGỮ PHÁP VÀ LỪA NGHĨA]: Câu gốc ngoại ngữ mang đặc trưng ngữ pháp sau: "${mp}". Bạn hãy tự phân tích xem trọng điểm ngữ pháp này nằm ở chữ nào trong câu ngoại ngữ. Sau đó, TẠO RA CÁC ĐÁP ÁN NHIỄU BẰNG TIẾNG VIỆT bằng cách dịch sai hoặc hiểu nhầm chính trọng điểm ngữ pháp đó.\n`;
-} else {
 microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: ${mp}\n`;
-}
 }
 }
 let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm.\n`;
@@ -12026,11 +12023,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.33
-// Last Updated: 2026-06-14 17:35
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.34
+// Last Updated: 2026-06-14 17:52
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.33: [UX CONSTRAINT SYNC] Đồng bộ logic với Tầng 5.5: Vô hiệu hóa việc gửi `grammarId` xuống Tầng 2 nếu người dùng TẮT Chế độ Đảo ngược (`askMode !== 'def'`). Đảm bảo AI sinh đáp án tiếng Việt dịch nghĩa bình thường ở chế độ Normal để tránh xung đột Prompt.
-// Cập nhật V1.32: [LEVEL FILTER PIPELINE] Vá động cơ Random: Truyền `currentLevel` vào hàm `getGrammarTopics` để chặn hiện tượng AI bốc thăm trúng bẫy ngữ pháp vượt cấp khi người dùng chọn "Trộn ngẫu nhiên".
+// Cập nhật V1.34: [GRAMMAR GENE SANITIZATION] Thực thi Mũi khoan 1: Bổ sung lưới lọc tiệt trùng (delete card.grammar_type) vào hàm fetchTask để chặn đứng hiện tượng thẻ mang "gen ngữ pháp" từ CSDL đầu độc Lò đúc Tầng 2 khi đang chơi ở chế độ Normal.
+// Cập nhật V1.33: [UX CONSTRAINT SYNC] Đồng bộ logic với Tầng 5.5: Vô hiệu hóa việc gửi `grammarId` xuống Tầng 2 nếu người dùng TẮT Chế độ Đảo ngược (`askMode !== 'def'`).
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12247,7 +12244,7 @@ return fallbackFormatted;
 const fetchTask = async () => {
 let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// [BẢN VÁ V1.33] GIẢI MÃ LỰA CHỌN NGỮ PHÁP TỪ UI KÈM BỘ LỌC CẤP ĐỘ VÀ RÀNG BUỘC ĐẢO NGƯỢC
+// GIẢI MÃ LỰA CHỌN NGỮ PHÁP TỪ UI KÈM BỘ LỌC CẤP ĐỘ VÀ RÀNG BUỘC ĐẢO NGƯỢC
 let activeGrammarId = null;
 const currentDataMode = configRef.current?.dataMode || dataMode;
 const currentLevelStr = configRef.current?.level || level;
@@ -12322,6 +12319,12 @@ deckRef.current = window.Utils.shuffleArray(validCards);
 }
 // Trích xuất thẻ theo cơ chế Shallow Copy để không làm ô nhiễm bộ bài gốc của người dùng
 card = { ...deckRef.current.shift() };
+}
+// [BẢN VÁ V1.34] SANITIZE DỮ LIỆU (TIỆT TRÙNG GEN NGỮ PHÁP)
+// Nếu không ở chế độ Đảo ngược, phải tước bỏ thuộc tính grammar_type có sẵn từ thẻ Excel/IndexedDB
+// để tránh Lò đúc Tầng 2 bị nhầm lẫn và sinh ra Prompt rác.
+if (currentAskMode !== 'def') {
+delete card.grammar_type;
 }
 // ỐNG DẪN 2: ÉP THẺ CỤC BỘ MANG GEN NGỮ PHÁP DO NGƯỜI DÙNG CHỌN
 // Khi thẻ này được ném vào hàm ai_generateOptions bên dưới,
