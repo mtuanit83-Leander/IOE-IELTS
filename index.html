@@ -11535,11 +11535,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.25
-// Last Updated: 2026-06-14 22:50
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.26
+// Last Updated: 2026-06-14 23:05
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.26: [UI DECLUTTER] Ẩn hoàn toàn section Ngữ pháp khi ở chế độ "Thẻ của tôi" để giảm nhiễu thị giác, do AI đã hoàn toàn xử lý ngầm (Auto-Diagnostic / Original Grammar Gene). Khối Ngữ pháp nay chỉ xuất hiện độc quyền cho chế độ "AI Tự sinh".
 // Cập nhật V1.25: [AUTO-DIAGNOSTIC UX] Khóa hoàn toàn Dropdown Ngữ pháp khi ở chế độ "Thẻ của tôi" (sourceMode === 'card'). Tính năng này chỉ mở cho "AI Tự Sinh". Thẻ cá nhân sẽ tự động dùng Gen có sẵn hoặc kích hoạt Động cơ Tự chẩn đoán.
-// Cập nhật V1.24: [UX CONSTRAINT] Khóa Dropdown Ngữ pháp khi "Chế độ Đảo ngược" bị TẮT (askMode !== 'def'). Bổ sung cảnh báo đỏ để triệt tiêu lỗi Xung đột Prompt khi AI sinh 4 đáp án bằng tiếng Việt ở chế độ Normal.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 // Nhận trực tiếp lang, dataMode và currentLevel từ Tầng 5.7
@@ -11614,11 +11614,10 @@ if (!val) setAiMode(false);
 };
 const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
-// Phân tách Logic: 1 biến quyết định Hiện/Ẩn, các biến quyết định Khóa/Mở theo Điều kiện kép
-const showGrammarSection = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiMode);
-const isGrammarDisabledBySourceMode = sourceMode === 'card';
-const isGrammarDisabledByAskMode = askMode !== 'def';
-const isGrammarDisabled = isGrammarDisabledBySourceMode || isGrammarDisabledByAskMode;
+// Phân tách Logic: Ẩn hoàn toàn Dropdown đối với Thẻ cá nhân (Vì AI chạy ngầm Auto-Diagnostic).
+// Chỉ hiển thị Dropdown khi dùng nguồn AI Tự sinh. Khóa Dropdown nếu không bật Đảo ngược.
+const showGrammarSection = sourceMode === 'ai_pure';
+const isGrammarDisabled = askMode !== 'def';
 return (
 <div className="relative z-10 flex flex-col items-center w-full max-w-3xl h-full animate-in slide-in-from-right-8 px-2 sm:px-4">
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
@@ -11676,7 +11675,7 @@ className={`w-full p-3 border rounded-xl text-sm font-medium focus:outline-none 
 </select>
 {isGrammarDisabled ? (
 <p className="text-[10px] text-red-500 mt-1.5 italic font-bold">
-⚠️ {isGrammarDisabledBySourceMode ? "Đã khóa: Thẻ cá nhân sẽ tự động dùng ngữ pháp gốc hoặc AI tự chẩn đoán." : "Bẫy ngữ pháp chỉ hoạt động khi bạn bật Chế độ Đảo ngược (Đáp án là ngoại ngữ)."}
+⚠️ Bẫy ngữ pháp chỉ hoạt động khi bạn bật Chế độ Đảo ngược (Đáp án là ngoại ngữ).
 </p>
 ) : (
 <p className="text-[10px] text-indigo-500 mt-1.5 italic">* AI sẽ cố tình tạo đáp án sai xoay quanh ngữ pháp này.</p>
