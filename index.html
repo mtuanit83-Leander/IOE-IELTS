@@ -11444,11 +11444,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.19
-// Last Updated: 2026-06-13 22:45
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.20
+// Last Updated: 2026-06-14 10:05
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
-// Cập nhật V1.19: [GRAMMAR FOCUS UI] Cấy Dropdown chọn Chuyên đề Ngữ pháp từ Block 2.9. Kích hoạt khi dùng AI Tự sinh, hoặc khi dùng Thẻ cục bộ + Bật AI + Chế độ Câu văn. Hỗ trợ tùy chọn Trộn Ngẫu nhiên.
-// Cập nhật V1.18: [SUDDEN DEATH UI] Thêm công tắc "Chế độ Địa ngục".
+// Cập nhật V1.20: [LAYOUT & RACE CONDITION FIX] Vá lỗi Dropdown ngữ pháp tàng hình bằng cơ chế Polling State thay cho useMemo. Tái cấu trúc layout Setup thành 2 cột (Grid) trên màn hình lớn (PC/iPad) để tối ưu không gian hiển thị.
+// Cập nhật V1.19: [GRAMMAR FOCUS UI] Cấy Dropdown chọn Chuyên đề Ngữ pháp từ Block 2.9.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 const QuizSetup = ({ t, mainColor, onStart, onBack, onOpenAiConfig }) => {
@@ -11463,15 +11463,27 @@ const [showPronun, setShowPronun] = React.useState(false);
 const [autoReadAnswer, setAutoReadAnswer] = React.useState(false);
 const [suddenDeath, setSuddenDeath] = React.useState(false);
 const [grammarFocus, setGrammarFocus] = React.useState('random');
+const [grammarTopics, setGrammarTopics] = React.useState([]);
 // Trích xuất ngôn ngữ và chế độ dữ liệu từ LocalStorage
 const lang = window.localStorage ? localStorage.getItem('fc_lang') || 'en' : 'en';
 const dataMode = window.localStorage ? localStorage.getItem('fc_dataMode') || 'vocab' : 'vocab';
-// Lấy danh sách Ngữ pháp từ Tầng 2
-const grammarTopics = React.useMemo(() => {
+// [BẢN VÁ V1.20] Quét dữ liệu Tầng 2 bằng Polling để chống lỗi Race Condition khi Tầng 2 nạp chậm hơn UI
+React.useEffect(() => {
+let intervalId;
+const loadTopics = () => {
 if (window.IoeDataEngine && window.IoeDataEngine.getGrammarTopics) {
-return window.IoeDataEngine.getGrammarTopics('quiz', lang);
+const topics = window.IoeDataEngine.getGrammarTopics('quiz', lang);
+if (topics && topics.length > 0) {
+setGrammarTopics(topics);
+return true;
 }
-return [];
+}
+return false;
+};
+if (!loadTopics()) {
+intervalId = setInterval(loadTopics, 200);
+}
+return () => { if (intervalId) clearInterval(intervalId); };
 }, [lang]);
 const groupedTopics = React.useMemo(() => {
 return grammarTopics.reduce((acc, topic) => {
@@ -11511,8 +11523,9 @@ if (!val) setAiMode(false);
 const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
 const canShowGrammar = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiMode && dataMode === 'sentence');
+// [BẢN VÁ V1.20] Mở rộng max-w-sm thành max-w-3xl để chứa Grid 2 cột
 return (
-<div className="relative z-10 flex flex-col items-center w-full max-w-sm h-full animate-in slide-in-from-right-8">
+<div className="relative z-10 flex flex-col items-center w-full max-w-3xl h-full animate-in slide-in-from-right-8 px-2 sm:px-4">
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500"><Icons.ChevronLeft size={24} /></button>
 <h2 className="text-xl font-bold text-gray-800">Cấu hình Trắc Nghiệm</h2>
@@ -11524,9 +11537,9 @@ return (
 <div className="w-10"></div>
 )}
 </div>
-<div className="w-full space-y-3 flex-1 overflow-y-auto custom-scrollbar p-1 pb-4">
+<div className="w-full space-y-4 flex-1 overflow-y-auto custom-scrollbar p-1 pb-4">
 {/* Bảng chọn Nguồn dữ liệu */}
-<div className="mb-4">
+<div className="mb-2">
 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
 <div className="grid grid-cols-2 gap-3">
 <button onClick={() => setSourceMode('card')} className={`p-2 rounded-2xl border-2 flex flex-col items-center gap-1 transition-all ${sourceMode === 'card' ? `border-${mainColor}-500 bg-${mainColor}-50 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'} hover:scale-105`}>
@@ -11545,9 +11558,9 @@ return (
 </button>
 </div>
 </div>
-{/* Bảng chọn Ngữ pháp (Chỉ hiện khi đủ điều kiện) */}
+{/* Bảng chọn Ngữ pháp */}
 {canShowGrammar && grammarTopics.length > 0 && (
-<div className="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-2xl animate-in fade-in">
+<div className="mb-2 p-3 bg-indigo-50 border border-indigo-100 rounded-2xl animate-in fade-in">
 <label className="block text-sm font-bold text-indigo-800 mb-2 flex items-center gap-1.5">
 <Icons.Target size={16} /> Chuyên đề Ngữ pháp (Bẫy AI)
 </label>
@@ -11568,13 +11581,18 @@ className="w-full p-3 bg-white border border-indigo-200 rounded-xl text-sm font-
 <p className="text-[10px] text-indigo-500 mt-1.5 italic">* AI sẽ cố tình tạo đáp án sai xoay quanh ngữ pháp này.</p>
 </div>
 )}
+{/* [BẢN VÁ V1.20] Lưới 2 cột cho các công tắc cài đặt trên màn hình lớn */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+<div className="space-y-3">
 <MenuToggle active={askMode === 'def'} setActive={(val) => setAskMode(val ? 'def' : 'term')} icon={Icons.RefreshCw} color="teal" title="Chế độ Đảo ngược" subtitle={askMode === 'def' ? "Hỏi Nghĩa ➔ Chọn Từ" : "Hỏi Từ ➔ Chọn Nghĩa"} />
-<MenuToggle active={showPronun} setActive={setShowPronun} icon={Icons.Eye} color="indigo" title="Hiển thị phiên âm" subtitle="Gợi ý cách đọc (Tắt khi Luyện nghe)" disabled={askMode === 'def' || listenMode} />
-<MenuToggle active={autoReadAnswer} setActive={setAutoReadAnswer} icon={Icons.Volume2} color="pink" title="Đọc lại đáp án" subtitle="Chờ đọc xong đáp án mới chuyển câu" />
 <MenuToggle active={hardMode} setActive={handleHardModeChange} icon={Icons.Layers} color="red" title="Chế độ Khó (Hard Mode)" subtitle={hardMode ? "Bẫy thông minh, bóp méo từ" : "Bẫy cơ bản"} />
 <MenuToggle active={aiMode} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={sourceMode === 'ai_pure' ? "(Chế độ Tự sinh đã bao gồm AI)" : (!hardMode ? "(Yêu cầu bật Chế độ Khó)" : (aiMode ? "AI tạo nhiễu thông minh" : "Thuật toán nội bộ"))} disabled={!hardMode || sourceMode === 'ai_pure'} />
 <MenuToggle active={suddenDeath} setActive={setSuddenDeath} icon={Icons.AlertCircle} color="slate" title="Chế độ Địa ngục" subtitle="Sai 1 lần là mất điểm ngay lập tức" />
+</div>
+<div className="space-y-3">
 <MenuToggle active={listenMode} setActive={setListenMode} icon={Icons.Headphones} color="blue" title="Luyện Nghe" subtitle="Nghe âm thanh chọn đáp án" />
+<MenuToggle active={showPronun} setActive={setShowPronun} icon={Icons.Eye} color="indigo" title="Hiển thị phiên âm" subtitle="Gợi ý cách đọc (Tắt khi Luyện nghe)" disabled={askMode === 'def' || listenMode} />
+<MenuToggle active={autoReadAnswer} setActive={setAutoReadAnswer} icon={Icons.Volume2} color="pink" title="Đọc lại đáp án" subtitle="Chờ đọc xong đáp án mới chuyển câu" />
 <MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / câu` : 'Thoải mái thời gian'} extra={
 <div className="mt-3 pt-2 border-t border-orange-100 flex justify-between items-center animate-in fade-in">
 <span className="text-[10px] font-bold text-orange-400 uppercase">Chọn thời gian:</span>
@@ -11588,8 +11606,10 @@ className="w-full p-3 bg-white border border-indigo-200 rounded-xl text-sm font-
 </div>
 } />
 </div>
-<div className="w-full mt-2 pt-4 border-t border-gray-100 bg-white pb-safe shrink-0">
-<button onClick={handleStart} className={`w-full py-4 bg-${mainColor}-600 text-white rounded-xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-2 active:scale-95 transition-transform`}>
+</div>
+</div>
+<div className="w-full mt-2 pt-4 border-t border-gray-100 bg-white pb-safe shrink-0 flex justify-center">
+<button onClick={handleStart} className={`w-full max-w-sm py-4 bg-${mainColor}-600 text-white rounded-xl font-bold shadow-lg hover:bg-${mainColor}-700 flex items-center justify-center gap-2 active:scale-95 transition-transform`}>
 <Icons.Play size={24} /> BẮT ĐẦU CHƠI
 </button>
 </div>
