@@ -1542,9 +1542,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.85
-// Last Updated: 2026-06-14 18:05
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.86
+// Last Updated: 2026-06-14 22:06
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.86: [DYNAMIC FEW-SHOT] Khắc phục lỗi xung đột Prompt trong hàm `ai_generateOptions` ở chế độ Normal. Áp dụng kỹ thuật mớm ví dụ động theo loại dữ liệu (`type === 'word'` hay `'sentence'`) để tránh làm AI bị "lệch pha nhận thức", nâng cao chất lượng đáp án nhiễu.
 // Cập nhật V1.85: [GRAMMAR GENE SANITIZATION] Thực thi Mũi khoan 2: Thiết lập rào chắn tuyệt đối trong hàm `ai_generateOptions`. Chỉ cho phép gọi và sử dụng Prompt Ngữ pháp (Block 2.9) khi đang ở chế độ Đảo ngược (`isReverse === true`). Cắt bỏ hoàn toàn đoạn Prompt cố ép AI tạo lỗi ngữ pháp bằng tiếng Việt gây ảo giác.
 // Cập nhật V1.84: [BACKWARD COMPATIBILITY] Cấy màng lọc tương thích ngược vào _getFuzzyMicroPrompt. Trích xuất thuộc tính .prompt nếu dữ liệu là Object, bảo vệ Lò đúc khỏi lỗi [object Object] khi Block 2.9 chuẩn bị nâng cấp kiến trúc.
 // Cập nhật V1.83: [CHAIN OF THOUGHT SCHEMA] Cấy trường 'reasoning' vào đầu JSON Schema của hàm ai_generateOptions. Ép AI "nghĩ lớn tiếng" để giải phóng nút thắt cổ chai nhận thức, giảm thời gian phản hồi từ 20s+ xuống 3-5s đối với các câu có ngữ pháp phức tạp.
@@ -1674,7 +1675,7 @@ term = cardOrText.term;
 definition = cardOrText.definition;
 }
 let microPrompt = "";
-// [BẢN VÁ V1.85] MŨI KHOAN 2: Rào chắn tuyệt đối chống rò rỉ Prompt ngữ pháp.
+// Rào chắn tuyệt đối chống rò rỉ Prompt ngữ pháp.
 // Chỉ lấy và sử dụng Micro Prompt khi đang ở chế độ Đảo ngược (isReverse === true).
 if (isReverse && typeof cardOrText === 'object' && cardOrText !== null) {
 const mp = this._getFuzzyMicroPrompt(cardOrText, 'quiz');
@@ -1684,21 +1685,34 @@ microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: 
 }
 let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm.\n`;
 let langStr = distractorLang === 'zh' ? 'Tiếng Trung' : (distractorLang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
+// [BẢN VÁ V1.86] DYNAMIC FEW-SHOT PROMPTING: Cung cấp ví dụ theo từ vựng hoặc câu văn
 if (!isReverse) {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng TIẾNG VIỆT cho mục tiêu sau.\n`;
 prompt += `Mục tiêu ngoại ngữ: "${term}"\nNghĩa đúng (đáp án chuẩn): "${definition}"\n`;
 prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề với đáp án đúng, đọc rất xuôi tai nhưng mang ý nghĩa sai lệch. Hãy lợi dụng sự hiểu lầm văn cảnh, hoặc nghĩa gần giống nhưng khác sắc thái.\n`;
+if (type === 'sentence') {
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "Cô ấy đang đọc sách trong thư viện" -> Nhiễu: ["Cô ấy đã mua sách ở thư viện", "Cô ấy đang viết sách trong thư viện", "Anh ấy đang đọc sách trong thư viện"]\n- Nghĩa đúng: "Hôm qua tôi đi xem phim với bạn" -> Nhiễu: ["Hôm qua tôi đi mua sắm với bạn", "Hôm nay tôi đi xem phim với bạn", "Hôm qua tôi đi xem phim một mình"]\n`;
+} else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
+}
 } else {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
 prompt += `Mục tiêu tiếng Việt: "${definition}"\nNghĩa đúng (đáp án chuẩn): "${term}"\n`;
 prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề, và có độ dài tương đối với đáp án đúng. `;
 if (distractorLang === 'zh') {
 prompt += `Bạn có thể tạo bẫy đồng âm (Pinyin giống nhau), sai bộ thủ, hoặc các từ có mặt chữ Hán gần giống nhưng khác nghĩa.\n`;
+if (type === 'sentence') {
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "我在图书馆看书" (Tôi đọc sách ở thư viện) -> Nhiễu: ["我去图书馆买书" (Tôi đi thư viện mua sách), "他在图书馆看书" (Anh ấy đọc sách ở thư viện), "我在书店看书" (Tôi đọc sách ở hiệu sách)]\n`;
+} else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n- Nghĩa đúng: "时间" (thời gian) -> Nhiễu: ["世界", "时候", "时刻"]\n`;
+}
 } else {
 prompt += `Bạn có thể tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
+if (type === 'sentence') {
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "She is reading a book" -> Nhiễu: ["She is writing a book", "He is reading a book", "She read a book yesterday"]\n`;
+} else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n- Nghĩa đúng: "apple" -> Nhiễu: ["orange", "banana", "grape"]\n`;
+}
 }
 }
 if (type === 'sentence') {
@@ -1720,7 +1734,7 @@ if (distractorLang !== 'vi') {
 prompt += window.GameAiEngine._getLevelContext(level);
 }
 prompt += `\nHãy trả về ${count} đáp án nhiễu (không bao gồm đáp án đúng).`;
-// [BẢN VÁ 1.83] Ép Chain of Thought bằng cách buộc AI trả về trường 'reasoning' trước khi chốt mảng 'distractors'
+// Ép Chain of Thought bằng cách buộc AI trả về trường 'reasoning' trước khi chốt mảng 'distractors'
 const schema = {
 type: "OBJECT",
 properties: {
@@ -1740,7 +1754,7 @@ let prompt = "";
 let microPrompt = "";
 if (card) {
 const mp = this._getFuzzyMicroPrompt(card, 'scramble');
-if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+if (mp) microPrompt = "\n[MỤC TINGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 }
 if (type === 'word') {
 if (lang === 'zh') {
