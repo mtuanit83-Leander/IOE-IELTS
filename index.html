@@ -87,9 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 3.5
-// Last Updated: 2026-06-11 10:03
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.02
+// Last Updated: 2026-06-15 22:55
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
+// Cập nhật V1.02: [MACRO TOPICS STANDARDIZATION] Thực thi Mũi khoan 2: Cập nhật template `enrich_word` và `enrich_sentence`. Trói buộc AI bằng thiết quân luật, ép trường 'topic' chỉ được nhận 1 trong 9 giá trị vĩ mô cốt lõi. Triệt tiêu khả năng AI tự đẻ chủ đề rác.
 // Cập nhật V3.5: [VIỆT HÓA PROMPT LÕI] Chuẩn hóa 100% các System Prompt trong DEFAULT_PROMPTS sang Tiếng Việt. Chỉ giữ lại các Key JSON và mã định danh hệ thống.
 // Cập nhật V3.4: [PRE-COMPUTATION SYNC] Đồng bộ toàn bộ 32 định danh bẫy Tiếng Trung (HSK 1 & HSK 2) vào IoeEnumRegistry.
 // ==================================================================================
@@ -147,8 +148,8 @@ return this.LEVEL_TO_TRAPS[levelKey] || [];
 // ============================================================================
 window.DEFAULT_PROMPTS = {
 // --- 1. ENRICH (Làm giàu thẻ) ---
-enrich_word: `Phân tích từ vựng "{term}" ({lang}->Vi). ĐỊNH HƯỚNG SÁNG TẠO: Ưu tiên dịch sát nghĩa ở trình độ HSK3 (Tiếng Trung) hoặc A1-A2 (Tiếng Anh). Các trường JSON yêu cầu: term, pronunciation (IPA/Pinyin), definition (dịch nghĩa cực ngắn dưới 6 từ, không giải thích), partOfSpeech (Từ loại bằng Tiếng Việt), topic (Phân loại chủ đề bằng Tiếng Anh, VD: Food, Animals...), analysis (Giải thích cách dùng ngắn gọn), sinoViet (Tiếng Trung: Chỉ xuất Âm Hán Việt thuần túy. Tiếng Anh: Giải thích chi tiết), example (câu chứa từ + dịch), image_keyword (Bắt buộc bằng Tiếng Anh).`,
-enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). Các trường JSON yêu cầu: term, pronunciation, definition (Tiếng Việt), partOfSpeech (Ghi là "Câu văn"), topic (Phân loại chủ đề), analysis (cấu trúc ngữ pháp), example (Tạo 1 câu ví dụ có cấu trúc tương tự + Dịch), image_keyword (Bắt buộc bằng Tiếng Anh), grammar_type (ĐỊNH HƯỚNG GẮN NHÃN:
+enrich_word: `Phân tích từ vựng "{term}" ({lang}->Vi). ĐỊNH HƯỚNG SÁNG TẠO: Ưu tiên dịch sát nghĩa ở trình độ HSK3 (Tiếng Trung) hoặc A1-A2 (Tiếng Anh). Các trường JSON yêu cầu: term, pronunciation (IPA/Pinyin), definition (dịch nghĩa cực ngắn dưới 6 từ, không giải thích), partOfSpeech (Từ loại bằng Tiếng Việt), topic (BẮT BUỘC CHỌN 1 TRONG 9 GIÁ TRỊ: 'Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'), analysis (Giải thích cách dùng ngắn gọn), sinoViet (Tiếng Trung: Chỉ xuất Âm Hán Việt thuần túy. Tiếng Anh: Giải thích chi tiết), example (câu chứa từ + dịch), image_keyword (Bắt buộc bằng Tiếng Anh).`,
+enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). Các trường JSON yêu cầu: term, pronunciation, definition (Tiếng Việt), partOfSpeech (Ghi là "Câu văn"), topic (BẮT BUỘC CHỌN 1 TRONG 9 GIÁ TRỊ: 'Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'), analysis (cấu trúc ngữ pháp), example (Tạo 1 câu ví dụ có cấu trúc tương tự + Dịch), image_keyword (Bắt buộc bằng Tiếng Anh), grammar_type (ĐỊNH HƯỚNG GẮN NHÃN:
 1. Nếu câu mang cấu trúc bình thường, hãy trả về mảng rỗng [].
 2. Hãy chọn lọc 1 đến 2 mã cốt lõi nhất phản ánh đúng đặc trưng ngữ pháp của câu.
 3. TIẾNG TRUNG chọn trong: [zh_hsk1_pronoun_gender, zh_hsk1_pronoun_location, zh_hsk1_question_quantity, zh_hsk1_number_liang, zh_hsk1_measure_mismatch, zh_hsk1_negation_bumei, zh_hsk1_modal_ability, zh_hsk1_verb_direction, zh_hsk1_adj_predicate_shi, zh_hsk1_particle_de_redundant, zh_hsk1_exclam_tai_le, zh_hsk1_question_ma_ne, zh_hsk1_serial_verb_order, zh_hsk1_time_order, zh_hsk1_place_order, zh_hsk2_pronoun_ta_mismatch, zh_hsk2_pronoun_mei_measure, zh_hsk2_number_er_liang, zh_hsk2_measure_mismatch, zh_hsk2_adv_you_zai, zh_hsk2_adv_jiu_pos, zh_hsk2_prep_gei_order, zh_hsk2_conj_missing_pair, zh_hsk2_conj_logic_clash, zh_hsk2_state_comp_missing_verb, zh_hsk2_state_comp_obj_pos, zh_hsk2_compare_bi_adv, zh_hsk2_prog_zhengzai_clash, zh_hsk2_approx_duo_less10, zh_hsk2_approx_duo_more10, zh_hsk2_prep_cong_li, zh_hsk2_aspect_zhe_le, zh_hsk_separable_obj, zh_hsk_adv_zhongyu, zh_hsk_adv_degree, zh_hsk_prep_mismatch, zh_hsk_conj_mismatch, zh_hsk_noun_space, zh_hsk_rc_negation, zh_hsk_rc_state, zh_hsk_pc_ability, zh_hsk_dc_location, zh_hsk_dc_direction, zh_hsk_ba_indefinite, zh_hsk_ba_result, zh_hsk_bei_reverse, zh_hsk_exist_order, zh_hsk_emph_order, zh_hsk_emph_extreme, zh_hsk_paired_only_if, zh_hsk_paired_as_long_as, zh_hsk_dist_li, zh_hsk_comp_bi, zh_hsk_except_chule].
@@ -1170,11 +1171,11 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.11
-// Last Updated: 2026-06-11 10:11
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.12
+// Last Updated: 2026-06-15 22:47
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
+// Cập nhật V1.12: [MACRO TOPICS STANDARDIZATION] Triệt tiêu mảng 26 chủ đề phân mảnh, thay thế bằng mảng phẳng 9 chủ đề vĩ mô (8+1). Áp dụng thiết quân luật (Strict Lexical Constraint) vào System Prompt để ép AI trả về đúng 1 trong 9 chủ đề, chống rác CSDL.
 // Cập nhật V1.11: [VIỆT HÓA TOÀN DIỆN & TỐI ƯU PROMPT] Dịch 100% các bộ quy tắc vi phân (Micro-Tier Rules) và Context sang Tiếng Việt. Đồng thời áp dụng nới lỏng Prompt cho hàm _buildSystemPromptForFactory để triệt tiêu nguy cơ lỗi 429.
-// Cập nhật V1.10: [LANGUAGE-ISOLATED PROMPTING] Tách biệt hoàn toàn thiết quân luật từ vựng (Lexical Martial Law) và độ dài (Length Martial Law) giữa tiếng Trung và tiếng Anh.
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -1241,28 +1242,18 @@ zh_level_8: "HSK 8 (Tinh thông). Từ vựng: Triết học phương Đông, t�
 zh_level_9: "HSK 9 (Như người bản xứ). Từ vựng: Văn ngôn (文言文), phê bình kinh tế vĩ mô, tín ngưỡng tôn giáo. Diễn đạt như người bản xứ.",
 vi_default: "Mặc định Tiếng Việt. Giao tiếp cơ bản."
 },
-// 2. HỆ THỐNG CHỦ ĐỀ MỞ RỘNG (TOPICS) - CHUẨN CAMBRIDGE 26 CHỦ ĐỀ
-TOPICS: {
-en_level_1: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_2: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_3: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_4: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_5: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_6: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_7: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_8: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-en_level_9: ["Appliances", "Clothes and Accessories", "House and Home", "Services", "Shopping", "Communication and Technology", "Documents and Texts", "Education", "Family and Friends", "Personal Feelings and Opinions", "Work and Jobs", "Places: Buildings", "Places: Countryside", "Places: Town and City", "The Natural World", "Travel and Transport", "Weather", "Colours", "Entertainment and Media", "Food and Drink", "Health, Medicine and Exercise", "Hobbies and Leisure", "Measurements", "Sport", "Time", "General and Grammar"],
-zh_level_1: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_2: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_3: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_4: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_5: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_6: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_7: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_8: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-zh_level_9: ["家用电器", "服装与配饰", "房屋与家庭", "服务", "购物", "通讯与科技", "文件与文本", "教育", "家人与朋友", "个人情感与意见", "工作与职业", "地点：建筑", "地点：乡村", "地点：城镇", "自然世界", "旅游与交通", "天气", "颜色", "娱乐与媒体", "饮食", "健康、医疗与运动", "爱好与休闲", "测量", "体育", "时间", "通用词汇与语法"],
-vi_default: ["Thiết bị", "Quần áo & Phụ kiện", "Nhà cửa", "Dịch vụ", "Mua sắm", "Giao tiếp & Công nghệ", "Tài liệu & Văn bản", "Giáo dục", "Gia đình & Bạn bè", "Cảm xúc & Ý kiến", "Công việc & Nghề nghiệp", "Địa điểm: Tòa nhà", "Địa điểm: Nông thôn", "Địa điểm: Thành thị", "Thế giới tự nhiên", "Du lịch & Giao thông", "Thời tiết", "Màu sắc", "Giải trí & Truyền thông", "Đồ ăn & Thức uống", "Sức khỏe & Y tế", "Sở thích & Giải trí", "Đo lường & Số lượng", "Thể thao", "Thời gian", "Từ vựng chung & Ngữ pháp"]
-},
+// 2. HỆ THỐNG CHỦ ĐỀ MỞ RỘNG (MACRO TOPICS) - 8 CHỦ ĐỀ LÕI + OTHER
+TOPICS: [
+Self & Body,
+Social Connections,
+Living Spaces,
+The Natural World,
+Food & Health,
+Daily Life & Leisure,
+School & Career,
+Travel & Exploration,
+Other
+],
 // ==================================================================================
 // HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
 // ==================================================================================
@@ -1283,7 +1274,7 @@ else rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn
 } else if (targetLang === 'Chinese' && dataMode === 'vocab') {
 if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (1-2 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Thay thế ĐÚNG MỘT chữ Hán bằng một chữ Đồng âm (同音字) hoặc Hình cận tự (形近字) rất cơ bản. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
 else if (['zh_level_3', 'zh_level_4'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (2-3 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Thay thế một chữ Hán bằng chữ Đồng âm (同音字) hoặc sử dụng một Cận nghĩa từ (近义词) sai ngữ cảnh. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
-else if (['zh_level_5', 'zh_level_6'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (2-4 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Tập trung vào ngôn ngữ văn viết (书面语) hoặc sự nhầm lẫn giữa các Cận nghĩa từ (近义词辨析). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+else if (['zh_level_5', 'zh_level_6'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (2-4 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Tập trung vào ngôn ngữ văn viết (书面语) hoặc sự nhầm lẫn之间 các Cận nghĩa từ (近义词辨析). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
 else rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Tập trung vào Thành ngữ 4 chữ (成语) hoặc thuật ngữ học thuật. Thay thế một chữ để tạo ra lỗi từ vựng tinh vi. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
 } else if (targetLang === 'Chinese' && dataMode === 'sentence') {
 if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi cơ bản: CHỈ LÀ dùng sai lượng từ (量词) hoặc đại từ cơ bản.";
@@ -1459,11 +1450,13 @@ prompt += `QUY TẮC ĐỊNH DẠNG: Đối với cấp độ cơ bản (Pre-A1 
 }
 }
 prompt += `GẮN NHÃN CẤP ĐỘ: Vui lòng khai báo đúng cấp độ CEFR/HSK vào trường 'cefr_level'. Khai báo sai cấp độ là một lỗi nghiêm trọng.\n`;
+// [BẢN VÁ 1.12] THIẾT QUÂN LUẬT PHÂN LOẠI CHỦ ĐỀ CHỐNG RÁC CSDL
+prompt += `[QUY TẮC BẮT BUỘC VỀ CHỦ ĐỀ]: Trường 'topic' trong JSON kết quả CHỈ ĐƯỢC PHÉP nhận 1 trong 9 giá trị chính xác sau: ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other']. TUYỆT ĐỐI KHÔNG TỰ BỊA CHỦ ĐỀ KHÁC. Nếu không thuộc 8 nhóm đầu, gán 'Other'.\n`;
 const isTopicFree = topic === 'ANY' || subType === 'pronunciation' || subType === 'odd_one_out' || subType === 'spot_mistake';
 if (isTopicFree) {
-prompt += `TỰ DO CHỦ ĐỀ: Bạn có quyền tự do tuyệt đối sử dụng từ vựng từ TẤT CẢ 26 chủ đề Cambridge/Đời sống. Tập trung hoàn toàn vào kỹ thuật của câu hỏi (Chính tả, Ngữ pháp, hoặc Logic Tìm từ khác loại).\n`;
+prompt += `TỰ DO CHỦ ĐỀ: Bạn có quyền tự do tuyệt đối sử dụng từ vựng từ mọi lĩnh vực đời sống. Tập trung hoàn toàn vào kỹ thuật của câu hỏi (Chính tả, Ngữ pháp, hoặc Logic Tìm từ khác loại).\n`;
 } else if (topic) {
-prompt += `TẬP TRUNG CHỦ ĐỀ: Liên quan chặt chẽ đến "${topic}".\n`;
+prompt += `TẬP TRUNG CHỦ ĐỀ NỘI DUNG: Liên quan chặt chẽ đến "${topic}".\n`;
 }
 if (forgeType === 'base_card') {
 prompt += `NHIỆM VỤ: Tạo một ${dataMode === 'sentence' ? 'câu văn' : 'từ vựng'} phù hợp chính xác với cấp độ tiêu chuẩn (${cefrLevel}) và chủ đề.\n`;
@@ -4691,11 +4684,11 @@ console.error("[EmergencyFallback] Động cơ cứu hộ sập toàn tập:", e
 return null;
 }
 };
-// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.10
-// Last Updated: 2026-06-13 16:03
+// Block2.8: TẦNG 2: BỘ TỔNG THAM MƯU (Exam Profiles Blueprint) - Version 1.11
+// Last Updated: 2026-06-15 23:15
 // Nhiệm vụ: Chứa định nghĩa chi tiết (Blueprints) của 6 cấu trúc đề thi (IOE-Mini, IOE-Std, IELTS-Mini, IELTS-Std, HSK-Mini, HSK-Std) và Bảng Ánh xạ Trình độ (CEFR Mapping).
+// Cập nhật V1.11: [MACRO TOPICS ADAPTATION] Thực thi Mũi khoan 4: Viết lại thuật toán phân phối chủ đề Mock Test (DYNAMIC TOPIC HYBRID V3). Đọc mảng phẳng 8+1 thay vì mảng 26 cũ. Áp dụng thuật toán Round-robin để rải đều 8 chủ đề học thuật vào 10 Phase, triệt tiêu hoàn toàn rủi ro Out of Bounds gây sập game.
 // Cập nhật V1.10: [GRAMMAR TRAP INJECTION] Cấy động cơ bốc thăm `getRandomGrammarId` để tự động kéo các bẫy ngữ pháp từ Block 2.9 (MICRO_PROMPTS) và gắn vào blueprint của Mock Test. Kết nối hoàn chỉnh hệ sinh thái ngữ pháp.
-// Cập nhật V1.09: [TOPIC FREEDOM] Cấy ghép cờ 'ANY' vào thuộc tính topic.
 // ==================================================================================
 window.ExamProfiles = {
 // 1. TỪ ĐIỂN CẤU HÌNH ĐỀ THI TỔNG QUAN
@@ -4828,46 +4821,26 @@ if (availableKeys.length === 0) return null;
 return availableKeys[Math.floor(Math.random() * availableKeys.length)];
 };
 // ============================================================================
-// [THUẬT TOÁN MỚI] TRIPLE-TOPIC HYBRID V2 (100% COVERAGE SCRIPTING)
+// [THUẬT TOÁN MỚI] DYNAMIC TOPIC HYBRID V3 (MACRO TOPICS 8+1 ADAPTATION)
 // ============================================================================
-const availableTopics = window.IoeDataEngine?.TOPICS?.[targetLevel] || [];
-const phaseTopics = {}; // { phaseNum: [topic1, topic2, topic3] }
-if (availableTopics.length >= 26) {
-const shuffled = window.Utils.shuffleArray([...availableTopics]);
-const base20 = shuffled.slice(0, 20);
-const remaining6 = shuffled.slice(20, 26);
-// Bước 2: Cấp phát Base 20 chủ đề cho 10 chặng
+let availableTopics = [];
+if (Array.isArray(window.IoeDataEngine?.TOPICS)) {
+availableTopics = window.IoeDataEngine.TOPICS;
+}
+// Bỏ qua chủ đề 'Other' để đề thi tập trung vào các chủ đề học thuật cốt lõi
+let coreTopics = availableTopics.filter(t => t && t.toLowerCase() !== 'other');
+if (coreTopics.length === 0) coreTopics = ["General Knowledge"];
+const phaseTopics = {};
+const shuffled = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...coreTopics]) : coreTopics;
+let topicPointer = 0;
 for (let p = 1; p <= 10; p++) {
-phaseTopics[p] = [base20[(p - 1) * 2], base20[(p - 1) * 2 + 1]];
-}
-// Bước 3: Vét máng 6 chủ đề còn lại cho 6 chặng ngẫu nhiên
-const phases = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-const lucky6Phases = window.Utils.shuffleArray([...phases]).slice(0, 6);
-for (let i = 0; i < 6; i++) {
-phaseTopics[lucky6Phases[i]].push(remaining6[i]);
-}
-// Bước 4: Cấp phát Random cho 4 chặng còn lại (từ kho 24 chủ đề khác Base)
-for (let p = 1; p <= 10; p++) {
-if (phaseTopics[p].length < 3) {
-const currentBase = phaseTopics[p];
-const pool24 = shuffled.filter(t => !currentBase.includes(t));
-phaseTopics[p].push(window.Utils.shuffleArray(pool24)[0]);
-}
-}
-} else if (availableTopics.length > 0) {
-// Fallback nếu kho không đủ 26 chủ đề
-const shuffled = window.Utils.shuffleArray([...availableTopics]);
-for (let p = 1; p <= 10; p++) {
+// Phân bổ xoay vòng (Round-robin) 3 chủ đề cho mỗi chặng.
+// Điều này đảm bảo dù mảng có 8 phần tử vẫn rải đều liên tục và an toàn vào 10 Phase.
 phaseTopics[p] = [
-shuffled[Math.floor(Math.random() * shuffled.length)],
-shuffled[Math.floor(Math.random() * shuffled.length)],
-shuffled[Math.floor(Math.random() * shuffled.length)]
+shuffled[(topicPointer++) % shuffled.length],
+shuffled[(topicPointer++) % shuffled.length],
+shuffled[(topicPointer++) % shuffled.length]
 ];
-}
-} else {
-for (let p = 1; p <= 10; p++) {
-phaseTopics[p] = ["", "", ""];
-}
 }
 const passageCountTracker = {}; // Dành riêng cho Đọc hiểu: Đếm số lượng passage group
 // Bơm đạn kèm Thuật toán Xoay vòng 3 Chủ đề
@@ -5730,11 +5703,12 @@ if (key.startsWith('eng_')) return 'Tiếng Anh (Chung)';
 return 'Chuyên đề Khác';
 }
 };
-// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.01
-// Last Updated: 2026-04-19 12:07
+// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.02
+// Last Updated: 2026-06-15 23:01
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
 // Quy tắc: Tuyệt đối không nhúng logic nghiệp vụ vào Tầng này. Tuân thủ Hiến pháp Quy tắc 3.
-// Cập nhật: [VÁ LỖI CRASH #130] Bổ sung Icon Database và các icon phụ trợ khác từ nền tảng 1.02. Đảm bảo toàn vẹn 100% mã nguồn (không cắt xén LevelSelector, TopicSelector). Tuân thủ tuyệt đối Điều 3.1 và 3.2.
+// Cập nhật V1.02: [MACRO TOPICS STANDARDIZATION] Sửa đổi TopicSelectorDropdown. Đọc trực tiếp mảng phẳng từ Tầng 2 thay vì truy xuất theo object key (currentLevel). Khắc phục triệt để lỗi biến mất Dropdown sau khi tái cấu trúc 9 chủ đề vĩ mô.
+// Cập nhật V1.01: [VÁ LỖI CRASH #130] Bổ sung Icon Database và các icon phụ trợ khác từ nền tảng 1.02. Đảm bảo toàn vẹn 100% mã nguồn (không cắt xén LevelSelector, TopicSelector).
 // ==================================================================================
 // 1. Error Boundary
 class ErrorBoundary extends React.Component {
@@ -5916,10 +5890,12 @@ return (
 </div>
 );
 };
-// [NEW v1.4] Bộ chọn Chủ đề (Topic Selector) - Responsive 100%
+// [NEW v1.4 -> Updated v1.02] Bộ chọn Chủ đề (Topic Selector) - Responsive 100%
 const TopicSelectorDropdown = ({ currentLevel, currentTopic, onSelectTopic, mainColor = 'blue' }) => {
 const [isOpen, setIsOpen] = React.useState(false);
-const topics = window.IoeDataEngine?.TOPICS?.[currentLevel] || [];
+// Đọc trực tiếp mảng phẳng từ Tầng 2, bỏ truy xuất theo currentLevel
+const topics = Array.isArray(window.IoeDataEngine?.TOPICS) ? window.IoeDataEngine.TOPICS : [];
+// Vẫn giữ cơ chế ẩn nếu không có dữ liệu (phòng trường hợp lỗi Tầng 2)
 if (!topics || topics.length === 0) return null;
 const displayLabel = currentTopic ? currentTopic.split(' (')[0].substring(0, 15) + (currentTopic.length > 15 ? '...' : '') : 'Tất cả chủ đề';
 return (
