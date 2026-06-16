@@ -616,11 +616,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.15
-// Last Updated: 2026-06-16 11:15
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.16
+// Last Updated: 2026-06-16 14:00
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.16: [GLOBAL COOLDOWN INJECTION] Cấy phanh hãm vật lý (3 giây) vào cuối chu trình thành công của callGeminiApi và fillCardWithAi. Đóng băng Mutex Lock trong thời gian chờ để chặn đứng tuyệt đối mọi request nối đuôi từ các tiến trình ngầm, triệt tiêu lỗi 429 do AI phản hồi quá nhanh. Tuân thủ Điều 3.2.
 // Cập nhật V2.15: [DYNAMIC PROMPT & SCHEMA FIX] Thực thi Mũi khoan 2: Loại bỏ schema 'grammar_type' đối với từ vựng. Tiêm linh động (Dynamic Injection) chỉ thị pronunciation (IPA/Pinyin) và sinoViet dựa theo biến ngôn ngữ. Cập nhật cơ chế đọc topic phẳng từ Tầng 2.2.
-// Cập nhật V2.14: [KIẾN TRÚC FAIL-FAST] Cắt bỏ hoàn toàn vòng lặp Retry (while) và lệnh ngâm luồng ngớ ngẩn bên trong Khóa Mutex. Lõi mạng giờ đây trở thành một Dumb Router: Bắn 1 chạm, trúng thì trả data, trượt hoặc kẹt đạn thì ném lỗi ra ngoài ngay lập tức.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -776,6 +776,8 @@ window.__apiCooldowns[targetKey] = Date.now() + 30000;
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 }
+// [BẢN VÁ 2.16] ÉP NGỦ ĐÔNG GLOBAL MUTEX 3 GIÂY ĐỂ LÀM NGUỘI API
+await new Promise(r => setTimeout(r, 3000));
 return { text: resultText, tokenMetadata };
 } catch (e) {
 // --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
@@ -912,6 +914,8 @@ if (parsed.image_keyword) {
 imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
 }
 const meta = data.usageMetadata ? { _tokenUsage: data.usageMetadata } : {};
+// [BẢN VÁ 2.16] ÉP NGỦ ĐÔNG GLOBAL MUTEX 3 GIÂY ĐỂ LÀM NGUỘI API
+await new Promise(r => setTimeout(r, 3000));
 return { ...parsed, term: term, image: imgUrl, ...meta };
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
@@ -23205,10 +23209,11 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.08
-// Last Updated: 2026-06-16 11:43
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.09
+// Last Updated: 2026-06-16 13:45
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
-// Cập nhật V1.08: [ULTIMATE COOLDOWN HOTFIX] Sửa lỗi logic nghiêm trọng trong khối `finally` khiến hệ thống bỏ qua Delay 5s khi hàng đợi cạn (`shift()` làm length = 0). Giờ đây, Phanh hãm 5s sẽ khóa chặt luồng xử lý MIỄN LÀ API đã bị hit, bất chấp trạng thái của hàng đợi. Triệt tiêu hoàn toàn khả năng người dùng lướt thẻ nhanh gây bão request. Tuân thủ tuyệt đối Điều 3 và 3.2 Hiến pháp.
+// Cập nhật V1.09: [CONTEXT-AWARE FILTER HOTFIX] Phẫu thuật mảng `requiredFields`. Tích hợp thuật toán nhận diện ngữ cảnh `detectSentence`. Từ vựng (Vocab) sẽ KHÔNG bị ép kiểm tra `grammar_type`, và Câu văn (Sentence) sẽ KHÔNG bị ép kiểm tra `sinoViet`. Triệt tiêu hoàn toàn lỗi API bắn nhầm thẻ Từ vựng đã đầy đủ dữ liệu (False Positive Enrichment).
+// Cập nhật V1.08: [ULTIMATE COOLDOWN HOTFIX] Sửa lỗi logic nghiêm trọng trong khối `finally` khiến hệ thống bỏ qua Delay 5s khi hàng đợi cạn (`shift()` làm length = 0). Giờ đây, Phanh hãm 5s sẽ khóa chặt luồng xử lý MIỄN LÀ API đã bị hit, bất chấp trạng thái của hàng đợi.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23335,9 +23340,14 @@ try {
 if (!currentApiKey) { continue; }
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
-// [HOTFIX v1.04] Mảng kiểm tra động
-const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image', 'grammar_type'];
-if (core.lang === 'zh') requiredFields.push('sinoViet');
+// [HOTFIX v1.09] Lưới lọc thông minh nhận diện ngữ cảnh
+const isSentence = window.Utils.detectSentence(term);
+const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
+if (isSentence) {
+requiredFields.push('grammar_type');
+} else if (core.lang === 'zh') {
+requiredFields.push('sinoViet');
+}
 const missingFields = noteCard ? requiredFields.filter(field => {
 const val = noteCard[field];
 if (field === 'grammar_type') {
@@ -23421,9 +23431,14 @@ processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
 const currentCard = latestStateRef.current.cards.find(c => c.term === cardTerm);
-// [HOTFIX v1.04] Mảng kiểm tra động
-const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image', 'grammar_type'];
-if (core.lang === 'zh') requiredFields.push('sinoViet');
+// [HOTFIX v1.09] Lưới lọc thông minh nhận diện ngữ cảnh
+const isSentence = window.Utils.detectSentence(cardTerm);
+const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
+if (isSentence) {
+requiredFields.push('grammar_type');
+} else if (core.lang === 'zh') {
+requiredFields.push('sinoViet');
+}
 const missingFields = requiredFields.filter(f => {
 if (f === 'grammar_type') {
 const val = currentCard?.[f];
@@ -23451,7 +23466,7 @@ if (enriched._tokenUsage) {
 const newTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10) + (enriched._tokenUsage.totalTokenCount || 0);
 setTotalTokens(newTotal); localStorage.setItem('fc_total_tokens', newTotal);
 }
-if (!silent) callbacks.showToast("Đã bổ sung thông tin!", "success");
+if (!silent) callbacks.showToast("Đã bổ bổ sung thông tin!", "success");
 return true; // Trả về true báo hiệu API đã bị hit
 } catch (e) {
 if (!silent) callbacks.showToast("Lỗi AI: " + e.message, "error");
@@ -23546,7 +23561,7 @@ if (!currentTerm) return;
 const nextTerms = [];
 nextTerms.push(currentTerm); // Ưu tiên thẻ hiện tại
 // Nạp thêm 2 thẻ kế tiếp
-for (let i = 1; i <= 1; i++) {
+for (let i = 1; i <= 2; i++) {
 const nextIdx = (core.currentCardIndex + i) % core.cards.length;
 const nextTerm = core.cards[nextIdx]?.term;
 if (nextTerm && !nextTerms.includes(nextTerm)) {
