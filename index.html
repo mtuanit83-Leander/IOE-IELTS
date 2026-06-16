@@ -87,12 +87,11 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.02
-// Last Updated: 2026-06-15 22:55
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.03
+// Last Updated: 2026-06-16 10:35
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
+// Cập nhật V1.03: [PROMPT SMEARING HOTFIX] Dọn dẹp ngữ cảnh rác trong DEFAULT_PROMPTS. Cắt bỏ các chỉ định cứng về HSK3/A1-A2 để tránh gây ảo giác phân mảnh ngôn ngữ cho AI. Tối ưu lại điều kiện xuất Âm Hán Việt.
 // Cập nhật V1.02: [MACRO TOPICS STANDARDIZATION] Thực thi Mũi khoan 2: Cập nhật template `enrich_word` và `enrich_sentence`. Trói buộc AI bằng thiết quân luật, ép trường 'topic' chỉ được nhận 1 trong 9 giá trị vĩ mô cốt lõi. Triệt tiêu khả năng AI tự đẻ chủ đề rác.
-// Cập nhật V3.5: [VIỆT HÓA PROMPT LÕI] Chuẩn hóa 100% các System Prompt trong DEFAULT_PROMPTS sang Tiếng Việt. Chỉ giữ lại các Key JSON và mã định danh hệ thống.
-// Cập nhật V3.4: [PRE-COMPUTATION SYNC] Đồng bộ toàn bộ 32 định danh bẫy Tiếng Trung (HSK 1 & HSK 2) vào IoeEnumRegistry.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -148,7 +147,7 @@ return this.LEVEL_TO_TRAPS[levelKey] || [];
 // ============================================================================
 window.DEFAULT_PROMPTS = {
 // --- 1. ENRICH (Làm giàu thẻ) ---
-enrich_word: `Phân tích từ vựng "{term}" ({lang}->Vi). ĐỊNH HƯỚNG SÁNG TẠO: Ưu tiên dịch sát nghĩa ở trình độ HSK3 (Tiếng Trung) hoặc A1-A2 (Tiếng Anh). Các trường JSON yêu cầu: term, pronunciation (IPA/Pinyin), definition (dịch nghĩa cực ngắn dưới 6 từ, không giải thích), partOfSpeech (Từ loại bằng Tiếng Việt), topic (BẮT BUỘC CHỌN 1 TRONG 9 GIÁ TRỊ: 'Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'), analysis (Giải thích cách dùng ngắn gọn), sinoViet (Tiếng Trung: Chỉ xuất Âm Hán Việt thuần túy. Tiếng Anh: Giải thích chi tiết), example (câu chứa từ + dịch), image_keyword (Bắt buộc bằng Tiếng Anh).`,
+enrich_word: `Phân tích từ vựng "{term}" ({lang}->Vi). Các trường JSON yêu cầu: term, pronunciation (IPA/Pinyin), definition (dịch nghĩa cực ngắn dưới 6 từ, không giải thích), partOfSpeech (Từ loại bằng Tiếng Việt), topic (BẮT BUỘC CHỌN 1 TRONG 9 GIÁ TRỊ: 'Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'), analysis (Giải thích cách dùng ngắn gọn), sinoViet (Nếu {lang} là Tiếng Trung: xuất Âm Hán Việt thuần túy. Khác: Giải thích thêm), example (câu chứa từ + dịch), image_keyword (Bắt buộc bằng Tiếng Anh).`,
 enrich_sentence: `Phân tích CÂU VĂN "{term}" ({lang}->Vi). Các trường JSON yêu cầu: term, pronunciation, definition (Tiếng Việt), partOfSpeech (Ghi là "Câu văn"), topic (BẮT BUỘC CHỌN 1 TRONG 9 GIÁ TRỊ: 'Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'), analysis (cấu trúc ngữ pháp), example (Tạo 1 câu ví dụ có cấu trúc tương tự + Dịch), image_keyword (Bắt buộc bằng Tiếng Anh), grammar_type (ĐỊNH HƯỚNG GẮN NHÃN:
 1. Nếu câu mang cấu trúc bình thường, hãy trả về mảng rỗng [].
 2. Hãy chọn lọc 1 đến 2 mã cốt lõi nhất phản ánh đúng đặc trưng ngữ pháp của câu.
@@ -181,6 +180,7 @@ window.UI_TEXT = {
 vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Or input link directly:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "定义", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "停止", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
+};
 };
 // Block 2.1b: TẦNG 2: TIỆN ÍCH LÕI (Core Data Utilities) - Version 2.4
 // Last Updated: 2026-06-11 15:32
@@ -3271,12 +3271,11 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.35
-// Last Updated: 2026-06-11 10:35
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.36
+// Last Updated: 2026-06-16 10:44
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.36: [SCHEMA HALLUCINATION FIX] Tách bạch mảng 'required' của JSON Schema trong hàm _getMasterSchema. Trường 'grammar_type' nay CHỈ bắt buộc đối với Chế độ Câu văn (sentence). Triệt tiêu lỗi ép AI sinh ngữ pháp cho từ đơn gây hỏng JSON và tràn 429.
 // Cập nhật V1.35: [VÁ LỖI MẤT ĐÁP ÁN ĐÚNG] Trói buộc chặt chẽ 1 đáp án đúng trong mảng 'options' phải sao chép chính xác từ trường dữ liệu gốc (term, definition, displaySentence) tùy theo chế độ, tránh việc AI tự huyễn suy diễn câu đối đáp.
-// Cập nhật V1.34: [VIỆT HÓA PROMPT] Chuyển đổi toàn bộ System Prompt sang Tiếng Việt.
-// Cập nhật V1.33: [VÁ LỖI BÃO 429] Đồng bộ cờ 'isSentenceTask'.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -3480,11 +3479,28 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 },
-_getMasterSchema: function(forgeType, subType) {
+_getMasterSchema: function(forgeType, subType, dataMode = 'vocab') {
 const commonProps = { cefr_level: { type: "STRING" } };
 const commonRequired = ["cefr_level"];
 if (forgeType === 'base_card') {
-return { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" }, image_keyword: { type: "STRING" }, grammar_type: { type: "ARRAY", items: { type: "STRING" } }, ...commonProps }, required: ["term", "definition", "image_keyword", "grammar_type", ...commonRequired] };
+// [BẢN VÁ V1.36] SCHEMA HALLUCINATION FIX
+// Chỉ BẮT BUỘC (Required) thuộc tính grammar_type khi chế độ là 'sentence'.
+// Với Từ vựng (vocab), việc ép grammar_type sẽ khiến AI bối rối và gây lỗi 429.
+const baseRequired = ["term", "definition", "image_keyword"];
+if (dataMode === 'sentence') {
+baseRequired.push("grammar_type");
+}
+return {
+type: "OBJECT",
+properties: {
+term: { type: "STRING" },
+definition: { type: "STRING" },
+image_keyword: { type: "STRING" },
+grammar_type: { type: "ARRAY", items: { type: "STRING" } },
+...commonProps
+},
+required: [...baseRequired, ...commonRequired]
+};
 }
 if (forgeType === 'matrix') {
 if (subType === 'match') return { type: "OBJECT", properties: { items: { type: "ARRAY", items: { type: "OBJECT", properties: { term: { type: "STRING" }, definition: { type: "STRING" } }, required: ["term", "definition"] } }, ...commonProps }, required: ["items", ...commonRequired] };
@@ -3509,7 +3525,7 @@ let timeoutId;
 try {
 let prompt = this._buildSystemPrompt('base_card', null, level, lang, topic, dataMode, isReverse);
 if (historyPrompt) prompt += historyPrompt;
-const schema = this._getMasterSchema('base_card', null);
+const schema = this._getMasterSchema('base_card', null, dataMode);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
 let dynamicTimeout = 20000;
 try {
@@ -3546,7 +3562,7 @@ let timeoutId;
 try {
 let prompt = this._buildSystemPrompt('matrix', subType, level, lang, topic, dataMode, isReverse);
 if (historyPrompt) prompt += historyPrompt;
-const schema = this._getMasterSchema('matrix', subType);
+const schema = this._getMasterSchema('matrix', subType, dataMode);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
 let dynamicTimeout = 25000;
 try {
@@ -3585,7 +3601,7 @@ let timeoutId;
 try {
 let prompt = this._buildSystemPrompt('context', subType, level, lang, topic, dataMode, isReverse);
 if (historyPrompt) prompt += historyPrompt;
-const schema = this._getMasterSchema('context', subType);
+const schema = this._getMasterSchema('context', subType, dataMode);
 const aiPromise = window.Utils.callGeminiApi(prompt, schema, apiKey);
 let dynamicTimeout = subType === 'reading_passage' ? 35000 : 25000;
 try {
@@ -23201,12 +23217,12 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.06
-// Last Updated: 2026-06-11 15:45
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.07
+// Last Updated: 2026-06-16 10:48
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
 // Quy tắc: Tách biệt hoàn toàn logic chạy ngầm khỏi App Component chính. TUYỆT ĐỐI KHÔNG CẮT XÉN CODE. Tuân thủ Điều 3.
+// Cập nhật V1.07: [RATE LIMIT & 0MS BYPASS FIX] Thực thi Mũi khoan 2: Tái cấu trúc vòng lặp processEnrichQueue và processAiQueue bằng khối `finally`. Đảm bảo "Phanh hãm vật lý" (Global Cooldown 5000ms) LUÔN LUÔN được thực thi sau khi API bị gọi (dù thành công hay dính lỗi 429). Áp dụng thuật toán `shouldDelay` để bỏ qua thời gian chờ đối với các thẻ đã đầy đủ, tăng tốc độ xử lý ngầm.
 // Cập nhật V1.06: [ANTI-INFINITE LOOP] Triệt tiêu các vòng lặp retry ngầm. Cấy bộ đếm thất bại liên tiếp (Bankrupt Flag) vào processEnrichQueue và processAiQueue. Vượt quá 3 lần lỗi do máy chủ 429/503 sẽ tự động xóa hàng đợi và bung thông báo quá tải, bảo vệ tuyệt đối CPU trình duyệt.
-// Cập nhật V1.05: [KILL SWITCH] Bổ sung cơ chế Phanh khẩn cấp (AbortController) vào useEffect.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23328,11 +23344,12 @@ let consecutiveFailures = 0;
 while (aiQueueRef.current.length > 0) {
 const term = aiQueueRef.current[0];
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-if (!currentApiKey) { aiQueueRef.current.shift(); continue; }
+let shouldDelay = false;
 try {
+if (!currentApiKey) { continue; } // Bỏ qua ngay, khối finally vẫn sẽ tự rút đạn
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
-// [HOTFIX v1.04] Mảng kiểm tra động (Không đòi sinoViet nếu không phải Tiếng Trung)
+// [HOTFIX v1.04] Mảng kiểm tra động
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image', 'grammar_type'];
 if (core.lang === 'zh') requiredFields.push('sinoViet');
 const missingFields = noteCard ? requiredFields.filter(field => {
@@ -23344,8 +23361,9 @@ const strVal = val ? val.toString().trim() : "";
 if (field === 'image') return !strVal.startsWith('http');
 return strVal === "";
 }) : requiredFields;
-if (missingFields && missingFields.length === 0) { aiQueueRef.current.shift(); continue; }
-// [BẢN VÁ 1.06] Cắt bỏ logic try/catch ngâm luồng ở đây. Ép tuân thủ Fail-Fast.
+// Đã đầy đủ thì bỏ qua, khối finally sẽ lo phần shift đạn
+if (missingFields && missingFields.length === 0) { continue; }
+shouldDelay = true; // Sẽ gọi API, cần delay sau đó để hãm phanh
 const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields);
 if (missingFields.includes('image')) {
 if (!res.image || !res.image.startsWith('http')) {
@@ -23367,6 +23385,7 @@ return newData;
 }
 consecutiveFailures = 0; // Reset bộ đếm nếu thành công
 } catch (e) {
+shouldDelay = true; // Lỗi mạng (429/503), bắt buộc phải delay để hãm phanh
 console.warn(`Auto-fill skipped for ${term}:`, e);
 consecutiveFailures++;
 if (consecutiveFailures >= 3) {
@@ -23376,9 +23395,16 @@ callbacks.showToast("Máy chủ AI quá tải. Đã dừng tự động điền 
 aiQueueRef.current = []; // Hủy toàn bộ đạn
 break; // Cắt đứt vòng lặp vô tận
 }
-}
+} finally {
+// [BẢN VÁ 1.07] LUÔN LUÔN thực thi shift để tránh kẹt vô tận (cả khi gọi continue)
+if (aiQueueRef.current.length > 0) {
 aiQueueRef.current.shift();
-if (aiQueueRef.current.length > 0) await new Promise(r => setTimeout(r, 5000));
+}
+// [BẢN VÁ 1.07] LUÔN LUÔN chờ 5s nếu API đã được gọi, chống Bypass 0ms
+if (shouldDelay && aiQueueRef.current.length > 0) {
+await new Promise(r => setTimeout(r, 5000));
+}
+}
 }
 isAiQueueProcessing.current = false;
 };
@@ -23387,7 +23413,7 @@ isAiQueueProcessing.current = false;
 // ==================================================================================
 // Xử lý tham số đầu vào linh hoạt (index, card object, hoặc Event)
 const handleAiEnrichCard = async (indexOrCardOrEvent, silent = false) => {
-if (!apiKey) { if (!silent) callbacks.showToast("Chưa có API Key!", "error"); return; }
+if (!apiKey) { if (!silent) callbacks.showToast("Chưa có API Key!", "error"); return false; }
 let cardTerm = null;
 // Logic xác định từ khóa cần tra cứu
 if (typeof indexOrCardOrEvent === 'number') {
@@ -23400,17 +23426,17 @@ cardTerm = latestStateRef.current.cards[idx]?.term;
 }
 if (!cardTerm) {
 if (!silent) callbacks.showToast("Không xác định được từ vựng!", "error");
-return;
+return false;
 }
 if (processingCardsRef.current.has(cardTerm)) {
 if (!silent) callbacks.showToast("Đang xử lý từ này...", "info");
-return;
+return false;
 }
 processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
 const currentCard = latestStateRef.current.cards.find(c => c.term === cardTerm);
-// [HOTFIX v1.04] Mảng kiểm tra động (Không đòi sinoViet nếu không phải Tiếng Trung)
+// [HOTFIX v1.04] Mảng kiểm tra động
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image', 'grammar_type'];
 if (core.lang === 'zh') requiredFields.push('sinoViet');
 const missingFields = requiredFields.filter(f => {
@@ -23420,8 +23446,9 @@ return !val || (Array.isArray(val) && val.length === 0) || (typeof val === 'stri
 }
 return !currentCard?.[f] || (f === 'image' && !currentCard[f].startsWith('http'));
 });
-if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return; }
-if (silent && !missingFields.length) return;
+// Trả về false nếu không gọi API, giúp quá trình chạy ngầm quét 0ms
+if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return false; }
+if (silent && !missingFields.length) return false;
 const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields);
 if (missingFields.includes('image') && (!enriched.image || !enriched.image.startsWith('http'))) {
 const q = (currentCard?.image && currentCard.image.trim()) || cardTerm;
@@ -23440,9 +23467,10 @@ const newTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10) + 
 setTotalTokens(newTotal); localStorage.setItem('fc_total_tokens', newTotal);
 }
 if (!silent) callbacks.showToast("Đã bổ sung thông tin!", "success");
+return true; // Trả về true báo hiệu API đã bị hit
 } catch (e) {
 if (!silent) callbacks.showToast("Lỗi AI: " + e.message, "error");
-throw e; // [BẢN VÁ 1.06] Bắt buộc ném lỗi ra ngoài để processEnrichQueue có thể đếm
+throw e; // Bắt buộc ném lỗi ra ngoài để processEnrichQueue có thể đếm
 } finally {
 processingCardsRef.current.delete(cardTerm);
 if (!silent) setIsAiLoading(false);
@@ -23489,11 +23517,15 @@ isProcessingEnrichQueue.current = true;
 let consecutiveFailures = 0;
 while (enrichQueueRef.current.length > 0) {
 const termToEnrich = enrichQueueRef.current[0];
+let shouldDelay = false;
 try {
 // Tái sử dụng hàm handleAiEnrichCard với tham số silent=true để xử lý ngầm
-await handleAiEnrichCard({ term: termToEnrich }, true);
+// Nhận cờ boolean để biết API có thực sự bị gọi hay không
+const apiHit = await handleAiEnrichCard({ term: termToEnrich }, true);
+shouldDelay = apiHit;
 consecutiveFailures = 0; // Reset bộ đếm nếu chạy êm ái
 } catch (e) {
+shouldDelay = true; // Nếu lỗi xảy ra tức là API đã bị hit và bị từ chối
 console.warn(`Background enrich error for ${termToEnrich}:`, e);
 consecutiveFailures++;
 if (consecutiveFailures >= 3) {
@@ -23503,11 +23535,15 @@ callbacks.showToast("Máy chủ AI quá tải. Tiến trình Làm giàu thẻ t�
 enrichQueueRef.current = []; // Hủy toàn bộ hàng đợi
 break; // Thoát vòng lặp
 }
-}
-enrichQueueRef.current.shift();
-// Làm nguội API 5 giây trước khi xử lý thẻ tiếp theo trong hàng đợi
+} finally {
+// [BẢN VÁ 1.07] LUÔN LUÔN thực thi shift để tránh kẹt
 if (enrichQueueRef.current.length > 0) {
+enrichQueueRef.current.shift();
+}
+// [BẢN VÁ 1.07] Làm nguội API 5 giây CHỈ KHI API thực sự bị gọi, chống Bypass 0ms
+if (shouldDelay && enrichQueueRef.current.length > 0) {
 await new Promise(r => setTimeout(r, 5000));
+}
 }
 }
 isProcessingEnrichQueue.current = false;
