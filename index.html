@@ -616,11 +616,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.16
-// Last Updated: 2026-06-16 14:00
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.17
+// Last Updated: 2026-06-16 21:50
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.17: [JSON SANITIZATION] Tiêm bộ lọc cạo sạch rác Markdown (```json) trước khi Parse JSON trong hàm fillCardWithAi. Giải quyết triệt để lỗi SyntaxError nội bộ gây ra thông báo ảo "Máy chủ quá tải" khi mạng vẫn báo 200 OK.
 // Cập nhật V2.16: [GLOBAL COOLDOWN INJECTION] Cấy phanh hãm vật lý (3 giây) vào cuối chu trình thành công của callGeminiApi và fillCardWithAi. Đóng băng Mutex Lock trong thời gian chờ để chặn đứng tuyệt đối mọi request nối đuôi từ các tiến trình ngầm, triệt tiêu lỗi 429 do AI phản hồi quá nhanh. Tuân thủ Điều 3.2.
-// Cập nhật V2.15: [DYNAMIC PROMPT & SCHEMA FIX] Thực thi Mũi khoan 2: Loại bỏ schema 'grammar_type' đối với từ vựng. Tiêm linh động (Dynamic Injection) chỉ thị pronunciation (IPA/Pinyin) và sinoViet dựa theo biến ngôn ngữ. Cập nhật cơ chế đọc topic phẳng từ Tầng 2.2.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -905,7 +905,9 @@ localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 }
 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 if (!text) throw new Error("AI không trả về kết quả");
-const parsed = JSON.parse(text);
+// [BẢN VÁ 2.17] Cạo sạch rác Markdown (```json) do LLM trả về trước khi Parse
+let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+const parsed = JSON.parse(cleanText);
 if (lang === 'zh' && parsed.sinoViet) {
 parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
 }
