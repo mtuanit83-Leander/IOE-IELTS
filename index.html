@@ -23205,12 +23205,10 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.07
-// Last Updated: 2026-06-16 10:48
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.08
+// Last Updated: 2026-06-16 11:43
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
-// Quy tắc: Tách biệt hoàn toàn logic chạy ngầm khỏi App Component chính. TUYỆT ĐỐI KHÔNG CẮT XÉN CODE. Tuân thủ Điều 3.
-// Cập nhật V1.07: [RATE LIMIT & 0MS BYPASS FIX] Thực thi Mũi khoan 2: Tái cấu trúc vòng lặp processEnrichQueue và processAiQueue bằng khối `finally`. Đảm bảo "Phanh hãm vật lý" (Global Cooldown 5000ms) LUÔN LUÔN được thực thi sau khi API bị gọi (dù thành công hay dính lỗi 429). Áp dụng thuật toán `shouldDelay` để bỏ qua thời gian chờ đối với các thẻ đã đầy đủ, tăng tốc độ xử lý ngầm.
-// Cập nhật V1.06: [ANTI-INFINITE LOOP] Triệt tiêu các vòng lặp retry ngầm. Cấy bộ đếm thất bại liên tiếp (Bankrupt Flag) vào processEnrichQueue và processAiQueue. Vượt quá 3 lần lỗi do máy chủ 429/503 sẽ tự động xóa hàng đợi và bung thông báo quá tải, bảo vệ tuyệt đối CPU trình duyệt.
+// Cập nhật V1.08: [ULTIMATE COOLDOWN HOTFIX] Sửa lỗi logic nghiêm trọng trong khối `finally` khiến hệ thống bỏ qua Delay 5s khi hàng đợi cạn (`shift()` làm length = 0). Giờ đây, Phanh hãm 5s sẽ khóa chặt luồng xử lý MIỄN LÀ API đã bị hit, bất chấp trạng thái của hàng đợi. Triệt tiêu hoàn toàn khả năng người dùng lướt thẻ nhanh gây bão request. Tuân thủ tuyệt đối Điều 3 và 3.2 Hiến pháp.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23334,7 +23332,7 @@ const term = aiQueueRef.current[0];
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 let shouldDelay = false;
 try {
-if (!currentApiKey) { continue; } // Bỏ qua ngay, khối finally vẫn sẽ tự rút đạn
+if (!currentApiKey) { continue; }
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
 // [HOTFIX v1.04] Mảng kiểm tra động
@@ -23349,7 +23347,6 @@ const strVal = val ? val.toString().trim() : "";
 if (field === 'image') return !strVal.startsWith('http');
 return strVal === "";
 }) : requiredFields;
-// Đã đầy đủ thì bỏ qua, khối finally sẽ lo phần shift đạn
 if (missingFields && missingFields.length === 0) { continue; }
 shouldDelay = true; // Sẽ gọi API, cần delay sau đó để hãm phanh
 const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields);
@@ -23373,7 +23370,7 @@ return newData;
 }
 consecutiveFailures = 0; // Reset bộ đếm nếu thành công
 } catch (e) {
-shouldDelay = true; // Lỗi mạng (429/503), bắt buộc phải delay để hãm phanh
+shouldDelay = true; // Lỗi mạng, bắt buộc phải delay
 console.warn(`Auto-fill skipped for ${term}:`, e);
 consecutiveFailures++;
 if (consecutiveFailures >= 3) {
@@ -23384,12 +23381,12 @@ aiQueueRef.current = []; // Hủy toàn bộ đạn
 break; // Cắt đứt vòng lặp vô tận
 }
 } finally {
-// [BẢN VÁ 1.07] LUÔN LUÔN thực thi shift để tránh kẹt vô tận (cả khi gọi continue)
+// [BẢN VÁ 1.08] LUÔN LUÔN thực thi shift
 if (aiQueueRef.current.length > 0) {
 aiQueueRef.current.shift();
 }
-// [BẢN VÁ 1.07] LUÔN LUÔN chờ 5s nếu API đã được gọi, chống Bypass 0ms
-if (shouldDelay && aiQueueRef.current.length > 0) {
+// [BẢN VÁ 1.08] Khóa cứng luồng 5s MIỄN LÀ API ĐÃ ĐƯỢC GỌI, KHÔNG QUAN TÂM HÀNG ĐỢI CÒN HAY KHÔNG
+if (shouldDelay) {
 await new Promise(r => setTimeout(r, 5000));
 }
 }
@@ -23524,12 +23521,13 @@ enrichQueueRef.current = []; // Hủy toàn bộ hàng đợi
 break; // Thoát vòng lặp
 }
 } finally {
-// [BẢN VÁ 1.07] LUÔN LUÔN thực thi shift để tránh kẹt
+// [BẢN VÁ 1.08] LUÔN LUÔN thực thi shift để tránh kẹt
 if (enrichQueueRef.current.length > 0) {
 enrichQueueRef.current.shift();
 }
-// [BẢN VÁ 1.07] Làm nguội API 5 giây CHỈ KHI API thực sự bị gọi, chống Bypass 0ms
-if (shouldDelay && enrichQueueRef.current.length > 0) {
+// [BẢN VÁ 1.08] Khóa cứng luồng 5s MIỄN LÀ API ĐÃ ĐƯỢC GỌI, KHÔNG QUAN TÂM HÀNG ĐỢI CÒN HAY KHÔNG
+// Việc này giam giữ isProcessingEnrichQueue.current = true, chặn đứng mọi nỗ lực sinh thêm request từ useEffect
+if (shouldDelay) {
 await new Promise(r => setTimeout(r, 5000));
 }
 }
