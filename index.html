@@ -5713,12 +5713,12 @@ if (key.startsWith('eng_')) return 'Tiếng Anh (Chung)';
 return 'Chuyên đề Khác';
 }
 };
-// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.02
-// Last Updated: 2026-06-15 23:01
+// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.03
+// Last Updated: 2026-06-16 22:46
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
 // Quy tắc: Tuyệt đối không nhúng logic nghiệp vụ vào Tầng này. Tuân thủ Hiến pháp Quy tắc 3.
+// Cập nhật V1.03: [BULLETPROOF DROPDOWN] Tái cấu trúc TopicSelectorDropdown. Cấy Thuật toán Trích xuất 3 Lớp (Triple-Layer Extraction) và mảng dự phòng nội bộ. Gỡ bỏ lệnh tự sát (return null) khi thiếu dữ liệu. Đảm bảo Component miễn nhiễm hoàn toàn với các sự cố bất đồng bộ hoặc hỏng hóc dữ liệu từ Tầng 2.
 // Cập nhật V1.02: [MACRO TOPICS STANDARDIZATION] Sửa đổi TopicSelectorDropdown. Đọc trực tiếp mảng phẳng từ Tầng 2 thay vì truy xuất theo object key (currentLevel). Khắc phục triệt để lỗi biến mất Dropdown sau khi tái cấu trúc 9 chủ đề vĩ mô.
-// Cập nhật V1.01: [VÁ LỖI CRASH #130] Bổ sung Icon Database và các icon phụ trợ khác từ nền tảng 1.02. Đảm bảo toàn vẹn 100% mã nguồn (không cắt xén LevelSelector, TopicSelector).
 // ==================================================================================
 // 1. Error Boundary
 class ErrorBoundary extends React.Component {
@@ -5900,13 +5900,20 @@ return (
 </div>
 );
 };
-// [NEW v1.4 -> Updated v1.02] Bộ chọn Chủ đề (Topic Selector) - Responsive 100%
+// [NEW v1.4 -> Updated v1.03] Bộ chọn Chủ đề (Topic Selector) - Responsive 100%
 const TopicSelectorDropdown = ({ currentLevel, currentTopic, onSelectTopic, mainColor = 'blue' }) => {
 const [isOpen, setIsOpen] = React.useState(false);
-// Đọc trực tiếp mảng phẳng từ Tầng 2, bỏ truy xuất theo currentLevel
-const topics = Array.isArray(window.IoeDataEngine?.TOPICS) ? window.IoeDataEngine.TOPICS : [];
-// Vẫn giữ cơ chế ẩn nếu không có dữ liệu (phòng trường hợp lỗi Tầng 2)
-if (!topics || topics.length === 0) return null;
+// [BẢN VÁ V1.03] THUẬT TOÁN TRÍCH XUẤT 3 LỚP (TRIPLE-LAYER EXTRACTION)
+const fallbackTopics = ["Self & Body", "Social Connections", "Living Spaces", "The Natural World", "Food & Health", "Daily Life & Leisure", "School & Career", "Travel & Exploration", "Other"];
+let topics = fallbackTopics;
+const rawTopics = window.IoeDataEngine?.TOPICS;
+if (Array.isArray(rawTopics) && rawTopics.length > 0) {
+topics = rawTopics;
+} else if (rawTopics && typeof rawTopics === 'object' && !Array.isArray(rawTopics)) {
+if (rawTopics[currentLevel] && Array.isArray(rawTopics[currentLevel])) {
+topics = rawTopics[currentLevel];
+}
+}
 const displayLabel = currentTopic ? currentTopic.split(' (')[0].substring(0, 15) + (currentTopic.length > 15 ? '...' : '') : 'Tất cả chủ đề';
 return (
 <div className="relative inline-block text-left w-full h-full">
