@@ -616,11 +616,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.17
-// Last Updated: 2026-06-16 21:50
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.18
+// Last Updated: 2026-06-16 23:14
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.17: [JSON SANITIZATION] Tiêm bộ lọc cạo sạch rác Markdown (```json) trước khi Parse JSON trong hàm fillCardWithAi. Giải quyết triệt để lỗi SyntaxError nội bộ gây ra thông báo ảo "Máy chủ quá tải" khi mạng vẫn báo 200 OK.
-// Cập nhật V2.16: [GLOBAL COOLDOWN INJECTION] Cấy phanh hãm vật lý (3 giây) vào cuối chu trình thành công của callGeminiApi và fillCardWithAi. Đóng băng Mutex Lock trong thời gian chờ để chặn đứng tuyệt đối mọi request nối đuôi từ các tiến trình ngầm, triệt tiêu lỗi 429 do AI phản hồi quá nhanh. Tuân thủ Điều 3.2.
+// Cập nhật V2.18: [FREE TIER COOLDOWN OPTIMIZATION] Giảm án phạt thành công của Key từ 30s xuống 5s, giữ nguyên phanh vật lý Mutex 3s. Triệt tiêu lỗi Deadlock luân phiên (Swiss cheese data) do khóa Key chồng chéo.
+// Cập nhật V2.17: [JSON SANITIZATION] Tiêm bộ lọc cạo sạch rác Markdown (```json) trước khi Parse JSON trong hàm fillCardWithAi. Giải quyết triệt để lỗi SyntaxError nội bộ gây ra thông báo ảo "Máy chủ quá tải".
+// Cập nhật V2.16: [GLOBAL COOLDOWN INJECTION] Cấy phanh hãm vật lý (3 giây) vào cuối chu trình thành công.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -771,7 +772,8 @@ if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả v�
 const resultText = d.candidates[0].content.parts[0].text;
 const tokenMetadata = d.usageMetadata || null;
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 30000;
+// [BẢN VÁ 2.18] GIẢM ÁN PHẠT THÀNH CÔNG TỪ 30s XUỐNG 5s
+window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
@@ -898,7 +900,8 @@ if (data.error.code === 403 || data.error.code === 400 || (data.error.message &&
 throw new Error(data.error.message);
 }
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 30000;
+// [BẢN VÁ 2.18] GIẢM ÁN PHẠT THÀNH CÔNG TỪ 30s XUỐNG 5s
+window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
