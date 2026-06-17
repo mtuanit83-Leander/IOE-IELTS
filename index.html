@@ -1532,14 +1532,11 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.87
-// Last Updated: 2026-06-14 22:39
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.88
+// Last Updated: 2026-06-17 14:05
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.88: [SOFT PROMPT - LENGTH EQUALIZATION] Cấy ghép "Mẹo thiết kế" (Soft Prompt) vào nhánh sinh đáp án nhiễu Từ vựng. Khuyên AI mô phỏng chính xác độ dài và cấu trúc liệt kê của đáp án gốc, triệt tiêu tận gốc lỗ hổng lộ đáp án (Length Mismatch) mà vẫn duy trì nhiệt độ sáng tạo (Creativity) tối đa của LLM.
 // Cập nhật V1.87: [AUTO-DIAGNOSTIC FALLBACK] Nâng cấp cơ chế tạo bẫy cho thẻ cá nhân. Khi thẻ bị khuyết trường `grammar_type`, hệ thống tự động tiêm Prompt "Động cơ Tự chẩn đoán Ngữ pháp", ép AI tự phân tích cấu trúc câu và bẻ gãy nó. Khắc phục lỗi chính tả trong hàm `ai_getNoise`.
-// Cập nhật V1.86: [DYNAMIC FEW-SHOT] Khắc phục lỗi xung đột Prompt trong hàm `ai_generateOptions` ở chế độ Normal. Áp dụng kỹ thuật mớm ví dụ động theo loại dữ liệu (`type === 'word'` hay `'sentence'`) để tránh làm AI bị "lệch pha nhận thức", nâng cao chất lượng đáp án nhiễu.
-// Cập nhật V1.85: [GRAMMAR GENE SANITIZATION] Thực thi Mũi khoan 2: Thiết lập rào chắn tuyệt đối trong hàm `ai_generateOptions`. Chỉ cho phép gọi và sử dụng Prompt Ngữ pháp (Block 2.9) khi đang ở chế độ Đảo ngược (`isReverse === true`). Cắt bỏ hoàn toàn đoạn Prompt cố ép AI tạo lỗi ngữ pháp bằng tiếng Việt gây ảo giác.
-// Cập nhật V1.84: [BACKWARD COMPATIBILITY] Cấy màng lọc tương thích ngược vào _getFuzzyMicroPrompt. Trích xuất thuộc tính .prompt nếu dữ liệu là Object, bảo vệ Lò đúc khỏi lỗi [object Object] khi Block 2.9 chuẩn bị nâng cấp kiến trúc.
-// Cập nhật V1.83: [CHAIN OF THOUGHT SCHEMA] Cấy trường 'reasoning' vào đầu JSON Schema của hàm ai_generateOptions. Ép AI "nghĩ lớn tiếng" để giải phóng nút thắt cổ chai nhận thức, giảm thời gian phản hồi từ 20s+ xuống 3-5s đối với các câu có ngữ pháp phức tạp.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -1695,6 +1692,8 @@ if (type === 'sentence') {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "Cô ấy đang đọc sách trong thư viện" -> Nhiễu: ["Cô ấy đã mua sách ở thư viện", "Cô ấy đang viết sách trong thư viện", "Anh ấy đang đọc sách trong thư viện"]\n- Nghĩa đúng: "Hôm qua tôi đi xem phim với bạn" -> Nhiễu: ["Hôm qua tôi đi mua sắm với bạn", "Hôm nay tôi đi xem phim với bạn", "Hôm qua tôi đi xem phim một mình"]\n`;
 } else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
+// [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
+prompt += `Mẹo thiết kế: Hãy tạo các đáp án nhiễu có độ dài và nhịp điệu tương đồng với đáp án chuẩn để tránh bị đoán mò. Ví dụ: nếu đáp án chuẩn liệt kê 3 từ đồng nghĩa (VD: "Độc đáo, khác biệt, quan trọng"), đáp án nhiễu cũng nên liệt kê 3 từ (VD: "Bình thường, phổ biến, đại trà").\n`;
 }
 } else {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
@@ -1706,6 +1705,8 @@ if (type === 'sentence') {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "我在图书馆看书" (Tôi đọc sách ở thư viện) -> Nhiễu: ["我去图书馆买书" (Tôi đi thư viện mua sách), "他在图书馆看书" (Anh ấy đọc sách ở thư viện), "我在书店看书" (Tôi đọc sách ở hiệu sách)]\n`;
 } else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n- Nghĩa đúng: "时间" (thời gian) -> Nhiễu: ["世界", "时候", "时刻"]\n`;
+// [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
+prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn. Tránh tình trạng đáp án chuẩn là một cụm từ dài nhưng đáp án nhiễu lại quá ngắn, khiến người chơi dễ dàng đoán được.\n`;
 }
 } else {
 prompt += `Bạn có thể tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
@@ -1713,6 +1714,8 @@ if (type === 'sentence') {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "She is reading a book" -> Nhiễu: ["She is writing a book", "He is reading a book", "She read a book yesterday"]\n`;
 } else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n- Nghĩa đúng: "apple" -> Nhiễu: ["orange", "banana", "grape"]\n`;
+// [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
+prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn. Tránh tình trạng đáp án chuẩn là một cụm từ dài nhưng đáp án nhiễu lại quá ngắn, khiến người chơi dễ dàng đoán được.\n`;
 }
 }
 }
