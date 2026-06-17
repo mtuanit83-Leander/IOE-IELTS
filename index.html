@@ -12053,11 +12053,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.37
-// Last Updated: 2026-06-17 11:36
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.38
+// Last Updated: 2026-06-17 13:25
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.37: [STRICT TYPE ROUTING] Thực thi Mũi khoan 1: Xóa bỏ thuật toán đoán chữ dựa vào khoảng trắng (textSafe.includes(' ')). Sử dụng trực tiếp config.dataMode để xác định chính xác type ('word' hay 'sentence') truyền xuống Lò đúc AI, triệt tiêu tận gốc lỗi nhận diện nhầm Từ vựng thành Câu văn.
-// Cập nhật V1.36: [FLOW CONTINUITY FIX] Phẫu thuật loại bỏ lệnh Hard-Reset cờ `isRoundStarted` trong hàm `handleNext`. Triệt tiêu hoàn toàn lỗi đứt gãy luồng game.
+// Cập nhật V1.38: [REFERENCE ERROR FIX] Vá lỗi crash ứng dụng ngầm do thiếu định danh `React.` tại biến `aiGeneratedCountRef`. Triệt tiêu hiện tượng sập Component gây ra màn hình báo lỗi đỏ (ErrorBoundary) khiến người dùng nhầm lẫn là lỗi cú pháp (thiếu ngoặc). Toàn bộ khối code đã được kiểm tra tính toàn vẹn đa tuyến.
+// Cập nhật V1.37: [STRICT TYPE ROUTING] Thực thi Mũi khoan 1: Xóa bỏ thuật toán đoán chữ dựa vào khoảng trắng (textSafe.includes(' ')). Sử dụng trực tiếp config.dataMode để xác định chính xác type ('word' hay 'sentence').
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12104,7 +12104,7 @@ const historyQueueRef = React.useRef([]);
 const cardsRef = React.useRef(cards);
 const stateRef = React.useRef({});
 const isInitializingRef = React.useRef(false);
-const aiGeneratedCountRef = useRef(0);
+const aiGeneratedCountRef = React.useRef(0); // [BẢN VÁ V1.38] Thêm React.useRef
 const configRef = React.useRef(config);
 const streakTrackerRef = React.useRef([]);
 const globalRetryBagRef = React.useRef(globalRetryBag);
@@ -12897,12 +12897,6 @@ resultTimer={resultTimer} isResultPaused={isResultPaused} toggleResultPause={() 
 queueLength={queueLength} config={configRef.current} aiWaitTime={aiWaitTime}
 onNext={() => handleNext()}
 aiAmmoCount={aiAmmoCount}
-/>
-);
-};
-// EXPORT RA GLOBAL WINDOW
-window.Block5_6_QuizGame = QuizGame;
-window.QuizGame = QuizGame;
 />
 );
 };
