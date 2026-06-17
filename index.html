@@ -12053,11 +12053,12 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.36
-// Last Updated: 2026-06-17 09:40
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.35
+// Last Updated: 2026-06-14 22:42
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.36: [FLOW CONTINUITY FIX] Phẫu thuật loại bỏ lệnh Hard-Reset cờ `isRoundStarted` trong hàm `handleNext`. Triệt tiêu hoàn toàn lỗi đứt gãy luồng game khiến màn hình "BẮT ĐẦU" hiện lên sau mỗi vòng lặp. Đảm bảo trải nghiệm Auto-transition liền mạch.
 // Cập nhật V1.35: [AUTO-DIAGNOSTIC SYNC] Thực thi Mũi khoan 1: Gỡ bỏ đoạn code gán đè `card.grammar_type = activeGrammarId` để bảo toàn "Gen" ngữ pháp gốc của thẻ. Khóa biến `activeGrammarId` chỉ phục vụ duy nhất cho nguồn AI Tự sinh (`ai_pure`).
+// Cập nhật V1.34: [GRAMMAR GENE SANITIZATION] Thực thi Mũi khoan 1: Bổ sung lưới lọc tiệt trùng (delete card.grammar_type) vào hàm fetchTask để chặn đứng hiện tượng thẻ mang "gen ngữ pháp" từ CSDL đầu độc Lò đúc Tầng 2 khi đang chơi ở chế độ Normal.
+// Cập nhật V1.33: [UX CONSTRAINT SYNC] Đồng bộ logic với Tầng 5.5: Vô hiệu hóa việc gửi `grammarId` xuống Tầng 2 nếu người dùng TẮT Chế độ Đảo ngược (`askMode !== 'def'`).
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12168,7 +12169,6 @@ if (typeof coordinatorRef.current.getPendingItems === 'function') {
 const pending = coordinatorRef.current.getPendingItems();
 const realAiCount = pending.filter(item => item && item.isAiGenerated).length;
 setAiAmmoCount(realAiCount);
-}
 }
 }
 }, 500);
@@ -12618,7 +12618,7 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 // ==================================================================================
 const cleanupTimers = () => {
 audioSequenceAbortRef.current = true; // Chém đứt luồng Sequential Audio
-window.speechSynthesis.cancel(); // Tắt ngay TTS của OS đang đọc dở dang
+window.speechSynthesis.cancel();      // Tắt ngay TTS của OS đang đọc dở dang
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 if (timerRef.current) clearTimeout(timerRef.current);
 if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
@@ -12668,8 +12668,7 @@ if (!isGameActiveRef.current || isGenerating) return;
 cleanupTimers();
 setSelectedOptionIndex(null); setIsChecking(false); setFeedbackType(null); setClickedWrongIndices(new Set());
 setShowChanceToast(false); setIsAudioPlaying(false); setHasStartedListening(false);
-// [BẢN VÁ 1.36] Đã xóa lệnh setIsRoundStarted(!timerMode); ở đây để tránh gián đoạn
-setTimeLeft(timeLimit); setListenPlayCount(0);
+setTimeLeft(timeLimit); setIsRoundStarted(!timerMode); setListenPlayCount(0);
 setResultTimer(0); setIsResultPaused(false);
 try {
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
