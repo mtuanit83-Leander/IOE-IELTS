@@ -12053,11 +12053,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.36
-// Last Updated: 2026-06-17 09:40
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.37
+// Last Updated: 2026-06-17 11:36
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.36: [FLOW CONTINUITY FIX] Phẫu thuật loại bỏ lệnh Hard-Reset cờ `isRoundStarted` trong hàm `handleNext`. Triệt tiêu hoàn toàn lỗi đứt gãy luồng game khiến màn hình "BẮT ĐẦU" hiện lên sau mỗi vòng lặp. Đảm bảo trải nghiệm Auto-transition liền mạch.
-// Cập nhật V1.35: [AUTO-DIAGNOSTIC SYNC] Thực thi Mũi khoan 1: Gỡ bỏ đoạn code gán đè `card.grammar_type = activeGrammarId` để bảo toàn "Gen" ngữ pháp gốc của thẻ. Khóa biến `activeGrammarId` chỉ phục vụ duy nhất cho nguồn AI Tự sinh (`ai_pure`).
+// Cập nhật V1.37: [STRICT TYPE ROUTING] Thực thi Mũi khoan 1: Xóa bỏ thuật toán đoán chữ dựa vào khoảng trắng (textSafe.includes(' ')). Sử dụng trực tiếp config.dataMode để xác định chính xác type ('word' hay 'sentence') truyền xuống Lò đúc AI, triệt tiêu tận gốc lỗi nhận diện nhầm Từ vựng thành Câu văn.
+// Cập nhật V1.36: [FLOW CONTINUITY FIX] Phẫu thuật loại bỏ lệnh Hard-Reset cờ `isRoundStarted` trong hàm `handleNext`. Triệt tiêu hoàn toàn lỗi đứt gãy luồng game.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12109,7 +12109,7 @@ const configRef = React.useRef(config);
 const streakTrackerRef = React.useRef([]);
 const globalRetryBagRef = React.useRef(globalRetryBag);
 // Con trỏ cứu hộ tịnh tiến độc lập chống lặp
-const fallbackIndexRef = React.useRef(Math.floor(Math.random() * 10000));
+const fallbackIndexRef = React.useRef(Math.floor(Math.random() * 1000000));
 // Cầu dao ngắt luồng Audio Tuần tự
 const audioSequenceAbortRef = React.useRef(false);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
@@ -12224,7 +12224,7 @@ onLogWrong(mistakeCard);
 // ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN
 // ==================================================================================
 const getEmergencyQuizFallback = () => {
-const randomIndex = Math.floor(Math.random() * 1000000);
+const randomIndex = fallbackIndexRef.current++; // Sử dụng con trỏ tĩnh tuyến tính thay vì ngẫu nhiên mỗi lần
 const meta = {
 id: `quiz_fallback_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
 type: 'quiz',
@@ -12358,9 +12358,6 @@ card = { ...deckRef.current.shift() };
 if (currentAskMode !== 'def') {
 delete card.grammar_type;
 }
-// [BẢN VÁ V1.35] Đã gỡ bỏ đoạn code gán đè thẻ mang gen ngữ pháp từ Dropdown UI.
-// Thẻ sẽ được bảo toàn nguyên trạng. Nếu thẻ đã có gen từ DB, Tầng 2.3A sẽ dùng.
-// Nếu thẻ khuyết gen, Tầng 2.3A sẽ tự động kích hoạt Prompt "Động cơ Tự chẩn đoán".
 if (card && sourceMode === 'card' && isAiMode && currentApiKey && (!card.definition || card.definition.trim() === '')) {
 try {
 const enrichedData = await window.Utils.fillCardWithAi(card.term, lang, currentApiKey, ['definition']);
@@ -12392,9 +12389,8 @@ const correctOptText = isReverse
 ? (isSentenceMode ? (card.displaySentence || card.term) : card.term)
 : card.definition;
 const correctOpt = { text: correctOptText, isCorrect: true };
-const textSafe = correctOptText || '';
-const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(textSafe) : textSafe.includes(' ');
-const type = isSentence ? 'sentence' : 'word';
+// [BẢN VÁ V1.37] Sử dụng biến trực tiếp từ State/Config thay vì đoán mò khoảng trắng
+const type = isSentenceMode ? 'sentence' : 'word';
 try {
 if (hardMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
@@ -12667,7 +12663,6 @@ if (!isGameActiveRef.current || isGenerating) return;
 cleanupTimers();
 setSelectedOptionIndex(null); setIsChecking(false); setFeedbackType(null); setClickedWrongIndices(new Set());
 setShowChanceToast(false); setIsAudioPlaying(false); setHasStartedListening(false);
-// [BẢN VÁ 1.36] Đã xóa lệnh setIsRoundStarted(!timerMode); ở đây để tránh gián đoạn
 setTimeLeft(timeLimit); setListenPlayCount(0);
 setResultTimer(0); setIsResultPaused(false);
 try {
@@ -12902,6 +12897,12 @@ resultTimer={resultTimer} isResultPaused={isResultPaused} toggleResultPause={() 
 queueLength={queueLength} config={configRef.current} aiWaitTime={aiWaitTime}
 onNext={() => handleNext()}
 aiAmmoCount={aiAmmoCount}
+/>
+);
+};
+// EXPORT RA GLOBAL WINDOW
+window.Block5_6_QuizGame = QuizGame;
+window.QuizGame = QuizGame;
 />
 );
 };
