@@ -1532,11 +1532,11 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.88
-// Last Updated: 2026-06-17 14:05
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.89
+// Last Updated: 2026-06-17 17:15
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.88: [SOFT PROMPT - LENGTH EQUALIZATION] Cấy ghép "Mẹo thiết kế" (Soft Prompt) vào nhánh sinh đáp án nhiễu Từ vựng. Khuyên AI mô phỏng chính xác độ dài và cấu trúc liệt kê của đáp án gốc, triệt tiêu tận gốc lỗ hổng lộ đáp án (Length Mismatch) mà vẫn duy trì nhiệt độ sáng tạo (Creativity) tối đa của LLM.
-// Cập nhật V1.87: [AUTO-DIAGNOSTIC FALLBACK] Nâng cấp cơ chế tạo bẫy cho thẻ cá nhân. Khi thẻ bị khuyết trường `grammar_type`, hệ thống tự động tiêm Prompt "Động cơ Tự chẩn đoán Ngữ pháp", ép AI tự phân tích cấu trúc câu và bẻ gãy nó. Khắc phục lỗi chính tả trong hàm `ai_getNoise`.
+// Cập nhật V1.89: [SENTENCE DUAL-MUTATION STRATEGY] Xóa bỏ lệnh Hard Prompt cấu trúc cứng nhắc. Tách biệt hoàn toàn chiến lược sinh bẫy câu văn: Chế độ Bình thường dùng "Đột biến tối thiểu ngữ cảnh", Chế độ Đảo ngược dùng "Đột biến cấu trúc ngữ pháp". Nâng cấp ví dụ Few-shot sát với nguyên lý khảo thí.
+// Cập nhật V1.88: [SOFT PROMPT - LENGTH EQUALIZATION] Cấy ghép "Mẹo thiết kế" (Soft Prompt) vào nhánh sinh đáp án nhiễu Từ vựng. Khuyên AI mô phỏng chính xác độ dài.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -1690,6 +1690,8 @@ prompt += `Mục tiêu ngoại ngữ: "${term}"\nNghĩa đúng (đáp án chuẩ
 prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề với đáp án đúng, đọc rất xuôi tai nhưng mang ý nghĩa sai lệch. Hãy lợi dụng sự hiểu lầm văn cảnh, hoặc nghĩa gần giống nhưng khác sắc thái.\n`;
 if (type === 'sentence') {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "Cô ấy đang đọc sách trong thư viện" -> Nhiễu: ["Cô ấy đã mua sách ở thư viện", "Cô ấy đang viết sách trong thư viện", "Anh ấy đang đọc sách trong thư viện"]\n- Nghĩa đúng: "Hôm qua tôi đi xem phim với bạn" -> Nhiễu: ["Hôm qua tôi đi mua sắm với bạn", "Hôm nay tôi đi xem phim với bạn", "Hôm qua tôi đi xem phim một mình"]\n`;
+// [BẢN VÁ V1.89] TIÊM CHIẾN LƯỢC ĐỘT BIẾN TỐI THIỂU CHO CÂU VĂN BÌNH THƯỜNG
+prompt += `Mẹo thiết kế (Đột biến tối thiểu): Để tạo bẫy hoàn hảo, hãy giữ nguyên 80% cấu trúc và độ dài của bản dịch chuẩn. Chỉ thay đổi 1 hoặc 2 tiểu tiết (như đổi hành động, thay từ trái nghĩa, hoặc sai lệch mốc thời gian/chủ thể) để lừa học viên. Tuyệt đối không viết một câu hoàn toàn mới khác biệt.\n`;
 } else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
 // [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
@@ -1702,7 +1704,9 @@ prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ
 if (distractorLang === 'zh') {
 prompt += `Bạn có thể tạo bẫy đồng âm (Pinyin giống nhau), sai bộ thủ, hoặc các từ có mặt chữ Hán gần giống nhưng khác nghĩa.\n`;
 if (type === 'sentence') {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "我在图书馆看书" (Tôi đọc sách ở thư viện) -> Nhiễu: ["我去图书馆买书" (Tôi đi thư viện mua sách), "他在图书馆看书" (Anh ấy đọc sách ở thư viện), "我在书店看书" (Tôi đọc sách ở hiệu sách)]\n`;
+prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "我昨天去看了电影" -> Nhiễu: ["我明天去看了电影" (Sai thì), "我去了看电影昨天" (Sai trật tự từ), "我昨天看去了电影" (Sai vị trí trợ từ)]\n`;
+// [BẢN VÁ V1.89] TIÊM CHIẾN LƯỢC ĐỘT BIẾN CẤU TRÚC CHO CÂU VĂN ĐẢO NGƯỢC
+prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ, sai lượng từ). Bốn đáp án nhìn lướt qua phải trông gần giống hệt nhau để buộc học viên phải soi kỹ từng chữ.\n`;
 } else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n- Nghĩa đúng: "时间" (thời gian) -> Nhiễu: ["世界", "时候", "时刻"]\n`;
 // [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
@@ -1711,7 +1715,9 @@ prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tươn
 } else {
 prompt += `Bạn có thể tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
 if (type === 'sentence') {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "She is reading a book" -> Nhiễu: ["She is writing a book", "He is reading a book", "She read a book yesterday"]\n`;
+prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "She is reading a book" -> Nhiễu: ["She read a book yesterday" (Sai thì), "She reading a book" (Thiếu to-be), "She is read a book" (Sai dạng động từ)]\n`;
+// [BẢN VÁ V1.89] TIÊM CHIẾN LƯỢC ĐỘT BIẾN CẤU TRÚC CHO CÂU VĂN ĐẢO NGƯỢC
+prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ). Bốn đáp án nhìn lướt qua phải trông gần giống hệt nhau để buộc học viên phải soi kỹ từng chữ.\n`;
 } else {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n- Nghĩa đúng: "apple" -> Nhiễu: ["orange", "banana", "grape"]\n`;
 // [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
@@ -1719,9 +1725,7 @@ prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tươn
 }
 }
 }
-if (type === 'sentence') {
-prompt += `\n[ĐỊNH HƯỚNG CẤU TRÚC]: Hãy viết các đáp án nhiễu dưới dạng CÂU HOÀN CHỈNH. Hãy cố gắng giữ trọn vẹn nhịp điệu và độ dài tương đương câu gốc để học viên phải tư duy logic mới tìm ra lỗi sai.\n`;
-}
+// [BẢN VÁ V1.89] Đã gỡ bỏ toàn hoàn [ĐỊNH HƯỚNG CẤU TRÚC] chung. Chiến lược độ dài và cấu trúc đã được tách riêng.
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOptionsRule) {
 const targetLang = distractorLang === 'zh' ? 'Chinese' : (distractorLang === 'vi' ? 'Vietnamese' : 'English');
