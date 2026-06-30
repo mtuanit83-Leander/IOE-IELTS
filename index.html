@@ -11546,11 +11546,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.26
-// Last Updated: 2026-06-14 23:05
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.27
+// Last Updated: 2026-06-30 17:45
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.27: [ANTI-LEAK UI] Vá lỗ hổng lộ đáp án qua nút Bookmark trong Listening Mode. Gắn trạng thái khóa `isBookmarkLocked` cho cả 2 nút Bookmark, đồng bộ chu kỳ hiển thị với state `isChecking` để bảo vệ tính toàn vẹn của câu hỏi.
 // Cập nhật V1.26: [UI DECLUTTER] Ẩn hoàn toàn section Ngữ pháp khi ở chế độ "Thẻ của tôi" để giảm nhiễu thị giác, do AI đã hoàn toàn xử lý ngầm (Auto-Diagnostic / Original Grammar Gene). Khối Ngữ pháp nay chỉ xuất hiện độc quyền cho chế độ "AI Tự sinh".
-// Cập nhật V1.25: [AUTO-DIAGNOSTIC UX] Khóa hoàn toàn Dropdown Ngữ pháp khi ở chế độ "Thẻ của tôi" (sourceMode === 'card'). Tính năng này chỉ mở cho "AI Tự Sinh". Thẻ cá nhân sẽ tự động dùng Gen có sẵn hoặc kích hoạt Động cơ Tự chẩn đoán.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 // Nhận trực tiếp lang, dataMode và currentLevel từ Tầng 5.7
@@ -11810,6 +11810,9 @@ const isLocked = (timerMode && !isRoundStarted) || isPaused;
 const contentBlurClass = isLocked ? "blur-sm opacity-50 pointer-events-none select-none" : "";
 const isReverse = askMode === 'def';
 const isReverseListen = gameMode === 'listen' && isReverse;
+// [BẢN VÁ V1.27] CHỐT CHẶN BẢO MẬT BOOKMARK
+// Khóa Bookmark nếu chưa trả lời (isChecking = false) VÀ đang ở chế độ rủi ro lộ đáp án (Hỏi Nghĩa hoặc Luyện Nghe)
+const isBookmarkLocked = !isChecking && (askMode === 'def' || gameMode === 'listen');
 const getOptionClass = (opt, i) => {
 // [BẢN VÁ V1.17] Bỏ khóa Option ở chế độ Nghe Đảo ngược để người dùng bấm nút Loa nhỏ
 const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
@@ -11906,7 +11909,7 @@ Thoát ngay
 )}
 </div>
 <div className="flex items-center gap-1 sm:gap-2">
-{!(askMode === 'def' && !isChecking) ? (
+{!isBookmarkLocked ? (
 <button
 onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark({ isSmartTarget: true, display: currentQuestionData.question.term, save: currentQuestionData.question.term, analysis: currentQuestionData.question.definition }); }}
 className={`p-2 rounded-lg transition-colors ${isInNotebook ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
@@ -11915,7 +11918,7 @@ title="Lưu vào Sổ tay"
 <Icons.Bookmark size={20} fill={isInNotebook ? "currentColor" : "none"} />
 </button>
 ) : (
-<div className="p-2 text-gray-300 opacity-50" title="Đang ở chế độ hỏi Nghĩa. Trả lời xong mới được lưu!">
+<div className="p-2 text-gray-300 opacity-50" title={gameMode === 'listen' ? "Đang ở chế độ Nghe. Trả lời xong mới được lưu!" : "Đang ở chế độ hỏi Nghĩa. Trả lời xong mới được lưu!"}>
 <Icons.Bookmark size={20} />
 </div>
 )}
@@ -11963,7 +11966,7 @@ title="Lưu vào Sổ tay"
 </span>
 </div>
 <div className={`w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative min-h-[160px] flex items-center justify-center animate-in transition-all duration-300 ${isLocked ? 'blur-md' : ''}`}>
-{gameMode === 'read' && (
+{gameMode === 'read' && !isBookmarkLocked && (
 <button
 className={`absolute top-3 right-3 p-2 rounded-full transition-all ${isInNotebook ? 'text-yellow-500 bg-yellow-50 shadow-sm' : 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50'}`}
 onClick={(e) => { e.stopPropagation(); if (currentQuestionData?.question && onBookmark) onBookmark({ isSmartTarget: true, display: currentQuestionData.question.term, save: currentQuestionData.question.term, analysis: currentQuestionData.question.definition }); }}
