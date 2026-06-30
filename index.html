@@ -7003,9 +7003,10 @@ return (
 };
 // EXPORT TO WINDOW
 window.SettingsModal = SettingsModal;
-// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.03
-// Last Updated: 2026-06-06 17:20
+// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.04
+// Last Updated: 2026-06-30 17:23
 // Nhiệm vụ: Chuyên trách dữ liệu học tập & Tiến độ của người dùng (Sổ tay, Lỗi sai, Đã thuộc).
+// Cập nhật V1.04: [ANTI-API LEAK] Nâng cấp hàm `handleAiFill` (Nút Sparkle). Thêm lớp khiên "Global Local-First Lookup" tra cứu kho tổng `fc_data_[lang]` trước khi gọi AI để triệt tiêu việc gọi AI lãng phí cho các từ đã tồn tại trong thư viện.
 // Cập nhật V1.03: [ANTI-BOMBING ENGINE] Nâng cấp handleAiFillAll thành luồng chạy tuần tự có kiểm soát. Thêm cơ chế Auto-Retry (Thử lại 3 lần khi gặp lỗi 429/503) và khóa UI hiển thị tiến độ % để chống Spam API.
 // ==================================================================================
 // --- COMPONENT NỘI BỘ: REVIEW DROPDOWN (MENU ÔN TẬP VẠN NĂNG) ---
@@ -7127,10 +7128,14 @@ if (!item.term || item.term.trim() === "") {
 if (!isBatch) alert("Vui lòng nhập từ vựng trước khi gọi AI!");
 return false;
 }
-if (sourceData && sourceData.length > 0) {
-const localMatch = sourceData.find(c => c.term.toLowerCase().trim() === item.term.toLowerCase().trim());
+// [BẢN VÁ V1.04: GLOBAL LOCAL-FIRST LOOKUP]
+// Kéo toàn bộ kho tổng làm màng lọc, kết hợp với sourceData (đề phòng có thẻ mới chưa lưu)
+const globalDeck = window.Utils?.safeJsonParse('fc_data_' + lang, []) || [];
+const combinedData = [...(sourceData || []), ...globalDeck];
+if (combinedData.length > 0) {
+const localMatch = combinedData.find(c => c.term.toLowerCase().trim() === item.term.toLowerCase().trim());
 if (localMatch) {
-console.log("Found in source data, merging local data...");
+console.log("Found in global/source data, merging local data...");
 const mergedItem = {
 ...item,
 definition: item.definition || localMatch.definition,
@@ -7155,7 +7160,10 @@ const missingFields = requiredFields.filter(field => !item[field] || item[field]
 if (!item.image || !item.image.startsWith('http')) {
 missingFields.push('image');
 }
-if (missingFields.length === 0) return true;
+if (missingFields.length === 0) {
+if (!isBatch) alert("Thông tin đã đầy đủ, không cần gọi AI!");
+return true;
+}
 if (!apiKey) {
 if (!isBatch) alert("Vui lòng nhập API Key để AI điền nốt thông tin còn thiếu!");
 throw new Error("Missing API Key");
@@ -24694,9 +24702,10 @@ refs: { audioTimeoutRef: core.audioTimeoutRef }
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_4_useAppLogic = useAppLogic;
 window.useAppLogic = useAppLogic;
-// Block6.5: TẦNG 6: LOGIC TIẾN ĐỘ HỌC TẬP (Study Progress Logic) - Version 1.01
-// Last Updated: 2026-04-13 18:50
+// Block6.5: TẦNG 6: LOGIC TIẾN ĐỘ HỌC TẬP (Study Progress Logic) - Version 1.02
+// Last Updated: 2026-06-30 17:19
 // Nhiệm vụ: Chuyên trách quản lý Hồ sơ học thuật của người dùng (Sổ tay, Đã thuộc, Lỗi sai) và Thuật toán SRS.
+// Cập nhật V1.02: [ANTI-API LEAK] Nâng cấp hàm `handleSaveWords`. Thêm cơ chế "Global Local-First Lookup": Tự động rà soát từ vựng trong kho tổng (All Levels) trước khi lưu. Nếu từ đã tồn tại, chép thẳng 100% dữ liệu gốc và KHÔNG đẩy vào hàng đợi gọi AI. Khóa chặt lỗ hổng tiêu hao Token lãng phí.
 // Ghi chú: Sử dụng window.FcDB (IndexedDB) để lưu trữ bất đồng bộ, gỡ bỏ gánh nặng cho localStorage.
 // ==================================================================================
 const useStudyProgress = (core, latestStateRef, callbacks) => {
@@ -24733,7 +24742,7 @@ if (window.FcDB && core.isDbReady) {
 await window.FcDB.set('fc_notebook_' + lang, newNote);
 }
 };
-// Hàm lưu từ vựng từ bộ chọn (Word Selector)
+// Hàm lưu từ vựng từ bộ chọn (Word Selector) - [BẢN VÁ V1.02: GLOBAL LOCAL-FIRST LOOKUP]
 const handleSaveWords = async (items, isPhrase = false) => {
 let wordsToSave = [];
 if (isPhrase && Array.isArray(items)) {
@@ -24743,16 +24752,38 @@ wordsToSave = [phrase];
 } else {
 wordsToSave = Array.isArray(items) ? items : [items];
 }
-const newItems = wordsToSave.map(w => ({
-term: w.term || w,
+const currentNotebook = latestStateRef.current.notebook;
+const existingTerms = new Set(currentNotebook.map(i => i.term));
+// Kéo toàn bộ kho từ vựng của ngôn ngữ hiện tại (Tất cả Level/Topic) để làm khiên lọc
+const globalDeck = window.Utils?.safeJsonParse('fc_data_' + lang, []) || [];
+let unique = [];
+let aiQueueTargets = [];
+wordsToSave.forEach(w => {
+const term = w.term || w;
+if (existingTerms.has(term)) return;
+// Quét tìm trên kho tổng (Case-insensitive)
+const localMatch = globalDeck.find(c => c.term.toLowerCase() === term.toLowerCase());
+if (localMatch) {
+// Nếu đã có trong kho tổng: Sao chép 100% dữ liệu nguyên bản, KHÔNG đẩy cho AI
+unique.push({
+...localMatch,
+term: term, // Đảm bảo đúng chuẩn format chữ hoa/thường vừa bôi đen
+timestamp: Date.now()
+});
+existingTerms.add(term);
+} else {
+// Nếu là từ hoàn toàn mới: Lưu nháp trắng và đẩy cho AI xử lý
+unique.push({
+term: term,
 definition: '',
 pronunciation: '',
 example: '',
 timestamp: Date.now()
-}));
-const currentNotebook = latestStateRef.current.notebook;
-const existingTerms = new Set(currentNotebook.map(i => i.term));
-const unique = newItems.filter(i => !existingTerms.has(i.term));
+});
+aiQueueTargets.push(term);
+existingTerms.add(term);
+}
+});
 if (unique.length === 0) {
 showToast("Từ vựng đã có trong sổ tay!", "info");
 core.setShowWordSelect(false);
@@ -24766,11 +24797,11 @@ await window.FcDB.set('fc_notebook_' + lang, updated);
 }
 showToast(`Đã thêm ${unique.length} mục vào sổ tay`, "success");
 core.setShowWordSelect(false);
-// Kích hoạt AI dịch ngầm nếu có API Key
-if (core.apiKey && callbacks.processAiQueue) {
-newItems.forEach(w => {
-if (!core.aiQueueRef.current.includes(w.term)) {
-core.aiQueueRef.current.push(w.term);
+// Kích hoạt AI dịch ngầm CHỈ cho những từ thực sự trống (Vượt qua màng lọc)
+if (core.apiKey && callbacks.processAiQueue && aiQueueTargets.length > 0) {
+aiQueueTargets.forEach(term => {
+if (!core.aiQueueRef.current.includes(term)) {
+core.aiQueueRef.current.push(term);
 }
 });
 callbacks.processAiQueue();
