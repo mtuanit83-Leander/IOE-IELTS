@@ -1860,9 +1860,10 @@ const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 }
 };
-// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.2
-// Last Updated: 2026-06-04 08:43
+// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.21
+// Last Updated: 2026-07-02 06:39
 // Nhiệm vụ: Chuyên trách thuật toán Offline (không dùng mạng) và Định tuyến tương thích ngược cho 9 Games Tầng 5.
+// Cập nhật V1.21: [OFFLINE DISTORTION GUARD] Triển khai Giai đoạn 3: Bổ sung cổng gác Gatekeeper tại `GameAlgoEngine` và `offline_generateOptions`. Vô hiệu hóa cờ `isHard` nếu `isReverse === false` để tuyệt đối chặn thuật toán bóp méo tiếng mẹ đẻ, bảo vệ tính toàn vẹn của chính tả.
 // ==================================================================================
 window.GameOfflineEngine = {
 // Helper nội bộ
@@ -2064,7 +2065,8 @@ return { wrongSentence: text + "x", wrongWord: text + "x", correction: text, exp
 // ============================================================================
 // 2. THUẬT TOÁN TẠO ĐÁP ÁN NHIỄU NGOẠI TUYẾN (Offline Quiz Options)
 // ============================================================================
-offline_generateOptions: function(correctText, deck, lang, type, count = 3, isReverse = false) {
+// [BẢN VÁ V1.21] Bổ sung isHard = false làm mặc định để tương thích và nhận cờ chặn từ Facade
+offline_generateOptions: function(correctText, deck, lang, type, count = 3, isReverse = false, isHard = false) {
 const distractors = new Set();
 let baseCard = isReverse ? deck.find(c => c.term === correctText) : deck.find(c => c.definition === correctText);
 baseCard = baseCard || {};
@@ -2079,7 +2081,8 @@ if (distractors.size >= count) break;
 distractors.add(c.definition.trim());
 }
 } else {
-if (window.GameOfflineEngine.offline_distort) {
+// [BẢN VÁ V1.21] Chỉ cho phép bóp méo câu văn khi cờ isHard = true
+if (isHard && window.GameOfflineEngine.offline_distort) {
 const trap1 = window.GameOfflineEngine.offline_distort(correctText, lang, type).wrongSentence;
 if (trap1 && trap1.trim() !== "" && trap1 !== correctText) distractors.add(trap1.trim());
 }
@@ -2158,7 +2161,7 @@ if (fbItems && fbItems.length > 0) {
 fallbackPool = fbItems.map(item => !isReverse ? item.definition : item.term).filter(Boolean);
 }
 }
-// [FIX] Cập nhật mảng dự phòng tránh rác ngôn ngữ khi isReverse = true
+// Cập nhật mảng dự phòng tránh rác ngôn ngữ
 if (fallbackPool.length === 0) {
 if (lang === 'zh' && isReverse) {
 fallbackPool = ["苹果", "香蕉", "猫", "狗", "电脑", "桌子", "老师", "学生"];
@@ -2409,7 +2412,11 @@ offline_distort: (...args) => window.GameOfflineEngine.offline_distort(...args),
 ai_distort: (...args) => window.GameAiEngine.ai_distort(...args)
 },
 OptionsEngine: {
-offline_generateOptions: (...args) => window.GameOfflineEngine.offline_generateOptions(...args),
+// [BẢN VÁ V1.21] GATEKEEPER BẢO VỆ CHÍNH TẢ NỘI BỘ
+offline_generateOptions: (correctText, deck, lang, type, count = 3, isReverse = false, isHard = false) => {
+const safeIsHard = isReverse ? isHard : false; // Ép tắt chế độ Hard (bóp méo) nếu không ở chế độ Đảo ngược
+return window.GameOfflineEngine.offline_generateOptions(correctText, deck, lang, type, count, isReverse, safeIsHard);
+},
 ai_generateOptions: (...args) => window.GameAiEngine.ai_generateOptions(...args)
 },
 ScrambleNoiseEngine: {
@@ -11549,9 +11556,10 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.27
-// Last Updated: 2026-06-30 17:45
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.28
+// Last Updated: 2026-07-01 23:05
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.28: [FORCED AI GUARD] Bắt buộc bật và khóa chức năng "Thử thách AI" khi chọn Chế độ Khó + Không Đảo ngược (Hỏi ngoại ngữ - Chọn tiếng mẹ đẻ) để triệt tiêu lỗi tạo nhiễu sai chính tả nội bộ.
 // Cập nhật V1.27: [ANTI-LEAK UI] Vá lỗ hổng lộ đáp án qua nút Bookmark trong Listening Mode. Gắn trạng thái khóa `isBookmarkLocked` cho cả 2 nút Bookmark, đồng bộ chu kỳ hiển thị với state `isChecking` để bảo vệ tính toàn vẹn của câu hỏi.
 // Cập nhật V1.26: [UI DECLUTTER] Ẩn hoàn toàn section Ngữ pháp khi ở chế độ "Thẻ của tôi" để giảm nhiễu thị giác, do AI đã hoàn toàn xử lý ngầm (Auto-Diagnostic / Original Grammar Gene). Khối Ngữ pháp nay chỉ xuất hiện độc quyền cho chế độ "AI Tự sinh".
 // ==================================================================================
@@ -11591,13 +11599,6 @@ clearInterval(intervalId); // Bắt được rồi -> Dập tắt vòng lặp ng
 }
 return () => { if (intervalId) clearInterval(intervalId); };
 }, [lang, currentLevel]);
-const groupedTopics = React.useMemo(() => {
-return grammarTopics.reduce((acc, topic) => {
-if (!acc[topic.group]) acc[topic.group] = [];
-acc[topic.group].push(topic);
-return acc;
-}, {});
-}, [grammarTopics]);
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_quiz_config');
@@ -11617,8 +11618,22 @@ setGrammarFocus(config.grammarFocus ?? 'random');
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
+// [BẢN VÁ V1.28] FORCED AI GUARD - Ép bật AI nếu người dùng chọn Khó + Không Đảo Ngược
+React.useEffect(() => {
+if (hardMode && askMode === 'term' && sourceMode === 'card') {
+setAiMode(true);
+}
+}, [hardMode, askMode, sourceMode]);
+const groupedTopics = React.useMemo(() => {
+return grammarTopics.reduce((acc, topic) => {
+if (!acc[topic.group]) acc[topic.group] = [];
+acc[topic.group].push(topic);
+return acc;
+}, {});
+}, [grammarTopics]);
 const handleStart = () => {
-const config = { timerMode, listenMode, hardMode, aiMode, timeLimit, askMode, showPronun, autoReadAnswer, sourceMode, suddenDeath, grammarFocus };
+const finalAiMode = (hardMode && askMode === 'term' && sourceMode === 'card') ? true : aiMode;
+const config = { timerMode, listenMode, hardMode, aiMode: finalAiMode, timeLimit, askMode, showPronun, autoReadAnswer, sourceMode, suddenDeath, grammarFocus };
 localStorage.setItem('fc_quiz_config', JSON.stringify(config));
 onStart('quiz', config);
 };
@@ -11632,6 +11647,18 @@ const Icons = window.Icons;
 // Chỉ hiển thị Dropdown khi dùng nguồn AI Tự sinh. Khóa Dropdown nếu không bật Đảo ngược.
 const showGrammarSection = sourceMode === 'ai_pure';
 const isGrammarDisabled = askMode !== 'def';
+// [BẢN VÁ V1.28] Logic hiển thị Subtitle và khóa nút gạt AI
+const isAiForced = hardMode && askMode === 'term' && sourceMode === 'card';
+let aiSubtitle = "";
+if (sourceMode === 'ai_pure') {
+aiSubtitle = "(Chế độ Tự sinh đã bao gồm AI)";
+} else if (!hardMode) {
+aiSubtitle = "(Yêu cầu bật Chế độ Khó)";
+} else if (isAiForced) {
+aiSubtitle = "Bắt buộc dùng AI để chặn lỗi chính tả tiếng Việt";
+} else {
+aiSubtitle = aiMode ? "AI tạo nhiễu thông minh" : "Thuật toán nội bộ";
+}
 return (
 <div className="relative z-10 flex flex-col items-center w-full max-w-3xl h-full animate-in slide-in-from-right-8 px-2 sm:px-4">
 <div className="w-full flex items-center justify-between mb-4 mt-2 shrink-0">
@@ -11700,7 +11727,7 @@ className={`w-full p-3 border rounded-xl text-sm font-medium focus:outline-none 
 <div className="space-y-3">
 <MenuToggle active={askMode === 'def'} setActive={(val) => setAskMode(val ? 'def' : 'term')} icon={Icons.RefreshCw} color="teal" title="Chế độ Đảo ngược" subtitle={askMode === 'def' ? "Hỏi Nghĩa ➔ Chọn Từ" : "Hỏi Từ ➔ Chọn Nghĩa"} />
 <MenuToggle active={hardMode} setActive={handleHardModeChange} icon={Icons.Layers} color="red" title="Chế độ Khó (Hard Mode)" subtitle={hardMode ? "Bẫy thông minh, bóp méo từ" : "Bẫy cơ bản"} />
-<MenuToggle active={aiMode} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={sourceMode === 'ai_pure' ? "(Chế độ Tự sinh đã bao gồm AI)" : (!hardMode ? "(Yêu cầu bật Chế độ Khó)" : (aiMode ? "AI tạo nhiễu thông minh" : "Thuật toán nội bộ"))} disabled={!hardMode || sourceMode === 'ai_pure'} />
+<MenuToggle active={aiMode || isAiForced} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={aiSubtitle} disabled={!hardMode || sourceMode === 'ai_pure' || isAiForced} />
 <MenuToggle active={suddenDeath} setActive={setSuddenDeath} icon={Icons.AlertCircle} color="slate" title="Chế độ Địa ngục" subtitle="Sai 1 lần là mất điểm ngay lập tức" />
 </div>
 <div className="space-y-3">
@@ -12074,10 +12101,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.38
-// Last Updated: 2026-06-17 13:25
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.39
+// Last Updated: 2026-07-01 23:15
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.38: [REFERENCE ERROR FIX] Vá lỗi crash ứng dụng ngầm do thiếu định danh `React.` tại biến `aiGeneratedCountRef`. Triệt tiêu hiện tượng sập Component gây ra màn hình báo lỗi đỏ (ErrorBoundary) khiến người dùng nhầm lẫn là lỗi cú pháp (thiếu ngoặc). Toàn bộ khối code đã được kiểm tra tính toàn vẹn đa tuyến.
+// Cập nhật V1.39: [SAFETY FALLBACK] Triển khai Giai đoạn 2 của cơ chế bảo vệ tiếng mẹ đẻ: Nếu ở chế độ Khó + Không Đảo ngược nhưng AI gặp sự cố (Timeout, Hết Token, Rớt mạng), hệ thống BẮT LỖI và bypass quá trình bóp méo Offline, ép hạ cấp xuống độ khó "Dễ" để nạp thẻ ngẫu nhiên, giúp UI không bị kẹt và không văng ra chữ lỗi.
+// Cập nhật V1.38: [REFERENCE ERROR FIX] Vá lỗi crash ứng dụng ngầm do thiếu định danh `React.` tại biến `aiGeneratedCountRef`.
 // Cập nhật V1.37: [STRICT TYPE ROUTING] Thực thi Mũi khoan 1: Xóa bỏ thuật toán đoán chữ dựa vào khoảng trắng (textSafe.includes(' ')). Sử dụng trực tiếp config.dataMode để xác định chính xác type ('word' hay 'sentence').
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
@@ -12125,7 +12153,7 @@ const historyQueueRef = React.useRef([]);
 const cardsRef = React.useRef(cards);
 const stateRef = React.useRef({});
 const isInitializingRef = React.useRef(false);
-const aiGeneratedCountRef = React.useRef(0); // [BẢN VÁ V1.38] Thêm React.useRef
+const aiGeneratedCountRef = React.useRef(0);
 const configRef = React.useRef(config);
 const streakTrackerRef = React.useRef([]);
 const globalRetryBagRef = React.useRef(globalRetryBag);
@@ -12245,7 +12273,7 @@ onLogWrong(mistakeCard);
 // ĐỘNG CƠ CỨU HỘ JIT ĐỊNH TUYẾN ĐA NGUỒN
 // ==================================================================================
 const getEmergencyQuizFallback = () => {
-const randomIndex = fallbackIndexRef.current++; // Sử dụng con trỏ tĩnh tuyến tính thay vì ngẫu nhiên mỗi lần
+const randomIndex = fallbackIndexRef.current++;
 const meta = {
 id: `quiz_fallback_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
 type: 'quiz',
@@ -12295,21 +12323,15 @@ return fallbackFormatted;
 const fetchTask = async () => {
 let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// GIẢI MÃ LỰA CHỌN NGỮ PHÁP TỪ UI KÈM BỘ LỌC CẤP ĐỘ VÀ RÀNG BUỘC ĐẢO NGƯỢC
 let activeGrammarId = null;
 const currentDataMode = configRef.current?.dataMode || dataMode;
 const currentLevelStr = configRef.current?.level || level;
 const currentAskMode = configRef.current?.askMode || askMode;
-// [BẢN VÁ V1.35] AUTO-DIAGNOSTIC SYNC
-// Chỉ cho phép dùng Ngữ pháp (Dropdown UI) khi đang ở Chế độ Đảo ngược VÀ Nguồn AI Tự sinh.
-// Thẻ cá nhân (card) sẽ phớt lờ UI và sử dụng Gen có sẵn hoặc Fallback Tự chẩn đoán ở Tầng 2.3A.
 const canUseGrammar = currentAskMode === 'def' && sourceMode === 'ai_pure';
 if (canUseGrammar && configRef.current && configRef.current.grammarFocus) {
 if (configRef.current.grammarFocus === 'random') {
-// Thuật toán xóc xăm ngẫu nhiên 1 chủ điểm cho từng câu (Có lọc theo cấp độ)
 const availableTopics = window.IoeDataEngine ? window.IoeDataEngine.getGrammarTopics('quiz', lang, currentLevelStr) : [];
 if (availableTopics.length > 0) {
-// Ưu tiên lọc bỏ các lỗi phổ thông (general_) để tập trung vào ngữ pháp thật
 const nonGeneral = availableTopics.filter(t => !t.id.startsWith('general_'));
 const poolToUse = nonGeneral.length > 0 ? nonGeneral : availableTopics;
 activeGrammarId = poolToUse[Math.floor(Math.random() * poolToUse.length)].id;
@@ -12337,7 +12359,7 @@ difficulty: hardMode ? 'hard' : 'easy',
 hardMode: hardMode,
 askMode: askMode,
 mode: 'minigame',
-grammarId: activeGrammarId // ỐNG DẪN 1: Bơm ID ngữ pháp xuống Lò đúc Tầng 2 (Nếu null sẽ dùng Prompt mặc định/Tự chẩn đoán)
+grammarId: activeGrammarId
 };
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
 const qData = await window.ExamEngine.hydrateQuestion(meta, currentApiKey, freshHistory);
@@ -12370,12 +12392,8 @@ validCards = [...validCards, ...newFbs];
 }
 deckRef.current = window.Utils.shuffleArray(validCards);
 }
-// Trích xuất thẻ theo cơ chế Shallow Copy để không làm ô nhiễm bộ bài gốc của người dùng
 card = { ...deckRef.current.shift() };
 }
-// [BẢN VÁ V1.34] SANITIZE DỮ LIỆU (TIỆT TRÙNG GEN NGỮ PHÁP)
-// Nếu không ở chế độ Đảo ngược, phải tước bỏ thuộc tính grammar_type có sẵn từ thẻ Excel/IndexedDB
-// để tránh Lò đúc Tầng 2 bị nhầm lẫn và sinh ra Prompt rác.
 if (currentAskMode !== 'def') {
 delete card.grammar_type;
 }
@@ -12410,7 +12428,6 @@ const correctOptText = isReverse
 ? (isSentenceMode ? (card.displaySentence || card.term) : card.term)
 : card.definition;
 const correctOpt = { text: correctOptText, isCorrect: true };
-// [BẢN VÁ V1.37] Sử dụng biến trực tiếp từ State/Config thay vì đoán mò khoảng trắng
 const type = isSentenceMode ? 'sentence' : 'word';
 try {
 if (hardMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
@@ -12432,11 +12449,22 @@ localStorage.setItem('fc_total_tokens', currentTotal + 150);
 }
 } catch (aiError) { console.warn("AI Quiz Preload Fallback:", aiError.message); }
 }
-if (distractors.length === 0 && hardMode && window.OfflineDistractorEngine && window.OfflineDistractorEngine.generate) {
+// [BẢN VÁ V1.39] Kiểm soát Bóp méo Offline (Offline Distractor Guard)
+if (distractors.length === 0 && hardMode) {
+if (!isReverse) {
+// Nếu là chế độ Không Đảo ngược (Hỏi ngoại ngữ, đáp án tiếng mẹ đẻ):
+// AI đã tạch hoặc không dùng AI -> Không cho phép bóp méo tiếng Việt bằng thuật toán Offline.
+// Bypass việc gọi OfflineDistractorEngine, tự động rớt xuống thuật toán bên dưới lấy đáp án "Dễ" ngẫu nhiên.
+console.warn("[AI Guard] Fallback: Hạ cấp xuống độ khó Dễ để bảo vệ toàn vẹn chính tả tiếng Việt.");
+} else {
+// Nếu là chế độ Đảo ngược (Đáp án là ngoại ngữ): An toàn để bóp méo bằng engine cục bộ.
+if (window.OfflineDistractorEngine && window.OfflineDistractorEngine.generate) {
 const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 const distTexts = window.OfflineDistractorEngine.generate(correctOptText, cleanDeckForTraps, lang, askMode);
 if (distTexts && distTexts.length > 0) {
 distractors = distTexts.slice(0, numOptions - 1).map(d => ({ text: d, isCorrect: false }));
+}
+}
 }
 }
 } catch(e) { console.warn("Fetch Options Error:", e); }
@@ -12633,15 +12661,15 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 // XÓA TIMERS & CẬP NHẬT CỜ NGẮT ÂM THANH
 // ==================================================================================
 const cleanupTimers = () => {
-audioSequenceAbortRef.current = true; // Chém đứt luồng Sequential Audio
-window.speechSynthesis.cancel(); // Tắt ngay TTS của OS đang đọc dở dang
+audioSequenceAbortRef.current = true;
+window.speechSynthesis.cancel();
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 if (timerRef.current) clearTimeout(timerRef.current);
 if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
 };
 React.useEffect(() => {
 if (isPaused) {
-cleanupTimers(); // Dừng đọc khi bấm Pause
+cleanupTimers();
 }
 }, [isPaused]);
 React.useEffect(() => {
@@ -12759,44 +12787,37 @@ return;
 }
 setListenPlayCount(prev => prev + 1);
 }
-// Dập tắt ngay luồng cũ nếu đang chạy
 audioSequenceAbortRef.current = true;
 window.speechSynthesis.cancel();
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 const playFn = async () => {
 if (!isGameActiveRef.current) return;
-audioSequenceAbortRef.current = false; // Reset cờ cho phiên làm việc mới
+audioSequenceAbortRef.current = false;
 setHasStartedListening(true);
 setIsAudioPlaying(true);
 const isReverseListen = gameMode === 'listen' && askMode === 'def';
 if (isReverseListen) {
-// CHẾ ĐỘ ĐẢO NGƯỢC: Đọc tuần tự A, B, C, D
 const labels = ['A', 'B', 'C', 'D', 'E'];
 const options = qData.options || [];
 for (let i = 0; i < options.length; i++) {
-if (audioSequenceAbortRef.current) break; // Cầu dao chém đứt luồng
-// 1. Đọc nhãn A, B, C, D (Kèm Safety Check cho onPlay)
+if (audioSequenceAbortRef.current) break;
 await new Promise(resolve => {
 if (audioSequenceAbortRef.current) return resolve();
 if (onPlay) onPlay(labels[i], null, null, () => resolve());
 else resolve();
 });
 if (audioSequenceAbortRef.current) break;
-// 2. Tạm nghỉ 1.5s (1500ms) theo yêu cầu UX
 await new Promise(resolve => setTimeout(resolve, 1500));
 if (audioSequenceAbortRef.current) break;
-// 3. Đọc nội dung đáp án ngoại ngữ
 await new Promise(resolve => {
 if (audioSequenceAbortRef.current) return resolve();
 if (onPlay) onPlay(options[i].text, null, null, () => resolve());
 else resolve();
 });
 if (audioSequenceAbortRef.current) break;
-// 4. Nghỉ 1s phân tách giữa các câu
 await new Promise(resolve => setTimeout(resolve, 1000));
 }
 } else {
-// CHẾ ĐỘ BÌNH THƯỜNG: Chỉ đọc 1 câu hỏi rồi dừng
 const isSentenceMode = configRef.current?.dataMode === 'sentence';
 const textToPlay = (isSentenceMode && qData.question?.displaySentence)
 ? qData.question.displaySentence
@@ -12807,7 +12828,6 @@ if (onPlay) onPlay(textToPlay, null, null, () => resolve());
 else resolve();
 });
 }
-// Báo cáo hoàn tất chuỗi Audio nếu không bị ngắt
 if (isGameActiveRef.current && !audioSequenceAbortRef.current) {
 setIsAudioPlaying(false);
 }
@@ -12867,12 +12887,10 @@ const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proce
 onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1000); } });
 } else proceedToNext(1500);
 } else {
-// CẦU DAO ĐỊA NGỤC (SUDDEN DEATH)
 if (!clickedWrongIndices.has(index)) {
 const newWrong = new Set(clickedWrongIndices).add(index);
 setClickedWrongIndices(newWrong);
 const isSuddenDeath = configRef.current?.suddenDeath || false;
-// Chỉ cho cơ hội thứ 2 nếu KHÔNG bật Chế độ Địa ngục
 if (!isSuddenDeath && newWrong.size === 1) {
 setShowChanceToast(true);
 setTimeout(() => setShowChanceToast(false), 2000);
@@ -12892,7 +12910,7 @@ setTimeout(() => triggerAutoSave(), 150);
 };
 const handleSkip = () => {
 if (isChecking || isGenerating || aiWaitTime > 0) return;
-cleanupTimers(); // Dừng đọc âm thanh ngay lập tức
+cleanupTimers();
 setWrongCount(w => w + 1); setStreak(0);
 if (showToast) safeShowToast("Bỏ qua (+1 sai)", "warning");
 localPushToRetryBag(currentQuestionData.question);
