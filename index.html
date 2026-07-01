@@ -616,9 +616,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.18
-// Last Updated: 2026-06-16 23:14
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.19
+// Last Updated: 2026-06-30 21:55
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.19: [LEGACY DETECTION REMOVAL] Xóa bỏ thuật toán `detectSentence` lỗi thời trong hàm `fillCardWithAi`. Thêm tham số `dataMode` để nhận lệnh trực tiếp từ Tầng UI, giải quyết triệt để lỗi AI phân tích sai cấu trúc câu dưới 4 từ (Ví dụ: "I have one apple").
 // Cập nhật V2.18: [FREE TIER COOLDOWN OPTIMIZATION] Giảm án phạt thành công của Key từ 30s xuống 5s, giữ nguyên phanh vật lý Mutex 3s. Triệt tiêu lỗi Deadlock luân phiên (Swiss cheese data) do khóa Key chồng chéo.
 // Cập nhật V2.17: [JSON SANITIZATION] Tiêm bộ lọc cạo sạch rác Markdown (```json) trước khi Parse JSON trong hàm fillCardWithAi. Giải quyết triệt để lỗi SyntaxError nội bộ gây ra thông báo ảo "Máy chủ quá tải".
 // Cập nhật V2.16: [GLOBAL COOLDOWN INJECTION] Cấy phanh hãm vật lý (3 giây) vào cuối chu trình thành công.
@@ -803,7 +804,7 @@ throw e; // Lõi mạng ném thẳng lỗi ra ngoài, từ chối thử lại ng
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ROUND-ROBIN DYNAMIC POOL - FAIL FAST)
 // ============================================================================
-window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null) => {
+window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab') => {
 return window.Utils.withApiLock(async () => {
 window.__apiCooldowns = window.__apiCooldowns || {};
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
@@ -815,7 +816,8 @@ keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)];
 }
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Thiếu Key Pool)");
 const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
-const isSentence = window.Utils.detectSentence(cleanTermForAi);
+// [BẢN VÁ V2.19] Nhổ bỏ detectSentence, nhận lệnh trực tiếp từ dataMode
+const isSentence = dataMode === 'sentence';
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) ? window.IoeDataEngine.TOPICS : [];
 const topicRestriction = predefinedTopics.length > 0 ? ` Mục topic BẮT BUỘC chọn chính xác 1 từ khóa trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.` : '';
@@ -7003,9 +7005,10 @@ return (
 };
 // EXPORT TO WINDOW
 window.SettingsModal = SettingsModal;
-// Block4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.04
-// Last Updated: 2026-06-30 17:23
+// Block 4.3: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Learning Tracking Modals) - Version 1.05
+// Last Updated: 2026-07-01 09:29
 // Nhiệm vụ: Chuyên trách dữ liệu học tập & Tiến độ của người dùng (Sổ tay, Lỗi sai, Đã thuộc).
+// Cập nhật V1.05: [STRICT DATA ROUTING] Bổ sung prop `dataMode` vào NotebookModal. Truyền trực tiếp cờ định tuyến này xuống hàm `fillCardWithAi` để xóa bỏ hoàn toàn lỗ hổng AI đoán mò câu văn/từ vựng dựa trên độ dài.
 // Cập nhật V1.04: [ANTI-API LEAK] Nâng cấp hàm `handleAiFill` (Nút Sparkle). Thêm lớp khiên "Global Local-First Lookup" tra cứu kho tổng `fc_data_[lang]` trước khi gọi AI để triệt tiêu việc gọi AI lãng phí cho các từ đã tồn tại trong thư viện.
 // Cập nhật V1.03: [ANTI-BOMBING ENGINE] Nâng cấp handleAiFillAll thành luồng chạy tuần tự có kiểm soát. Thêm cơ chế Auto-Retry (Thử lại 3 lần khi gặp lỗi 429/503) và khóa UI hiển thị tiến độ % để chống Spam API.
 // ==================================================================================
@@ -7075,7 +7078,7 @@ title={isDisabled ? `Cần ít nhất ${game.min} từ để chơi` : ''}
 );
 };
 // 1. SỔ TAY TỪ VỰNG (NOTEBOOK)
-const NotebookModal = ({ isOpen, onClose, data, onSave, onPlay, t, mainColor, onDelete, apiKey, lang, onCopy, sourceData, onOpenHanzi, onReviewGame }) => {
+const NotebookModal = ({ isOpen, onClose, data, onSave, onPlay, t, mainColor, onDelete, apiKey, lang, onCopy, sourceData, onOpenHanzi, onReviewGame, dataMode }) => {
 const [editingData, setEditingData] = React.useState([]);
 const [fillingIndices, setFillingIndices] = React.useState(new Set());
 const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
@@ -7170,7 +7173,7 @@ throw new Error("Missing API Key");
 }
 setFillingIndices(prev => new Set(prev).add(index));
 try {
-const result = await window.Utils.fillCardWithAi(item.term, lang, apiKey, missingFields);
+const result = await window.Utils.fillCardWithAi(item.term, lang, apiKey, missingFields, dataMode);
 if (result) {
 if (result._tokenUsage) {
 const used = result._tokenUsage.totalTokenCount || 0;
@@ -23234,11 +23237,11 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.09
-// Last Updated: 2026-06-16 13:45
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.10
+// Last Updated: 2026-06-30 22:05
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
+// Cập nhật V1.10: [LEGACY DETECTION REMOVAL] Nhổ bỏ thuật toán đoán mò `detectSentence`. Sử dụng trực tiếp `core.dataMode` từ UI truyền xuống để định tuyến mảng `requiredFields` và truyền tham số thứ 5 xuống Lõi API (Block 2.1c). Khắc phục triệt để lỗi AI phân tích sai cấu trúc câu ngắn.
 // Cập nhật V1.09: [CONTEXT-AWARE FILTER HOTFIX] Phẫu thuật mảng `requiredFields`. Tích hợp thuật toán nhận diện ngữ cảnh `detectSentence`. Từ vựng (Vocab) sẽ KHÔNG bị ép kiểm tra `grammar_type`, và Câu văn (Sentence) sẽ KHÔNG bị ép kiểm tra `sinoViet`. Triệt tiêu hoàn toàn lỗi API bắn nhầm thẻ Từ vựng đã đầy đủ dữ liệu (False Positive Enrichment).
-// Cập nhật V1.08: [ULTIMATE COOLDOWN HOTFIX] Sửa lỗi logic nghiêm trọng trong khối `finally` khiến hệ thống bỏ qua Delay 5s khi hàng đợi cạn (`shift()` làm length = 0). Giờ đây, Phanh hãm 5s sẽ khóa chặt luồng xử lý MIỄN LÀ API đã bị hit, bất chấp trạng thái của hàng đợi.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23365,8 +23368,8 @@ try {
 if (!currentApiKey) { continue; }
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
-// [HOTFIX v1.09] Lưới lọc thông minh nhận diện ngữ cảnh
-const isSentence = window.Utils.detectSentence(term);
+// [HOTFIX v1.10] Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
+const isSentence = core.dataMode === 'sentence';
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
 if (isSentence) {
 requiredFields.push('grammar_type');
@@ -23384,7 +23387,8 @@ return strVal === "";
 }) : requiredFields;
 if (missingFields && missingFields.length === 0) { continue; }
 shouldDelay = true; // Sẽ gọi API, cần delay sau đó để hãm phanh
-const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields);
+// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields, core.dataMode);
 if (missingFields.includes('image')) {
 if (!res.image || !res.image.startsWith('http')) {
 const fallbackQuery = noteCard && noteCard.image && noteCard.image.trim() !== "" ? noteCard.image : term;
@@ -23456,8 +23460,8 @@ processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
 const currentCard = latestStateRef.current.cards.find(c => c.term === cardTerm);
-// [HOTFIX v1.09] Lưới lọc thông minh nhận diện ngữ cảnh
-const isSentence = window.Utils.detectSentence(cardTerm);
+// [HOTFIX v1.10] Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
+const isSentence = core.dataMode === 'sentence';
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
 if (isSentence) {
 requiredFields.push('grammar_type');
@@ -23474,7 +23478,8 @@ return !currentCard?.[f] || (f === 'image' && !currentCard[f].startsWith('http')
 // Trả về false nếu không gọi API, giúp quá trình chạy ngầm quét 0ms
 if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return false; }
 if (silent && !missingFields.length) return false;
-const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields);
+// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields, core.dataMode);
 if (missingFields.includes('image') && (!enriched.image || !enriched.image.startsWith('http'))) {
 const q = (currentCard?.image && currentCard.image.trim()) || cardTerm;
 enriched.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(q)}&w=300&h=300&c=7&rs=1&p=0`;
@@ -23507,7 +23512,8 @@ const cardTerm = latestStateRef.current.cards[index]?.term;
 if (!cardTerm) return;
 setIsAiLoading(true);
 try {
-const result = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, ['analysis']);
+// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+const result = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, ['analysis'], core.dataMode);
 if (result?.analysis) {
 setCards(prev => {
 const idx = prev.findIndex(c => c.term === cardTerm);
@@ -23529,7 +23535,10 @@ finally { setIsAiLoading(false); }
 const handleManualAiFill = async (term) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
 setIsAiLoading(true);
-try { return await window.Utils.fillCardWithAi(term, core.lang, apiKey); }
+try {
+// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+return await window.Utils.fillCardWithAi(term, core.lang, apiKey, null, core.dataMode);
+}
 catch (e) { callbacks.showToast(e.message, "error"); return null; }
 finally { setIsAiLoading(false); }
 };
@@ -26229,10 +26238,11 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.08
-// Last Updated: 2026-05-18 09:58
+// Block 7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.10
+// Last Updated: 2026-06-30 22:13
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [NÂNG CẤP MENU ÔN TẬP - BƯỚC 2] Xóa cáp nối tĩnh (onStudy, onQuiz, onScramble) trong NotebookModal và IncorrectModal. Cắm cáp định tuyến vạn năng `onReviewGame` để hỗ trợ gọi 10 Mini-games. Tuân thủ Điều 3 Hiến pháp.
+// Cập nhật V1.10: [DATA-MODE PROPAGATION] Cắm cáp truyền `dataMode` từ `coreState` xuống `NotebookModal` để phục vụ API gọi AI chính xác cấu trúc ngữ cảnh. Khôi phục phần mã render Modals bị thiếu.
+// Cập nhật V1.09: Nâng cấp luồng dữ liệu sổ tay.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
@@ -26509,210 +26519,242 @@ onJumpToCard: logic.actions?.handleJumpToCard
 )
 );
 }
-// --- 4. Xây dựng Bảng điều khiển Đáy (Bottom Control Area) ---
-const bottomArea = !coreState.isGamePlaying ? React.createElement('div', { className: "w-full flex flex-col shrink-0 bg-transparent z-50 relative" },
-coreState.viewMode === 'learn' ? React.createElement('div', { className: "w-full max-w-3xl mx-auto px-2 mb-3" },
-renderComponent('ControlBar', {
-isShuffle: coreState.isShuffle,
-setIsShuffle: coreState.setIsShuffle,
-handlePrev: logic.actions?.handlePrev,
-handleNext: logic.actions?.handleNext,
-isAutoPlaying: coreState.isAutoPlaying,
-toggleAutoPlay: logic.actions?.toggleAutoPlay,
-isAutoMode: coreState.isAutoMode,
-handleStopAutoPlay: logic.actions?.handleStopAutoPlay,
-isFlipLocked: coreState.isFlipLocked,
-setIsFlipLocked: coreState.setIsFlipLocked,
-handleOpenWordSelector: logic.actions?.handleOpenWordSelector,
-handleMarkMastered: logic.actions?.handleMarkMastered,
-t: logic.actions?.t,
-mainColor: appMainColor,
-isCurrentCardInNotebook: coreState.state?.isCurrentCardInNotebook,
-onToggleBatterySaver: logic.actions?.toggleBatterySaver
-})
-) : null,
-renderComponent('BottomNav', {
-onNavigate: (mode) => {
-if (mode === 'learn') coreState.setViewMode('learn');
-if (mode === 'game') coreState.setViewMode('game');
-if (mode === 'settings') coreState.setShowSettings(true);
-},
-onApiKey: () => coreState.setShowApiKeyModal(true),
-onOpenAiChat: () => coreState.setShowAiChat(true),
-t: logic.actions?.t,
-mainColor: appMainColor,
-currentMode: coreState.viewMode
-})
-) : null;
-// --- 5. Trả về Main Layout ---
-return React.createElement('div', { className: `w-full h-[100dvh] flex flex-col relative overflow-hidden bg-${appMainColor}-50` },
-React.createElement('div', { className: "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col overflow-y-auto custom-scrollbar pb-6" },
-mainContent
-),
-bottomArea,
-coreState.showSettings && renderComponent('SettingsModal', {
-isOpen: true,
-onClose: () => coreState.setShowSettings(false),
-onApply: () => coreState.setShowSettings(false),
-initialSettings: coreState.settings,
-onUpdate: coreState.setSettings,
-onResetData: logic.actions?.handleResetSettings,
-currentLang: coreState.lang,
-t: logic.actions?.t,
-uiLang: coreState.uiLang,
-setUiLang: coreState.setUiLang,
-mainColor: appMainColor,
-onDone: () => coreState.setShowSettings(false),
-totalTokens: coreState.totalTokens,
-onResetTokens: () => coreState.setTotalTokens(0),
-voices: coreState.voices,
-testSpeak: logic.actions?.speak,
-systemLogs: coreState.systemLogs,             // NỐI CÁP LOG XUỐNG SETTINGS
-onClearLogs: () => coreState.setSystemLogs([]) // HÀM XÓA LOG
-}),
-coreState.showApiKeyModal && renderComponent('ApiKeyModal', {
-isOpen: true,
-onClose: () => coreState.setShowApiKeyModal(false),
-apiKey: coreState.apiKey,
-setApiKey: coreState.setApiKey,
-t: logic.actions?.t
-}),
-coreState.showNotebook && renderComponent('NotebookModal', {
-isOpen: true,
+// --- 4. Modal Mounting ---
+const modals = React.createElement(React.Fragment, null,
+renderComponent('NotebookModal', {
+isOpen: coreState.showNotebook,
 onClose: () => coreState.setShowNotebook(false),
 data: coreState.notebook,
 onSave: logic.actions?.handleNotebookSave,
 onPlay: logic.actions?.speak,
-t: logic.actions?.t,
+t: logic.actions?.t || ((k) => k),
 mainColor: appMainColor,
-onDelete: (idx) => { },
+onDelete: logic.actions?.handleNotebookDelete,
 apiKey: coreState.apiKey,
 lang: coreState.lang,
-onCopy: logic.actions?.handleCopyForSheet,
+onCopy: logic.actions?.handleCopyNotebook,
 sourceData: coreState.cards,
 onOpenHanzi: logic.actions?.handleOpenHanziStudy,
-onReviewGame: logic.actions?.handleReviewWithGame
+onReviewGame: logic.actions?.handleReviewWithGame,
+dataMode: coreState.dataMode // [CẮM CÁP DATA-MODE XUỐNG TẦNG 4]
 }),
-coreState.showLinkManager && renderComponent('LinkManagerModal', {
-isOpen: true,
-onClose: () => coreState.setShowLinkManager(false),
-t: logic.actions?.t,
-defaultUrl: coreState.defaultUrl,
-setDefaultUrl: coreState.setDefaultUrl,
-exportUrl: coreState.exportUrl,
-setExportUrl: coreState.setExportUrl,
-importUrl: coreState.importUrl,
-setImportUrl: coreState.setImportUrl,
-apiKeySheetUrl: coreState.apiKeySheetUrl,
-setApiKeySheetUrl: coreState.setApiKeySheetUrl,
-onImport: logic.actions?.handleImport,
-onImportToNotebook: logic.actions?.handleImportToNotebook,
-onExportLink: logic.actions?.handleExportLink,
-onExportExcel: logic.actions?.handleExportExcel,
-onFileImport: logic.actions?.handleFileImport,
-onSaveSettings: (k, v) => localStorage.setItem(k, v),
-onFetchKey: logic.actions?.handleFetchApiKey,
-onDownloadTemplate: logic.actions?.handleDownloadTemplate,
-lang: coreState.lang,
-aiHarvestPool: coreState.aiHarvestPool,
-onExportHarvestToExcel: logic.actions?.handleExportHarvestToExcel,
-onClearHarvestPool: logic.actions?.handleClearHarvestPool
-}),
-coreState.showManual && renderComponent('ManualInputModal', {
-isOpen: true,
-onClose: () => coreState.setShowManual(false),
-onImport: logic.actions?.handleManualImport,
-onAddCard: logic.actions?.handleAddCard,
-onAutoFill: ai?.handleManualAiFill,
-t: logic.actions?.t,
-mainColor: appMainColor
-}),
-coreState.showIncorrectModal && renderComponent('IncorrectModal', {
-isOpen: true,
-onClose: logic.actions?.handleCloseIncorrect,
-data: coreState.incorrectList,
-onRemove: logic.actions?.handleRemoveWrong,
-onRemoveAll: logic.actions?.handleRemoveAllIncorrect,
-onOpenHanzi: logic.actions?.handleOpenHanziStudy,
-t: logic.actions?.t,
+renderComponent('SettingsModal', {
+isOpen: coreState.showSettings,
+onClose: () => coreState.setShowSettings(false),
+onApply: logic.actions?.handleApplySettings,
+initialSettings: coreState.settings,
+voices: coreState.voices,
+testSpeak: logic.actions?.speak,
+onResetData: logic.actions?.handleResetData,
+currentLang: coreState.lang,
+t: logic.actions?.t || ((k) => k),
+uiLang: coreState.uiLang,
+setUiLang: coreState.setUiLang,
 mainColor: appMainColor,
-onReviewGame: logic.actions?.handleReviewWithGame
+onDone: () => coreState.setShowSettings(false),
+onUpdate: logic.actions?.handleApplySettings,
+totalTokens: coreState.totalTokens,
+onResetTokens: logic.actions?.handleResetTokens,
+systemLogs: coreState.systemLogs,
+onClearLogs: logic.actions?.handleClearLogs
 }),
-coreState.showMastered && renderComponent('MasteredModal', {
-isOpen: true,
+renderComponent('MasteredModal', {
+isOpen: coreState.showMastered,
 onClose: () => coreState.setShowMastered(false),
 data: coreState.mastered,
 onRestore: logic.actions?.handleRestoreMastered,
 onRestoreAll: logic.actions?.handleRestoreAllMastered,
-t: logic.actions?.t,
+t: logic.actions?.t || ((k) => k),
 mainColor: appMainColor
 }),
-coreState.showWordSelect && renderComponent('WordSelectorModal', {
-isOpen: true,
-onClose: () => coreState.setShowWordSelect(false),
-text: coreState.wordSelectTarget,
-currentLang: coreState.lang,
-onSave: logic.actions?.handleSaveWords,
-t: logic.actions?.t,
+renderComponent('IncorrectModal', {
+isOpen: coreState.showIncorrect,
+onClose: () => coreState.setShowIncorrect(false),
+data: coreState.incorrectList,
+onRemove: logic.actions?.handleRemoveIncorrect,
+onRemoveAll: logic.actions?.handleRemoveAllIncorrect,
+onOpenHanzi: logic.actions?.handleOpenHanziStudy,
+t: logic.actions?.t || ((k) => k),
+mainColor: appMainColor,
+onReviewGame: logic.actions?.handleReviewWithGame
+}),
+renderComponent('SaveLoadModal', {
+isOpen: coreState.showSaveLoad,
+onClose: () => coreState.setShowSaveLoad(false),
+onExport: logic.actions?.handleExportSaveFile,
+onImport: logic.actions?.handleImportSaveFile,
+t: logic.actions?.t || ((k) => k),
 mainColor: appMainColor
 }),
-coreState.showHelp && renderComponent('HelpModal', {
-isOpen: true,
-onClose: logic.actions?.handleCloseHelp,
-t: logic.actions?.t,
-mainColor: appMainColor
-}),
-coreState.showHanziSelector && renderComponent('HanziSelectorModal', {
-isOpen: true,
-onClose: logic.actions?.handleCloseHanziSelector,
-text: coreState.wordSelectTarget,
-onSelect: logic.actions?.handleStartWriting,
-t: logic.actions?.t
-}),
-coreState.showHanziWriter && renderComponent('HanziWriterModal', {
-isOpen: true,
-onClose: logic.actions?.handleCloseHanziWriter,
-char: coreState.currentHanziChar,
-t: logic.actions?.t,
-mainColor: appMainColor
-}),
-coreState.showAiChat && renderComponent('AiChatModal', {
-isOpen: true,
+renderComponent('AiChatModal', {
+isOpen: coreState.showAiChat,
 onClose: () => coreState.setShowAiChat(false),
 apiKey: coreState.apiKey,
 lang: coreState.lang,
-t: logic.actions?.t,
+t: logic.actions?.t || ((k) => k),
 mainColor: appMainColor
 }),
-coreState.showSaveLoadModal && renderComponent('SaveLoadModal', {
-isOpen: true,
-onClose: logic.actions?.handleCloseSaveLoad,
-onExport: logic.actions?.handleExportSaveFile,
-onImport: logic.actions?.handleImportSaveFile,
-t: logic.actions?.t,
-mainColor: appMainColor
+renderComponent('ApiKeyModal', {
+isOpen: coreState.showApiKeyModal,
+onClose: () => coreState.setShowApiKeyModal(false),
+apiKey: coreState.apiKey,
+setApiKey: coreState.setApiKey,
+t: logic.actions?.t || ((k) => k)
 }),
-coreState.showExamPoolManager && renderComponent('ExamPoolManagerModal', {
-isOpen: true,
-onClose: logic.actions?.handleCloseExamPoolManager,
+renderComponent('LinkManagerModal', {
+isOpen: coreState.showLinkManager,
+onClose: () => coreState.setShowLinkManager(false),
+t: logic.actions?.t || ((k) => k),
 mainColor: appMainColor,
-examPoolData: logic.examPoolData
+onExportPool: logic.actions?.handleExportPoolToExcel,
+onImportPool: logic.actions?.handleImportPoolFromExcel,
+onExportHarvest: logic.actions?.handleExportHarvestToExcel,
+onClearHarvest: logic.actions?.handleClearHarvestPool,
+totalHarvested: coreState.aiHarvestPool ? Object.values(coreState.aiHarvestPool).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0) : 0,
+apiKeySheetUrl: coreState.apiKeySheetUrl,
+onSaveApiKeySheetUrl: (url) => {
+coreState.setApiKeySheetUrl(url);
+if (url) {
+window.Utils.safeLocalStorageSet(window.STORAGE_KEYS.API_KEY_SHEET, url);
+logic.actions?.showToast("Đã lưu Link Sheet API Key", "success");
+} else {
+localStorage.removeItem(window.STORAGE_KEYS.API_KEY_SHEET);
+logic.actions?.showToast("Đã xóa Link Sheet API Key", "info");
+}
+},
+importUrl: coreState.importUrl,
+onSaveImportUrl: (url) => {
+coreState.setImportUrl(url);
+if (url) window.Utils.safeLocalStorageSet('fc_import_url', url);
+else localStorage.removeItem('fc_import_url');
+},
+vocabUrl: coreState.lang === 'zh' ? (coreState.defaultUrl?.vocab || window.DEFAULT_SHEETS?.zh?.vocab) : (coreState.lang === 'en' ? (coreState.defaultUrl?.vocab || window.DEFAULT_SHEETS?.en?.vocab) : (coreState.defaultUrl || window.DEFAULT_SHEETS?.vi?.default)),
+sentenceUrl: coreState.lang === 'zh' ? (coreState.defaultUrl?.sentence || window.DEFAULT_SHEETS?.zh?.sentence) : (coreState.lang === 'en' ? (coreState.defaultUrl?.sentence || window.DEFAULT_SHEETS?.en?.sentence) : ''),
+onSaveDefaultUrl: (url, type) => {
+const key = window.STORAGE_KEYS.DEFAULT_URL + '_' + coreState.lang;
+let currentUrls = window.Utils.safeJsonParse(key, {});
+if (typeof currentUrls === 'string') {
+currentUrls = { default: currentUrls };
+}
+if (type === 'vocab') currentUrls.vocab = url;
+else if (type === 'sentence') currentUrls.sentence = url;
+else currentUrls = url;
+window.Utils.safeLocalStorageSet(key, currentUrls);
+coreState.setDefaultUrl(currentUrls);
+logic.actions?.showToast("Đã lưu Link Google Sheet Mặc định", "success");
+}
 }),
-// [BƯỚC 1 - AI CONFIG] Rendering Modal Cài đặt AI vào Tầng 7
-coreState.showAiConfigModal && renderComponent('AiConfigModal', {
-isOpen: true,
-onClose: () => coreState.setShowAiConfigModal(false),
+renderComponent('ManualInputModal', {
+isOpen: coreState.showManual,
+onClose: () => coreState.setShowManual(false),
+onImport: logic.actions?.handleManualImport,
+onAddCard: logic.actions?.handleAddSingleCard,
+onAutoFill: ai?.handleManualAiFill,
+t: logic.actions?.t || ((k) => k),
+mainColor: appMainColor
+}),
+renderComponent('AiConfigModal', {
+isOpen: coreState.showAiConfig,
+onClose: () => coreState.setShowAiConfig(false),
 aiConfig: coreState.aiConfig,
 setAiConfig: coreState.setAiConfig,
 mainColor: appMainColor
 }),
-coreState.toast && React.createElement('div', {
-className: `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[300] font-bold text-white animate-in slide-in-from-top-4 fade-in duration-300 flex items-center gap-2 ${coreState.toast.type === 'error' ? 'bg-red-500' : coreState.toast.type === 'success' ? 'bg-green-500' : coreState.toast.type === 'warning' ? 'bg-orange-500' : 'bg-gray-800'}`
-}, coreState.toast.text || coreState.toast.message)
+renderComponent('WordSelectorModal', {
+isOpen: coreState.showWordSelector,
+onClose: () => coreState.setShowWordSelector(false),
+onSave: logic.actions?.handleNotebookSave,
+text: coreState.wordSelectTarget,
+currentLang: coreState.lang,
+t: logic.actions?.t || ((k) => k),
+mainColor: appMainColor
+}),
+renderComponent('HanziSelectorModal', {
+isOpen: coreState.showHanziSelector,
+onClose: () => coreState.setShowHanziSelector(false),
+text: coreState.wordSelectTarget,
+onSelect: logic.actions?.handleOpenHanziStudy,
+t: logic.actions?.t || ((k) => k)
+}),
+renderComponent('HanziWriterModal', {
+isOpen: coreState.showHanziWriter,
+onClose: () => coreState.setShowHanziWriter(false),
+char: coreState.currentHanziChar,
+t: logic.actions?.t || ((k) => k),
+mainColor: appMainColor
+}),
+renderComponent('HelpModal', {
+isOpen: coreState.showHelp,
+onClose: () => coreState.setShowHelp(false),
+t: logic.actions?.t || ((k) => k),
+mainColor: appMainColor
+}),
+renderComponent('ExamPoolManagerModal', {
+isOpen: coreState.showExamPoolManager,
+onClose: () => coreState.setShowExamPoolManager(false),
+mainColor: appMainColor,
+examPoolData: logic.state?.examPoolData
+})
+);
+// --- 5. Return Main Layout ---
+return React.createElement('div', { className: `flex flex-col h-screen max-h-screen overflow-hidden bg-${appMainColor}-50 font-inter transition-colors duration-500` },
+mainContent,
+coreState.viewMode !== 'game' && React.createElement('div', { className: "flex-shrink-0 relative z-10" },
+coreState.viewMode === 'learn' && renderComponent('ControlBar', {
+onNext: logic.actions?.handleNext,
+onPrev: logic.actions?.handlePrev,
+isAutoPlaying: coreState.isAutoPlaying,
+toggleAutoPlay: logic.actions?.handleToggleAutoPlay,
+isShuffle: coreState.isShuffle,
+toggleShuffle: () => coreState.setIsShuffle(!coreState.isShuffle),
+isAutoMode: coreState.isAutoMode,
+toggleAutoMode: logic.actions?.handleToggleAutoMode,
+isFlipLocked: coreState.isFlipLocked,
+toggleFlipLock: logic.actions?.handleToggleFlipLock,
+mainColor: appMainColor,
+isCurrentCardInNotebook: coreState.notebook.some(item => item.term === coreState.cards[coreState.currentCardIndex]?.term),
+onToggleNotebook: () => logic.actions?.handleNotebookSave(coreState.cards[coreState.currentCardIndex]),
+t: logic.actions?.t || ((k) => k),
+settings: coreState.settings,
+onOpenSettings: () => coreState.setShowSettings(true),
+totalCards: coreState.cards.length,
+currentIndex: coreState.currentCardIndex
+}),
+renderComponent('BottomNav', {
+onNavigate: (mode) => {
+if (mode === 'api') {
+coreState.setShowApiKeyModal(true);
+} else if (mode === 'settings') {
+coreState.setShowSettings(true);
+} else if (mode === 'ai_chat') {
+coreState.setShowAiChat(true);
+} else {
+coreState.setViewMode(mode);
+coreState.setIsGamePlaying(false);
+}
+},
+onApiKey: () => coreState.setShowApiKeyModal(true),
+onOpenAiChat: () => coreState.setShowAiChat(true),
+t: logic.actions?.t || ((k) => k),
+mainColor: appMainColor,
+currentMode: coreState.viewMode
+})
+),
+modals,
+// Toast UI
+coreState.toast && React.createElement('div', { className: "fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[9999] w-full px-4 flex justify-center pointer-events-none" },
+React.createElement('div', { className: `max-w-md w-auto bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 pointer-events-auto border border-gray-700 backdrop-blur-md` },
+coreState.toast.type === 'success' && React.createElement(window.Icons.CheckCircle, { className: "text-green-400 shrink-0", size: 20 }),
+coreState.toast.type === 'error' && React.createElement(window.Icons.AlertCircle, { className: "text-red-400 shrink-0", size: 20 }),
+coreState.toast.type === 'info' && React.createElement(window.Icons.Info, { className: "text-blue-400 shrink-0", size: 20 }),
+coreState.toast.type === 'warning' && React.createElement(window.Icons.AlertTriangle, { className: "text-yellow-400 shrink-0", size: 20 }),
+React.createElement('span', { className: "font-medium text-sm sm:text-base whitespace-pre-wrap break-words" }, coreState.toast.text)
+)
+)
 );
 };
+// [QUAN TRỌNG] ĐỂ TƯƠNG THÍCH, ĐẨY VÀO WINDOW
 window.Block7_1_App = App;
-window.App = App;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<ErrorBoundary><App /></ErrorBoundary>);
 </script>
