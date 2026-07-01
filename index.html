@@ -26238,24 +26238,22 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block 7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.10
-// Last Updated: 2026-06-30 22:13
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.09
+// Last Updated: 2026-07-01 10:19
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật V1.10: [DATA-MODE PROPAGATION] Cắm cáp truyền `dataMode` từ `coreState` xuống `NotebookModal` để phục vụ API gọi AI chính xác cấu trúc ngữ cảnh. Khôi phục phần mã render Modals bị thiếu.
-// Cập nhật V1.09: Nâng cấp luồng dữ liệu sổ tay.
+// Cập nhật: [HOTFIX V1.09] Nối lại các cáp bị đứt của LinkManagerModal. Bơm thêm `dataMode` vào NotebookModal để định tuyến chính xác API.
 // ==================================================================================
 const App = () => {
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
 const [isReady, setIsReady] = React.useState(false);
 const [loadError, setLoadError] = React.useState(false);
-const [isIdle, setIsIdle] = React.useState(false); // [NEW v1.05] Trạng thái chờ mạng an toàn
+const [isIdle, setIsIdle] = React.useState(false);
 React.useEffect(() => {
 let attempts = 0;
 const maxAttempts = 100; // Giới hạn 10 giây (100 * 100ms)
 let timeoutId;
 const checkDependencies = () => {
 if (isIdle) return; // Dừng check nếu đang ở trạng thái chờ
-// [QA FIX V1.08] Gộp chung trên 1 dòng để tuyệt đối tuân thủ Hiến pháp Điều 3.2. Đã bổ sung AiConfigModal.
 const required = ['Block6_1_useCoreState', 'SettingsModal', 'NotebookModal', 'GameView', 'AppHeader', 'FlashcardDisplay', 'ControlBar', 'AiChatModal', 'SaveLoadModal', 'QueueEngine', 'AiFactoryEngine', 'FcDB', 'useAppLogic', 'useAiLogic', 'useDataLogic', 'useExamLogic', 'ExamUIShell', 'ExamPoolManagerModal', 'useExamPoolLogic', 'ImageQuizSetup', 'ImageQuizPlayScreen', 'ImageQuizGame', 'useImageQuizLogic', 'PronunciationSetup', 'PronunciationPlayScreen', 'PronunciationGame', 'usePronunciationLogic', 'ListeningSetup', 'ListeningPlayScreen', 'ListeningGame', 'useListeningLogic', 'ReadingSetup', 'ReadingPlayScreen', 'ReadingGame', 'useReadingLogic', 'AiConfigModal'];
 const missing = required.filter(dep => !window[dep]);
 if (missing.length === 0) {
@@ -26276,8 +26274,8 @@ checkDependencies();
 return () => {
 if (timeoutId) clearTimeout(timeoutId);
 };
-}, [isIdle]); // Chạy lại hiệu ứng nếu isIdle thay đổi từ true -> false
-// [NEW v1.05] Màn hình Lỗi Mạng chuẩn UX mới
+}, [isIdle]);
+// Màn hình Lỗi Mạng chuẩn UX mới
 if (loadError && !isIdle) {
 return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center animate-in fade-in" },
 React.createElement('div', { className: "w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-inner" },
@@ -26295,7 +26293,7 @@ className: "px-8 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl shadow-sm h
 }, "Thoát")
 );
 }
-// [NEW v1.05] Trạng thái Idle chờ kết nối
+// Trạng thái Idle chờ kết nối
 if (isIdle) {
 return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50 p-6 text-center animate-in fade-in" },
 React.createElement('div', { className: "w-16 h-16 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center mb-6 shadow-inner" },
@@ -26333,9 +26331,7 @@ coreStateRef.current = coreState;
 const handleGlobalToast = React.useCallback((msg, type = 'success') => {
 const messageText = typeof msg === 'string' ? msg : (msg?.text || msg?.message || 'Thông báo');
 const messageType = (typeof msg === 'object' && msg?.type) ? msg.type : type;
-// 1. Hiển thị UI Toast nguyên bản
 coreState.setToast({ text: messageText, type: messageType, id: Date.now() });
-// 2. Bắt lỗi và ghi vào "Hộp đen" (System Logs)
 if (messageType === 'error' || messageType === 'warning') {
 coreState.setSystemLogs(prev => {
 const newLog = {
@@ -26344,11 +26340,11 @@ message: messageText,
 type: messageType,
 timeStr: new Date().toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + new Date().toLocaleDateString('vi-VN')
 };
-return [newLog, ...prev].slice(0, 50); // Giữ tối đa 50 log mới nhất để không tràn RAM
+return [newLog, ...prev].slice(0, 50);
 });
 }
 }, [coreState.setToast, coreState.setSystemLogs]);
-// [HỘP ĐEN SỰ KIỆN - MŨI NHỌN 1] Hệ thống Ghi log chuyên sâu (Deep-Logging)
+// Hệ thống Ghi log chuyên sâu (Deep-Logging)
 const handleSystemEventLog = React.useCallback((message, errorDetail = null) => {
 let detailStr = "";
 if (errorDetail) {
@@ -26357,14 +26353,13 @@ detailStr = typeof errorDetail === 'object' ? (errorDetail.message || JSON.strin
 const fullMessage = detailStr ? `${message} | Detail: ${detailStr}` : message;
 coreState.setSystemLogs(prev => {
 const newLog = {
-id: Date.now() + Math.random(), // Thêm random để tránh trùng ID nếu hệ thống xả lỗi liên tục
+id: Date.now() + Math.random(),
 message: fullMessage,
-type: 'error', // System log chủ yếu là báo lỗi kỹ thuật
+type: 'error',
 timeStr: new Date().toLocaleTimeString('vi-VN', { hour12: false }) + ' ' + new Date().toLocaleDateString('vi-VN')
 };
 return [newLog, ...prev].slice(0, 50);
 });
-// CHÚ Ý: Hàm này cố tình KHÔNG gọi setToast để âm thầm ghi nhận lỗi mà không làm phiền trải nghiệm chơi game.
 }, [coreState.setSystemLogs]);
 // Trích xuất Hooks với Core đã được cấy ghép Interceptor
 const coreWithInterceptor = { ...coreState, setToast: handleGlobalToast };
@@ -26375,7 +26370,7 @@ const ai = (useAiLogic && logic.actions) ? useAiLogic(coreWithInterceptor, coreS
 // Gán quyền quản lý Global Toast và System Log cho Window
 React.useEffect(() => {
 window.globalShowToast = handleGlobalToast;
-window.logSystemEvent = handleSystemEventLog; // Bơm hàm Deep-Logging ra Global
+window.logSystemEvent = handleSystemEventLog;
 }, [handleGlobalToast, handleSystemEventLog]);
 // Khởi tạo hàm xử lý Smart Bookmark
 const handleSmartBookmark = React.useCallback((data) => {
@@ -26398,7 +26393,6 @@ logic.actions.handleNotebookSave(data);
 }, [logic.actions]);
 // ============================================================================
 // 1.5. CHỐT CHẶN CƠ SỞ DỮ LIỆU INDEXEDDB (EARLY RETURN)
-// (Phải đặt ở đây để không làm đứt gãy luồng khai báo Hooks ở trên)
 // ============================================================================
 if (!coreState.isDbReady) {
 return React.createElement('div', { className: "flex flex-col items-center justify-center h-screen bg-gray-50" },
@@ -26407,11 +26401,9 @@ React.createElement('p', { className: "text-blue-600 font-bold animate-pulse tra
 );
 }
 // ============================================================================
-// 2. TÍNH TOÁN RENDER & UI (Chỉ chạy khi DB đã sẵn sàng)
+// 2. TÍNH TOÁN RENDER & UI
 // ============================================================================
-// Tính toán màu chủ đạo ngay tại đây để đảm bảo không bị undefined
 const appMainColor = coreState.lang === 'zh' ? 'red' : (coreState.lang === 'vi' ? 'green' : 'sky');
-// Render Helper
 const renderComponent = (compName, props) => {
 const Comp = window[compName];
 if (!Comp) return null;
@@ -26420,7 +26412,6 @@ return React.createElement(Comp, props);
 // --- 3. View Routing ---
 let mainContent = null;
 if (coreState.viewMode === 'game') {
-// A. Màn hình Game
 mainContent = renderComponent('GameView', {
 t: logic.actions?.t || ((k) => k),
 mainColor: "indigo",
@@ -26433,7 +26424,7 @@ lang: coreState.lang,
 onPlay: logic.actions?.speak,
 onBookmark: handleSmartBookmark,
 notebook: coreState.notebook,
-showToast: handleGlobalToast, // NỐI CÁP ĐÁNH CHẶN TOAST XUỐNG GAME VIEW
+showToast: handleGlobalToast,
 onLogWrong: logic.actions?.handleLogWrong,
 onOpenIncorrect: logic.actions?.handleOpenIncorrect,
 globalRetryBag: coreState.globalRetryBag,
@@ -26451,16 +26442,14 @@ window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[coreState.lang].dataKey, 
 },
 onSaveToHarvest: logic.actions?.handleSaveToHarvest,
 currentLevel: coreState.currentLevel,
-currentTopic: coreState.currentTopic, // Cắm cáp Topic cho AI
+currentTopic: coreState.currentTopic,
 dataMode: coreState.dataMode,
 onOpenExamPoolManager: logic.actions?.handleOpenExamPoolManager,
-examLogic: logic.state?.examLogic, // [VÁ LỖI CẮM CÁP MOCK TEST] Truyền Core Logic xuống
-onOpenAiConfig: logic.actions?.handleOpenAiConfig // [NEW v1.07] Nối cáp mở cài đặt AI
+examLogic: logic.state?.examLogic,
+onOpenAiConfig: logic.actions?.handleOpenAiConfig
 });
 } else {
-// B. Màn hình Học (Flashcard) - Mặc định
 mainContent = React.createElement(React.Fragment, null,
-// Header
 renderComponent('AppHeader', {
 lang: coreState.lang,
 setLang: coreState.setLang,
@@ -26485,7 +26474,6 @@ setCurrentLevel: coreState.setCurrentLevel,
 currentTopic: coreState.currentTopic,
 setCurrentTopic: coreState.setCurrentTopic
 }),
-// Flashcard Area
 React.createElement('div', { className: "flex-1 flex flex-col justify-center min-h-[400px]" },
 renderComponent('FlashcardDisplay', {
 isFlipped: coreState.isFlipped,
@@ -26519,242 +26507,215 @@ onJumpToCard: logic.actions?.handleJumpToCard
 )
 );
 }
-// --- 4. Modal Mounting ---
-const modals = React.createElement(React.Fragment, null,
-renderComponent('NotebookModal', {
-isOpen: coreState.showNotebook,
-onClose: () => coreState.setShowNotebook(false),
-data: coreState.notebook,
-onSave: logic.actions?.handleNotebookSave,
-onPlay: logic.actions?.speak,
-t: logic.actions?.t || ((k) => k),
+// --- 4. Xây dựng Bảng điều khiển Đáy ---
+const bottomArea = !coreState.isGamePlaying ? React.createElement('div', { className: "w-full flex flex-col shrink-0 bg-transparent z-50 relative" },
+coreState.viewMode === 'learn' ? React.createElement('div', { className: "w-full max-w-3xl mx-auto px-2 mb-3" },
+renderComponent('ControlBar', {
+isShuffle: coreState.isShuffle,
+setIsShuffle: coreState.setIsShuffle,
+handlePrev: logic.actions?.handlePrev,
+handleNext: logic.actions?.handleNext,
+isAutoPlaying: coreState.isAutoPlaying,
+toggleAutoPlay: logic.actions?.toggleAutoPlay,
+isAutoMode: coreState.isAutoMode,
+handleStopAutoPlay: logic.actions?.handleStopAutoPlay,
+isFlipLocked: coreState.isFlipLocked,
+setIsFlipLocked: coreState.setIsFlipLocked,
+handleOpenWordSelector: logic.actions?.handleOpenWordSelector,
+handleMarkMastered: logic.actions?.handleMarkMastered,
+t: logic.actions?.t,
 mainColor: appMainColor,
-onDelete: logic.actions?.handleNotebookDelete,
-apiKey: coreState.apiKey,
-lang: coreState.lang,
-onCopy: logic.actions?.handleCopyNotebook,
-sourceData: coreState.cards,
-onOpenHanzi: logic.actions?.handleOpenHanziStudy,
-onReviewGame: logic.actions?.handleReviewWithGame,
-dataMode: coreState.dataMode // [CẮM CÁP DATA-MODE XUỐNG TẦNG 4]
-}),
-renderComponent('SettingsModal', {
-isOpen: coreState.showSettings,
+isCurrentCardInNotebook: coreState.state?.isCurrentCardInNotebook,
+onToggleBatterySaver: logic.actions?.toggleBatterySaver
+})
+) : null,
+renderComponent('BottomNav', {
+onNavigate: (mode) => {
+if (mode === 'learn') coreState.setViewMode('learn');
+if (mode === 'game') coreState.setViewMode('game');
+if (mode === 'settings') coreState.setShowSettings(true);
+},
+onApiKey: () => coreState.setShowApiKeyModal(true),
+onOpenAiChat: () => coreState.setShowAiChat(true),
+t: logic.actions?.t,
+mainColor: appMainColor,
+currentMode: coreState.viewMode
+})
+) : null;
+// --- 5. Trả về Main Layout ---
+return React.createElement('div', { className: `w-full h-[100dvh] flex flex-col relative overflow-hidden bg-${appMainColor}-50` },
+React.createElement('div', { className: "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col overflow-y-auto custom-scrollbar pb-6" },
+mainContent
+),
+bottomArea,
+coreState.showSettings && renderComponent('SettingsModal', {
+isOpen: true,
 onClose: () => coreState.setShowSettings(false),
-onApply: logic.actions?.handleApplySettings,
+onApply: () => coreState.setShowSettings(false),
 initialSettings: coreState.settings,
-voices: coreState.voices,
-testSpeak: logic.actions?.speak,
-onResetData: logic.actions?.handleResetData,
+onUpdate: coreState.setSettings,
+onResetData: logic.actions?.handleResetSettings,
 currentLang: coreState.lang,
-t: logic.actions?.t || ((k) => k),
+t: logic.actions?.t,
 uiLang: coreState.uiLang,
 setUiLang: coreState.setUiLang,
 mainColor: appMainColor,
 onDone: () => coreState.setShowSettings(false),
-onUpdate: logic.actions?.handleApplySettings,
 totalTokens: coreState.totalTokens,
-onResetTokens: logic.actions?.handleResetTokens,
+onResetTokens: () => coreState.setTotalTokens(0),
+voices: coreState.voices,
+testSpeak: logic.actions?.speak,
 systemLogs: coreState.systemLogs,
-onClearLogs: logic.actions?.handleClearLogs
+onClearLogs: () => coreState.setSystemLogs([])
 }),
-renderComponent('MasteredModal', {
-isOpen: coreState.showMastered,
+coreState.showApiKeyModal && renderComponent('ApiKeyModal', {
+isOpen: true,
+onClose: () => coreState.setShowApiKeyModal(false),
+apiKey: coreState.apiKey,
+setApiKey: coreState.setApiKey,
+t: logic.actions?.t
+}),
+// [BẢN VÁ 1.09] BƠM CÁP dataMode VÀO NotebookModal
+coreState.showNotebook && renderComponent('NotebookModal', {
+isOpen: true,
+onClose: () => coreState.setShowNotebook(false),
+data: coreState.notebook,
+onSave: logic.actions?.handleNotebookSave,
+onPlay: logic.actions?.speak,
+t: logic.actions?.t,
+mainColor: appMainColor,
+onDelete: (idx) => { },
+apiKey: coreState.apiKey,
+lang: coreState.lang,
+onCopy: logic.actions?.handleCopyForSheet,
+sourceData: coreState.cards,
+onOpenHanzi: logic.actions?.handleOpenHanziStudy,
+onReviewGame: logic.actions?.handleReviewWithGame,
+dataMode: coreState.dataMode // <--- ĐIỂM KẾT NỐI MỚI
+}),
+// [BẢN VÁ 1.09] NỐI LẠI CÁP CHO LinkManagerModal
+coreState.showLinkManager && renderComponent('LinkManagerModal', {
+isOpen: true,
+onClose: () => coreState.setShowLinkManager(false),
+t: logic.actions?.t,
+defaultUrl: coreState.defaultUrl,
+setDefaultUrl: coreState.setDefaultUrl,
+exportUrl: coreState.exportUrl,
+setExportUrl: coreState.setExportUrl,
+importUrl: coreState.importUrl,
+setImportUrl: coreState.setImportUrl,
+apiKeySheetUrl: coreState.apiKeySheetUrl,
+setApiKeySheetUrl: coreState.setApiKeySheetUrl,
+onImport: logic.actions?.handleImport,
+onImportToNotebook: logic.actions?.handleImportToNotebook,
+onExportLink: logic.actions?.handleExportLink,
+onExportExcel: logic.actions?.handleExportExcel,
+onFileImport: logic.actions?.handleFileImport,
+onSaveSettings: (k, v) => localStorage.setItem(k, v),
+onFetchKey: logic.actions?.handleFetchApiKey,
+onDownloadTemplate: logic.actions?.handleDownloadTemplate,
+lang: coreState.lang,
+aiHarvestPool: coreState.aiHarvestPool,
+onExportHarvestToExcel: logic.actions?.handleExportHarvestToExcel,
+onClearHarvestPool: logic.actions?.handleClearHarvestPool,
+// NỐI CÁC HÀM XỬ LÝ (Ánh xạ từ logic.actions)
+onApply: logic.actions?.handleApplyLink,
+onSaveLink: logic.actions?.handleSaveLink
+}),
+coreState.showManual && renderComponent('ManualInputModal', {
+isOpen: true,
+onClose: () => coreState.setShowManual(false),
+onImport: logic.actions?.handleManualImport,
+onAddCard: logic.actions?.handleAddCard,
+onAutoFill: ai?.handleManualAiFill,
+t: logic.actions?.t,
+mainColor: appMainColor
+}),
+coreState.showIncorrectModal && renderComponent('IncorrectModal', {
+isOpen: true,
+onClose: logic.actions?.handleCloseIncorrect,
+data: coreState.incorrectList,
+onRemove: logic.actions?.handleRemoveWrong,
+onRemoveAll: logic.actions?.handleRemoveAllIncorrect,
+onOpenHanzi: logic.actions?.handleOpenHanziStudy,
+t: logic.actions?.t,
+mainColor: appMainColor,
+onReviewGame: logic.actions?.handleReviewWithGame
+}),
+coreState.showMastered && renderComponent('MasteredModal', {
+isOpen: true,
 onClose: () => coreState.setShowMastered(false),
 data: coreState.mastered,
 onRestore: logic.actions?.handleRestoreMastered,
 onRestoreAll: logic.actions?.handleRestoreAllMastered,
-t: logic.actions?.t || ((k) => k),
+t: logic.actions?.t,
 mainColor: appMainColor
 }),
-renderComponent('IncorrectModal', {
-isOpen: coreState.showIncorrect,
-onClose: () => coreState.setShowIncorrect(false),
-data: coreState.incorrectList,
-onRemove: logic.actions?.handleRemoveIncorrect,
-onRemoveAll: logic.actions?.handleRemoveAllIncorrect,
-onOpenHanzi: logic.actions?.handleOpenHanziStudy,
-t: logic.actions?.t || ((k) => k),
-mainColor: appMainColor,
-onReviewGame: logic.actions?.handleReviewWithGame
-}),
-renderComponent('SaveLoadModal', {
-isOpen: coreState.showSaveLoad,
-onClose: () => coreState.setShowSaveLoad(false),
-onExport: logic.actions?.handleExportSaveFile,
-onImport: logic.actions?.handleImportSaveFile,
-t: logic.actions?.t || ((k) => k),
+coreState.showWordSelect && renderComponent('WordSelectorModal', {
+isOpen: true,
+onClose: () => coreState.setShowWordSelect(false),
+text: coreState.wordSelectTarget,
+currentLang: coreState.lang,
+onSave: logic.actions?.handleSaveWords,
+t: logic.actions?.t,
 mainColor: appMainColor
 }),
-renderComponent('AiChatModal', {
-isOpen: coreState.showAiChat,
+coreState.showHelp && renderComponent('HelpModal', {
+isOpen: true,
+onClose: logic.actions?.handleCloseHelp,
+t: logic.actions?.t,
+mainColor: appMainColor
+}),
+coreState.showHanziSelector && renderComponent('HanziSelectorModal', {
+isOpen: true,
+onClose: logic.actions?.handleCloseHanziSelector,
+text: coreState.wordSelectTarget,
+onSelect: logic.actions?.handleStartWriting,
+t: logic.actions?.t
+}),
+coreState.showHanziWriter && renderComponent('HanziWriterModal', {
+isOpen: true,
+onClose: logic.actions?.handleCloseHanziWriter,
+char: coreState.currentHanziChar,
+t: logic.actions?.t,
+mainColor: appMainColor
+}),
+coreState.showAiChat && renderComponent('AiChatModal', {
+isOpen: true,
 onClose: () => coreState.setShowAiChat(false),
 apiKey: coreState.apiKey,
 lang: coreState.lang,
-t: logic.actions?.t || ((k) => k),
+t: logic.actions?.t,
 mainColor: appMainColor
 }),
-renderComponent('ApiKeyModal', {
-isOpen: coreState.showApiKeyModal,
-onClose: () => coreState.setShowApiKeyModal(false),
-apiKey: coreState.apiKey,
-setApiKey: coreState.setApiKey,
-t: logic.actions?.t || ((k) => k)
+coreState.showSaveLoadModal && renderComponent('SaveLoadModal', {
+isOpen: true,
+onClose: logic.actions?.handleCloseSaveLoad,
+onExport: logic.actions?.handleExportSaveFile,
+onImport: logic.actions?.handleImportSaveFile,
+t: logic.actions?.t,
+mainColor: appMainColor
 }),
-renderComponent('LinkManagerModal', {
-isOpen: coreState.showLinkManager,
-onClose: () => coreState.setShowLinkManager(false),
-t: logic.actions?.t || ((k) => k),
+coreState.showExamPoolManager && renderComponent('ExamPoolManagerModal', {
+isOpen: true,
+onClose: logic.actions?.handleCloseExamPoolManager,
 mainColor: appMainColor,
-onExportPool: logic.actions?.handleExportPoolToExcel,
-onImportPool: logic.actions?.handleImportPoolFromExcel,
-onExportHarvest: logic.actions?.handleExportHarvestToExcel,
-onClearHarvest: logic.actions?.handleClearHarvestPool,
-totalHarvested: coreState.aiHarvestPool ? Object.values(coreState.aiHarvestPool).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0) : 0,
-apiKeySheetUrl: coreState.apiKeySheetUrl,
-onSaveApiKeySheetUrl: (url) => {
-coreState.setApiKeySheetUrl(url);
-if (url) {
-window.Utils.safeLocalStorageSet(window.STORAGE_KEYS.API_KEY_SHEET, url);
-logic.actions?.showToast("Đã lưu Link Sheet API Key", "success");
-} else {
-localStorage.removeItem(window.STORAGE_KEYS.API_KEY_SHEET);
-logic.actions?.showToast("Đã xóa Link Sheet API Key", "info");
-}
-},
-importUrl: coreState.importUrl,
-onSaveImportUrl: (url) => {
-coreState.setImportUrl(url);
-if (url) window.Utils.safeLocalStorageSet('fc_import_url', url);
-else localStorage.removeItem('fc_import_url');
-},
-vocabUrl: coreState.lang === 'zh' ? (coreState.defaultUrl?.vocab || window.DEFAULT_SHEETS?.zh?.vocab) : (coreState.lang === 'en' ? (coreState.defaultUrl?.vocab || window.DEFAULT_SHEETS?.en?.vocab) : (coreState.defaultUrl || window.DEFAULT_SHEETS?.vi?.default)),
-sentenceUrl: coreState.lang === 'zh' ? (coreState.defaultUrl?.sentence || window.DEFAULT_SHEETS?.zh?.sentence) : (coreState.lang === 'en' ? (coreState.defaultUrl?.sentence || window.DEFAULT_SHEETS?.en?.sentence) : ''),
-onSaveDefaultUrl: (url, type) => {
-const key = window.STORAGE_KEYS.DEFAULT_URL + '_' + coreState.lang;
-let currentUrls = window.Utils.safeJsonParse(key, {});
-if (typeof currentUrls === 'string') {
-currentUrls = { default: currentUrls };
-}
-if (type === 'vocab') currentUrls.vocab = url;
-else if (type === 'sentence') currentUrls.sentence = url;
-else currentUrls = url;
-window.Utils.safeLocalStorageSet(key, currentUrls);
-coreState.setDefaultUrl(currentUrls);
-logic.actions?.showToast("Đã lưu Link Google Sheet Mặc định", "success");
-}
+examPoolData: logic.examPoolData
 }),
-renderComponent('ManualInputModal', {
-isOpen: coreState.showManual,
-onClose: () => coreState.setShowManual(false),
-onImport: logic.actions?.handleManualImport,
-onAddCard: logic.actions?.handleAddSingleCard,
-onAutoFill: ai?.handleManualAiFill,
-t: logic.actions?.t || ((k) => k),
-mainColor: appMainColor
-}),
-renderComponent('AiConfigModal', {
-isOpen: coreState.showAiConfig,
-onClose: () => coreState.setShowAiConfig(false),
+coreState.showAiConfigModal && renderComponent('AiConfigModal', {
+isOpen: true,
+onClose: () => coreState.setShowAiConfigModal(false),
 aiConfig: coreState.aiConfig,
 setAiConfig: coreState.setAiConfig,
 mainColor: appMainColor
 }),
-renderComponent('WordSelectorModal', {
-isOpen: coreState.showWordSelector,
-onClose: () => coreState.setShowWordSelector(false),
-onSave: logic.actions?.handleNotebookSave,
-text: coreState.wordSelectTarget,
-currentLang: coreState.lang,
-t: logic.actions?.t || ((k) => k),
-mainColor: appMainColor
-}),
-renderComponent('HanziSelectorModal', {
-isOpen: coreState.showHanziSelector,
-onClose: () => coreState.setShowHanziSelector(false),
-text: coreState.wordSelectTarget,
-onSelect: logic.actions?.handleOpenHanziStudy,
-t: logic.actions?.t || ((k) => k)
-}),
-renderComponent('HanziWriterModal', {
-isOpen: coreState.showHanziWriter,
-onClose: () => coreState.setShowHanziWriter(false),
-char: coreState.currentHanziChar,
-t: logic.actions?.t || ((k) => k),
-mainColor: appMainColor
-}),
-renderComponent('HelpModal', {
-isOpen: coreState.showHelp,
-onClose: () => coreState.setShowHelp(false),
-t: logic.actions?.t || ((k) => k),
-mainColor: appMainColor
-}),
-renderComponent('ExamPoolManagerModal', {
-isOpen: coreState.showExamPoolManager,
-onClose: () => coreState.setShowExamPoolManager(false),
-mainColor: appMainColor,
-examPoolData: logic.state?.examPoolData
-})
-);
-// --- 5. Return Main Layout ---
-return React.createElement('div', { className: `flex flex-col h-screen max-h-screen overflow-hidden bg-${appMainColor}-50 font-inter transition-colors duration-500` },
-mainContent,
-coreState.viewMode !== 'game' && React.createElement('div', { className: "flex-shrink-0 relative z-10" },
-coreState.viewMode === 'learn' && renderComponent('ControlBar', {
-onNext: logic.actions?.handleNext,
-onPrev: logic.actions?.handlePrev,
-isAutoPlaying: coreState.isAutoPlaying,
-toggleAutoPlay: logic.actions?.handleToggleAutoPlay,
-isShuffle: coreState.isShuffle,
-toggleShuffle: () => coreState.setIsShuffle(!coreState.isShuffle),
-isAutoMode: coreState.isAutoMode,
-toggleAutoMode: logic.actions?.handleToggleAutoMode,
-isFlipLocked: coreState.isFlipLocked,
-toggleFlipLock: logic.actions?.handleToggleFlipLock,
-mainColor: appMainColor,
-isCurrentCardInNotebook: coreState.notebook.some(item => item.term === coreState.cards[coreState.currentCardIndex]?.term),
-onToggleNotebook: () => logic.actions?.handleNotebookSave(coreState.cards[coreState.currentCardIndex]),
-t: logic.actions?.t || ((k) => k),
-settings: coreState.settings,
-onOpenSettings: () => coreState.setShowSettings(true),
-totalCards: coreState.cards.length,
-currentIndex: coreState.currentCardIndex
-}),
-renderComponent('BottomNav', {
-onNavigate: (mode) => {
-if (mode === 'api') {
-coreState.setShowApiKeyModal(true);
-} else if (mode === 'settings') {
-coreState.setShowSettings(true);
-} else if (mode === 'ai_chat') {
-coreState.setShowAiChat(true);
-} else {
-coreState.setViewMode(mode);
-coreState.setIsGamePlaying(false);
-}
-},
-onApiKey: () => coreState.setShowApiKeyModal(true),
-onOpenAiChat: () => coreState.setShowAiChat(true),
-t: logic.actions?.t || ((k) => k),
-mainColor: appMainColor,
-currentMode: coreState.viewMode
-})
-),
-modals,
-// Toast UI
-coreState.toast && React.createElement('div', { className: "fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[9999] w-full px-4 flex justify-center pointer-events-none" },
-React.createElement('div', { className: `max-w-md w-auto bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 pointer-events-auto border border-gray-700 backdrop-blur-md` },
-coreState.toast.type === 'success' && React.createElement(window.Icons.CheckCircle, { className: "text-green-400 shrink-0", size: 20 }),
-coreState.toast.type === 'error' && React.createElement(window.Icons.AlertCircle, { className: "text-red-400 shrink-0", size: 20 }),
-coreState.toast.type === 'info' && React.createElement(window.Icons.Info, { className: "text-blue-400 shrink-0", size: 20 }),
-coreState.toast.type === 'warning' && React.createElement(window.Icons.AlertTriangle, { className: "text-yellow-400 shrink-0", size: 20 }),
-React.createElement('span', { className: "font-medium text-sm sm:text-base whitespace-pre-wrap break-words" }, coreState.toast.text)
-)
-)
+coreState.toast && React.createElement('div', {
+className: `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-[300] font-bold text-white animate-in slide-in-from-top-4 fade-in duration-300 flex items-center gap-2 ${coreState.toast.type === 'error' ? 'bg-red-500' : coreState.toast.type === 'success' ? 'bg-green-500' : coreState.toast.type === 'warning' ? 'bg-orange-500' : 'bg-gray-800'}`
+}, coreState.toast.text || coreState.toast.message)
 );
 };
-// [QUAN TRỌNG] ĐỂ TƯƠNG THÍCH, ĐẨY VÀO WINDOW
 window.Block7_1_App = App;
+window.App = App;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<ErrorBoundary><App /></ErrorBoundary>);
 </script>
