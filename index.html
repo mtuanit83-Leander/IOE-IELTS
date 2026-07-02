@@ -10220,13 +10220,14 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 };
 window.MatchGame = MatchGame;
 window.Block5_2_MatchGame = MatchGame;
-// Block5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.06
-// Last Updated: 2026-06-05 10:55
+// Block 5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.07
+// Last Updated: 2026-07-02 18:25
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Ghép Câu (Scramble Game).
-// Cập nhật V1.06: [DỌN ĐƯỜNG JIT ENRICH] Triệt tiêu GlobalLoadingScreen giữa các vòng đấu, thay bằng Overlay Blur mượt mà để tương thích hoàn hảo với cơ chế dịch ngầm On-demand của QueueEngine. Không thay đổi Setup UI.
+// Cập nhật V1.07: [ĐẠI PHẪU VOICE UI & ĐỊA NGỤC]
+// 1. Thêm cấu hình Sudden Death (Chế độ Địa ngục) vào Setup.
+// 2. Thiết kế lại UI Nhập liệu giọng nói: Hiển thị Real-time Preview qua inputBuffer, gỡ bỏ 3 options tự động nộp, mở khóa nút "Kiểm tra" để nộp thủ công.
 // ==================================================================================
-// 1. SCRAMBLE SETUP (Màn hình cấu hình) - GIỮ NGUYÊN 100%
-const ScrambleSetup = ({ t, mainColor, onStart, onBack }) => {
+//const ScrambleSetup = ({ t, mainColor, onStart, onBack }) => {
 const [sourceMode, setSourceMode] = React.useState('card');
 const [timerMode, setTimerMode] = React.useState(false);
 const [hardMode, setHardMode] = React.useState(false);
@@ -10234,6 +10235,7 @@ const [aiMode, setAiMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(60);
 const [inputMethod, setInputMethod] = React.useState('tap');
 const [autoReadAnswer, setAutoReadAnswer] = React.useState(false);
+const [suddenDeath, setSuddenDeath] = React.useState(false);
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_scramble_config');
@@ -10246,11 +10248,12 @@ setAiMode(config.aiMode ?? false);
 setTimeLimit(config.timeLimit ?? 60);
 setInputMethod(config.inputMethod ?? 'tap');
 setAutoReadAnswer(config.autoReadAnswer ?? false);
+setSuddenDeath(config.suddenDeath ?? false);
 }
 } catch (e) { console.warn("Load config failed", e); }
 }, []);
 const handleStart = () => {
-const config = { timerMode, hardMode, aiMode, timeLimit, inputMethod, autoReadAnswer, sourceMode };
+const config = { timerMode, hardMode, aiMode, timeLimit, inputMethod, autoReadAnswer, sourceMode, suddenDeath };
 localStorage.setItem('fc_scramble_config', JSON.stringify(config));
 onStart('scramble', config);
 };
@@ -10260,7 +10263,7 @@ if (!val) setAiMode(false);
 };
 const MenuToggle = window.MenuToggle;
 const Icons = window.Icons;
-return (
+//return (
 <div className="relative z-10 flex flex-col items-center w-full max-w-sm h-full animate-in slide-in-from-right-8">
 <div className="w-full flex items-center justify-between mb-6 shrink-0 mt-2">
 <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-500"><Icons.ChevronLeft size={24}/></button>
@@ -10305,6 +10308,7 @@ return (
 <MenuToggle active={autoReadAnswer} setActive={setAutoReadAnswer} icon={Icons.Volume2} color="pink" title="Đọc lại đáp án" subtitle="Tự động đọc to khi ghép đúng" />
 <MenuToggle active={hardMode} setActive={handleHardModeChange} icon={Icons.Layers} color="red" title="Chế độ Khó (Hard Mode)" subtitle={hardMode ? (inputMethod === 'tap' ? "Có từ nhiễu & Khóa trợ giúp" : "Khóa trợ giúp (Không tự đọc)") : (inputMethod === 'tap' ? "Chỉ gồm từ trong câu" : "Cơ bản (Có hỗ trợ âm thanh)")} />
 <MenuToggle active={aiMode} setActive={setAiMode} icon={Icons.Sparkles} color="purple" title="Thử thách AI" subtitle={!hardMode ? "(Yêu cầu bật Chế độ Khó)" : (inputMethod !== 'tap' ? "(Chỉ hỗ trợ Chạm thẻ)" : "AI tạo bẫy ngữ pháp (cho câu văn)")} disabled={!hardMode || inputMethod !== 'tap'} />
+<MenuToggle active={suddenDeath} setActive={setSuddenDeath} icon={Icons.AlertCircle} color="slate" title="Chế độ Địa ngục" subtitle="Sai 1 lần là mất điểm ngay lập tức" />
 <MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / câu` : 'Thoải mái thời gian'} extra={
 <div className="mt-3 pt-2 border-t border-orange-100 flex justify-between items-center animate-in fade-in">
 <span className="text-[10px] font-bold text-orange-400 uppercase">Chọn thời gian:</span>
@@ -10326,8 +10330,7 @@ return (
 </div>
 );
 };
-// 2. SCRAMBLE PLAY SCREEN (Giao diện Game)
-const ScramblePlayScreen = ({
+//const ScramblePlayScreen = ({
 t, mainColor, lang, settings, config,
 isPaused, timerMode, timeLimit, timeLeft,
 inputMethod, isGenerating, aiCountdown,
@@ -10358,10 +10361,8 @@ return (
 </div>
 );
 };
-// [KHỞI TẠO GAME] Chỉ chặn màn hình lúc bốc bài lần đầu tiên
 if (isGenerating && (!gameState.origin || aiCountdown > 0)) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
-// Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
 }
 return (
@@ -10374,7 +10375,6 @@ levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.repla
 />
 );
 }
-// [QA DEBUG] Lỗi kẹt màn hình khi AI sập hoặc Fallback sập
 if (!isGenerating && !gameState.origin) {
 return (
 <div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 items-center justify-center animate-in fade-in p-6 text-center">
@@ -10387,7 +10387,7 @@ Thoát về Menu
 </div>
 );
 }
-return (
+//return (
 <div className={`w-full h-full flex flex-col items-center bg-${mainColor}-50 rounded-2xl shadow-xl border-2 border-gray-200 overflow-hidden relative animate-in`}>
 {/* POPUP Xác nhận thoát Game */}
 {showConfirmEnd && (
@@ -10409,7 +10409,7 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* [CƠ CHẾ JIT/LAZY LOAD MƯỢT MÀ] Khóa màn hình nhẹ nhàng giữa các vòng */}
+{/* Cơ chế JIT/Lazy Load mượt mà */}
 {isGenerating && gameState.origin && (
 <div className="absolute inset-0 z-[150] bg-white/30 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-300">
 <div className={`px-5 py-3 bg-white rounded-2xl shadow-xl border-2 border-${mainColor}-100 flex items-center gap-3`}>
@@ -10426,7 +10426,7 @@ Thoát ngay
 </div>
 </div>
 )}
-{/* HEADER THANH LỊCH */}
+{/* HEADER */}
 <div className="w-full bg-white border-b p-3 flex justify-between items-center z-10 shadow-sm">
 <div className="flex items-center gap-2 w-1/4">
 <button onClick={onBack} className="text-gray-500 hover:text-gray-700 flex items-center gap-1 font-bold text-sm bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
@@ -10437,10 +10437,9 @@ Thoát ngay
 <h2 className={`font-black text-${mainColor}-700 text-lg tracking-tight uppercase`}>{t('modeScramble')}</h2>
 {timerMode && (<span className={`text-[11px] font-mono font-bold ${getTimerColor(timeLeft, timeLimit)} flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded-full mt-0.5 border border-gray-200`}><Icons.Clock size={12} /> {timeLeft}s</span>)}
 </div>
-<div className="w-1/4 flex justify-end">
-{/* Nút Pause tạm thời có thể đặt đây nếu cần */}
+<div className="w-1/4 flex justify-end"></div>
 </div>
-</div>
+{/* KHU VỰC THÔNG TIN & THỐNG KÊ */}
 <div className="flex-1 w-full overflow-y-auto custom-scrollbar p-4 flex flex-col items-center gap-4">
 <div className={`w-full flex justify-between items-center transition-all duration-300 ${containerWidthClass}`}>
 <div className="flex gap-2 text-xs font-bold items-center">
@@ -10449,7 +10448,7 @@ Thoát ngay
 <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 flex items-center gap-1">🎯 {accuracy}%</span>
 </div>
 <div className="flex items-center gap-2 flex-wrap justify-end">
-{/* Nguồn Badge */}
+{/* Nhãn nguồn gốc */}
 {gameState.origin?._isRescued ? (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-orange-100 text-orange-700 border border-orange-200" title="Sử dụng dữ liệu dự phòng do mất kết nối">
 <Icons.AlertCircle size={12} className="text-orange-500" /> Nguồn: Dự phòng
@@ -10463,16 +10462,22 @@ Thoát ngay
 <Icons.Layers size={12} className="text-slate-400" /> Nguồn: Thẻ gốc
 </span>
 )}
-{/* [VÁ LỖI BÓNG MA AI] Chỉ hiện băng đạn nếu có dính AI */}
+{/* Băng đạn AI */}
 {(config?.aiMode || config?.sourceMode === 'ai_pure') && queueLength > 0 && (
 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-blue-50 text-blue-600 border border-blue-200" title={`Đã nạp sẵn ${queueLength} vòng`}>
 <Icons.Database size={12} className="text-blue-500" /> Đã nạp: {queueLength}
 </span>
 )}
-{/* [NEW V1.04] ĐỒNG HỒ PHANH AI GÓC PHẢI */}
+{/* Phanh AI */}
 {aiWaitTime > 0 && (
 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse" title="Thời gian chờ an toàn">
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
+</span>
+)}
+{/* Huy hiệu Sudden Death */}
+{config?.suddenDeath && (
+<span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm bg-slate-100 text-slate-700 border border-slate-300" title="Chế độ Địa ngục: Sai 1 lần mất điểm">
+<Icons.AlertCircle size={12} className="text-slate-600" /> Địa ngục
 </span>
 )}
 <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider shadow-sm cursor-default ${inputMethod === 'tap' ? 'bg-blue-100 text-blue-700 border border-blue-200' : inputMethod === 'type' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-purple-100 text-purple-700 border border-purple-200'}`}>
@@ -10480,6 +10485,7 @@ Thoát ngay
 </span>
 </div>
 </div>
+{/* */}
 <div className={`w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-6 transition-all duration-300 ${containerWidthClass}`}>
 <div className={`p-4 bg-${mainColor}-50 border-l-4 border-${mainColor}-400 mb-6 rounded-xl italic text-gray-700 text-center shadow-inner`} style={{ fontSize: settings?.backFontSize ? `${settings.backFontSize}rem` : '0.875rem', fontWeight: settings?.fontWeight || 'normal', fontFamily: 'inherit' }}>"{gameState.origin?.definition}"</div>
 {gameState.isCorrect === false && gameState.attempts >= 3 && (
@@ -10507,13 +10513,7 @@ Thoát ngay
 <div className="flex justify-center items-center gap-2 bg-white border border-gray-100 p-2 rounded-xl shadow-sm">
 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Dấu câu:</span>
 {['.', ',', ':', '?','!'].map(punct => (
-<button
-key={punct}
-onClick={() => handleAddPunctuation && handleAddPunctuation(punct)}
-disabled={isPaused || gameState.isCorrect !== null}
-className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-50 text-gray-700 font-bold border border-gray-200 hover:bg-gray-100 hover:border-gray-300 shadow-sm disabled:opacity-50 transition-colors"
-style={{ fontFamily: window.Utils.getFontFamily(settings), fontSize: '1.25rem' }}
->
+<button key={punct} onClick={() => handleAddPunctuation && handleAddPunctuation(punct)} disabled={isPaused || gameState.isCorrect !== null} className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-50 text-gray-700 font-bold border border-gray-200 hover:bg-gray-100 hover:border-gray-300 shadow-sm disabled:opacity-50 transition-colors" style={{ fontFamily: window.Utils.getFontFamily(settings), fontSize: '1.25rem' }}>
 {punct}
 </button>
 ))}
@@ -10535,36 +10535,22 @@ style={{ fontFamily: window.Utils.getFontFamily(settings), fontSize: '1.25rem' }
 <p className="text-xs text-gray-400">Ấn phím <kbd className="bg-gray-100 px-2 py-1 rounded border shadow-sm">Enter</kbd> để kiểm tra</p>
 </div>
 )}
+{/* [CẬP NHẬT VOICE UI] Xóa 3 tùy chọn, hiển thị Real-time Preview Textarea */}
 {inputMethod === 'voice' && (
-<div className="w-full flex flex-col items-center gap-6 py-4 animate-in zoom-in">
-<div className="flex flex-col items-center w-full">
-<button onClick={toggleMic} disabled={isPaused || gameState.isCorrect !== null || (!isListening && voiceRetries >= 3)} className={`w-28 h-28 rounded-full border-4 flex items-center justify-center shadow-lg outline-none transition-all duration-300 ${isListening ? 'bg-red-50 border-red-200 text-red-500 animate-pulse scale-110 shadow-red-200' : (!isListening && voiceRetries >= 3) ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100 hover:scale-105 hover:shadow-purple-200'}`}>
-{isListening ? <Icons.Square size={48} fill="currentColor" /> : <Icons.Mic size={48} />}
+<div className="w-full flex flex-col items-center gap-4 animate-in zoom-in">
+<div className={`w-full min-h-[120px] border-4 rounded-2xl outline-none transition-colors shadow-inner flex flex-col items-center justify-center p-6 text-center ${gameState.isCorrect === true ? 'bg-green-50 border-green-400 text-green-700' : (gameState.isCorrect === false ? 'bg-red-50 border-red-400 text-red-700' : 'bg-gray-50 border-purple-200 text-gray-800')}`}>
+<span style={{ fontFamily: window.Utils.getFontFamily(settings), fontWeight: settings?.fontWeight || 'bold', fontSize: settings?.fontSize ? `${settings.fontSize}rem` : '1.5rem' }}>
+{inputBuffer || <span className="text-gray-400 italic text-base">Nhấn Micro và bắt đầu đọc...</span>}
+</span>
+</div>
+<div className="flex flex-col items-center w-full mt-2">
+<button onClick={toggleMic} disabled={isPaused || gameState.isCorrect !== null} className={`w-20 h-20 rounded-full border-4 flex items-center justify-center shadow-lg outline-none transition-all duration-300 ${isListening ? 'bg-red-50 border-red-200 text-red-500 animate-pulse scale-110 shadow-red-200' : 'bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100 hover:scale-105 hover:shadow-purple-200'}`}>
+{isListening ? <Icons.Square size={32} fill="currentColor" /> : <Icons.Mic size={32} />}
 </button>
-<p className={`font-bold mt-4 text-center ${isListening ? 'text-red-500 animate-pulse' : 'text-gray-500'}`}>
-{isListening ? "Đang lắng nghe (Chạm để Dừng)..." : (voiceRetries >= 3 ? "Đã hết lượt đọc lại!" : (voiceOptions.length > 0 ? "Chạm Mic để đọc lại" : "Nhấn Micro để đọc đáp án"))}
+<p className={`font-bold mt-3 text-center text-sm ${isListening ? 'text-red-500 animate-pulse' : 'text-gray-500'}`}>
+{isListening ? "Đang lắng nghe (Chạm để Dừng)..." : "Chạm Micro để đọc"}
 </p>
-<p className="text-xs font-bold text-gray-400 mt-1">Lượt thử: {voiceRetries}/3</p>
 </div>
-{voiceOptions.length > 0 && !isListening && (
-<div className="w-full mt-4 space-y-3 animate-in slide-in-from-bottom-4">
-<p className="text-sm font-bold text-purple-600 text-center mb-3 flex items-center justify-center gap-2"><Icons.Sparkles size={16} /> AI nhận diện được 3 kết quả:</p>
-{voiceOptions.map((opt, idx) => {
-const isOptCorrect = window.Utils.advancedNormalize(opt, lang) === window.Utils.advancedNormalize(gameState.origin?.term, lang);
-let btnClass = "bg-white border-2 border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50 hover:-translate-y-1";
-if (gameState.isCorrect !== null) {
-if (isOptCorrect) { btnClass = "bg-green-100 border-2 border-green-500 text-green-800 font-bold shadow-md scale-105 z-10"; }
-else if (voiceSelectedOption === opt) { btnClass = "bg-red-100 border-2 border-red-500 text-red-800 font-bold shadow-md"; }
-else { btnClass = "bg-gray-50 border-2 border-gray-100 text-gray-400 opacity-50"; }
-}
-return (
-<button key={idx} onClick={() => handleVoiceChoice(opt)} disabled={gameState.isCorrect !== null} style={{ fontFamily: window.Utils.getFontFamily(settings), fontWeight: settings?.fontWeight || 'bold', fontSize: settings?.fontSize ? `${settings.fontSize}rem` : '1.25rem' }} className={`w-full p-4 rounded-xl transition-all shadow-sm ${btnClass}`}>
-{opt}
-</button>
-);
-})}
-</div>
-)}
 </div>
 )}
 </div>
@@ -10576,13 +10562,13 @@ return (
 </div>
 )}
 </div>
-{/* FOOTER ĐƯỢC TÁI CẤU TRÚC */}
+{/* */}
 <div className="w-full p-3 sm:p-4 bg-white border-t border-gray-200 shrink-0 flex items-center justify-between z-30 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
-{/* Nút Kết thúc (Bên trái) */}
+{/* Nút Kết thúc */}
 <button onClick={() => setShowConfirmEnd(true)} className="absolute left-2 sm:left-4 text-red-500 hover:text-red-700 font-bold text-xs flex items-center gap-1 transition-colors px-2 py-2 hover:bg-red-50 rounded-lg" title="Kết thúc">
 <Icons.X size={16} /> <span className="hidden sm:inline">Kết thúc</span>
 </button>
-{/* Khu vực điều khiển chính (Căn giữa/phải) */}
+{/* Khu vực điều khiển chính */}
 <div className="flex-1 flex justify-center sm:justify-end max-w-lg ml-auto">
 {gameState.isCorrect === true || (gameState.isCorrect === false && gameState.attempts >= 3) ? (
 <div className="w-full flex gap-2 sm:gap-3">
@@ -10601,11 +10587,10 @@ return (
 <button onClick={() => handleSkip(false)} disabled={isPaused || isGenerating || aiWaitTime > 0} className={`flex-1 py-3 bg-gray-100 text-gray-600 font-bold text-xs sm:text-sm rounded-xl hover:bg-gray-200 transition-all border border-gray-200 ${(isPaused || isGenerating || aiWaitTime > 0) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
 Bỏ qua
 </button>
-{inputMethod !== 'voice' && (
+{/* [VOICE UI FIX] Cho phép hiển thị nút Kiểm tra ngay cả ở chế độ Voice */}
 <button onClick={checkAnswer} disabled={isPaused || isGenerating || aiWaitTime > 0 || (!gameState.userAnswer?.length && !inputBuffer.trim())} className={`flex-[1.5] sm:flex-[2] py-3 bg-${mainColor}-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg hover:bg-${mainColor}-700 transition-all ${(isPaused || isGenerating || aiWaitTime > 0 || (!gameState.userAnswer?.length && !inputBuffer.trim())) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
 Kiểm tra
 </button>
-)}
 <button onClick={(e) => { e.stopPropagation(); if (onBookmark && gameState.origin) { let scrambledDisplay = ""; if (gameState.chunks && gameState.chunks.length > 0) { scrambledDisplay = gameState.chunks.map(c => c.text).join(lang === 'zh' ? '' : ' '); } else { scrambledDisplay = gameState.origin.term.split(lang === 'zh' ? '' : ' ').sort(() => Math.random() - 0.5).join(lang === 'zh' ? '' : ' '); } onBookmark({ isSmartTarget: true, display: scrambledDisplay, save: gameState.origin.term, analysis: gameState.origin.definition }); } }} disabled={isPaused || isGenerating} className={`px-3 sm:px-4 py-3 rounded-xl font-bold transition-colors border shadow-sm ${isBookmarked ? 'bg-yellow-50 text-yellow-600 border-yellow-200' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-yellow-600'}`} title={t('addToNotebook')}>
 <Icons.Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} className="sm:w-5 sm:h-5" />
 </button>
@@ -10613,6 +10598,7 @@ Kiểm tra
 )}
 </div>
 </div>
+{/* Modal Giải thích */}
 {showExplainModal && gameState.origin && (
 <div className="absolute inset-0 z-[60] bg-white flex flex-col animate-in slide-in-from-bottom-10 duration-300">
 <div className="bg-blue-600 p-4 flex justify-between items-center text-white shadow-md shrink-0">
@@ -10664,9 +10650,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.11
-// Last Updated: 2026-06-05 11:00
+// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.12
+// Last Updated: 2026-07-02 18:30
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
+// Cập nhật V1.12: [VOICE UI & SUDDEN DEATH] Đại phẫu Input Giọng nói sang Real-time + Chấm điểm thủ công. Áp dụng luật Địa ngục (Sai 1 lần mất điểm). Xóa logic options cũ.
 // Cập nhật V1.11: [JIT ENRICHMENT] Xóa bỏ hoàn toàn batchEnrich gây tắc nghẽn lúc khởi động. Đưa logic dịch ngầm (Lazy Loading) vào fetchTask. Mở khóa nạp thẻ chưa có nghĩa.
 // ==================================================================================
 const ScrambleGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, lang, onPlay, apiKey, onBookmark, notebook, isPaused, showToast, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
@@ -10687,6 +10674,9 @@ try { return JSON.parse(localStorage.getItem('fc_scramble_config'))?.autoReadAns
 const [sourceMode] = React.useState(() => {
 try { return JSON.parse(localStorage.getItem('fc_scramble_config'))?.sourceMode || 'card'; } catch (e) { return 'card'; }
 });
+const [suddenDeath] = React.useState(() => {
+try { return JSON.parse(localStorage.getItem('fc_scramble_config'))?.suddenDeath || false; } catch (e) { return false; }
+});
 const [gameState, setGameState] = React.useState({ origin: null, chunks: [], userAnswer: [], isCorrect: null, attempts: 0, isAiGenerated: false, _isRescued: false });
 const [difficulty, setDifficulty] = React.useState(initialDifficulty || 'easy');
 const [stats, setStats] = React.useState({ correct: 0, wrong: 0 });
@@ -10697,18 +10687,16 @@ const [aiExplanation, setAiExplanation] = React.useState(null);
 const [isAiExplaining, setIsAiExplaining] = React.useState(false);
 const [timeLeft, setTimeLeft] = React.useState(timeLimit || 60);
 const [isGenerating, setIsGenerating] = React.useState(false);
+// Giữ lại Dummy State để không vỡ Props nếu UI chưa kịp cập nhật (Graceful degradation)
 const [voiceRetries, setVoiceRetries] = React.useState(0);
 const [voiceOptions, setVoiceOptions] = React.useState([]);
 const [voiceSelectedOption, setVoiceSelectedOption] = React.useState(null);
-// [QA DEBUG] State-based UX Timer
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
-// [NEW v1.9] Bộ đếm đạn và Phanh UI
 const [queueLength, setQueueLength] = React.useState(0);
 const [aiWaitTime, setAiWaitTime] = React.useState(0);
 const cardsRef = React.useRef(cards);
 const deckRef = React.useRef([]);
-// [QA FIX V1.4] Khởi tạo bộ nhớ AI từ LocalStorage thay vì mảng rỗng
 const historyQueueRef = React.useRef(window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : []);
 const coordinatorRef = React.useRef(null);
 const dragItemRef = React.useRef(null);
@@ -10723,7 +10711,6 @@ const hardTimerRef = React.useRef(null);
 const latestStateRef = React.useRef({});
 const isGameActiveRef = React.useRef(true);
 const isInitializingRef = React.useRef(false);
-// Đồng bộ túi nháp RAM
 const globalRetryBagRef = React.useRef(globalRetryBag);
 React.useEffect(() => { globalRetryBagRef.current = globalRetryBag; }, [globalRetryBag]);
 React.useEffect(() => { cardsRef.current = cards; }, [cards]);
@@ -10731,26 +10718,22 @@ React.useEffect(() => {
 latestStateRef.current = { gameState, difficulty, stats, timeLeft, deck: deckRef.current, aiWaitTime };
 }, [gameState, difficulty, stats, timeLeft, aiWaitTime]);
 // ==================================================================================
-// HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý)
+// HÀM TRIGGGER AUTO SAVE
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI ZOMBIE] Chỉ cho phép lưu nếu Game CÒN ĐANG ACTIVE
 if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.gameState?.origin) {
 const currentData = latestStateRef.current;
-// [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, chỉ lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
 pendingCards = pendingTasks.map(task => task.origin).filter(Boolean);
 }
-// Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
 onAutoSave({
 gameState: currentData.gameState,
 stats: currentData.stats,
 difficulty: currentData.difficulty,
-deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
+deck: mergedDeck,
 timeLeft: currentData.timeLeft,
 aiWaitTime: currentData.aiWaitTime
 });
@@ -10760,7 +10743,7 @@ React.useEffect(() => {
 const intervalTimer = setInterval(() => triggerAutoSave(), 5000);
 return () => { clearInterval(intervalTimer); triggerAutoSave(); };
 }, [triggerAutoSave]);
-// ĐỒNG HỒ QUÉT ĐẠN NGẦM (QUEUE SCANNER)
+// ĐỒNG HỒ QUÉT ĐẠN NGẦM & COOLDOWN UI
 React.useEffect(() => {
 const queueScanner = setInterval(() => {
 if (coordinatorRef.current && typeof coordinatorRef.current.length === 'function') {
@@ -10769,7 +10752,6 @@ setQueueLength(coordinatorRef.current.length());
 }, 500);
 return () => clearInterval(queueScanner);
 }, []);
-// [VÁ LỖI DEADLOCK] ĐỒNG HỒ LÀM NGUỘI UI (UI COOLDOWN TIMER)
 React.useEffect(() => {
 let cdTimer = null;
 if (aiWaitTime > 0 && !isPaused && !isGenerating && !isResultPaused) {
@@ -10778,7 +10760,7 @@ cdTimer = setTimeout(() => setAiWaitTime(prev => prev - 1), 1000);
 return () => { if (cdTimer) clearTimeout(cdTimer); };
 }, [aiWaitTime, isPaused, isGenerating, isResultPaused]);
 // ==================================================================================
-// BỘ NÃO TÚI NHÁP TOÀN CỤC & CHUẨN HÓA LOG LỖI SAI (GLOBAL RETRY & LOG)
+// BỘ NÃO TÚI NHÁP TOÀN CỤC & LOG LỖI SAI
 // ==================================================================================
 const localPushToRetryBag = React.useCallback((questionData) => {
 if (addToRetryBag) addToRetryBag('scramble', questionData);
@@ -10786,7 +10768,6 @@ if (addToRetryBag) addToRetryBag('scramble', questionData);
 const localRemoveFromRetryBag = React.useCallback((termToCheck) => {
 if (removeFromRetryBag) removeFromRetryBag('scramble', termToCheck);
 }, [removeFromRetryBag]);
-// [QA DEBUG] Chuẩn hóa hàm logMistake để đẩy vào IncorrectList với format đồng nhất
 const logMistake = React.useCallback((questionOrigin) => {
 if (!onLogWrong || !questionOrigin) return;
 const mistakeCard = {
@@ -10799,7 +10780,7 @@ timestamp: Date.now()
 onLogWrong(mistakeCard);
 }, [onLogWrong, difficulty, sourceMode]);
 // ==================================================================================
-// TÌM NẠP DỮ LIỆU ĐƯỜNG ỐNG THỐNG NHẤT (UNIFIED DATA PIPELINE)
+// TÌM NẠP DỮ LIỆU ĐƯỜNG ỐNG THỐNG NHẤT
 // ==================================================================================
 const fetchTask = async () => {
 let card = null;
@@ -10807,14 +10788,9 @@ let isAiGenerated = false;
 const currentDataMode = config?.dataMode || 'vocab';
 const isPureMode = sourceMode === 'ai_pure';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// =====================================================================
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
-// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
-// =====================================================================
 if (window.Utils && window.Utils.pullRetryCardWithLock) {
 card = window.Utils.pullRetryCardWithLock('scramble', globalRetryBagRef.current);
 }
-// 2. AI PURE MODE: Cắm cáp Máy Trộn Đề Vạn Năng (ExamEngine)
 if (!card && isPureMode) {
 try {
 const meta = {
@@ -10829,7 +10805,6 @@ mode: 'minigame',
 inputMethod: inputMethod
 };
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
-// Tầng 2.7 tự động Normalization thành { origin, parts, isAiGenerated }
 const qData = await window.ExamEngine.hydrateQuestion(meta, currentApiKey, freshHistory);
 if (qData && qData.content) {
 if (onSaveToHarvest) {
@@ -10842,40 +10817,30 @@ console.warn("PureMode Engine Fallback:", e);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Lò đúc Scramble AI", e);
 }
 }
-// 3. THẺ CỦA TÔI (HOẶC AI SẬP PHẢI RÚT THẺ THAY THẾ)
 if (!card) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
-// [VI PHẪU JIT]: Loại bỏ điều kiện bắt buộc phải có definition. Chỉ cần có term là nạp được.
 let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 2 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
 const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
-// Cộng dồn Fallback, tuyệt đối KHÔNG ghi đè (Overwrite)
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
 const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
 validCards = [...validCards, ...newFbs];
 }
 }
-if (validCards.length === 0) {
-validCards = [{ term: "Learning languages is fun", definition: "Học ngôn ngữ rất vui" }];
-}
+if (validCards.length === 0) validCards = [{ term: "Learning languages is fun", definition: "Học ngôn ngữ rất vui" }];
 deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCards) : validCards;
 }
 card = deckRef.current.shift();
-// [CƠ CHẾ JIT ENRICHMENT] Nạp ngầm ý nghĩa nếu thẻ khuyết
 if (card && (!card.definition || card.definition.trim() === '')) {
 if (isAiMode && currentApiKey && window.Utils && window.Utils.fillCardWithAi) {
 try {
 const enriched = await window.Utils.fillCardWithAi(card.term, lang, currentApiKey, ['definition', 'pronunciation', 'grammar_type']);
 card = { ...card, ...enriched, is_enriched: true };
-if (onUpdateCards) onUpdateCards([card]); // Bắn thẻ đã dịch lên Tầng 6 để lưu DB
-if (enriched._tokenUsage) {
-const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
-localStorage.setItem('fc_total_tokens', currentTotal + (enriched._tokenUsage.totalTokenCount || 0));
-}
+if (onUpdateCards) onUpdateCards([card]);
 } catch (e) {
 card.definition = "Không thể tải nghĩa (Lỗi AI)";
 }
@@ -10883,32 +10848,24 @@ card.definition = "Không thể tải nghĩa (Lỗi AI)";
 card.definition = "Bấm Giải thích để tra nghĩa bằng AI";
 }
 }
-// [QA FIX V1.4] Sliding Window 400 & Sync LocalStorage cho Card Mode
 if (historyQueueRef.current && card) {
 if (!historyQueueRef.current.includes(card.term)) {
 historyQueueRef.current.push(card.term);
-while (historyQueueRef.current.length > 400) {
-historyQueueRef.current.shift();
-}
+while (historyQueueRef.current.length > 400) historyQueueRef.current.shift();
 try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.current)); } catch(e) {}
 }
 }
 }
-// 4. KHO DỰ PHÒNG TỰ ĐỘNG (KHI BỘ BÀI TRỐNG HOẶC ÍT THẺ - Chốt chặn cuối)
 if (!card) {
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = (safeLang === 'zh') ? 'sentence' : (currentDataMode === 'sentence' ? 'sentence' : 'vocab');
 const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 1);
-if (fbItems && fbItems.length > 0) {
-card = fbItems[0];
+if (fbItems && fbItems.length > 0) card = fbItems[0];
 }
+if (!card) card = { term: "Learning languages is very fun.", definition: "Học ngôn ngữ rất thú vị." };
 }
-// Chốt chặn cuối cùng bảo vệ App khỏi Crash
-if (!card) card = { term: "Learning languages is very fun.", definition: "Học ngôn ngữ rất thú vị. (Dự phòng tuyệt đối)" };
-}
-// 5. CẮT CHỮ & TẠO NHIỄU (SCRAMBLE NOISE ENGINE - VẪN CẦN CHO CARD MODE)
 let parts = [];
 if (inputMethod === 'tap') {
 const isChinese = lang === 'zh';
@@ -10921,7 +10878,7 @@ if (!isChinese) cleaned = cleaned.toLowerCase();
 return cleaned;
 }).filter(p => p.trim() !== "");
 };
-if (isChinese) { parts = card.term.split(''); }
+if (isChinese) parts = card.term.split('');
 else { if (isSentence) parts = card.term.split(' '); else parts = card.term.split(''); }
 parts = cleanAndLower(parts);
 if (difficulty === 'hard') {
@@ -10930,21 +10887,13 @@ const len = parts.length;
 if (len >= 5 && len <= 10) targetCount = Math.floor(Math.random() * 2) + 4;
 else if (len > 10) targetCount = Math.floor(Math.random() * 3) + 5;
 let noiseWords = [];
-// Giữ nguyên kết nối GameAlgoEngine.ScrambleNoiseEngine cho Card Mode
 if (isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine && window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise) {
 try {
 const aiCallPromise = window.GameAlgoEngine.ScrambleNoiseEngine.ai_getNoise(card.term, lang, type, currentApiKey, targetCount, level, config?.topic || '');
 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout")), 20000));
 noiseWords = await Promise.race([aiCallPromise, timeoutPromise]);
-if (noiseWords && noiseWords.length > 0) {
-isAiGenerated = true;
-const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
-localStorage.setItem('fc_total_tokens', currentTotal + 150);
-}
-} catch (e) {
-console.warn("AI Scramble Distractor fallback", e.message);
-if (window.logSystemEvent) window.logSystemEvent("Lỗi tạo nhiễu Scramble AI", e);
-}
+if (noiseWords && noiseWords.length > 0) isAiGenerated = true;
+} catch (e) { console.warn("AI Scramble Distractor fallback", e.message); }
 }
 if ((!noiseWords || noiseWords.length === 0) && window.GameAlgoEngine && window.GameAlgoEngine.ScrambleNoiseEngine && window.GameAlgoEngine.ScrambleNoiseEngine.offline_getNoise) {
 const cleanDeck = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
@@ -10957,9 +10906,7 @@ noiseWords.forEach(w => {
 const cleanW = String(w).replace(/\s/g, '');
 finalNoiseWords.push(...cleanW.split(''));
 });
-} else {
-finalNoiseWords = noiseWords;
-}
+} else { finalNoiseWords = noiseWords; }
 finalNoiseWords = cleanAndLower(finalNoiseWords);
 finalNoiseWords = window.Utils.shuffleArray(finalNoiseWords).slice(0, targetCount);
 parts.push(...finalNoiseWords);
@@ -10974,7 +10921,6 @@ setStats({ correct: 0, wrong: 0 });
 isInitializingRef.current = true;
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
 if (sourceMode === 'card') {
-// [VI PHẪU JIT]: Không gạt thẻ mồ côi (khuyết definition) ra khỏi băng đạn nữa
 let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 2) {
 safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
@@ -10990,32 +10936,20 @@ validCards = [...validCards, ...newFbs];
 }
 }
 if (validCards.length < 2) {
-const defaults = [
-{ term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" },
-{ term: "Learning languages is fun", definition: "Học ngôn ngữ rất vui" }
-];
+const defaults = [{ term: "Apple", definition: "Quả táo" }, { term: "Banana", definition: "Quả chuối" }];
 const existingTerms = new Set(validCards.map(c => c.term));
 const neededDefaults = defaults.filter(f => !existingTerms.has(f.term));
 validCards = [...validCards, ...neededDefaults];
 }
 }
 deckRef.current = window.Utils.shuffleArray(validCards);
-} else {
-deckRef.current = [];
-}
+} else { deckRef.current = []; }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
-// [CẮM CÁP] Gọi sang QueueEngine mới
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// ĐỒNG BỘ: Nâng mức trần nạp đạn (QueueTargetSize) lên 4
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
-} else {
-safeShowToast("Lỗi hệ thống: Không tìm thấy QueueEngine (Block 2.5)", "error");
-return;
-}
-// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
+} else { return; }
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
 await coordinatorRef.current.maintain(true, 22000, isOfflineFastTrack);
-// [MẸO ĐÁNH LỪA TRÌNH DUYỆT] Tránh lỗi chặn Audio trên iOS
 if (window.speechSynthesis) {
 const silentUtterance = new SpeechSynthesisUtterance('');
 silentUtterance.volume = 0;
@@ -11023,7 +10957,6 @@ window.speechSynthesis.speak(silentUtterance);
 }
 let firstData = coordinatorRef.current.pop();
 if (!firstData) {
-if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Ghép Câu", "Kích hoạt Hard Fallback");
 if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
 firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
 }
@@ -11034,23 +10967,19 @@ setGameState({ origin: firstData.origin, chunks: finalChunks, userAnswer: [], is
 setIsGenerating(false);
 isInitializingRef.current = false;
 setTimeLeft(timeLimit || 60);
-// [NEW v1.06] Kích hoạt UI Cooldown
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || isAiMode) {
 currentCooldown = 9;
 try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
 }
 setAiWaitTime(currentCooldown);
-safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 setTimeout(() => triggerAutoSave(), 150);
 } else if (isGameActiveRef.current) {
-// [QA DEBUG] Ép EndGame khi kẹt tải dữ liệu ban đầu
-safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu. Buộc kết thúc.", "error");
+safeShowToast("Lỗi tải dữ liệu ban đầu. Buộc kết thúc.", "error");
 setIsGenerating(false); isInitializingRef.current = false;
 onEndGame(stats);
 }
 };
-// PHỤC HỒI DỮ LIỆU TỪ SESSION
 const hasStartedRef = React.useRef(false);
 React.useEffect(() => {
 if (hasStartedRef.current) return;
@@ -11063,26 +10992,19 @@ if (savedState.timeLeft) setTimeLeft(savedState.timeLeft);
 if (savedState.aiWaitTime !== undefined) setAiWaitTime(savedState.aiWaitTime);
 if (savedState.deck) deckRef.current = [...savedState.deck];
 if (coordinatorRef.current) coordinatorRef.current.destroy();
-// [CẮM CÁP] Gọi sang QueueEngine mới
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// ĐỒNG BỘ: Nâng mức trần nạp đạn lên 4 khi Resume
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
-// [BÍT LỖ HỔNG THOÁT NGANG] Xử lý cờ _needsNextOnResume
 if (savedState._needsNextOnResume) {
-setGameState(prev => ({ ...prev, origin: null })); // Xóa origin cũ để bật UI Loading
+setGameState(prev => ({ ...prev, origin: null }));
 setIsGenerating(true);
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
-if (!data) {
-if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game Ghép Câu", "Kích hoạt Hard Fallback");
-if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
-}
+if (!data) data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
 if (data) {
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...data.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
@@ -11095,7 +11017,6 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 }
 setAiWaitTime(currentCooldown);
 } else {
-safeShowToast("Lỗi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false);
 onEndGame(savedState.stats || { correct: 0, wrong: 0 });
 }
@@ -11106,9 +11027,7 @@ setGameState(JSON.parse(JSON.stringify(savedState.gameState)));
 setIsGenerating(false);
 isInitializingRef.current = false;
 }
-} else {
-startNewGame();
-}
+} else { startNewGame(); }
 return () => {
 isGameActiveRef.current = false;
 if (timerRef.current) clearTimeout(timerRef.current);
@@ -11135,18 +11054,14 @@ setIsListening(false);
 }
 }
 }, [isPaused]);
-// [BỊT LỖ HỔNG] Thuật toán đồng bộ Phanh AI và Auto-Next
 const proceedToNext = (defaultDelayMs) => {
 if (isGameActiveRef.current) {
 let delaySec = Math.ceil(defaultDelayMs / 1000);
-if (aiWaitTime > delaySec) {
-delaySec = aiWaitTime;
-}
+if (aiWaitTime > delaySec) { delaySec = aiWaitTime; }
 if (delaySec < 1) delaySec = 1;
 setResultTimer(delaySec);
 }
 };
-// [QA DEBUG] Động cơ UX Timer đếm ngược kết quả (Vá Race Condition)
 React.useEffect(() => {
 const isDone = gameState.isCorrect === true || (gameState.isCorrect === false && gameState.attempts >= 3);
 if (isDone && resultTimer > 0 && !isResultPaused && !isGenerating) {
@@ -11161,7 +11076,6 @@ const handleSaveAndBack = () => {
 const currentData = latestStateRef.current;
 let finalStats = { ...currentData.stats };
 let needsNext = false;
-// BÍT LỖ HỔNG THOÁT NGANG
 if (currentData.gameState.isCorrect === null && currentData.gameState.origin) {
 localPushToRetryBag(currentData.gameState.origin);
 logMistake(currentData.gameState.origin);
@@ -11191,8 +11105,6 @@ if (recognitionRef.current) recognitionRef.current.abort();
 setIsListening(false);
 setTimeLeft(timeLimit || 60);
 if (inputMethod === 'type') { setTimeout(() => typeInputRef.current?.focus(), 100); }
-setVoiceRetries(0); setVoiceOptions([]); setVoiceSelectedOption(null);
-// [MẸO ĐÁNH LỪA TRÌNH DUYỆT] Tránh lỗi chặn Audio trên iOS
 if (window.speechSynthesis) {
 const silentUtterance = new SpeechSynthesisUtterance('');
 silentUtterance.volume = 0;
@@ -11203,7 +11115,6 @@ const nextData = coordinatorRef.current.pop();
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...nextData.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
 setGameState({ origin: nextData.origin, chunks: finalChunks, userAnswer: [], isCorrect: null, attempts: 0, isAiGenerated: nextData.isAiGenerated, _isRescued: nextData._isRescued || nextData.origin?._isRescued });
-// [NEW v1.06] Kích hoạt UI Cooldown
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || isAiMode) {
 currentCooldown = 9;
@@ -11212,22 +11123,16 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 } else {
 setIsGenerating(true);
-// [VÁ LỖI OFFLINE WAIT TRAP] Truyền cờ isOfflineFastTrack
 const isOfflineFastTrack = sourceMode === 'card' && !isAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack).then(() => {
 if (isGameActiveRef.current) {
 let data = coordinatorRef.current.pop();
-if (!data) {
-if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Ghép Câu", "Kích hoạt Hard Fallback");
-if (showToast) safeShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
-}
+if (!data) data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('scramble', lang, config?.level || level, { difficulty, inputMethod, dataMode: config?.dataMode }) : null;
 if (data) {
 let finalChunks = [];
 if (inputMethod === 'tap') finalChunks = window.Utils.shuffleArray([...data.parts].map((text, id) => ({ id: `chunk-${id}-${Date.now()}`, text })));
 setGameState({ origin: data.origin, chunks: finalChunks, userAnswer: [], isCorrect: null, attempts: 0, isAiGenerated: data.isAiGenerated, _isRescued: data._isRescued || data.origin?._isRescued });
 setIsGenerating(false);
-// [NEW v1.06] Kích hoạt UI Cooldown
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || isAiMode) {
 currentCooldown = 9;
@@ -11235,8 +11140,7 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 }
 setAiWaitTime(currentCooldown);
 } else {
-// [QA DEBUG] Điểm mù 1: Ép EndGame khi kẹt tải vòng mới
-safeShowToast("Lỗi tải dữ liệu vòng mới. Buộc kết thúc.", "error");
+safeShowToast("Lỗi tải vòng mới. Buộc kết thúc.", "error");
 setIsGenerating(false);
 onEndGame(stats);
 }
@@ -11245,10 +11149,14 @@ onEndGame(stats);
 }
 setTimeout(() => triggerAutoSave(), 150);
 };
+// ==================================================================================
+// ĐỘNG CƠ KIỂM TRA ĐÁP ÁN (KIỂM TRA CHÉO ĐA PHƯƠNG THỨC)
+// ==================================================================================
 const checkAnswer = () => {
 if (!gameState.origin || isPaused) return;
 let isCorrect = false;
-if (inputMethod === 'type') {
+// Voice Method giờ đây cũng được Normalize như Type
+if (inputMethod === 'type' || inputMethod === 'voice') {
 isCorrect = window.Utils.advancedNormalize(inputBuffer, lang) === window.Utils.advancedNormalize(gameState.origin.term, lang);
 }
 else if (inputMethod === 'tap') {
@@ -11258,19 +11166,18 @@ const separator = (!isChinese && isSentence) ? ' ' : '';
 const userString = gameState.userAnswer.map(c => c.text).join(separator);
 isCorrect = window.Utils.advancedNormalize(userString, lang) === window.Utils.advancedNormalize(gameState.origin.term, lang);
 }
-else if (inputMethod === 'voice') return;
 if (isCorrect) {
 if (gameState.attempts === 0) {
 localRemoveFromRetryBag(gameState.origin.term);
 }
 setGameState(prev => ({ ...prev, isCorrect: true }));
 setStats(s => ({ ...s, correct: s.correct + 1 }));
-if (inputMethod === 'type') setInputBuffer("");
 proceedToNext(3000);
 if (autoReadAnswer && onPlay) onPlay(gameState.origin.term);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
-const newAttempts = gameState.attempts + 1;
+// [BẢN VÁ V1.12] Áp dụng Sudden Death: Sai 1 lần ép attempts lên MAX (3)
+const newAttempts = suddenDeath ? 3 : (gameState.attempts + 1);
 setGameState(prev => ({ ...prev, isCorrect: false, attempts: newAttempts }));
 if (newAttempts >= 3) {
 localPushToRetryBag(gameState.origin);
@@ -11309,31 +11216,14 @@ setTimeout(() => typeInputRef.current?.focus(), 50);
 setTimeout(() => triggerAutoSave(), 150);
 }
 };
-const handleVoiceChoice = (selectedText) => {
-if (!gameState.origin || isPaused || gameState.isCorrect !== null) return;
-setVoiceSelectedOption(selectedText);
-const isCorrect = window.Utils.advancedNormalize(selectedText, lang) === window.Utils.advancedNormalize(gameState.origin.term, lang);
-if (isCorrect) {
-if (gameState.attempts === 0) {
-localRemoveFromRetryBag(gameState.origin.term);
-}
-setGameState(prev => ({ ...prev, isCorrect: true }));
-setStats(s => ({ ...s, correct: s.correct + 1 }));
-proceedToNext(3000);
-if (autoReadAnswer && onPlay) onPlay(gameState.origin.term);
-setTimeout(() => triggerAutoSave(), 150);
-} else {
-localPushToRetryBag(gameState.origin);
-setGameState(prev => ({ ...prev, isCorrect: false, attempts: 3 }));
-setStats(s => ({ ...s, wrong: s.wrong + 1 }));
-logMistake(gameState.origin);
-proceedToNext(5000);
-if (onPlay) onPlay(gameState.origin.term);
-setTimeout(() => triggerAutoSave(), 150);
-}
+const handleVoiceChoice = () => {
+// Legacy Function, giữ vỏ tĩnh để không vỡ Prop khi chưa nạp xong Tầng 5.3
 };
+// ==================================================================================
+// ĐẠI PHẪU NHẬN DIỆN GIỌNG NÓI (REAL-TIME PREVIEW)
+// ==================================================================================
 const toggleMic = () => {
-if (isPaused) return;
+if (isPaused || gameState.isCorrect !== null) return;
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
 if (showToast) safeShowToast("Trình duyệt không hỗ trợ nhận diện giọng nói!", "error");
@@ -11346,21 +11236,15 @@ if (hardTimerRef.current) clearTimeout(hardTimerRef.current);
 setIsListening(false);
 return;
 }
-if (voiceRetries >= 3) {
-if (showToast) safeShowToast("Đã hết 3 lượt đọc! Vui lòng chọn đáp án bên dưới.", "warning");
-return;
-}
-setVoiceRetries(prev => prev + 1);
-setVoiceOptions([]);
+// Xóa trắng Input Buffer cũ để người dùng dễ dàng thử đọc lại
 setInputBuffer("");
 try {
 const recognition = new SpeechRecognition();
 recognitionRef.current = recognition;
 recognition.continuous = true;
-recognition.interimResults = true;
-recognition.maxAlternatives = 3;
+recognition.interimResults = true; // Mở khóa Real-time Stream
+recognition.maxAlternatives = 1; // Chỉ cần văn bản chuẩn nhất
 recognition.lang = lang === 'en' ? 'en-US' : (lang === 'zh' ? 'zh-CN' : 'vi-VN');
-let localHeardOptions = ["", "", ""];
 const resetSilenceTimer = () => {
 if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 silenceTimerRef.current = setTimeout(() => {
@@ -11377,7 +11261,7 @@ if (hardTimerRef.current) clearTimeout(hardTimerRef.current);
 hardTimerRef.current = setTimeout(() => {
 if (recognitionRef.current && isListening) {
 recognitionRef.current.stop();
-if (showToast) safeShowToast("Đã tự ngắt (Giới hạn tối đa 15s/lần đọc)", "warning");
+if (showToast) safeShowToast("Đã tự ngắt (Giới hạn tối đa 15s)", "warning");
 }
 }, 15000);
 };
@@ -11385,7 +11269,7 @@ recognition.onend = () => {
 setIsListening(false);
 if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 if (hardTimerRef.current) clearTimeout(hardTimerRef.current);
-padAndSetVoiceOptions(localHeardOptions);
+// Tuyệt đối KHÔNG TỰ ĐỘNG CHẤM ĐIỂM Ở ĐÂY
 };
 recognition.onerror = (event) => {
 console.error("Speech Recognition Error:", event.error);
@@ -11396,22 +11280,14 @@ if (event.error === 'not-allowed' && showToast) safeShowToast("Bạn cần cấp
 };
 recognition.onresult = (event) => {
 let currentInputBuffer = "";
-let tempOptions = ["", "", ""];
-const isChinese = lang === 'zh';
-const separator = isChinese ? "" : " ";
 let hasValidText = false;
 for (let i = 0; i < event.results.length; i++) {
-const resultChunk = event.results[i];
-const text = resultChunk[0].transcript;
+const text = event.results[i][0].transcript;
 currentInputBuffer += text;
 if (text.trim().length > 0) hasValidText = true;
-for (let altIdx = 0; altIdx < 3; altIdx++) {
-const chunkText = resultChunk[altIdx] ? resultChunk[altIdx].transcript : resultChunk[0].transcript;
-tempOptions[altIdx] += (tempOptions[altIdx] && !isChinese ? separator : "") + chunkText.trim();
-}
 }
 if (hasValidText) { resetSilenceTimer(); }
-localHeardOptions = tempOptions;
+// Đổ thẳng vào State để UI Render ngay lập tức
 setInputBuffer(currentInputBuffer);
 };
 recognition.start();
@@ -11419,32 +11295,6 @@ recognition.start();
 console.error("Mic start error:", e);
 if (showToast) safeShowToast("Không thể khởi động Micro.", "error");
 }
-};
-const padAndSetVoiceOptions = (heardArr) => {
-let options = [...new Set(heardArr.filter(t => t.trim() !== ""))];
-if (options.length < 3) {
-let pool = cards.filter(c => c.term !== gameState.origin?.term).map(c => c.term);
-if (pool.length < 3 && window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
-const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const mode = window.Utils.detectSentence(gameState.origin?.term) ? 'sentence' : 'vocab';
-const safeLevel = level || 'en_level_1';
-const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 10);
-if (fbItems) {
-pool.push(...fbItems.filter(c => c.term !== gameState.origin?.term).map(c => c.term));
-}
-}
-const shuffledPool = window.Utils.shuffleArray(pool);
-while (options.length < 3 && shuffledPool.length > 0) {
-const randomWord = shuffledPool.pop();
-if (!options.includes(randomWord)) { options.push(randomWord); }
-}
-let fallbackCount = 1;
-while (options.length < 3) {
-options.push("Option " + fallbackCount++);
-}
-}
-options = options.slice(0, 3);
-setVoiceOptions(window.Utils.shuffleArray(options));
 };
 const handleSkip = (isTimeout = false) => {
 if (isGenerating || isPaused || gameState.isCorrect !== null) return;
@@ -11550,6 +11400,7 @@ handleExplain={handleExplain} nextRound={nextRound} isBookmarked={isBookmarked}
 handleAddPunctuation={handleAddPunctuation}
 resultTimer={resultTimer} isResultPaused={isResultPaused} toggleResultPause={toggleResultPause}
 queueLength={queueLength} aiWaitTime={aiWaitTime}
+suddenDeath={suddenDeath}
 />
 );
 };
