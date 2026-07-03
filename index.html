@@ -9583,9 +9583,10 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.13
-// Last Updated: 2026-06-02 10:15
+// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.14
+// Last Updated: 2026-07-03 10:03
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
+// Cập nhật V1.14: [STRICT ROUTING] Khai tử thuật toán đoán mò `detectSentence` và `.includes(' ')`. Ép định tuyến tuyệt đối qua biến `configRef.current.dataMode` để xác định ngữ cảnh Từ vựng hay Câu văn khi sinh bẫy.
 // Cập nhật V1.13: [JIT PROCESSING] Khai tử "kẻ cắp thời gian" batchEnrich ở đầu game. Di dời logic dịch thuật (Enrich) vào hàm fetchTask để xử lý ngầm On-demand, giải phóng tốc độ khởi động về 0s. Đồng thời cạo sạch tàn dư silentUtterance.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
@@ -9866,7 +9867,7 @@ for (let i = 0; i < trapSources.length; i++) {
 const trapCard = trapSources[i];
 let distortedTerm = null;
 let explanation = "";
-const isSentence = window.Utils.detectSentence ? window.Utils.detectSentence(trapCard.term) : trapCard.term.includes(' ');
+const isSentence = configRef.current?.dataMode === 'sentence';
 const type = isSentence ? 'sentence' : 'word';
 const isAiModeActive = JSON.parse(localStorage.getItem('fc_match_config'))?.aiMode || false;
 if (isAiModeActive && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
@@ -10649,9 +10650,10 @@ window.ScrambleSetup = ScrambleSetup;
 window.ScramblePlayScreen = ScramblePlayScreen;
 window.Block5_3_ScrambleSetup = ScrambleSetup;
 window.Block5_3_ScramblePlayScreen = ScramblePlayScreen;
-// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.12
-// Last Updated: 2026-07-02 18:30
+// Sheet 5.4: TẦNG 5: TRÒ CHƠI HÓA (Scramble Logic) - Version 1.13
+// Last Updated: 2026-07-03 10:10
 // Nhiệm vụ: Động cơ xử lý State, Trộn từ, AI Preload và Micro thu âm cho Game Ghép Câu.
+// Cập nhật V1.13: [STRICT TYPE ROUTING] Nhổ bỏ thuật toán đoán ngữ cảnh detectSentence và includes(' '). Ép định tuyến bằng config.dataMode để bảo vệ tính toàn vẹn của logic.
 // Cập nhật V1.12: [VOICE UI & SUDDEN DEATH] Đại phẫu Input Giọng nói sang Real-time + Chấm điểm thủ công. Áp dụng luật Địa ngục (Sai 1 lần mất điểm). Xóa logic options cũ.
 // Cập nhật V1.11: [JIT ENRICHMENT] Xóa bỏ hoàn toàn batchEnrich gây tắc nghẽn lúc khởi động. Đưa logic dịch ngầm (Lazy Loading) vào fetchTask. Mở khóa nạp thẻ chưa có nghĩa.
 // ==================================================================================
@@ -10868,7 +10870,7 @@ if (!card) card = { term: "Learning languages is very fun.", definition: "Học 
 let parts = [];
 if (inputMethod === 'tap') {
 const isChinese = lang === 'zh';
-const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(card.term) : card.term.includes(' ');
+const isSentence = config?.dataMode === 'sentence';
 const type = isSentence ? 'sentence' : 'word';
 const cleanAndLower = (textArr) => {
 return textArr.map(p => {
@@ -11160,7 +11162,7 @@ isCorrect = window.Utils.advancedNormalize(inputBuffer, lang) === window.Utils.a
 }
 else if (inputMethod === 'tap') {
 const isChinese = lang === 'zh';
-const isSentence = window.Utils.detectSentence(gameState.origin.term);
+const isSentence = config?.dataMode === 'sentence';
 const separator = (!isChinese && isSentence) ? ' ' : '';
 const userString = gameState.userAnswer.map(c => c.text).join(separator);
 isCorrect = window.Utils.advancedNormalize(userString, lang) === window.Utils.advancedNormalize(gameState.origin.term, lang);
@@ -12792,9 +12794,10 @@ aiAmmoCount={aiAmmoCount}
 // EXPORT RA GLOBAL WINDOW
 window.Block5_6_QuizGame = QuizGame;
 window.QuizGame = QuizGame;
-// Block 5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.08
-// Last Updated: 2026-06-14 12:45
+// Block 5.7: TẦNG 5: TRÒ CHƠI HÓA (Game Router) - Version 1.09
+// Last Updated: 2026-07-03 09:20
 // Nhiệm vụ: Bộ điều khiển trung tâm và Router để điều hướng giữa các Game.
+// Cập nhật V1.09: [STRICT ROUTING] Cắt bỏ thuật toán đoán mò `inferredIsSentence`. Ép UI sử dụng trực tiếp prop `dataMode` để quyết định hiển thị/ẩn Game, triệt tiêu lỗi mất kiểm soát ngữ cảnh.
 // Cập nhật V1.08: [LEVEL PIPELINE] Thông ống dẫn dữ liệu: Truyền thêm 'currentLevel' từ GameView xuống QuizSetup để phục vụ thuật toán lọc bẫy ngữ pháp theo cấp độ.
 // Cập nhật V1.07: [PROPS INJECTION] Thông ống dẫn dữ liệu: Truyền 'lang' và 'dataMode' từ GameView xuống QuizSetup để sửa lỗi mất đồng bộ State gây khóa Dropdown ngữ pháp.
 // ==================================================================================
@@ -12874,8 +12877,8 @@ title={`Vào thẳng ván đang chơi`}
 </button>
 );
 };
-const inferredIsSentence = cards && cards.length > 0 && window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(cards[0].term) : false;
-const activeDataMode = dataMode || (inferredIsSentence ? 'sentence' : 'vocab');
+// [BẢN VÁ V1.09] Xóa bỏ thuật toán đoán mò độ dài. Sử dụng trực tiếp dataMode từ Tầng 6
+const activeDataMode = dataMode || 'vocab';
 const handleQuizClick = () => { if (gameSessions?.['quiz']) setPendingResumeGame('quiz'); else onSelectQuiz(); };
 const handleMatchClick = () => { if (gameSessions?.['match']) setPendingResumeGame('match'); else onStartMatch(matchAiMode); };
 const handleScrambleClick = () => { if (gameSessions?.['scramble']) setPendingResumeGame('scramble'); else onStartScramble(); };
@@ -12909,7 +12912,7 @@ title="Chuyển đổi giữa kiến trúc Lắp ráp cũ và Đúc nguyên kh�
 Dev: Legacy ({useLegacyAi ? 'ON' : 'OFF'})
 </button>
 </div>
-<div className={`w-14 h-14 sm:w-16 sm:h-16 bg-${mainColor}-50 rounded-full flex items-center justify-center mb-3 sm:mb-4 shadow-inner`}>
+<div className={`w-14 h-14 sm:w-16 h-16 bg-${mainColor}-50 rounded-full flex items-center justify-center mb-3 sm:mb-4 shadow-inner`}>
 <window.Icons.Gamepad2 size={28} className={`text-${mainColor}-600`} />
 </div>
 <h2 className={`text-lg sm:text-xl font-black text-${mainColor}-800 mb-1 uppercase tracking-wide`}>{t('gameTitle') || 'Trò chơi'}</h2>
@@ -13943,9 +13946,10 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.2
-// Last Updated: 2026-06-03 08:43
+// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.21
+// Last Updated: 2026-07-03 10:14
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý dữ liệu và luồng kiểm tra đáp án.
+// Cập nhật V2.21: [STRICT TYPE ROUTING] Nhổ tận gốc 5 vị trí sử dụng thuật toán đoán câu `detectSentence` và khoảng trắng. Ép toàn bộ cơ chế đục lỗ và Fallback JIT tuân thủ nghiêm ngặt cờ định tuyến `config.dataMode` từ Tầng 6. Giải quyết triệt để lỗi sập Game khi đục lỗ từ ghép.
 // Cập nhật V2.2: [VÁ LỖI REFERENCE ERROR] Cắt bỏ chữ `queueLength` trong mảng return ở cuối Hook để dập tắt lỗi văng màn hình trắng, do biến này đã được thay bằng `aiAmmoCount` ở bản cập nhật trước.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
@@ -14151,9 +14155,6 @@ let baseCard = null;
 if (!isPureMode || deckRef.current.length > 0) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
 let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
-let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
-if (sentenceCards.length === 0) sentenceCards = validCards;
-validCards = sentenceCards;
 if (validCards.length < 2 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
@@ -14189,7 +14190,7 @@ historyQueueRef.current.shift();
 try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.current)); } catch(e) {}
 }
 }
-const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(baseCard.term) : baseCard.term.includes(' ');
+const isSentence = config?.dataMode === 'sentence';
 const type = isSentence ? 'sentence' : 'word';
 // 5. ĐỘNG CƠ ĐỤC LỖ CHUNG (MASKING ENGINE)
 let maskedResult = null;
@@ -14271,7 +14272,7 @@ let data = coordinatorRef.current.pop();
 if (!data && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
 const fallbackCard = deckRef.current.shift();
 if (fallbackCard) {
-const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+const type = config?.dataMode === 'sentence' ? 'sentence' : 'word';
 let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.ClozeEngine.offline_mask) {
 offlineResult = window.GameAlgoEngine.ClozeEngine.offline_mask(fallbackCard.term, lang, type, enrichedCardsRef.current || []);
@@ -14350,7 +14351,7 @@ let data = coordinatorRef.current.pop();
 if (!data && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
 const fallbackCard = deckRef.current.shift();
 if (fallbackCard) {
-const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+const type = config?.dataMode === 'sentence' ? 'sentence' : 'word';
 let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.ClozeEngine.offline_mask) {
 offlineResult = window.GameAlgoEngine.ClozeEngine.offline_mask(fallbackCard.term, lang, type, enrichedCardsRef.current || []);
@@ -14435,7 +14436,7 @@ let data = coordinatorRef.current.pop();
 if (!data && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
 const fallbackCard = deckRef.current.shift();
 if (fallbackCard) {
-const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+const type = config?.dataMode === 'sentence' ? 'sentence' : 'word';
 let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.ClozeEngine.offline_mask) {
 offlineResult = window.GameAlgoEngine.ClozeEngine.offline_mask(fallbackCard.term, lang, type, enrichedCardsRef.current || []);
@@ -15250,9 +15251,10 @@ window.Block5_10_SpotMistakeSetup = SpotMistakeSetup;
 window.SpotMistakeSetup = SpotMistakeSetup;
 window.Block5_10_SpotMistakePlayScreen = SpotMistakePlayScreen;
 window.SpotMistakePlayScreen = SpotMistakePlayScreen;
-// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.21
-// Last Updated: 2026-06-02 08:05
+// Block 5.11: TẦNG 5: TRÒ CHƠI HÓA (SpotMistake Logic & Wrapper) - Version 1.22
+// Last Updated: 2026-07-03 10:23
 // Nhiệm vụ: Controller chính của Game Tìm Lỗi Sai. Quản lý luồng, gọi API Pure Mode & Hybrid Mode.
+// Cập nhật V1.22: [STRICT TYPE ROUTING] Khai tử thuật toán đoán mò detectSentence và text.includes(' '). Mọi cơ chế Fallback và bóp méo nay tuân thủ tuyệt đối định tuyến config.dataMode truyền từ UI.
 // Cập nhật V1.21: [BUG FIX] Bơm ngược cờ `aiMode` vào config truyền xuống UI để khắc phục lỗi mất ô hiển thị đạn ở Chế độ Khó.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
@@ -15430,7 +15432,7 @@ id: `spotmistake_${Date.now()}`,
 type: 'ioe_spot_mistake',
 level: config?.level || level || 'level_4_discovery_basic',
 topic: config?.topic || '',
-dataMode: 'sentence',
+dataMode: config?.dataMode || 'sentence',
 mode: 'minigame'
 };
 const freshHistory = window.Utils ? window.Utils.safeJsonParse('fc_ai_memory', []) : [];
@@ -15454,12 +15456,9 @@ let baseCard = null;
 if (!isPureMode || deckRef.current.length > 0) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
 let validCards = (enrichedCardsRef.current || []).filter(c => c.term && c.term.trim() !== '' && c.term.length > 2); // Loại bỏ thẻ quá ngắn
-let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
-if (sentenceCards.length === 0) sentenceCards = validCards;
-validCards = sentenceCards;
 if (validCards.length < 2 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const mode = 'sentence';
+const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
 const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
@@ -15492,8 +15491,8 @@ historyQueueRef.current.shift();
 try { localStorage.setItem('fc_ai_memory', JSON.stringify(historyQueueRef.current)); } catch(e) {}
 }
 }
-const isSentence = window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(baseCard.term) : baseCard.term.includes(' ');
-const type = isSentence ? 'sentence' : 'word';
+const type = config?.dataMode === 'sentence' ? 'sentence' : 'word';
+const isSentence = type === 'sentence';
 // 5. CHẾ BIẾN LỖI SAI BẰNG AI (HYBRID MODE - CHỈ KÍCH HOẠT NẾU LÀ CHẾ ĐỘ KHÓ)
 if (effectiveAiMode && currentApiKey && isSentence && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 try {
@@ -15600,14 +15599,11 @@ isInitializingRef.current = true;
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
 if (sourceMode === 'card') {
 let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '' && c.definition && c.definition.trim() !== '');
-let sentenceCards = validCards.filter(c => window.Utils && window.Utils.detectSentence ? window.Utils.detectSentence(c.term) : c.term.includes(' '));
-if (sentenceCards.length === 0) sentenceCards = validCards;
-validCards = sentenceCards;
 if (validCards.length < 2) {
 safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-const mode = 'sentence';
+const mode = config?.dataMode === 'sentence' ? 'sentence' : 'vocab';
 const safeLevel = level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
@@ -15646,7 +15642,7 @@ let firstData = coordinatorRef.current.pop();
 if (!firstData && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
 const fallbackCard = deckRef.current.shift();
 if (fallbackCard) {
-const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+const type = config?.dataMode === 'sentence' ? 'sentence' : 'word';
 let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
 offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(fallbackCard.term, lang, type);
@@ -15727,7 +15723,7 @@ let data = coordinatorRef.current.pop();
 if (!data && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
 const fallbackCard = deckRef.current.shift();
 if (fallbackCard) {
-const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+const type = config?.dataMode === 'sentence' ? 'sentence' : 'word';
 let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
 offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(fallbackCard.term, lang, type);
@@ -15813,7 +15809,7 @@ let data = coordinatorRef.current.pop();
 if (!data && effectiveAiMode && deckRef.current && deckRef.current.length > 0) {
 const fallbackCard = deckRef.current.shift();
 if (fallbackCard) {
-const type = window.Utils && window.Utils.detectSentence ? (window.Utils.detectSentence(fallbackCard.term) ? 'sentence' : 'word') : 'sentence';
+const type = config?.dataMode === 'sentence' ? 'sentence' : 'word';
 let offlineResult = { wrongSentence: fallbackCard.term + "x", wrongWord: fallbackCard.term + "x", correction: fallbackCard.term, explanation: "Lỗi hình thái (Dự phòng)" };
 if (window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.offline_distort) {
 offlineResult = window.GameAlgoEngine.DistortionEngine.offline_distort(fallbackCard.term, lang, type);
