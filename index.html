@@ -87,11 +87,11 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.05
-// Last Updated: 2026-06-16 11:15
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.06
+// Last Updated: 2026-07-03 18:45
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
+// Cập nhật V1.06: [VIETNAMESE DEPRECATION] Nhổ tận gốc định tuyến cấu hình, UI Text và Fallback URL của ngôn ngữ 'vi'.
 // Cập nhật V1.05: [DYNAMIC PROMPT PREPARATION] Thực thi Mũi khoan 1: Làm sạch các Template tĩnh. Cắt bỏ hoàn toàn các hướng dẫn phần cứng (như IPA/Pinyin, sinoViet) ra khỏi chuỗi enrich_word để chuẩn bị cho cơ chế tiêm ngữ cảnh động (Dynamic Injection) tại Tầng 2.1c.
-// Cập nhật V1.04: [EXCEL PARSING HOTFIX] Ép phẳng toàn bộ các chuỗi Template (Multi-line strings) trong DEFAULT_PROMPTS thành cấu trúc một dòng (Single-line) sử dụng ký tự `\n`. Triệt tiêu hoàn toàn rủi ro vỡ cấu trúc hàng/cột khi người dùng chép dán mã nguồn vào môi trường MS Excel. Tuân thủ tuyệt đối Điều 3.2 Hiến pháp.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -109,15 +109,13 @@ ACTIVE_EXAM: 'fc_active_exam'
 // Nâng cấp cấu trúc Link mặc định thành Đa chiều (Từ vựng / Câu văn)
 window.DEFAULT_SHEETS = {
 en: { vocab: "https://docs.google.com/spreadsheets/d/1k9blJ9jo-GHmqYEHQ_DEYlC5nVuZ-Zce2ZY4o7kU5kw/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1LwzLSR27rvCrc7d6_uCuIXiVfnDlfTCkRN4mgxz_STY/edit?usp=drive_link" },
-zh: { vocab: "https://docs.google.com/spreadsheets/d/17lPYQ1mVWisPhHydugT6IEtl2bvcnmWmm367V_3dQHE/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1YMXhI2_aKdVDZp6hS5p4JqU3PJBDxI_JpVAUZdnDHiw/edit?usp=drive_link" },
-vi: { default: "https://docs.google.com/spreadsheets/d/1PYZdSPE6zPpweYCmBcjuJwY-D1pGX2yD0Nm5RQUEwRg/edit?gid=0#gid=0" }
+zh: { vocab: "https://docs.google.com/spreadsheets/d/17lPYQ1mVWisPhHydugT6IEtl2bvcnmWmm367V_3dQHE/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1YMXhI2_aKdVDZp6hS5p4JqU3PJBDxI_JpVAUZdnDHiw/edit?usp=drive_link" }
 };
 window.DEFAULT_API_KEY_SHEET = "https://docs.google.com/spreadsheets/d/1Pv3At-Qpz110ni2nxfSG9KN5j_wKFwHlH_6UORuCalY/edit?usp=drive_link";
 // KHÔI PHỤC DI SẢN (Chỉ chứa định tuyến Key, tuyệt đối không chứa Thẻ mẫu)
 window.CONFIG_SAMPLES = {
 en: { dataKey: 'fc_data_en', noteKey: 'fc_notebook_en' },
-zh: { dataKey: 'fc_data_zh', noteKey: 'fc_notebook_zh' },
-vi: { dataKey: 'fc_data_vi', noteKey: 'fc_notebook_vi' }
+zh: { dataKey: 'fc_data_zh', noteKey: 'fc_notebook_zh' }
 };
 // ============================================================================
 // HỆ THỐNG MENU ĐỊNH DANH BẪY SƯ PHẠM (TRAP ID REGISTRY)
@@ -162,7 +160,6 @@ grammar: `Đóng vai một gia sư tận tâm, hãy phân tích ngữ pháp củ
 };
 // UI TEXT
 window.UI_TEXT = {
-vi: { gameTitle: "Luyện Tập", modeSession: "Theo Session", descSession: "Học 20 thẻ ngẫu nhiên", modeEndless: "Vô Tận", descEndless: "Học toàn bộ kho từ", modeMatch: "Game Nối Ô", descMatch: "Nối từ và nghĩa", modeScramble: "Ghép Câu", descScramble: "Sắp xếp từ thành câu", finishTitle: "Hoàn Thành!", finishMsg: "Đúng {c}/{t} câu.", score: "Điểm Số", backMenu: "Về Menu", secondChance: "Cơ hội thứ 2!", addToNotebook: "Thêm vào sổ tay", startListen: "Nghe", endGame: "Kết thúc", skip: "Bỏ qua", needMoreCards: "Cần ít nhất {n} thẻ!", settingsTitle: "Cài đặt", uiLanguage: "Ngôn ngữ hiển thị", displayMode: "Chế độ hiển thị", termFirst: "Mặt chữ trước", defFirst: "Mặt nghĩa trước", fontLabel: "Phông chữ", fontWeightLabel: "Độ đậm chữ", textNormal: "Thường", textBold: "Đậm", voiceSpeed: "Tốc độ đọc", fontSize: "Cỡ chữ", cardSize: "Kích thước thẻ", autoConfig: "Cấu hình tự động", delayFlip: "Chờ lật (s)", delayReveal: "Chờ xem nghĩa (s)", delayNext: "Chờ qua thẻ (s)", repeatCount: "Số lần lặp", resetData: "Xóa toàn bộ dữ liệu", cancel: "Hủy", apply: "Áp dụng", apiKeyLabel: "Nhập Gemini API Key", apiKeyPlace: "Dán API Key vào đây...", notebookTitle: "Sổ Tay Từ Vựng", emptyNotebook: "Sổ tay trống", colTerm: "Từ vựng", colPronun: "Phiên âm", colDef: "Nghĩa", removeFromNotebook: "Xóa khỏi sổ tay", studyFlashcard: "Học ngay", saveChanges: "Lưu thay đổi", selectWordsToSave: "Chọn từ để lưu", saveSelected: "Lưu từ đã chọn", saveWholeSentence: "Lưu cả câu", close: "Đóng", importTitle: "Quản lý Link & Dữ liệu", apiKeySheetLabel: "Link Google Sheet API Key", downloadTemplate: "Tải mẫu Sheet", linkDefault: "Link dữ liệu gốc", exportSheetLabel: "Link Sheet xuất dữ liệu", ttExportToLink: "Xuất ra Link", ttUpload: "Tải file Excel", ttExport: "Xuất Excel", orInput: "Or input link directly:", inputPlace: "Dán Google Sheet link...", importNow: "Nhập dữ liệu ngay", ttReload: "Tải lại dữ liệu gốc", ttImportLink: "Nhập/Xuất Dữ liệu", navLearn: "Học từ", navGame: "Game", navKey: "API Key", navSettings: "Cài đặt", ttKey: "Cấu hình API Key", importSuccess: "Đã nhập thành công {n} thẻ!", syncSuccess: "Đã copy dữ liệu! Hãy paste vào Google Sheet.", aiError: "Lỗi AI hoặc thiếu API Key", aiGenerating: "AI đang tạo câu hỏi...", aiGen: "Dùng AI", pronunLabel: "Phiên âm", defLabel: "定义", sinoVietLabel: "Hán Việt", exampleLabel: "Ví dụ", imageLabel: "Link ảnh", ttShuffle: "Trộn bài", ttPrev: "Quay lại", ttNext: "Tiếp theo", ttAutoPlay: "Tự động chạy", ttStop: "停止", ttFlipLock: "Khóa lật", ttBookmark: "Lưu vào sổ tay", ttClose: "Đóng", matchAutoNext: "Tự chuyển sau {n}s", matchNextBtn: "Màn tiếp", matchCheckBtn: "Kiểm tra", matchDiff: "Độ khó", matchEasy: "Dễ", matchHard: "Khó", matchCorrect: "Đúng", matchWrong: "Sai", scrambleCorrect: "Chính xác!", scrambleWrong: "Sai rồi", explainBtn: "Giải thích", explainTitle: "Phân tích ngữ pháp", sentence: "Câu gốc", meaning: "Ý nghĩa", listenAgain: "Nghe lại", promptSettings: "Tùy chỉnh câu lệnh AI", promptRestore: "Khôi phục gốc", promptDict: "Từ điển & Sổ tay", promptQuiz: "Game Trắc nghiệm", promptMatch: "Game Nối Ô", promptGrammar: "Giải thích Ngữ pháp", srsAgain: "Quên", srsHard: "Khó", srsGood: "Tốt", srsEasy: "Dễ", srsReviewDue: "Cần ôn tập: {n} thẻ", srsHardLabel: "Khó (Hard)", srsGoodLabel: "Tốt (Good)", srsEasyLabel: "Dễ (Easy)", helpTitle: "Hướng dẫn sử dụng", secLearnTitle: "1. Chế độ Học (Flashcard)", secLearnDesc: "...", secGameTitle: "2. Chế độ Trò chơi", secGameDesc: "...", secNotebookTitle: "3. Sổ tay & Lỗi sai", secNotebookDesc: "...", secShortcutsTitle: "Phím tắt bàn phím", keyNext: "Mũi tên Phải / D: Thẻ tiếp", keyPrev: "Mũi tên Trái / A: Thẻ trước", keyFlip: "Space / Enter: Lật thẻ", keySpeak: "S: Nghe lại", keyAuto: "P: Tự động chạy" },
 en: { gameTitle: "Training Mode", modeSession: "Session Mode", descSession: "Study 20 random cards", modeEndless: "Endless Mode", descEndless: "Study all cards", modeMatch: "Match Game", descMatch: "Connect term & def", modeScramble: "Scramble", descScramble: "Arrange words", finishTitle: "Completed!", finishMsg: "You got {c} correct out of {t}.", score: "Score", backMenu: "Back to Menu", secondChance: "Second Chance!", addToNotebook: "Add to Notebook", startListen: "Listen", endGame: "End Game", skip: "Skip", needMoreCards: "Need at least {n} cards!", settingsTitle: "Settings", uiLanguage: "UI Language", displayMode: "Display Mode", termFirst: "Term First", defFirst: "Definition First", fontLabel: "Font", fontWeightLabel: "Font Weight", textNormal: "Normal", textBold: "Bold", voiceSpeed: "Voice Speed", fontSize: "Font Size", cardSize: "Card Size", autoConfig: "Auto Play Config", delayFlip: "Delay Flip (s)", delayReveal: "Delay Reveal (s)", delayNext: "Delay Next (s)", repeatCount: "Repeat Count", resetData: "Reset All Data", cancel: "Cancel", apply: "Apply", apiKeyLabel: "Enter Gemini API Key", apiKeyPlace: "Paste API Key here...", notebookTitle: "Vocabulary Notebook", emptyNotebook: "Notebook is empty", colTerm: "Term", colPronun: "Pronunciation", colDef: "Definition", removeFromNotebook: "Remove", studyFlashcard: "Study Now", saveChanges: "Save Changes", selectWordsToSave: "Select words to save", saveSelected: "Save Selected", saveWholeSentence: "Save Sentence", close: "Close", importTitle: "Data & Link Manager", apiKeySheetLabel: "API Key Google Sheet Link", downloadTemplate: "Download Template", linkDefault: "Default Data Link", exportSheetLabel: "Export Data Link", ttExportToLink: "Export to Link", ttUpload: "Upload Excel", ttExport: "Export Excel", orInput: "Or input link directly:", inputPlace: "Paste Google Sheet link...", importNow: "Import Now", ttReload: "Reload Default Data", ttImportLink: "Import/Export", navLearn: "Learn", navGame: "Game", navKey: "API Key", navSettings: "Settings", ttKey: "Config API Key", importSuccess: "Successfully imported {n} cards!", syncSuccess: "Data copied! Please paste into Google Sheet.", aiError: "AI Error or Missing Key", aiGenerating: "AI Generating...", aiGen: "Use AI", pronunLabel: "Pronunciation", defLabel: "Definition", sinoVietLabel: "Sino-Vietnamese", exampleLabel: "Example", imageLabel: "Image URL", ttShuffle: "Shuffle", ttPrev: "Previous", ttNext: "Next", ttAutoPlay: "Auto Play", ttStop: "Stop", ttFlipLock: "Flip Lock", ttBookmark: "Bookmark", ttClose: "Close", matchAutoNext: "Next in {n}s", matchNextBtn: "Next", matchCheckBtn: "Check", matchDiff: "Diff", matchEasy: "Easy", matchHard: "Hard", matchCorrect: "Correct", matchWrong: "Wrong", scrambleCorrect: "Correct!", scrambleWrong: "Wrong", explainBtn: "Explain", explainTitle: "Grammar Analysis", sentence: "Sentence", meaning: "Meaning", listenAgain: "Listen Again", promptSettings: "Customize AI Prompts", promptRestore: "Restore Defaults", promptDict: "Dictionary & Notebook", promptQuiz: "Quiz Game", promptMatch: "Match Game", promptGrammar: "Grammar Explain", srsAgain: "Again", srsHard: "Hard", srsGood: "Good", srsEasy: "Easy", srsReviewDue: "Review Due: {n}", srsHardLabel: "Hard", srsGoodLabel: "Good", srsEasyLabel: "Easy", helpTitle: "User Guide", secLearnTitle: "1. Learn Mode", secLearnDesc: "...", secGameTitle: "2. Game Mode", secGameDesc: "...", secNotebookTitle: "3. Notebook", secNotebookDesc: "...", secShortcutsTitle: "Keyboard Shortcuts", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." },
 zh: { gameTitle: "练习模式", modeSession: "会话模式", descSession: "学习 20 张随机卡片", modeEndless: "无尽模式", descEndless: "学习所有卡片", modeMatch: "连连看", descMatch: "连接单词和定义", modeScramble: "组句游戏", descScramble: "连词成句", finishTitle: "完成！", finishMsg: "您答对了 {t} 题中的 {c} 题。", score: "得分", backMenu: "返回菜单", secondChance: "第二次机会！", addToNotebook: "添加到生词本", startListen: "听音", endGame: "结束游戏", skip: "跳过", needMoreCards: "至少需要 {n} 张卡片！", settingsTitle: "设置", uiLanguage: "界面语言", displayMode: "显示模式", termFirst: "先显示单词", defFirst: "先显示定义", fontLabel: "字体", fontWeightLabel: "字重", textNormal: "常规", textBold: "粗体", voiceSpeed: "语速", fontSize: "字号", cardSize: "卡片大小", autoConfig: "自动播放设置", delayFlip: "翻转延迟 (s)", delayReveal: "显示延迟 (s)", delayNext: "切换延迟 (s)", repeatCount: "重置所有数据", cancel: "取消", apply: "应用", apiKeyLabel: "输入 Gemini API 密钥", apiKeyPlace: "在此粘贴 API 密钥...", notebookTitle: "生词本", emptyNotebook: "生词本为空", colTerm: "单词", colPronun: "发音", colDef: "定义", removeFromNotebook: "移除", studyFlashcard: "立即学习", saveChanges: "保存更改", selectWordsToSave: "选择要保存的单词", saveSelected: "保存所选", saveWholeSentence: "保存整句", close: "关闭", importTitle: "数据与链接管理", apiKeySheetLabel: "API 密钥 Google Sheet 链接", downloadTemplate: "下载模板", linkDefault: "默认数据链接", exportSheetLabel: "导出数据链接", ttExportToLink: "导出到链接", ttUpload: "上传 Excel", ttExport: "导出 Excel", orInput: "或直接输入链接：", inputPlace: "粘贴 Google Sheet 链接...", importNow: "立即导入", ttReload: "重载默认数据", ttImportLink: "导入/导出", navLearn: "学习", navGame: "游戏", navKey: "API Key", navSettings: "设置", ttKey: "配置 API Key", importSuccess: "成功导入 {n} 张卡片！", syncSuccess: "数据已复制！请粘贴到 Google Sheet。", aiError: "AI 错误或缺少密钥", aiGenerating: "AI 生成中...", aiGen: "使用 AI", pronunLabel: "发音", defLabel: "定义", sinoVietLabel: "汉越音", exampleLabel: "例句", imageLabel: "图片链接", ttShuffle: "随机播放", ttPrev: "上一个", ttNext: "下一个", ttAutoPlay: "自动播放", ttStop: "停止", ttFlipLock: "锁定翻转", ttBookmark: "收藏", ttClose: "关闭", matchAutoNext: "{n}秒后跳转", matchNextBtn: "下一关", matchCheckBtn: "检查", matchDiff: "难度", matchEasy: "简单", matchHard: "困难", matchCorrect: "正确", matchWrong: "错误", scrambleCorrect: "正确！", scrambleWrong: "错误", explainBtn: "解释", explainTitle: "语法分析", sentence: "原句", meaning: "含义", listenAgain: "重听", promptSettings: "AI 指令自定义", promptRestore: "恢复默认", promptDict: "词典和笔记本", promptQuiz: "测验游戏", promptMatch: "连连看游戏", promptGrammar: "语法解释", srsAgain: "重来", srsHard: "困难", srsGood: "良好", srsEasy: "容易", srsReviewDue: "待复习：{n}", srsHardLabel: "困难", srsGoodLabel: "良好", srsEasyLabel: "容易", helpTitle: "使用指南", secLearnTitle: "1. 学习模式", secLearnDesc: "...", secGameTitle: "2. 游戏模式", secGameDesc: "...", secNotebookTitle: "3. 生词本 & 错题", secNotebookDesc: "...", secShortcutsTitle: "键盘快捷键", keyNext: "...", keyPrev: "...", keyFlip: "...", keySpeak: "...", keyAuto: "..." }
 };
@@ -1860,10 +1857,11 @@ const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 }
 };
-// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.21
-// Last Updated: 2026-07-02 06:39
+// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.22
+// Last Updated: 2026-07-03 21:55
 // Nhiệm vụ: Chuyên trách thuật toán Offline (không dùng mạng) và Định tuyến tương thích ngược cho 9 Games Tầng 5.
-// Cập nhật V1.21: [OFFLINE DISTORTION GUARD] Triển khai Giai đoạn 3: Bổ sung cổng gác Gatekeeper tại `GameAlgoEngine` và `offline_generateOptions`. Vô hiệu hóa cờ `isHard` nếu `isReverse === false` để tuyệt đối chặn thuật toán bóp méo tiếng mẹ đẻ, bảo vệ tính toàn vẹn của chính tả.
+// Cập nhật V1.22: [VI DEPRECATION] Nhổ tận gốc 100% logic, dữ liệu dự phòng, và thuật toán bóp méo hình thái của ngôn ngữ tiếng Việt ('vi'). Tối ưu hóa dung lượng Engine.
+// Cập nhật V1.21: [OFFLINE DISTORTION GUARD] Triển khai Giai đoạn 3: Bổ sung cổng gác Gatekeeper bảo vệ tính toàn vẹn của chính tả.
 // ==================================================================================
 window.GameOfflineEngine = {
 // Helper nội bộ
@@ -1904,23 +1902,6 @@ arr[idx] = wrongChar;
 return { wrongWord: arr.join(''), explanation: "Lỗi dùng sai chữ Hán." };
 }
 return { wrongWord: text + "的", explanation: "Lỗi thêm chữ thừa." };
-}
-if (lang === 'vi') {
-let w = text;
-const viSwaps = [
-{ p: /^tr/i, r: 'ch' }, { p: /^ch/i, r: 'tr' },
-{ p: /^s/i, r: 'x' }, { p: /^x/i, r: 's' },
-{ p: /^l/i, r: 'n' }, { p: /^n/i, r: 'l' },
-{ p: /^gi/i, r: 'd' }, { p: /^d/i, r: 'gi' }, { p: /^r/i, r: 'd' }
-];
-const shuffledVi = window.Utils ? window.Utils.shuffleArray(viSwaps) : viSwaps;
-for (const rule of shuffledVi) {
-if (rule.p.test(w)) {
-return { wrongWord: w.replace(rule.p, rule.r), explanation: "Lỗi sai phụ âm đầu phổ biến." };
-}
-}
-if (w.includes('ả')) return { wrongWord: w.replace(/ả/g, 'ã'), explanation: "Lỗi sai dấu thanh (hỏi/ngã)." };
-if (w.includes('ã')) return { wrongWord: w.replace(/ã/g, 'ả'), explanation: "Lỗi sai dấu thanh (hỏi/ngã)." };
 }
 if (lang === 'en' || !lang) {
 let w = text;
@@ -1997,16 +1978,6 @@ explanation: "Lỗi dùng sai từ vựng tiếng Trung."
 }
 return { wrongSentence: text + "的", wrongWord: "的", correction: "", explanation: "Lỗi thêm chữ thừa." };
 }
-if (lang === 'vi') {
-const words = text.split(' ');
-if (words.length > 2) {
-const idx = Math.floor(Math.random() * (words.length - 2)) + 1;
-const correctWord = words[idx];
-const wrongWord = words[idx+1];
-let t = words[idx]; words[idx] = words[idx+1]; words[idx+1] = t;
-return { wrongSentence: words.join(' '), wrongWord: wrongWord, correction: correctWord, explanation: "Lỗi trật tự từ." };
-}
-}
 const replacements = [
 { regex: /\b(an)\b(?=\s+[aeiou])/i, wrong: "a", correct: "an", exp: "Đứng trước nguyên âm (a,e,i,o,u) phải dùng mạo từ 'an'." },
 { regex: /\b(a)\b(?=\s+[bcdfghjklmnpqrstvwxyz])/i, wrong: "an", correct: "a", exp: "Đứng trước phụ âm phải dùng mạo từ 'a'." },
@@ -2065,7 +2036,6 @@ return { wrongSentence: text + "x", wrongWord: text + "x", correction: text, exp
 // ============================================================================
 // 2. THUẬT TOÁN TẠO ĐÁP ÁN NHIỄU NGOẠI TUYẾN (Offline Quiz Options)
 // ============================================================================
-// [BẢN VÁ V1.21] Bổ sung isHard = false làm mặc định để tương thích và nhận cờ chặn từ Facade
 offline_generateOptions: function(correctText, deck, lang, type, count = 3, isReverse = false, isHard = false) {
 const distractors = new Set();
 let baseCard = isReverse ? deck.find(c => c.term === correctText) : deck.find(c => c.definition === correctText);
@@ -2081,7 +2051,6 @@ if (distractors.size >= count) break;
 distractors.add(c.definition.trim());
 }
 } else {
-// [BẢN VÁ V1.21] Chỉ cho phép bóp méo câu văn khi cờ isHard = true
 if (isHard && window.GameOfflineEngine.offline_distort) {
 const trap1 = window.GameOfflineEngine.offline_distort(correctText, lang, type).wrongSentence;
 if (trap1 && trap1.trim() !== "" && trap1 !== correctText) distractors.add(trap1.trim());
@@ -2161,14 +2130,12 @@ if (fbItems && fbItems.length > 0) {
 fallbackPool = fbItems.map(item => !isReverse ? item.definition : item.term).filter(Boolean);
 }
 }
-// Cập nhật mảng dự phòng tránh rác ngôn ngữ
+// Cập nhật mảng dự phòng chuẩn hóa (Loại bỏ tiếng Việt)
 if (fallbackPool.length === 0) {
 if (lang === 'zh' && isReverse) {
 fallbackPool = ["苹果", "香蕉", "猫", "狗", "电脑", "桌子", "老师", "学生"];
-} else if (lang === 'en' && isReverse) {
-fallbackPool = ["Apple", "Banana", "Cat", "Dog", "Computer", "Table", "Teacher", "Student"];
 } else {
-fallbackPool = ["Quả táo", "Quả chuối", "Con mèo", "Con chó", "Máy tính", "Cái bàn", "Giáo viên", "Học sinh"];
+fallbackPool = ["Apple", "Banana", "Cat", "Dog", "Computer", "Table", "Teacher", "Student"];
 }
 }
 fallbackPool = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...fallbackPool]) : fallbackPool;
@@ -2202,8 +2169,8 @@ Array.from(c.term).forEach(char => pool.push(char));
 const fallbackZhChars = ['的','了','是','不','我','人','大','中','国','一','有','在'];
 pool.push(...fallbackZhChars);
 } else {
-const vowels = lang === 'vi' ? ['a','e','i','o','u','y','ă','â','ê','ô','ơ','ư'] : ['a','e','i','o','u'];
-const consonants = lang === 'vi' ? ['b','c','d','f','g','h','k','l','m','n','p','q','r','s','t','v','x'] : ['b','c','d','f','g','h','k','l','m','n','p','r','s','t','v','w','y'];
+const vowels = ['a','e','i','o','u'];
+const consonants = ['b','c','d','f','g','h','k','l','m','n','p','r','s','t','v','w','y'];
 pool.push(...vowels, ...vowels, ...consonants);
 }
 const shuffledPool = window.Utils.shuffleArray(pool);
@@ -2230,7 +2197,7 @@ noise.add(w);
 if (noise.size >= count) break;
 }
 if (noise.size < count) {
-const fbList = isZh ? ['的', '得', '地', '了', '是'] : (lang === 'vi' ? ['những', 'các', 'là', 'ở', 'thì'] : ['is', 'are', 'a', 'the', 'in', 'not']);
+const fbList = isZh ? ['的', '得', '地', '了', '是'] : ['is', 'are', 'a', 'the', 'in', 'not'];
 for (let w of fbList) {
 if (!baseTokens.includes(w)) noise.add(w);
 if (noise.size >= count) break;
@@ -2277,7 +2244,6 @@ displaySentence = words.slice(0, start).join(' ') + ' [__________] ' + words.sli
 }
 }
 targetWord = targetWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
-// --- THUẬT TOÁN SINH NHIỄU NỘI BỘ (INTERNAL DISTRACTOR GENERATOR) ---
 let distractorSet = new Set();
 const targetLen = isZh ? Array.from(targetWord).length : targetWord.length;
 const cleanToken = (t) => t ? t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim() : '';
@@ -2308,8 +2274,7 @@ distractorSet.add(cw);
 if (distractorSet.size < 3) {
 const fbZh = ['怎么', '什么', '那个', '这个', '很多', '一点', '非常', '比较', '知道', '觉得'];
 const fbEn = ['other', 'different', 'another', 'some', 'many', 'much', 'very', 'really', 'that', 'this'];
-const fbVi = ['những', 'các', 'một', 'được', 'đang', 'sẽ', 'rất', 'nhiều', 'khá', 'hơi'];
-let fbPool = isZh ? fbZh : (lang === 'vi' ? fbVi : fbEn);
+let fbPool = isZh ? fbZh : fbEn;
 fbPool = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...fbPool]) : fbPool;
 for (const fw of fbPool) {
 if (distractorSet.size >= 3) break;
@@ -2412,9 +2377,8 @@ offline_distort: (...args) => window.GameOfflineEngine.offline_distort(...args),
 ai_distort: (...args) => window.GameAiEngine.ai_distort(...args)
 },
 OptionsEngine: {
-// [BẢN VÁ V1.21] GATEKEEPER BẢO VỆ CHÍNH TẢ NỘI BỘ
 offline_generateOptions: (correctText, deck, lang, type, count = 3, isReverse = false, isHard = false) => {
-const safeIsHard = isReverse ? isHard : false; // Ép tắt chế độ Hard (bóp méo) nếu không ở chế độ Đảo ngược
+const safeIsHard = isReverse ? isHard : false;
 return window.GameOfflineEngine.offline_generateOptions(correctText, deck, lang, type, count, isReverse, safeIsHard);
 },
 ai_generateOptions: (...args) => window.GameAiEngine.ai_generateOptions(...args)
@@ -2431,12 +2395,11 @@ OddOneOutEngine: {
 offline_generate: (...args) => window.GameOfflineEngine.offline_generateOddOneOut(...args)
 }
 };
-// Bọc thêm 1 lớp bí danh (Alias) cho các Component ở Tầng 5 lỡ gọi trực tiếp OptionsEngine
 window.OptionsEngine = window.GameAlgoEngine.OptionsEngine;
-// Block2.4: TẦNG 2: DỮ LIỆU CỨU HỘ (Fallback Data Engine) - Version 1.05
-// Last Updated: 2026-05-19 15:07
+// Block2.4: TẦNG 2: DỮ LIỆU CỨU HỘ (Fallback Data Engine) - Version 1.06
+// Last Updated: 2026-07-03 21:55
 // Nhiệm vụ: Kho chứa dữ liệu dự phòng khổng lồ (Offline) và Máy đóng gói Dữ liệu Cứu hộ chuẩn Game (Game-ready Fallback) khi AI sập.
-// Cập nhật: [CHIẾN DỊCH VÔ HIỆU HÓA] Dọn dẹp Hard-fallback Tiếng Trung (HSK) của Game Ngữ âm khỏi getGameReadyFallback để loại bỏ rác hệ thống (Dead code). Tuân thủ Điều 3.
+// Cập nhật: [CHIẾN DỊCH VÔ HIỆU HÓA] Loại bỏ hoàn toàn phân hệ Tiếng Việt (vi) ra khỏi kho Fallback Data.
 // ==================================================================================
 window.FallbackDataEngine = {
 // --- PHÂN HỆ TIẾNG ANH (ENGLISH) ---
@@ -2639,11 +2602,6 @@ zh_level_9: [
 { term: "苍凉", definition: "thê lương, hoang vắng" }, { term: "凄美", definition: "bi thương và đẹp đẽ" }, { term: "哀婉", definition: "bi ai, thê lương" }, { term: "缠绵", definition: "triền miên, day dứt" }
 ]
 }
-},
-// --- PHÂN HỆ TIẾNG VIỆT (TRỐNG) ---
-vi: {
-vocab: {},
-sentence: {}
 },
 // --- HÀM TRÍCH XUẤT DỮ LIỆU ĐƯỢC CHẾ BIẾN CHUẨN GAME (GAME-READY FALLBACK) ---
 getGameReadyFallback: function(gameType, lang, level, config = {}) {
@@ -5732,12 +5690,12 @@ if (key.startsWith('eng_')) return 'Tiếng Anh (Chung)';
 return 'Chuyên đề Khác';
 }
 };
-// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.03
-// Last Updated: 2026-06-16 22:46
+// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.04
+// Last Updated: 2026-07-04 13:36
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
 // Quy tắc: Tuyệt đối không nhúng logic nghiệp vụ vào Tầng này. Tuân thủ Hiến pháp Quy tắc 3.
-// Cập nhật V1.03: [BULLETPROOF DROPDOWN] Tái cấu trúc TopicSelectorDropdown. Cấy Thuật toán Trích xuất 3 Lớp (Triple-Layer Extraction) và mảng dự phòng nội bộ. Gỡ bỏ lệnh tự sát (return null) khi thiếu dữ liệu. Đảm bảo Component miễn nhiễm hoàn toàn với các sự cố bất đồng bộ hoặc hỏng hóc dữ liệu từ Tầng 2.
-// Cập nhật V1.02: [MACRO TOPICS STANDARDIZATION] Sửa đổi TopicSelectorDropdown. Đọc trực tiếp mảng phẳng từ Tầng 2 thay vì truy xuất theo object key (currentLevel). Khắc phục triệt để lỗi biến mất Dropdown sau khi tái cấu trúc 9 chủ đề vĩ mô.
+// Cập nhật V1.04: [VIETNAMESE DEPRECATION] Gỡ bỏ hoàn toàn cờ chặn `if (lang === 'vi') return null;` trong LevelSelector. Tối ưu hoá logic vì ứng dụng giờ chỉ còn 2 ngôn ngữ là en và zh.
+// Cập nhật V1.03: [BULLETPROOF DROPDOWN] Tái cấu trúc TopicSelectorDropdown. Cấy Thuật toán Trích xuất 3 Lớp...
 // ==================================================================================
 // 1. Error Boundary
 class ErrorBoundary extends React.Component {
@@ -5820,7 +5778,6 @@ VolumeX: createIcon(<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></poly
 Brush: createIcon(<><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></>),
 Target: createIcon(<><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></>),
 Award: createIcon(<><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></>),
-// [NEW v1.03] Bổ sung các Icon cần thiết cho Block 4.9 và các UI quản trị mới
 Database: createIcon(<><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></>),
 RefreshCcw: createIcon(<><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></>),
 Edit3: createIcon(<><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></>),
@@ -5866,7 +5823,7 @@ const MenuToggle = ({ active, setActive, icon: Icon, color, title, subtitle, ext
 {active && extra && !disabled && extra}
 </div>
 );
-// [NEW v1.4] Bộ chọn Cấp độ (Level Selector) - Responsive 100%
+// [CẬP NHẬT V1.04] Bộ chọn Cấp độ (Level Selector) - Đã thanh trừng tiếng Việt
 const LevelSelector = ({ lang, currentLevel, onSelectLevel, mainColor = 'blue' }) => {
 const [isOpen, setIsOpen] = React.useState(false);
 const enLevels = [
@@ -5891,7 +5848,7 @@ const zhLevels = [
 { id: 'zh_level_8', label: 'HSK 8', sub: 'Cao cấp' },
 { id: 'zh_level_9', label: 'HSK 9', sub: 'Cao cấp' }
 ];
-if (lang === 'vi') return null;
+// Luôn trả về danh sách của zh hoặc en, mặc định sẽ là enLevels nếu lang không phải 'zh'
 const levels = lang === 'zh' ? zhLevels : enLevels;
 const currentObj = levels.find(l => l.id === currentLevel) || levels[3];
 return (
@@ -5973,7 +5930,7 @@ window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
 // Cập nhật: [VÁ LỖI DỊCH CHUYỂN KHUNG HÌNH] Chính thức tiêm vắc-xin scrollbar-gutter: stable vào CSS toàn cục để triệt tiêu hiện tượng layout shift khi thẻ 3D phình to lúc lật. Tuân thủ Điều 3.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
-const colorMap = { zh: 'red', vi: 'green', en: 'sky' };
+const colorMap = { zh: 'red', en: 'sky' };
 const mainColor = colorMap[lang] || 'sky';
 const safeDataMode = dataMode || 'vocab';
 const safeLevel = currentLevel || (lang === 'zh' ? 'zh_level_1' : 'en_level_4');
@@ -5995,8 +5952,8 @@ return (
 <div className="flex items-center gap-2 sm:gap-3">
 <h1 className={`text-lg sm:text-xl font-black truncate text-${mainColor}-700 flex items-center gap-1`}><Icons.Layers size={20} className="hidden sm:block"/> Flashcard Lite</h1>
 {/* [NÂNG CẤP UI] Nút Ngôn Ngữ được dời lên đây, thu gọn kích thước */}
-<button onClick={() => setLang(l => l === 'zh' ? 'en' : (l === 'en' ? 'vi' : 'zh'))} className={`h-[32px] px-3 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 shadow-sm text-${mainColor}-700 hover:bg-${mainColor}-50 transition-colors whitespace-nowrap`}>
-<Icons.Globe size={14} /> {lang === 'zh' ? 'CN' : (lang === 'vi' ? 'VN' : 'EN')}
+<button onClick={() => setLang(l => l === 'zh' ? 'en' : 'zh')} className={`h-[32px] px-3 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold bg-white border border-gray-200 shadow-sm text-${mainColor}-700 hover:bg-${mainColor}-50 transition-colors whitespace-nowrap`}>
+<Icons.Globe size={14} /> {lang === 'zh' ? 'CN' : 'EN'}
 </button>
 </div>
 <div className="flex gap-1 sm:gap-1.5 flex-wrap justify-end">
@@ -6015,7 +5972,7 @@ return (
 <div className="w-full flex flex-wrap justify-center items-center gap-2 sm:gap-3 mt-1 animate-in slide-in-from-top-2">
 {/* Nhóm Chế độ Data */}
 <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto">
-{lang !== 'vi' && setDataMode && (
+{setDataMode && (
 <div className="h-[42px] flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm shrink-0">
 <button onClick={() => setDataMode('vocab')} className={`h-full px-4 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${safeDataMode === 'vocab' ? `bg-${mainColor}-100 text-${mainColor}-700 shadow-sm` : 'text-gray-500 hover:text-gray-700'}`}>Từ Vựng</button>
 <button onClick={() => setDataMode('sentence')} className={`h-full px-4 text-xs font-bold rounded-lg transition-all flex items-center justify-center ${safeDataMode === 'sentence' ? `bg-${mainColor}-100 text-${mainColor}-700 shadow-sm` : 'text-gray-500 hover:text-gray-700'}`}>Câu Văn</button>
@@ -6023,7 +5980,6 @@ return (
 )}
 </div>
 {/* Nhóm Level & Topic */}
-{lang !== 'vi' && (
 <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
 {window.LevelSelector && setCurrentLevel && (
 <div className="w-[calc(50%-4px)] sm:w-[140px] h-[42px]">
@@ -6036,7 +5992,6 @@ return (
 </div>
 )}
 </div>
-)}
 </div>
 )}
 </div>
@@ -6700,10 +6655,10 @@ Thứ tự từng nét
 };
 // EXPORT GLOBAL
 window.HanziWriterModal = HanziWriterModal;
-// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.06
-// Last Updated: 2026-06-10 15:20
+// Block4.2: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Settings Modal) - Version 1.07
+// Last Updated: 2026-07-03 22:33
 // Nhiệm vụ: Chứa giao diện Cài đặt toàn hệ thống (Giao diện, Phông chữ, Âm thanh, Auto-play, SRS, System Logs).
-// Cập nhật V1.06: [MEMORY ISOLATION] Nâng cấp nút "Làm mới Ngân hàng đề AI" để quét và dọn dẹp triệt để 3 vùng nhớ phân mảnh theo ngôn ngữ (en, zh, vi), tương thích với kiến trúc chống rò rỉ Token (Token Leakage) mới.
+// Cập nhật V1.07: [VIETNAMESE DEPRECATION] Loại bỏ hoàn toàn tùy chọn tiếng Việt (VN) khỏi UI, dọn dẹp logic phát âm mẫu và gỡ bỏ lệnh xóa cache AI của hệ ngôn ngữ 'vi'.
 // ==================================================================================
 // Helper Components cho SRS Settings
 const NumberUnitInput = ({ value, onChange, label }) => (
@@ -6850,7 +6805,6 @@ const handleResetAIBank = () => {
 if (confirm("Bạn có chắc chắn muốn làm mới Ngân hàng đề AI?\n\nHành động này sẽ xóa trí nhớ của AI. Trong các lượt chơi tiếp theo, AI có thể sẽ ra lại những từ vựng cơ bản mà bạn đã gặp trước đó.")) {
 localStorage.removeItem('fc_ai_memory_en');
 localStorage.removeItem('fc_ai_memory_zh');
-localStorage.removeItem('fc_ai_memory_vi');
 localStorage.removeItem('fc_ai_memory'); // Dọn dẹp rác legacy (nếu còn)
 localStorage.removeItem('fc_match_history');
 if (window.globalShowToast) {
@@ -6886,7 +6840,7 @@ return (
 <span className="text-green-600 font-mono font-bold bg-white px-2 rounded border border-purple-100">{keyStats.active}</span>
 </div>
 </div>
-<SettingOption label={t('uiLanguage')} options={[{ val: 'vi', label: 'VN' }, { val: 'en', label: 'EN' }, { val: 'zh', label: 'CN' }]} current={uiLang} onChange={setUiLang} mainColor={mainColor} />
+<SettingOption label={t('uiLanguage')} options={[{ val: 'en', label: 'EN' }, { val: 'zh', label: 'CN' }]} current={uiLang} onChange={setUiLang} mainColor={mainColor} />
 <div className="space-y-2">
 <SettingOption label="Chế độ SRS (Lặp lại ngắt quãng)" options={[{ val: true, label: 'Bật' }, { val: false, label: 'Tắt' }]} current={localSettings.srsEnabled !== false} onChange={(v) => handleChange('srsEnabled', v)} mainColor={mainColor} />
 {localSettings.srsEnabled !== false && (
@@ -6909,7 +6863,7 @@ return (
 <button
 onClick={() => {
 const v = safeVoices.find(voice => voice.name === localSettings.selectedVoice);
-const text = currentLang === 'zh' ? "你好" : (currentLang === 'vi' ? "Xin chào" : "Hello");
+const text = currentLang === 'zh' ? "你好" : "Hello";
 testSpeak(text, localSettings.rate, v);
 }}
 className={`p-2 bg-${mainColor}-100 text-${mainColor}-600 rounded`}
@@ -22773,12 +22727,12 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.06
-// Last Updated: 2026-06-12 10:00
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.07
+// Last Updated: 2026-07-04 11:15
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật V1.06: [CROSS-LANGUAGE LEAK FIX] Phân rã luồng tải/ghi Túi nháp (Retry Bag) theo từng ngôn ngữ (fc_global_retry_bag_${lang}). Tích hợp tẩy não AiMemoryManager.clear() triệt để khi đổi ngôn ngữ.
-// Cập nhật V1.05: [MEMORY ISOLATION] Tích hợp cơ chế dọn dẹp RAM (Volatile Memory) khi chuyển đổi ngôn ngữ.
+// Cập nhật V1.07: [VIETNAMESE DEPRECATION] Xóa bỏ định tuyến mặc định về 'vi' ở giao diện và cấp độ. Tích hợp Garbage Collector ngầm để dọn sạch tàn dư dữ liệu tiếng Việt khỏi LocalStorage và IndexedDB.
+// Cập nhật V1.06: [CROSS-LANGUAGE LEAK FIX] Phân rã luồng tải/ghi Túi nháp (Retry Bag) theo từng ngôn ngữ (fc_global_retry_bag_${lang}).
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -22809,13 +22763,13 @@ const [viewMode, setViewMode] = useState('learn');
 const [lang, setLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.LANG, 'en') || 'en');
 // Chốt chặn để phân biệt lần đầu tải trang và đổi ngôn ngữ
 const prevLangRef = useRef(lang);
-const [uiLang, setUiLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.UI_LANG, 'vi') || 'vi');
+const [uiLang, setUiLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.UI_LANG, 'en') || 'en');
 const [dataMode, setDataMode] = useState(() => {
 const saved = localStorage.getItem('fc_data_mode');
 return saved ? saved.replace(/"/g, '') : 'vocab';
 });
 const [currentLevel, setCurrentLevel] = useState(() => {
-const def = lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4');
+const def = lang === 'zh' ? 'zh_level_1' : 'en_level_4';
 const saved = localStorage.getItem('fc_current_level_' + lang);
 return saved ? saved.replace(/"/g, '') : def;
 });
@@ -22920,9 +22874,21 @@ await window.FcDB.init();
 // 2. Nạp dữ liệu Kho AI
 const pool = await window.FcDB.get('fc_ai_harvest_pool');
 if (pool) setAiHarvestPool(pool);
-// [BẢN VÁ 1.06] Đã di chuyển luồng tải Túi Nháp vào Effect đổi ngôn ngữ bên dưới
+// [CLEANUP V1.07] Thanh trừng Ngôn ngữ: Dọn rác tiếng Việt khỏi hệ thống cũ
+try {
+const viKeys = ['fc_data_vi', 'fc_current_level_vi', 'fc_current_topic_vi', 'fc_master_data_vi_vocab', 'fc_master_data_vi_sentence', 'fc_ai_memory_vi'];
+viKeys.forEach(k => localStorage.removeItem(k));
+// Ghi đè rỗng để triệt tiêu bộ nhớ IndexedDB
+await window.FcDB.set('fc_notebook_vi', []);
+await window.FcDB.set('fc_mastered_vi', []);
+const incorrectKey = window.STORAGE_KEYS && window.STORAGE_KEYS.INCORRECT_LIST ? window.STORAGE_KEYS.INCORRECT_LIST + '_vi' : 'fc_incorrect_list_vi';
+await window.FcDB.set(incorrectKey, []);
+await window.FcDB.set('fc_global_retry_bag_vi', {});
+} catch(err) {
+console.warn('[CoreState] Silenced Cleanup Error:', err);
+}
 setIsDbReady(true);
-console.log('[CoreState] IndexedDB ready. States hydrated.');
+console.log('[CoreState] IndexedDB ready. Vietnamese deprecated.');
 } catch (e) {
 console.error('[CoreState] IndexedDB Init Error:', e);
 setIsDbReady(true); // Fallback
@@ -22987,7 +22953,7 @@ window.ExamEngine.clearVolatileMemory();
 if (window.Utils && window.Utils.AiMemoryManager && typeof window.Utils.AiMemoryManager.clear === 'function') {
 window.Utils.AiMemoryManager.clear();
 }
-const defLvl = lang === 'zh' ? 'zh_level_1' : (lang === 'vi' ? 'vi_default' : 'en_level_4');
+const defLvl = lang === 'zh' ? 'zh_level_1' : 'en_level_4';
 const savedLvl = localStorage.getItem('fc_current_level_' + lang);
 setCurrentLevel(savedLvl ? savedLvl.replace(/"/g, '') : defLvl);
 const savedTopic = localStorage.getItem('fc_current_topic_' + lang);
@@ -23497,9 +23463,10 @@ handleManualAiFill
 window.Block6_2_useAiLogic = useAiLogic;
 window.Block14_useAiLogic = useAiLogic; // GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC (Fallback)
 window.useAiLogic = useAiLogic;
-// Block 6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data I/O & Persistence) - Version 1.02
-// Last Updated: 2026-06-05 21:35
+// Block 6.3: TẦNG 6: LOGIC ỨNG DỤNG (Data I/O & Persistence) - Version 1.03
+// Last Updated: 2026-07-04 11:35
 // Nhiệm vụ: "Người vận chuyển" (The Porter). Chuyên trách nạp/xuất dữ liệu, quản lý file system và dọn rác bộ nhớ.
+// Cập nhật V1.03: [VIETNAMESE DEPRECATION] Gọt bỏ triệt để các tiền tố (Prefix) định tuyến phân mảnh và các key sao lưu dbKeys liên quan đến 'vi'.
 // Cập nhật V1.02: [LƯỚI LỬA ĐA TẦNG EXCEL] Đồng bộ 7 node Proxy xuyên thủng vào hàm safeFetchExcel để vượt rào CORS khi tải file Excel nguyên khối trên môi trường file://.
 // ==================================================================================
 const useDataIO = (core, latestStateRef, callbacks) => {
@@ -23650,7 +23617,8 @@ const fetchDirectGvizTabs = async (sheetId, lang) => {
 let allNewItems = [];
 let masterDataObj = {};
 let total = 0;
-const levelPrefix = lang === 'zh' ? 'zh_level_' : (lang === 'vi' ? 'vi_level_' : 'en_level_');
+// Đã xóa bỏ vi_level_
+const levelPrefix = lang === 'zh' ? 'zh_level_' : 'en_level_';
 const fetchTab = async (sheetName) => {
 const encodedName = encodeURIComponent(sheetName);
 const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodedName}`;
@@ -23715,7 +23683,8 @@ core.setIsAiLoading(true);
 try {
 let masterData = {};
 let totalCards = 0;
-const levelPrefix = lang === 'zh' ? 'zh_level_' : (lang === 'vi' ? 'vi_level_' : 'en_level_');
+// Đã xóa bỏ vi_level_
+const levelPrefix = lang === 'zh' ? 'zh_level_' : 'en_level_';
 if (url.includes('docs.google.com')) {
 const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
 if (!match) throw new Error("Link không hợp lệ. Không tìm thấy ID của Google Sheet.");
@@ -23878,7 +23847,8 @@ if (!window.XLSX) throw new Error("Thư viện XLSX chưa được tải");
 const wb = window.XLSX.read(evt.target.result, { type: 'binary' });
 let masterData = {};
 let totalCards = 0;
-const levelPrefix = lang === 'zh' ? 'zh_level_' : (lang === 'vi' ? 'vi_level_' : 'en_level_');
+// Đã xóa bỏ vi_level_
+const levelPrefix = lang === 'zh' ? 'zh_level_' : 'en_level_';
 const numTabs = Math.min(wb.SheetNames.length, 9);
 for (let i = 0; i < numTabs; i++) {
 const sheetName = wb.SheetNames[i];
@@ -24034,9 +24004,9 @@ if (key && key.startsWith('fc_')) {
 saveData[key] = localStorage.getItem(key);
 }
 }
-// Bổ sung dữ liệu từ IndexedDB vào chung file Backup
+// Bổ sung dữ liệu từ IndexedDB vào chung file Backup. [V1.03] Đã gọt sạch các keys '_vi'
 if (window.FcDB) {
-const dbKeys = ['fc_ai_harvest_pool', 'fc_global_retry_bag', 'fc_notebook_en', 'fc_notebook_vi', 'fc_notebook_zh', 'fc_mastered_en', 'fc_mastered_vi', 'fc_mastered_zh', 'fc_incorrect_list_en', 'fc_incorrect_list_vi', 'fc_incorrect_list_zh'];
+const dbKeys = ['fc_ai_harvest_pool', 'fc_global_retry_bag', 'fc_notebook_en', 'fc_notebook_zh', 'fc_mastered_en', 'fc_mastered_zh', 'fc_incorrect_list_en', 'fc_incorrect_list_zh'];
 for (const key of dbKeys) {
 const data = await window.FcDB.get(key);
 if (data) {
@@ -24121,10 +24091,10 @@ secureCopy
 window.Block6_3_useDataIO = useDataIO;
 window.Block15_useDataLogic = useDataIO; // Fallback
 window.useDataLogic = useDataIO;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.05
-// Last Updated: 2026-05-18 10:30
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.06
+// Last Updated: 2026-07-04 13:16
 // Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5), AI Curator (6.6), Mock Test Logic (6.7) và Exam Pool Logic (6.8).
-// Cập nhật: [VÁ LỖI SYNTAX] Sửa lỗi cú pháp do vi phạm Điều 3.2 Hiến pháp ở object gameNames trong hàm handleReviewWithGame. Tuân thủ Điều 3.
+// Cập nhật V1.06: [THANH TRỪNG TIẾNG VIỆT] Gỡ bỏ logic màu sắc của 'vi', xoá fallback dịch thuật 'vi', băm nát và xoá bỏ Regex dò tìm ký tự tiếng Việt trong hệ thống Text-to-Speech (TTS).
 // ==================================================================================
 const useAppLogic = (core) => {
 // 1. LẤY CORE STATE
@@ -24135,7 +24105,7 @@ settings, voices, isAiModeLearn, isCurrentCardInNotebook, isMuted,
 globalRetryBag, aiHarvestPool
 } = core;
 // Derived State
-const mainColor = lang === 'zh' ? 'red' : (lang === 'vi' ? 'green' : 'sky');
+const mainColor = lang === 'zh' ? 'red' : 'sky';
 const isCurrentCardInNotebookDerived = cards[currentCardIndex] && notebook.some(n => n.term === cards[currentCardIndex].term);
 // [VÁ LỖI ĐỨT CÁP THU HOẠCH] Sử dụng Proxy Pattern để truyền hàm thu hoạch vào useExamLogic
 const handleAutoHarvestToPoolRef = React.useRef(null);
@@ -24161,7 +24131,7 @@ mastered: core.mastered, isStudyingNotebook: core.isStudyingNotebook, isMuted: c
 // 2. UTILITY FUNCTIONS
 const t = React.useCallback((key, params = {}) => {
 if (!window.UI_TEXT) return key;
-const dict = window.UI_TEXT[uiLang] || window.UI_TEXT['vi'] || {};
+const dict = window.UI_TEXT[uiLang] || window.UI_TEXT['en'] || {};
 let text = dict[key] || key;
 if (typeof text === 'string') {
 Object.keys(params).forEach(p => text = text.replace(`{${p}}`, params[p]));
@@ -24232,7 +24202,6 @@ const u = new SpeechSynthesisUtterance(text);
 window.fc_currentUtterance = u;
 const detectLang = (str) => {
 if (/[\u4e00-\u9fa5]/.test(str)) return 'zh-CN';
-if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúúúụủũưừứựửữỳýỵỷỹđ]/i.test(str)) return 'vi-VN';
 return 'en-US';
 };
 const detectedLang = detectLang(text);
@@ -24981,9 +24950,10 @@ handleExportHarvestToExcel
 // EXPORT GLOBAL
 window.Block6_6_useAiCurator = useAiCurator;
 window.useAiCurator = useAiCurator;
-// Block6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.23
-// Last Updated: 2026-06-11 22:39
+// Block 6.7: TẦNG 6: BỘ TỔNG THAM MƯU BÀI THI (useExamLogic) - Version 1.24
+// Last Updated: 2026-07-04 13:18
 // Nhiệm vụ: Custom Hook điều phối luồng bài thi, quản lý tiến trình, pre-fetch, tự động lưu Snapshot và Xuất dữ liệu.
+// Cập nhật V1.24: [THANH TRỪNG NGÔN NGỮ] Nhổ tận gốc toàn bộ logic định tuyến liên quan đến 'vi', xoá các đoạn code thao tác trên localStorage 'fc_ai_memory_vi'.
 // Cập nhật V1.23: [JIT FALLBACK ARCHITECTURE] Thanh lọc băng đạn, triệt tiêu độ trễ giữa game. fetchTask ném thẳng lỗi cho QueueEngine đếm Bankrupt thay vì tạo phao cứu sinh. UI khi bấm chuyển câu nếu gặp băng đạn rỗng sẽ gọi thẳng getEmergencyFallback để hiển thị lập tức (Zero-latency), chấm dứt màn hình chờ vô lý.
 // Cập nhật V1.22: [MEMORY ISOLATION] Thay thế bộ nhớ dùng chung bằng cơ chế Cấp phát bộ nhớ động theo ngôn ngữ.
 // ==================================================================================
@@ -25045,7 +25015,6 @@ localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 // Dọn dẹp bộ nhớ AI khi hết giờ (Cách ly ngôn ngữ)
 localStorage.setItem('fc_ai_memory_en', '[]');
 localStorage.setItem('fc_ai_memory_zh', '[]');
-localStorage.setItem('fc_ai_memory_vi', '[]');
 localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
@@ -25108,14 +25077,14 @@ try {
 const staggerDelay = Math.floor(Math.random() * 600) + 200;
 await new Promise(r => setTimeout(r, staggerDelay));
 // Bắt buộc trích xuất RAM mới nhất trước MỖI VIÊN ĐẠN để cập nhật trí nhớ AI (Định tuyến ngôn ngữ)
-const trackLang = meta.track === 'hsk' ? 'zh' : (meta.track === 'vi' ? 'vi' : 'en');
+const trackLang = meta.track === 'hsk' ? 'zh' : 'en';
 const freshHistory = window.Utils ? window.Utils.safeJsonParse(`fc_ai_memory_${trackLang}`, []) : [];
 const qData = await window.ExamEngine.hydrateQuestion(meta, apiKey, freshHistory);
 if (isExamActiveRef.current && qData) {
 // Gửi hàng vào Kho thu hoạch AI
 if (qData.isNewHarvest && typeof handleAutoHarvestToPool === 'function') {
 try {
-const targetLang = meta.track === 'hsk' ? 'zh' : (meta.track === 'vi' ? 'vi' : 'en');
+const targetLang = meta.track === 'hsk' ? 'zh' : 'en';
 const contentToHarvest = qData.content._fullPassageData || qData.content;
 const typeToHarvest = qData.content._fullPassageData ? (meta.type.includes('reading') ? 'ielts_reading_passage' : meta.type) : meta.type;
 const safeTopic = meta.topic || 'General';
@@ -25147,7 +25116,6 @@ setExamState(prev => ({ ...prev, status: 'completed' }));
 // Dọn dẹp bộ nhớ AI khi kết thúc (Cách ly ngôn ngữ)
 localStorage.setItem('fc_ai_memory_en', '[]');
 localStorage.setItem('fc_ai_memory_zh', '[]');
-localStorage.setItem('fc_ai_memory_vi', '[]');
 localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
@@ -25189,7 +25157,7 @@ if (coordinatorRef.current && typeof coordinatorRef.current.maintain === 'functi
 coordinatorRef.current.maintain(false, 30000);
 }
 const localLang = window.localStorage ? localStorage.getItem('fc_lang') : 'en';
-const targetLang = meta.lang || meta.language || (meta.track === 'hsk' || String(meta.level).startsWith('zh') ? 'zh' : (meta.track === 'vi' || String(meta.level).startsWith('vi') ? 'vi' : localLang));
+const targetLang = meta.lang || meta.language || (meta.track === 'hsk' || String(meta.level).startsWith('zh') ? 'zh' : localLang);
 const localDeck = window.Utils ? window.Utils.safeJsonParse('fc_data_' + targetLang, []) : [];
 // Gọi Bộ máy Cứu hộ Toàn cục
 if (window.ExamEngine && window.ExamEngine.getEmergencyFallback) {
@@ -25273,7 +25241,6 @@ streakTrackerRef.current = []; // Reset trí nhớ Anti-Streak
 // Tẩy não AI triệt để ngay khi bắt đầu bài thi mới (Cách ly ngôn ngữ)
 localStorage.setItem('fc_ai_memory_en', '[]');
 localStorage.setItem('fc_ai_memory_zh', '[]');
-localStorage.setItem('fc_ai_memory_vi', '[]');
 localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
@@ -25405,7 +25372,6 @@ isTransitioningRef.current = false;
 // Dọn dẹp bộ nhớ AI khi kết thúc tự nhiên (Cách ly ngôn ngữ)
 localStorage.setItem('fc_ai_memory_en', '[]');
 localStorage.setItem('fc_ai_memory_zh', '[]');
-localStorage.setItem('fc_ai_memory_vi', '[]');
 localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
@@ -25420,7 +25386,6 @@ console.log(`[Phase Transition] Chuyển từ Phase ${currentPhase} sang Phase $
 // 1. Tẩy não AI trên Ổ cứng và RAM (Cách ly ngôn ngữ)
 localStorage.setItem('fc_ai_memory_en', '[]');
 localStorage.setItem('fc_ai_memory_zh', '[]');
-localStorage.setItem('fc_ai_memory_vi', '[]');
 localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
@@ -25492,7 +25457,6 @@ localStorage.removeItem(window.STORAGE_KEYS.ACTIVE_EXAM);
 // Dọn dẹp bộ nhớ AI khi nộp bài sớm (Cách ly ngôn ngữ)
 localStorage.setItem('fc_ai_memory_en', '[]');
 localStorage.setItem('fc_ai_memory_zh', '[]');
-localStorage.setItem('fc_ai_memory_vi', '[]');
 localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
@@ -25578,7 +25542,6 @@ setCachedCount(0);
 // Dọn dẹp bộ nhớ AI khi thoát ngang (Cách ly ngôn ngữ)
 localStorage.setItem('fc_ai_memory_en', '[]');
 localStorage.setItem('fc_ai_memory_zh', '[]');
-localStorage.setItem('fc_ai_memory_vi', '[]');
 localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
@@ -26102,12 +26065,20 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.09
-// Last Updated: 2026-07-01 10:19
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.10
+// Last Updated: 2026-07-04 13:25
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [HOTFIX V1.09] Nối lại các cáp bị đứt của LinkManagerModal. Bơm thêm `dataMode` vào NotebookModal để định tuyến chính xác API.
+// Cập nhật: [HOTFIX V1.10] Bổ sung Cờ Bảo Vệ (Deprecation Guard) ép trình duyệt xoá cờ `vi`, tự động reload sang `en`. Gọt sạch logic màu sắc của `vi`.
 // ==================================================================================
 const App = () => {
+// [CỜ BẢO VỆ THANH TRỪNG NGÔN NGỮ] Bắt buộc chạy đầu tiên để chặn lỗi Màn hình trắng
+React.useEffect(() => {
+const savedLang = localStorage.getItem('fc_lang');
+if (savedLang === 'vi') {
+localStorage.setItem('fc_lang', 'en'); // Ép về tiếng Anh
+window.location.reload(); // Khởi động lại lập tức để làm sạch bộ nhớ
+}
+}, []);
 // 1. Kiểm tra Dependencies (Các Block trước đã load chưa?)
 const [isReady, setIsReady] = React.useState(false);
 const [loadError, setLoadError] = React.useState(false);
@@ -26267,7 +26238,8 @@ React.createElement('p', { className: "text-blue-600 font-bold animate-pulse tra
 // ============================================================================
 // 2. TÍNH TOÁN RENDER & UI
 // ============================================================================
-const appMainColor = coreState.lang === 'zh' ? 'red' : (coreState.lang === 'vi' ? 'green' : 'sky');
+// [VÁ LỖ HỔNG VIỆT HOÁ] Gọt sạch logic fallback màu xanh lá của tiếng Việt
+const appMainColor = coreState.lang === 'zh' ? 'red' : 'sky';
 const renderComponent = (compName, props) => {
 const Comp = window[compName];
 if (!Comp) return null;
