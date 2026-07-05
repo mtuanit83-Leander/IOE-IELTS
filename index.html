@@ -13464,10 +13464,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.5
-// Last Updated: 2026-06-03 08:35
+// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.6
+// Last Updated: 2026-07-05 12:35
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật V2.5: [BUG FIX UI] Bóc tách window.GlobalLoadingScreen để chống lỗi Màn hình trắng (JSX Babel Error 130). UI hoàn toàn không chứa lỗi ReferenceError.
+// Cập nhật V2.6: [HELL MODE] Tích hợp Chế độ Địa Ngục. Gỡ bỏ hoàn toàn 4 đáp án tĩnh, đổi màu UI Input sang Tím Cảnh báo để ép người chơi vào trạng thái Pure Active Recall.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -13552,23 +13552,32 @@ subtitle="AI tự chọn từ cốt lõi để đục lỗ thay vì chọn ngẫ
 />
 </div>
 )}
-{/* CẦU DAO ĐỘ KHÓ (EASY / HARD) */}
-<div className="w-full flex gap-3 pt-2">
+{}
+{/* CẦU DAO ĐỘ KHÓ (EASY / HARD / HELL) */}
+<div className="w-full flex gap-2 pt-2">
 <button
 onClick={() => setDifficulty('easy')}
-className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'easy' ? `border-green-500 bg-green-50 shadow-md text-green-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+className={`flex-1 py-3 px-1 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'easy' ? `border-green-500 bg-green-50 shadow-md text-green-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
 >
 <Icons.CheckCircle size={20} className="mb-1" />
-<span className="font-bold text-sm">Chế độ Dễ</span>
-<span className="text-[10px] opacity-70">Mở bóng đèn gợi ý</span>
+<span className="font-bold text-sm">Dễ</span>
+<span className="text-[9px] sm:text-[10px] opacity-70">Có gợi ý</span>
 </button>
 <button
 onClick={() => setDifficulty('hard')}
-className={`flex-1 p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'hard' ? `border-red-500 bg-red-50 shadow-md text-red-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+className={`flex-1 py-3 px-1 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'hard' ? `border-red-500 bg-red-50 shadow-md text-red-700` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
 >
 <Icons.AlertCircle size={20} className="mb-1" />
-<span className="font-bold text-sm">Chế độ Khó</span>
-<span className="text-[10px] opacity-70">Khóa gợi ý</span>
+<span className="font-bold text-sm">Khó</span>
+<span className="text-[9px] sm:text-[10px] opacity-70">Khóa gợi ý</span>
+</button>
+<button
+onClick={() => setDifficulty('hell')}
+className={`flex-1 py-3 px-1 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${difficulty === 'hell' ? `border-purple-600 bg-purple-50 shadow-md text-purple-800` : 'border-gray-200 hover:border-gray-300 bg-white text-gray-500'}`}
+>
+<Icons.Zap size={20} className="mb-1" />
+<span className="font-bold text-sm">Địa Ngục</span>
+<span className="text-[9px] sm:text-[10px] opacity-70">Ẩn 4 đáp án</span>
 </button>
 </div>
 <MenuToggle active={timerMode} setActive={setTimerMode} icon={Icons.Clock} color="orange" title="Giới hạn thời gian" subtitle={timerMode ? `${timeLimit} giây / câu` : 'Thoải mái thời gian'} extra={
@@ -13615,7 +13624,7 @@ resultTimer,
 isResultPaused,
 toggleResultPause,
 timeLeft,
-aiAmmoCount, // Đã thay thế queueLength bằng aiAmmoCount
+aiAmmoCount,
 aiWaitTime,
 checkAnswer,
 handleNext,
@@ -13657,7 +13666,9 @@ opts[0] = currentQuestion.targetWord;
 }
 return window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(opts) : opts;
 }, [currentQuestion?.id, currentQuestion?.targetWord]);
-const isHardMode = config?.difficulty === 'hard'; // Biến cờ kiểm tra độ khó
+// [HELL MODE] Định nghĩa cờ giao diện
+const isHellMode = config?.difficulty === 'hell';
+const isHintDisabled = config?.difficulty === 'hard' || isHellMode;
 const formatTime = (seconds) => {
 const m = Math.floor(seconds / 60);
 const s = seconds % 60;
@@ -13686,12 +13697,11 @@ if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
 }
-// Gọi bằng biến Component đã bóc tách
 return (
 <GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
 onCancel={handleSaveAndBack}
-queueLength={aiAmmoCount} // Sử dụng aiAmmoCount để đếm đạn thật
+queueLength={aiAmmoCount}
 text={aiCountdown > 0 ? "AI đang phân tích dữ liệu..." : (config?.sourceMode === 'ai_pure' ? 'AI đang tạo câu đố...' : 'Đang thiết lập trò chơi...')}
 subText={aiCountdown > 0 ? "(Vui lòng đợi giây lát để có câu hỏi hay)" : ""}
 mainColor={mainColor}
@@ -13761,6 +13771,12 @@ return (
 <div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1">
 Câu {playedCount + 1} <span className="font-serif text-lg leading-none text-gray-400 ml-0.5">∞</span>
 </div>
+{/* [HELL MODE] Badge Cảnh báo */}
+{isHellMode && (
+<div className="text-[10px] font-bold text-purple-100 bg-purple-600 border border-purple-800 px-2 py-1 rounded hidden sm:flex items-center gap-1 animate-pulse shadow-sm">
+<Icons.Zap size={12}/> ĐỊA NGỤC
+</div>
+)}
 <div className="flex items-center gap-2 bg-white border px-3 py-1 rounded-full shadow-sm">
 <span className="text-xs sm:text-sm font-bold text-green-600 flex items-center gap-1"><Icons.Check size={14}/> {correctCount || 0}</span>
 <span className="text-gray-300">|</span>
@@ -13810,14 +13826,14 @@ title="Lưu vào Sổ tay"
 {/* KHU VỰC BÓNG ĐÈN GỢI Ý & CÂU HỎI */}
 <div className="flex flex-col items-center gap-2 w-full mb-6 relative">
 <button
-onClick={() => !isHardMode && setShowHint(!showHint)}
-disabled={isHardMode}
-className={`p-3 rounded-full flex items-center justify-center transition-all shadow-sm ${isHardMode ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200' : (showHint ? 'bg-yellow-100 text-yellow-600 border border-yellow-300' : 'bg-white border border-gray-200 text-gray-400 hover:text-yellow-500 hover:border-yellow-300 hover:shadow-md active:scale-95')}`}
-title={isHardMode ? "Gợi ý bị khóa ở chế độ Khó" : "Bật/Tắt gợi ý dịch nghĩa"}
+onClick={() => !isHintDisabled && setShowHint(!showHint)}
+disabled={isHintDisabled}
+className={`p-3 rounded-full flex items-center justify-center transition-all shadow-sm ${isHintDisabled ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200' : (showHint ? 'bg-yellow-100 text-yellow-600 border border-yellow-300' : 'bg-white border border-gray-200 text-gray-400 hover:text-yellow-500 hover:border-yellow-300 hover:shadow-md active:scale-95')}`}
+title={isHintDisabled ? "Gợi ý bị khóa ở chế độ Khó/Địa Ngục" : "Bật/Tắt gợi ý dịch nghĩa"}
 >
-<Icons.Info size={24} className={showHint && !isHardMode ? 'animate-pulse' : ''} />
+<Icons.Info size={24} className={showHint && !isHintDisabled ? 'animate-pulse' : ''} />
 </button>
-{showHint && !isHardMode && currentQuestion.hint && (
+{showHint && !isHintDisabled && currentQuestion.hint && (
 <div className="absolute top-14 z-20 px-6 py-3 bg-yellow-50 rounded-2xl text-sm md:text-base text-yellow-800 italic font-medium border border-yellow-200 text-center shadow-lg max-w-2xl w-full animate-in slide-in-from-top-2">
 {currentQuestion.hint}
 </div>
@@ -13831,11 +13847,12 @@ title={isHardMode ? "Gợi ý bị khóa ở chế độ Khó" : "Bật/Tắt g�
 ))}
 </div>
 </div>
+{}
 {/* KHU VỰC 4 ĐÁP ÁN TĨNH (READ-ONLY) CHỈ ĐỂ NHÌN */}
-{displayOptions.length > 0 && (
+{displayOptions.length > 0 && !isHellMode && (
 <div className="w-full max-w-xl mx-auto mt-2 grid grid-cols-2 gap-3 px-4 animate-in fade-in">
 {displayOptions.map((opt, i) => (
-<div key={i} className="bg-gray-50 border-2 border-dashed border-gray-200 text-gray-600 font-bold py-3 px-4 rounded-xl text-center flex items-center justify-center min-h-[3.5rem] break-words shadow-sm">
+<div key={i} className="bg-gray-50 border-2 border-dashed border-gray-200 text-gray-600 font-bold py-3 px-4 rounded-xl text-center flex items-center justify-center min-h-[3.5rem] break-words shadow-sm opacity-90 cursor-not-allowed select-none" title="Chỉ để nhìn, hãy gõ đáp án vào ô bên dưới">
 <span className="opacity-40 mr-2 text-xs bg-gray-200 px-1.5 py-0.5 rounded-md font-black">{['A', 'B', 'C', 'D'][i]}</span>
 <span>{opt}</span>
 </div>
@@ -13855,21 +13872,22 @@ className={`flex-1 p-5 text-center text-xl md:text-2xl font-bold border-4 rounde
 checkStatus === 'correct' ? 'border-green-400 bg-green-50 text-green-700' :
 checkStatus === 'wrong' ? 'border-red-400 bg-red-50 text-red-700' :
 checkStatus === 'wrong_retry' ? 'border-orange-400 bg-orange-50 text-orange-700 animate-[shake_0.4s_ease-in-out]' :
+isHellMode ? `border-purple-500 focus:border-purple-600 bg-purple-50 text-purple-900 placeholder-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]` :
 `border-${mainColor}-200 focus:border-${mainColor}-500 bg-white text-gray-800`
 }`}
-placeholder="Gõ đáp án (hoặc Pinyin: xiangzi)..."
+placeholder={isHellMode ? "ĐỊA NGỤC: Gõ đáp án..." : "Gõ đáp án (hoặc Pinyin: xiangzi)..."}
 autoComplete="off" spellCheck="false"
 />
 <button
 onClick={checkAnswer}
 disabled={!inputBuffer.trim() || checkStatus === 'correct' || checkStatus === 'wrong'}
-className={`px-6 bg-${mainColor}-600 text-white rounded-2xl font-bold shadow-lg hover:bg-${mainColor}-700 disabled:opacity-50 active:scale-95 transition-transform`}
+className={`px-6 bg-${isHellMode && checkStatus !== 'correct' && checkStatus !== 'wrong' ? 'purple-600 hover:bg-purple-700' : mainColor + '-600 hover:bg-' + mainColor + '-700'} text-white rounded-2xl font-bold shadow-lg disabled:opacity-50 active:scale-95 transition-all`}
 >
 <Icons.Check size={32} />
 </button>
 </div>
 {checkStatus !== 'correct' && checkStatus !== 'wrong' && (
-<p className="text-xs text-gray-400 text-center font-medium mt-4">Bạn có {3 - attempts} lượt thử. Bấm Enter để kiểm tra.</p>
+<p className={`text-xs text-center font-medium mt-4 ${isHellMode ? 'text-purple-400' : 'text-gray-400'}`}>Bạn có {3 - attempts} lượt thử. Bấm Enter để kiểm tra.</p>
 )}
 {/* Bảng Tóm tắt Kiến thức */}
 {(checkStatus === 'correct' || checkStatus === 'wrong') && (
@@ -13925,11 +13943,14 @@ window.Block5_8_FillBlankSetup = FillBlankSetup;
 window.FillBlankSetup = FillBlankSetup;
 window.Block5_8_FillBlankPlayScreen = FillBlankPlayScreen;
 window.FillBlankPlayScreen = FillBlankPlayScreen;
-// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.21
-// Last Updated: 2026-07-03 10:14
+// Sheet 5.9: TẦNG 5: TRÒ CHƠI HÓA (FillBlank Logic & Wrapper) - Version 2.30
+// Last Updated: 2026-07-05 12:41
 // Nhiệm vụ: Controller chính của Game Điền Từ (FillBlank). Quản lý dữ liệu và luồng kiểm tra đáp án.
-// Cập nhật V2.21: [STRICT TYPE ROUTING] Nhổ tận gốc 5 vị trí sử dụng thuật toán đoán câu `detectSentence` và khoảng trắng. Ép toàn bộ cơ chế đục lỗ và Fallback JIT tuân thủ nghiêm ngặt cờ định tuyến `config.dataMode` từ Tầng 6. Giải quyết triệt để lỗi sập Game khi đục lỗ từ ghép.
-// Cập nhật V2.2: [VÁ LỖI REFERENCE ERROR] Cắt bỏ chữ `queueLength` trong mảng return ở cuối Hook để dập tắt lỗi văng màn hình trắng, do biến này đã được thay bằng `aiAmmoCount` ở bản cập nhật trước.
+// Cập nhật V2.30: [HELL MODE INTEGRATION] Tích hợp bộ xử lý logic cho Chế độ Địa ngục (Hell Mode).
+//                 - X3 Điểm thưởng (Risk vs Reward).
+//                 - Phạt điểm gấp 3 lần nếu sai.
+//                 - Cưỡng chế ép thời gian đếm ngược (Max 15s) bất chấp cài đặt chung.
+// Cập nhật V2.21: [STRICT TYPE ROUTING] Nhổ tận gốc 5 vị trí sử dụng thuật toán đoán câu và khoảng trắng.
 // ==================================================================================
 // --- 1. ĐỘNG CƠ LOGIC (HOOK) ---
 const useFillBlankLogic = (cards, config, callbacks) => {
@@ -13937,6 +13958,7 @@ const { isAiMode, apiKey, lang, timeLimit, level, sourceMode, savedState, timerM
 const { onFinish, showToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack, addToRetryBag, removeFromRetryBag, onEndGame } = callbacks;
 // [CỜ BẢO VỆ TÍN HIỆU AI] Đảm bảo nhánh Thử thách AI luôn được kích hoạt dù có bị override props
 const isHardMode = config?.difficulty === 'hard';
+const isHellMode = config?.difficulty === 'hell'; // [NEW V2.30] Cờ Địa Ngục
 const effectiveAiMode = sourceMode === 'ai_pure' || (sourceMode === 'card' && aiChallenge) || isAiMode;
 // State Game Cơ bản
 const [currentQuestion, setCurrentQuestion] = React.useState(null);
@@ -13951,13 +13973,14 @@ const [isFinished, setIsFinished] = React.useState(false);
 const [correctCount, setCorrectCount] = React.useState(0);
 const [wrongCount, setWrongCount] = React.useState(0);
 const [isGenerating, setIsGenerating] = React.useState(true); // Khởi tạo true để chặn màn hình trắng
-const [aiAmmoCount, setAiAmmoCount] = React.useState(0); // [NEW v2.2] Biến đếm đạn Xịn
+const [aiAmmoCount, setAiAmmoCount] = React.useState(0);
 // UX Timer State cho màn hình hiển thị kết quả (Knowledge Panel)
 const [resultTimer, setResultTimer] = React.useState(0);
 const [isResultPaused, setIsResultPaused] = React.useState(false);
-// State cho Đồng hồ đếm ngược từng câu
-const [timeLeft, setTimeLeft] = React.useState(timeLimit || 30);
-// [NEW V1.05] Biến đếm đạn và Phanh UI (UI Cooldown)
+// State cho Đồng hồ đếm ngược từng câu (Cưỡng chế 15s cho Hell Mode)
+const initialTime = isHellMode ? Math.min(15, timeLimit || 30) : (timeLimit || 30);
+const [timeLeft, setTimeLeft] = React.useState(initialTime);
+// Biến đếm đạn và Phanh UI (UI Cooldown)
 const [aiWaitTime, setAiWaitTime] = React.useState(0);
 // Động cơ thống nhất từ Tầng 2
 const enrichedCardsRef = React.useRef(cards);
@@ -13989,23 +14012,20 @@ deck: deckRef.current, timeLeft, aiWaitTime
 // HÀM TRIGGGER AUTO SAVE (Trung tâm xử lý - Chuẩn hóa cho FillBlank)
 // ==================================================================================
 const triggerAutoSave = React.useCallback(() => {
-// [DEEP DEBUG V2 - VÁ LỖI SILENT FAILURE] Kiểm tra currentQuestion thay vì gameState
 if (isGameActiveRef.current && onAutoSave && latestStateRef.current && latestStateRef.current.currentQuestion) {
 const currentData = latestStateRef.current;
-// [VÁ LỖ HỔNG AUTO-SAVE] Thu hồi đạn chưa bắn từ QueueEngine
+// Thu hồi đạn chưa bắn từ QueueEngine
 let pendingCards = [];
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pendingTasks = coordinatorRef.current.getPendingItems();
-// Bóc tách vỏ đạn, lấy lại thẻ gốc (origin) để không làm hỏng cấu trúc deck khi Resume
 pendingCards = pendingTasks.map(task => task.origin || task.question || task).filter(Boolean);
 }
 // Gộp đạn RAM lên đầu bộ bài lưu trữ
 const mergedDeck = [...pendingCards, ...(currentData.deck || [])];
-// [VÁ LỖI CẤU TRÚC SESSION] Định dạng chuẩn cho Game FillBlank
 onAutoSave({
 fillBlankState: {
 ...currentData,
-deck: mergedDeck, // Lưu bộ bài đã được khôi phục nguyên vẹn
+deck: mergedDeck,
 _needsNextOnResume: false
 }
 });
@@ -14020,14 +14040,13 @@ React.useEffect(() => {
 const queueScanner = setInterval(() => {
 if (coordinatorRef.current && typeof coordinatorRef.current.getPendingItems === 'function') {
 const pending = coordinatorRef.current.getPendingItems();
-// Chỉ đếm đạn có cờ isAiGenerated
 const aiCount = pending.filter(item => item && item.isAiGenerated).length;
 setAiAmmoCount(aiCount);
 }
 }, 500);
 return () => clearInterval(queueScanner);
 }, []);
-// [TIÊU CHUẨN VÀNG] ĐỒNG HỒ LÀM NGUỘI UI (UI COOLDOWN TIMER)
+// ĐỒNG HỒ LÀM NGUỘI UI (UI COOLDOWN TIMER)
 React.useEffect(() => {
 let cdTimer = null;
 if (aiWaitTime > 0 && !isGenerating && !isResultPaused) {
@@ -14067,7 +14086,6 @@ const currentData = latestStateRef.current;
 let finalWrongCount = currentData.wrongCount;
 let finalCombo = currentData.combo;
 let needsNext = false;
-// [BÍT LỖ HỔNG THOÁT NGANG] Kiểm tra nếu người dùng chưa nộp bài
 if ((currentData.checkStatus === 'idle' || currentData.checkStatus === 'wrong_retry') && currentData.currentQuestion) {
 localPushToRetryBag(currentData.currentQuestion);
 logMistake(currentData.currentQuestion);
@@ -14091,13 +14109,9 @@ _needsNextOnResume: needsNext
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE) - FETCH TASK
 // ==================================================================================
 const fetchTask = async () => {
-// =====================================================================
-// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp (Sử dụng Động cơ Khóa Nguyên Tử Tầng 2)
-// Kiến trúc mới DRY: Triệt tiêu hoàn toàn Bug Bóng ma đa luồng.
-// =====================================================================
+// 1. ĐÁNH CHẶN 30%: Bốc từ túi nháp
 if (window.Utils && window.Utils.pullRetryCardWithLock) {
 const pulledCard = window.Utils.pullRetryCardWithLock('fillblank', globalRetryBagRef.current);
-// FillBlank đẩy toàn bộ Object đã đục lỗ vào túi nháp, nên ta return thẳng ra luôn không cần sinh lại
 if (pulledCard) return pulledCard;
 }
 const isPureMode = sourceMode === 'ai_pure';
@@ -14129,7 +14143,7 @@ console.warn("AI FillBlank PureMode Fallback:", e.message);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi API/Parse Máy Trộn Đề FillBlank", e);
 }
 }
-// 3. RÚT THẺ GỐC HOẶC TỪ KHO CỨU HỘ (Nếu Pure Mode sập hoặc đang ở Card Mode)
+// 3. RÚT THẺ GỐC HOẶC TỪ KHO CỨU HỘ
 let baseCard = null;
 if (!isPureMode || deckRef.current.length > 0) {
 if (deckRef.current.length === 0 && sourceMode !== 'ai_pure') {
@@ -14152,7 +14166,7 @@ deckRef.current = window.Utils.shuffleArray ? window.Utils.shuffleArray(validCar
 }
 baseCard = deckRef.current.shift();
 }
-// 4. CỨU HỘ KHẨN CẤP ĐÃ ĐƯỢC CHUẨN HÓA (Gọi thẳng từ Tầng 2)
+// 4. CỨU HỘ KHẨN CẤP
 if (!baseCard) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const fbResult = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('fillblank', safeLang, config?.level || level, config) : null;
@@ -14176,12 +14190,11 @@ let maskedResult = null;
 if (effectiveAiMode && currentApiKey && isSentence) {
 try {
 const aiMaskPromise = window.GameAlgoEngine.ClozeEngine.ai_mask(baseCard.term, baseCard.definition, lang, currentApiKey, level, config?.topic);
-// [VÁ LỖI CỔ CHAI] Sử dụng Dynamic Timeout thay vì Hardcode 15s
 let dynamicTimeout = 22000;
 try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
 if (aiCfg && aiCfg.loadingTime) {
-dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000; // Cộng thêm 5s đệm mạng
+dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 }
 } catch(e) {}
 const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("AI Mask Timeout")), dynamicTimeout));
@@ -14190,7 +14203,6 @@ maskedResult = { ...res, origin: baseCard, type: type, isAiGenerated: true };
 } catch (e) {
 console.warn("AI Masking failed, fallback to offline mask:", e.message);
 if (window.logSystemEvent) window.logSystemEvent("Lỗi AI ClozeEngine (Đục lỗ)", e);
-// JIT Fallback: Ngay lập tức trả về null để luồng chính không lưu đạn lép
 if (deckRef.current) deckRef.current.unshift(baseCard);
 return null;
 }
@@ -14207,9 +14219,8 @@ setIsGenerating(true);
 setPlayedCount(0); setScore(0); setCombo(1); setTime(0); setCorrectCount(0); setWrongCount(0);
 isInitializingRef.current = true;
 let currentDeck = sourceMode === 'card' ? [...cards] : [];
-// [CẠO SẠCH BÓNG MA] Gỡ bỏ batchEnrich - Trả lại tốc độ khởi động 0s
 if (sourceMode === 'card') {
-let validCards = currentDeck.filter(c => c.term && c.term.trim() !== ''); // Nới lỏng bộ lọc: Khuyết nghĩa vẫn cho qua để dịch JIT ngầm
+let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 2) {
 safeShowToast("Bộ thẻ không đủ 2 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
@@ -14268,8 +14279,8 @@ data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallbac
 }
 if (isGameActiveRef.current && data) {
 setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false); isInitializingRef.current = false;
-setTimeLeft(timeLimit || 30);
-// Kích hoạt UI Cooldown
+// Cưỡng chế thời gian Hell Mode
+setTimeLeft(isHellMode ? Math.min(15, timeLimit || 30) : (timeLimit || 30));
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || effectiveAiMode) {
 currentCooldown = 9;
@@ -14278,7 +14289,6 @@ try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg 
 setAiWaitTime(currentCooldown);
 safeShowToast(`Hoàn tất! Bắt đầu trò chơi.`, "success");
 } else if (isGameActiveRef.current) {
-// Đóng gói thoát an toàn
 safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false); isInitializingRef.current = false;
 if (onEndGame) onEndGame({ correct: score, wrong: wrongCount, time: time });
@@ -14303,8 +14313,13 @@ setPlayedCount(st.playedCount || 0);
 setTime(st.time || 0);
 setCorrectCount(st.correctCount || 0);
 setWrongCount(st.wrongCount || 0);
-setTimeLeft(st.timeLeft !== undefined ? st.timeLeft : (timeLimit || 30));
 if (st.aiWaitTime !== undefined) setAiWaitTime(st.aiWaitTime);
+// Phục hồi thời gian có áp dụng luật Hell Mode
+if (st.timeLeft !== undefined) {
+setTimeLeft(st.timeLeft); // Nếu đang chơi dở thì giữ nguyên số giây còn lại
+} else {
+setTimeLeft(isHellMode ? Math.min(15, timeLimit || 30) : (timeLimit || 30));
+}
 if (st.deck) {
 if (st.deck.length > 0 && typeof st.deck[0] === 'number') {
 deckRef.current = st.deck.map(idx => cards[idx]).filter(Boolean);
@@ -14314,12 +14329,10 @@ deckRef.current = [...st.deck];
 }
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 if (window.QueueEngine && window.QueueEngine.createQueueCoordinator) {
-// ĐỒNG BỘ: Nâng mức trần nạp đạn lên 4 khi Resume Session
 coordinatorRef.current = window.QueueEngine.createQueueCoordinator(fetchTask, 4);
 const isOfflineFastTrack = sourceMode === 'card' && !effectiveAiMode;
 coordinatorRef.current.maintain(false, 22000, isOfflineFastTrack);
 }
-// [BÍT LỖ HỔNG THOÁT NGANG] Xử lý cờ _needsNextOnResume
 if (st._needsNextOnResume) {
 setCurrentQuestion(null);
 setIsGenerating(true);
@@ -14348,7 +14361,8 @@ data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallbac
 if (data) {
 setCurrentQuestion(data);
 setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false);
-setTimeLeft(timeLimit || 30);
+// Cưỡng chế thời gian Hell Mode
+setTimeLeft(isHellMode ? Math.min(15, timeLimit || 30) : (timeLimit || 30));
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || effectiveAiMode) {
 currentCooldown = 9;
@@ -14378,11 +14392,9 @@ if (gameTimerRef.current) clearInterval(gameTimerRef.current);
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 };
 }, []);
-// [BỊT LỖ HỔNG] Thuật toán đồng bộ Phanh AI và Auto-Next
 const proceedToNext = (defaultDelaySec) => {
 if (isGameActiveRef.current) {
 let delaySec = defaultDelaySec;
-// Ép thời gian xem giải thích phải kéo dài nếu Phanh AI chưa về 0
 if (aiWaitTime > delaySec) {
 delaySec = aiWaitTime;
 }
@@ -14398,8 +14410,8 @@ setIsResultPaused(false);
 if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const nextData = coordinatorRef.current.pop();
 setCurrentQuestion(nextData); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0);
-setTimeLeft(timeLimit || 30);
-// Kích hoạt UI Cooldown
+// Cưỡng chế thời gian Hell Mode
+setTimeLeft(isHellMode ? Math.min(15, timeLimit || 30) : (timeLimit || 30));
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || effectiveAiMode) {
 currentCooldown = 9;
@@ -14432,8 +14444,8 @@ data = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallbac
 }
 if (data) {
 setCurrentQuestion(data); setInputBuffer(""); setCheckStatus('idle'); setAttempts(0); setIsGenerating(false);
-setTimeLeft(timeLimit || 30);
-// Kích hoạt UI Cooldown
+// Cưỡng chế thời gian Hell Mode
+setTimeLeft(isHellMode ? Math.min(15, timeLimit || 30) : (timeLimit || 30));
 let currentCooldown = 0;
 if (sourceMode === 'ai_pure' || effectiveAiMode) {
 currentCooldown = 9;
@@ -14463,11 +14475,9 @@ const cleanStr = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '
 let isCorrect = false;
 const normTarget = normalize(currentQuestion.targetWord);
 const normInput = normalize(inputBuffer);
-// Lớp 1: Khớp Text thông thường (Hán tự / Tiếng Anh)
 if (normTarget === normInput) {
 isCorrect = true;
 }
-// Lớp 2: Hấp thụ Pinyin / Không dấu (Dual-Validation)
 else if ((lang === 'zh' || lang === 'vi') && /^[a-zA-Z\s]+$/.test(inputBuffer)) {
 const cleanInput = cleanStr(inputBuffer);
 if (cleanInput.length >= 2) {
@@ -14482,26 +14492,37 @@ isCorrect = true;
 }
 }
 if (isCorrect) {
-// Phép thuật UI: Ép Input hiển thị đáp án đúng (Hấp thụ Pinyin)
 if (normTarget !== normInput) {
 setInputBuffer(currentQuestion.targetWord);
 }
 if (attempts === 0) {
 localRemoveFromRetryBag(currentQuestion.origin?.term || currentQuestion.targetWord);
 }
-setCheckStatus('correct'); setCorrectCount(p => p + 1); setScore(prev => prev + (15 * combo)); setCombo(prev => prev + 1);
-safeShowToast("Chính xác!", "success");
+setCheckStatus('correct');
+setCorrectCount(p => p + 1);
+// [HELL MODE] X3 Điểm số
+const scoreMultiplier = isHellMode ? 3 : 1;
+setScore(prev => prev + (15 * combo * scoreMultiplier));
+setCombo(prev => prev + 1);
+safeShowToast(isHellMode ? "Xuất sắc! (Địa ngục x3)" : "Chính xác!", "success");
 proceedToNext(5);
 } else {
 const newAttempts = attempts + 1;
-setAttempts(newAttempts); setCombo(1); setScore(prev => Math.max(0, prev - 5));
+setAttempts(newAttempts);
+setCombo(1);
+// [HELL MODE] Phạt cực nặng (-15 thay vì -5)
+const penalty = isHellMode ? 15 : 5;
+setScore(prev => Math.max(0, prev - penalty));
 if (newAttempts >= 3) {
 localPushToRetryBag(currentQuestion);
-setCheckStatus('wrong'); setWrongCount(p => p + 1); safeShowToast("Đã hết lượt! Xem đáp án nhé.", "error");
+setCheckStatus('wrong');
+setWrongCount(p => p + 1);
+safeShowToast("Đã hết lượt! Xem đáp án nhé.", "error");
 logMistake(currentQuestion);
 proceedToNext(5);
 } else {
-setCheckStatus('wrong_retry'); safeShowToast("Chưa đúng, hãy thử lại!", "warning");
+setCheckStatus('wrong_retry');
+safeShowToast(isHellMode ? "Sai rồi! Trừ 15 điểm!" : "Chưa đúng, hãy thử lại!", "warning");
 setTimeout(() => setCheckStatus(p => p === 'wrong_retry' ? 'idle' : p), 1000);
 }
 }
@@ -14510,7 +14531,8 @@ setTimeout(() => triggerAutoSave(), 150);
 const handleSkip = () => {
 if (checkStatus === 'idle' || checkStatus === 'wrong_retry') {
 localPushToRetryBag(currentQuestion);
-setCombo(1); setAttempts(3); setCheckStatus('wrong'); setWrongCount(p => p + 1); safeShowToast("Đã bỏ qua!", "error");
+setCombo(1); setAttempts(3); setCheckStatus('wrong'); setWrongCount(p => p + 1);
+safeShowToast("Đã bỏ qua!", "error");
 logMistake(currentQuestion);
 proceedToNext(5);
 setTimeout(() => triggerAutoSave(), 150);
@@ -14546,7 +14568,6 @@ proceedToNext(5);
 setTimeout(() => triggerAutoSave(), 150);
 }
 }, [timeLeft, timerMode, checkStatus, currentQuestion, logMistake, safeShowToast, triggerAutoSave, localPushToRetryBag]);
-// [QA DEBUG] Cải tiến useEffect đếm ngược xem kết quả, chặn Race Condition
 React.useEffect(() => {
 if ((checkStatus === 'correct' || checkStatus === 'wrong') && resultTimer > 0 && !isResultPaused && !isGenerating) {
 const id = setTimeout(() => setResultTimer(t => t - 1), 1000);
@@ -14558,7 +14579,7 @@ nextRound();
 const toggleResultPause = () => setIsResultPaused(p => !p);
 return {
 currentQuestion, inputBuffer, setInputBuffer, checkStatus, attempts, time, score, combo, playedCount, isFinished, isGenerating, aiCountdown: 0, correctCount, wrongCount,
-resultTimer, isResultPaused, toggleResultPause, timeLeft, aiAmmoCount, aiWaitTime, // Đã xóa queueLength
+resultTimer, isResultPaused, toggleResultPause, timeLeft, aiAmmoCount, aiWaitTime,
 checkAnswer, handleNext: nextRound, handleSkip, handleSaveAndBack
 };
 };
