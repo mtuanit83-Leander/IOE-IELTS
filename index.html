@@ -22800,12 +22800,11 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 1.07
-// Last Updated: 2026-07-04 11:15
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 2.1 (Multi-Select Engine Stable)
+// Last Updated: 2026-07-05 21:05
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
-// Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks (useState, useEffect, useRef). TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật V1.07: [VIETNAMESE DEPRECATION] Xóa bỏ định tuyến mặc định về 'vi' ở giao diện và cấp độ. Tích hợp Garbage Collector ngầm để dọn sạch tàn dư dữ liệu tiếng Việt khỏi LocalStorage và IndexedDB.
-// Cập nhật V1.06: [CROSS-LANGUAGE LEAK FIX] Phân rã luồng tải/ghi Túi nháp (Retry Bag) theo từng ngôn ngữ (fc_global_retry_bag_${lang}).
+// Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks. TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
+// Cập nhật V2.1: [BULLETPROOF DATA] Bổ sung Regex dọn dẹp chuỗi lỗi trong parseArrayStorage. Tối ưu Động cơ "Vòi nước" chống sập khi mảng data rỗng.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -22817,6 +22816,21 @@ document.head.appendChild(link);
 }
 if (link.href !== url) {
 link.href = url;
+}
+};
+// [BẢN VÁ V2.1] Trình phân tích Storage thông minh, dọn dẹp rác chuỗi
+const parseArrayStorage = (key, defaultArr) => {
+const raw = localStorage.getItem(key);
+if (!raw) return defaultArr;
+try {
+const parsed = JSON.parse(raw);
+if (Array.isArray(parsed)) return parsed;
+if (typeof parsed === 'string') return [parsed];
+return defaultArr;
+} catch(e) {
+// Fallback cứu hộ: Lọc bỏ nháy kép và ngoặc vuông rác
+const cleanRaw = raw.replace(/["\\[\]]/g, '').trim();
+return cleanRaw ? [cleanRaw] : defaultArr;
 }
 };
 const useCoreState = () => {
@@ -22841,14 +22855,13 @@ const [dataMode, setDataMode] = useState(() => {
 const saved = localStorage.getItem('fc_data_mode');
 return saved ? saved.replace(/"/g, '') : 'vocab';
 });
+// [CẬP NHẬT V2.0] Trạng thái Mảng cho Cấp độ và Chủ đề
 const [currentLevel, setCurrentLevel] = useState(() => {
-const def = lang === 'zh' ? 'zh_level_1' : 'en_level_4';
-const saved = localStorage.getItem('fc_current_level_' + lang);
-return saved ? saved.replace(/"/g, '') : def;
+const def = lang === 'zh' ? ['zh_level_1'] : ['en_level_4'];
+return parseArrayStorage('fc_current_level_' + lang, def);
 });
 const [currentTopic, setCurrentTopic] = useState(() => {
-const saved = localStorage.getItem('fc_current_topic_' + lang);
-return saved ? saved.replace(/"/g, '') : '';
+return parseArrayStorage('fc_current_topic_' + lang, []);
 });
 // Data States
 const [cards, setCards] = useState([]);
@@ -22857,11 +22870,11 @@ const [mastered, setMastered] = useState([]);
 const [incorrectList, setIncorrectList] = useState([]);
 const [isStudyingNotebook, setIsStudyingNotebook] = useState(false);
 const [studySourceName, setStudySourceName] = useState(null);
-// [NEW v1.8] INDEXEDDB ASYNC STATE
+// INDEXEDDB ASYNC STATE
 const [isDbReady, setIsDbReady] = useState(false);
 const [aiHarvestPool, setAiHarvestPool] = useState({});
 const [globalRetryBag, setGlobalRetryBag] = useState({});
-// [NEW v1.02] SYSTEM EVENT LOGS STATE
+// SYSTEM EVENT LOGS STATE
 const [systemLogs, setSystemLogs] = useState(() => window.Utils?.safeJsonParse('fc_system_logs', []) || []);
 // Config & Token
 const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '');
@@ -22933,25 +22946,21 @@ const resetTimeoutRef = useRef(null);
 const aiQueueRef = useRef([]);
 const isAiQueueProcessing = useRef(false);
 // --- INITIALIZATION EFFECTS ---
-// [NEW v1.8] ĐỘNG CƠ KHỞI TẠO CƠ SỞ DỮ LIỆU (INDEXEDDB INIT)
+// ĐỘNG CƠ KHỞI TẠO CƠ SỞ DỮ LIỆU (INDEXEDDB INIT)
 useEffect(() => {
 const initPersistence = async () => {
 if (!window.FcDB) {
 console.error('[CoreState] FcDB not found in window');
-setIsDbReady(true); // Cầu dao an toàn: vẫn cho app chạy
+setIsDbReady(true);
 return;
 }
 try {
-// 1. Mở kết nối và thực hiện Migration nếu cần
 await window.FcDB.init();
-// 2. Nạp dữ liệu Kho AI
 const pool = await window.FcDB.get('fc_ai_harvest_pool');
 if (pool) setAiHarvestPool(pool);
-// [CLEANUP V1.07] Thanh trừng Ngôn ngữ: Dọn rác tiếng Việt khỏi hệ thống cũ
 try {
 const viKeys = ['fc_data_vi', 'fc_current_level_vi', 'fc_current_topic_vi', 'fc_master_data_vi_vocab', 'fc_master_data_vi_sentence', 'fc_ai_memory_vi'];
 viKeys.forEach(k => localStorage.removeItem(k));
-// Ghi đè rỗng để triệt tiêu bộ nhớ IndexedDB
 await window.FcDB.set('fc_notebook_vi', []);
 await window.FcDB.set('fc_mastered_vi', []);
 const incorrectKey = window.STORAGE_KEYS && window.STORAGE_KEYS.INCORRECT_LIST ? window.STORAGE_KEYS.INCORRECT_LIST + '_vi' : 'fc_incorrect_list_vi';
@@ -22964,7 +22973,7 @@ setIsDbReady(true);
 console.log('[CoreState] IndexedDB ready. Vietnamese deprecated.');
 } catch (e) {
 console.error('[CoreState] IndexedDB Init Error:', e);
-setIsDbReady(true); // Fallback
+setIsDbReady(true);
 }
 };
 initPersistence();
@@ -22994,7 +23003,7 @@ window.speechSynthesis.onvoiceschanged = loadVoices;
 useEffect(() => {
 localStorage.setItem(window.STORAGE_KEYS.UI_LANG, JSON.stringify(uiLang));
 }, [uiLang]);
-// 3. EFFECT: Đổi Ngôn Ngữ -> Tải các Sổ tay, Túi Nháp (Retry Bag) và Khởi tạo Level
+// 3. EFFECT: Đổi Ngôn Ngữ -> Tải các Sổ tay, Túi Nháp và Khởi tạo Level
 useEffect(() => {
 localStorage.setItem(window.STORAGE_KEYS.LANG, JSON.stringify(lang));
 const loadUserData = async () => {
@@ -23002,7 +23011,6 @@ if (isDbReady && window.FcDB) {
 const savedNote = await window.FcDB.get('fc_notebook_' + lang) || [];
 const savedMaster = await window.FcDB.get('fc_mastered_' + lang) || [];
 const savedIncorrect = await window.FcDB.get(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang) || [];
-// [BẢN VÁ 1.06] Kéo túi nháp Lỗi sai theo đúng phân vùng ngôn ngữ
 const savedRetryBag = await window.FcDB.get('fc_global_retry_bag_' + lang) || {};
 setNotebook(savedNote);
 setMastered(savedMaster);
@@ -23016,49 +23024,59 @@ if (prevLangRef.current !== lang) {
 setCurrentCardIndex(0);
 setIsStudyingNotebook(false);
 setStudySourceName(null);
-// [MEMORY ISOLATION V1.06] Dọn dẹp RAM và Cache khi chuyển hệ ngôn ngữ
 aiQueueRef.current = [];
-localStorage.removeItem('fc_ai_memory'); // Tiêu diệt rác legacy dùng chung
+localStorage.removeItem('fc_ai_memory');
 if (window.ExamEngine && typeof window.ExamEngine.clearVolatileMemory === 'function') {
 window.ExamEngine.clearVolatileMemory();
 }
-// [TẨY NÃO ẢO GIÁC AI] Dọn sạch trí nhớ ngầm Buffer của Gemini trên RAM
 if (window.Utils && window.Utils.AiMemoryManager && typeof window.Utils.AiMemoryManager.clear === 'function') {
 window.Utils.AiMemoryManager.clear();
 }
-const defLvl = lang === 'zh' ? 'zh_level_1' : 'en_level_4';
-const savedLvl = localStorage.getItem('fc_current_level_' + lang);
-setCurrentLevel(savedLvl ? savedLvl.replace(/"/g, '') : defLvl);
-const savedTopic = localStorage.getItem('fc_current_topic_' + lang);
-setCurrentTopic(savedTopic ? savedTopic.replace(/"/g, '') : '');
+// [CẬP NHẬT V2.0] Trả về Mảng cho biến Level
+const defLvl = lang === 'zh' ? ['zh_level_1'] : ['en_level_4'];
+setCurrentLevel(parseArrayStorage('fc_current_level_' + lang, defLvl));
+setCurrentTopic(parseArrayStorage('fc_current_topic_' + lang, []));
 prevLangRef.current = lang;
 }
 }, [lang, isDbReady]);
-// EFFECT: ĐỘNG CƠ "VÒI NƯỚC" - ĐỒNG BỘ DỮ LIỆU ĐA CHIỀU
+// [ĐẠI PHẪU V2.1] ĐỘNG CƠ "VÒI NƯỚC" - ĐỒNG BỘ DỮ LIỆU ĐA CHIỀU (MULTI-SELECT MATRIX)
 useEffect(() => {
-// Nếu người dùng đang ôn tập Sổ tay/Lỗi sai thì không được xả nước đè lên
 if (isStudyingNotebook || studySourceName) return;
 const storageKey = `fc_master_data_${lang}_${dataMode}`;
 const masterData = window.Utils?.safeJsonParse(storageKey, null);
 let targetCards = [];
-if (masterData && masterData[currentLevel]) {
-targetCards = masterData[currentLevel];
-// Lọc theo Topic nếu có
-if (currentTopic && currentTopic.trim() !== "") {
-targetCards = targetCards.filter(c => c.topic === currentTopic);
+if (masterData) {
+// Cưỡng chế Mảng, đề phòng lỗi State bất thường
+const levelsArr = Array.isArray(currentLevel) ? currentLevel : (currentLevel ? [currentLevel] : []);
+const topicsArr = Array.isArray(currentTopic) ? currentTopic : (currentTopic ? [currentTopic] : []);
+// BƯỚC 1: Lọc theo Level - Gộp các mảng lại với nhau
+if (levelsArr.length === 0) {
+Object.values(masterData).forEach(arr => {
+if (Array.isArray(arr)) targetCards = targetCards.concat(arr);
+});
+} else {
+levelsArr.forEach(lv => {
+if (masterData[lv] && Array.isArray(masterData[lv])) {
+targetCards = targetCards.concat(masterData[lv]);
+}
+});
+}
+// BƯỚC 2: Lọc theo Topic
+if (topicsArr.length > 0) {
+targetCards = targetCards.filter(c => topicsArr.includes(c.topic));
 }
 }
-// Nếu vòi nước có dữ liệu -> Bơm vào màn hình
+// Bơm vào màn hình và đồng bộ Storage
 if (targetCards.length > 0) {
 setCards(targetCards);
-window.Utils.safeLocalStorageSet('fc_data_' + lang, targetCards);
+window.Utils?.safeLocalStorageSet('fc_data_' + lang, targetCards);
 setCurrentCardIndex(0);
 } else if (!isAiLoading) {
 setCards([]);
-window.Utils.safeLocalStorageSet('fc_data_' + lang, []);
+window.Utils?.safeLocalStorageSet('fc_data_' + lang, []);
 setCurrentCardIndex(0);
 }
-}, [lang, dataMode, currentLevel, currentTopic, isStudyingNotebook, studySourceName]);
+}, [lang, dataMode, currentLevel, currentTopic, isStudyingNotebook, studySourceName, isAiLoading]);
 // 4. Persistence Effects
 useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); } }, [toast]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
@@ -23076,7 +23094,6 @@ window.Utils?.safeLocalStorageSet('fc_ai_config', aiConfig);
 useEffect(() => {
 if (isDbReady && window.FcDB) window.FcDB.set('fc_ai_harvest_pool', aiHarvestPool);
 }, [aiHarvestPool, isDbReady]);
-// [BẢN VÁ 1.06] Ghi đè CSDL ngầm chuẩn xác xuống túi nháp của ngôn ngữ hiện tại
 useEffect(() => {
 if (isDbReady && window.FcDB) window.FcDB.set('fc_global_retry_bag_' + lang, globalRetryBag);
 }, [globalRetryBag, isDbReady, lang]);
