@@ -1531,11 +1531,11 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.89
-// Last Updated: 2026-06-17 17:15
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.90
+// Last Updated: 2026-07-05 11:35
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.89: [SENTENCE DUAL-MUTATION STRATEGY] Xóa bỏ lệnh Hard Prompt cấu trúc cứng nhắc. Tách biệt hoàn toàn chiến lược sinh bẫy câu văn: Chế độ Bình thường dùng "Đột biến tối thiểu ngữ cảnh", Chế độ Đảo ngược dùng "Đột biến cấu trúc ngữ pháp". Nâng cấp ví dụ Few-shot sát với nguyên lý khảo thí.
-// Cập nhật V1.88: [SOFT PROMPT - LENGTH EQUALIZATION] Cấy ghép "Mẹo thiết kế" (Soft Prompt) vào nhánh sinh đáp án nhiễu Từ vựng. Khuyên AI mô phỏng chính xác độ dài.
+// Cập nhật V1.90: [MULTI-DIMENSIONAL PROMPT] Nâng cấp lõi đục lỗ ai_mask thành Động cơ 3 Ma trận (Collocation, Grammar, Paraphrase). Gỡ bỏ hoàn toàn Prompt cũ tĩnh. Ép AI đóng vai giám khảo ra đề chuẩn IELTS/TOEIC/HSK, triệt tiêu việc đục lỗ ngẫu nhiên vô nghĩa.
+// Cập nhật V1.89: [SENTENCE DUAL-MUTATION STRATEGY] Xóa bỏ lệnh Hard Prompt cấu trúc cứng nhắc. Tách biệt hoàn toàn chiến lược sinh bẫy câu văn.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -1557,12 +1557,10 @@ return "\n[ĐỊNH HƯỚNG TRÌNH ĐỘ]: Người học đang ở cấp độ 
 _getFuzzyMicroPrompt: function(card, gameType) {
 const pool = window.IoeDataEngine?.MICRO_PROMPTS?.[gameType];
 if (!pool) return "";
-// [BẢN VÁ 1.84] Hàm lọc tương thích ngược (Hỗ trợ cả chuỗi String cũ và Object {label, prompt} mới)
 const extractPrompt = (item) => {
 if (!item) return "";
 return typeof item === 'object' ? (item.prompt || "") : item;
 };
-// [HOTFIX V1.81] Dịch chuyển Lưới Cứu Hộ lên đầu để hứng thẻ khuyết ngữ pháp
 const fallbacks = {
 quiz: 'general_trap',
 spot_mistake: 'general_mistake',
@@ -1576,11 +1574,10 @@ if (typeof tags === 'string') {
 tags = tags.split(',').map(s => s.trim()).filter(Boolean);
 }
 if (!Array.isArray(tags) || tags.length === 0) return extractPrompt(defaultFallback);
-// Bốc thăm ngẫu nhiên 1 Nhãn ngữ pháp từ Thẻ
 const targetTag = tags[Math.floor(Math.random() * tags.length)];
-// BƯỚC 1: EXACT MATCH (So khớp tuyệt đối)
+// BƯỚC 1: EXACT MATCH
 if (pool[targetTag]) return extractPrompt(pool[targetTag]);
-// BƯỚC 2: LANGUAGE-AWARE FUZZY MATCH (Xuyên cấp độ, Cùng ngôn ngữ)
+// BƯỚC 2: LANGUAGE-AWARE FUZZY MATCH
 const isChinese = targetTag.startsWith('zh_');
 const isEnglish = targetTag.startsWith('eng_') || targetTag.startsWith('pre_a1_');
 const coreTrap = targetTag.replace(/^(zh_hsk\d*_|eng_a\d+p?_|pre_a1_)/, '');
@@ -1588,7 +1585,6 @@ const possibleKeys = Object.keys(pool).filter(key => {
 const isCorrectLang = isChinese ? key.startsWith('zh_') : (isEnglish ? (key.startsWith('eng_') || key.startsWith('pre_')) : true);
 return isCorrectLang && key.includes(coreTrap);
 });
-// Nếu tìm thấy các bẫy có chung "lõi", bốc ngẫu nhiên 1 bẫy ra dùng
 if (possibleKeys.length > 0) {
 return extractPrompt(pool[possibleKeys[Math.floor(Math.random() * possibleKeys.length)]]);
 }
@@ -1607,7 +1603,6 @@ if (card.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(card, 'spot_mistake');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 } else {
-// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
 microPrompt = "\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy đóng vai chuyên gia ngôn ngữ. Phân tích câu này để tìm ra một cấu trúc ngữ pháp cốt lõi (Ví dụ: liên từ, giới từ, trật tự từ, bổ ngữ...). Hãy tạo ra lỗi sai bằng cách bẻ gãy chính cấu trúc đó thay vì sai từ vựng thông thường.\n";
 }
 }
@@ -1667,8 +1662,6 @@ term = cardOrText.term;
 definition = cardOrText.definition;
 }
 let microPrompt = "";
-// Rào chắn tuyệt đối chống rò rỉ Prompt ngữ pháp.
-// Chỉ lấy và sử dụng Micro Prompt khi đang ở chế độ Đảo ngược (isReverse === true).
 if (isReverse && typeof cardOrText === 'object' && cardOrText !== null) {
 if (cardOrText.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(cardOrText, 'quiz');
@@ -1676,25 +1669,21 @@ if (mp) {
 microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: ${mp}\n`;
 }
 } else {
-// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
 microPrompt = `\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy đóng vai chuyên gia ngôn ngữ. Phân tích câu ngoại ngữ chuẩn này để tìm ra một cấu trúc ngữ pháp cốt lõi (Ví dụ: liên từ, giới từ, trật tự từ, bổ ngữ...). Hãy sinh ra các đáp án nhiễu bằng cách bẻ gãy hoặc dùng sai chính cấu trúc đó. TUYỆT ĐỐI KHÔNG tạo đáp án nhiễu bằng cách dịch sai từ vựng thông thường.\n`;
 }
 }
 let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm.\n`;
 let langStr = distractorLang === 'zh' ? 'Tiếng Trung' : (distractorLang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
-// [BẢN VÁ V1.86] DYNAMIC FEW-SHOT PROMPTING: Cung cấp ví dụ theo từ vựng hoặc câu văn
 if (!isReverse) {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng TIẾNG VIỆT cho mục tiêu sau.\n`;
 prompt += `Mục tiêu ngoại ngữ: "${term}"\nNghĩa đúng (đáp án chuẩn): "${definition}"\n`;
 prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề với đáp án đúng, đọc rất xuôi tai nhưng mang ý nghĩa sai lệch. Hãy lợi dụng sự hiểu lầm văn cảnh, hoặc nghĩa gần giống nhưng khác sắc thái.\n`;
 if (type === 'sentence') {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "Cô ấy đang đọc sách trong thư viện" -> Nhiễu: ["Cô ấy đã mua sách ở thư viện", "Cô ấy đang viết sách trong thư viện", "Anh ấy đang đọc sách trong thư viện"]\n- Nghĩa đúng: "Hôm qua tôi đi xem phim với bạn" -> Nhiễu: ["Hôm qua tôi đi mua sắm với bạn", "Hôm nay tôi đi xem phim với bạn", "Hôm qua tôi đi xem phim một mình"]\n`;
-// [BẢN VÁ V1.89] TIÊM CHIẾN LƯỢC ĐỘT BIẾN TỐI THIỂU CHO CÂU VĂN BÌNH THƯỜNG
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "Cô ấy đang đọc sách trong thư viện" -> Nhiễu: ["Cô ấy đã mua sách ở thư viện", "Cô ấy đang viết sách trong thư viện", "Anh ấy đang đọc sách trong thư viện"]\n`;
 prompt += `Mẹo thiết kế (Đột biến tối thiểu): Để tạo bẫy hoàn hảo, hãy giữ nguyên 80% cấu trúc và độ dài của bản dịch chuẩn. Chỉ thay đổi 1 hoặc 2 tiểu tiết (như đổi hành động, thay từ trái nghĩa, hoặc sai lệch mốc thời gian/chủ thể) để lừa học viên. Tuyệt đối không viết một câu hoàn toàn mới khác biệt.\n`;
 } else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n- Nghĩa đúng: "chạy nhanh" -> Nhiễu: ["đi bộ", "bò chậm", "đứng im"]\n`;
-// [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
-prompt += `Mẹo thiết kế: Hãy tạo các đáp án nhiễu có độ dài và nhịp điệu tương đồng với đáp án chuẩn để tránh bị đoán mò. Ví dụ: nếu đáp án chuẩn liệt kê 3 từ đồng nghĩa (VD: "Độc đáo, khác biệt, quan trọng"), đáp án nhiễu cũng nên liệt kê 3 từ (VD: "Bình thường, phổ biến, đại trà").\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n`;
+prompt += `Mẹo thiết kế: Hãy tạo các đáp án nhiễu có độ dài và nhịp điệu tương đồng với đáp án chuẩn để tránh bị đoán mò.\n`;
 }
 } else {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
@@ -1703,28 +1692,23 @@ prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ
 if (distractorLang === 'zh') {
 prompt += `Bạn có thể tạo bẫy đồng âm (Pinyin giống nhau), sai bộ thủ, hoặc các từ có mặt chữ Hán gần giống nhưng khác nghĩa.\n`;
 if (type === 'sentence') {
-prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "我昨天去看了电影" -> Nhiễu: ["我明天去看了电影" (Sai thì), "我去了看电影昨天" (Sai trật tự từ), "我昨天看去了电影" (Sai vị trí trợ từ)]\n`;
-// [BẢN VÁ V1.89] TIÊM CHIẾN LƯỢC ĐỘT BIẾN CẤU TRÚC CHO CÂU VĂN ĐẢO NGƯỢC
-prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ, sai lượng từ). Bốn đáp án nhìn lướt qua phải trông gần giống hệt nhau để buộc học viên phải soi kỹ từng chữ.\n`;
+prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "我昨天去看了电影" -> Nhiễu: ["我明天去看了电影" (Sai thì), "我去了看电影昨天" (Sai trật tự từ)]\n`;
+prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ). Bốn đáp án nhìn lướt qua phải trông gần giống hệt nhau để buộc học viên phải soi kỹ từng chữ.\n`;
 } else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n- Nghĩa đúng: "时间" (thời gian) -> Nhiễu: ["世界", "时候", "时刻"]\n`;
-// [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
-prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn. Tránh tình trạng đáp án chuẩn là một cụm từ dài nhưng đáp án nhiễu lại quá ngắn, khiến người chơi dễ dàng đoán được.\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n`;
+prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn. Tránh tình trạng đáp án chuẩn là một cụm từ dài nhưng đáp án nhiễu lại quá ngắn.\n`;
 }
 } else {
 prompt += `Bạn có thể tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
 if (type === 'sentence') {
-prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "She is reading a book" -> Nhiễu: ["She read a book yesterday" (Sai thì), "She reading a book" (Thiếu to-be), "She is read a book" (Sai dạng động từ)]\n`;
-// [BẢN VÁ V1.89] TIÊM CHIẾN LƯỢC ĐỘT BIẾN CẤU TRÚC CHO CÂU VĂN ĐẢO NGƯỢC
-prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ). Bốn đáp án nhìn lướt qua phải trông gần giống hệt nhau để buộc học viên phải soi kỹ từng chữ.\n`;
+prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "She is reading a book" -> Nhiễu: ["She read a book yesterday" (Sai thì), "She reading a book" (Thiếu to-be)]\n`;
+prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ).\n`;
 } else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n- Nghĩa đúng: "apple" -> Nhiễu: ["orange", "banana", "grape"]\n`;
-// [BẢN VÁ V1.88] TIÊM SOFT PROMPT TRỊ BỆNH LỆCH CHIỀU DÀI
-prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn. Tránh tình trạng đáp án chuẩn là một cụm từ dài nhưng đáp án nhiễu lại quá ngắn, khiến người chơi dễ dàng đoán được.\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n`;
+prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn.\n`;
 }
 }
 }
-// [BẢN VÁ V1.89] Đã gỡ bỏ toàn hoàn [ĐỊNH HƯỚNG CẤU TRÚC] chung. Chiến lược độ dài và cấu trúc đã được tách riêng.
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOptionsRule) {
 const targetLang = distractorLang === 'zh' ? 'Chinese' : (distractorLang === 'vi' ? 'Vietnamese' : 'English');
@@ -1741,7 +1725,6 @@ if (distractorLang !== 'vi') {
 prompt += window.GameAiEngine._getLevelContext(level);
 }
 prompt += `\nHãy trả về ${count} đáp án nhiễu (không bao gồm đáp án đúng).`;
-// Ép Chain of Thought bằng cách buộc AI trả về trường 'reasoning' trước khi chốt mảng 'distractors'
 const schema = {
 type: "OBJECT",
 properties: {
@@ -1764,7 +1747,6 @@ if (card.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(card, 'scramble');
 if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
 } else {
-// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
 microPrompt = "\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy phân tích câu này để tìm ra cấu trúc ngữ pháp cốt lõi. Hãy sinh ra từ rác (noise) là các từ loại có thể làm rối loạn cấu trúc đó (VD: thừa giới từ, sai liên từ) thay vì từ rác ngẫu nhiên.\n";
 }
 }
@@ -1805,30 +1787,57 @@ const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(res.text);
 return parsed.noise || [];
 },
-// 4. ĐỘNG CƠ ĐỤC LỖ TRỰC TUYẾN (Cloze Mask)
+// 4. ĐỘNG CƠ ĐỤC LỖ TRỰC TUYẾN (Cloze Mask) - TÍCH HỢP 3 MA TRẬN
 ai_mask: async function(text, hintFallback, lang, apiKey, level = "", topic = "", card = null) {
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
 const langName = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
-let prompt = window.Utils.getPrompt('fillblank_sentence', { term: text, definition: hintFallback, lang: langName });
+// Bốc thăm ngẫu nhiên Ma trận ra đề (0-34: Collocation, 35-69: Grammar, 70-99: Paraphrase)
+const rand = Math.floor(Math.random() * 100);
+let strategy = 1;
+if (rand >= 35 && rand < 70) strategy = 2;
+else if (rand >= 70) strategy = 3;
 let microPrompt = "";
 if (card) {
 if (card.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(card, 'fill_blank');
-if (mp) microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+if (mp) {
+microPrompt = "\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: " + mp + "\n";
+strategy = 2; // Cưỡng chế ma trận Ngữ pháp nếu thẻ có tag ngữ pháp đặc biệt
+}
 } else {
-// [BẢN VÁ V1.87] AUTO-DIAGNOSTIC FALLBACK
 microPrompt = "\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy phân tích câu này và ưu tiên đục lỗ (mask) tại các vị trí ngữ pháp then chốt (như liên từ, giới từ, bổ ngữ) thay vì đục lỗ danh từ/động từ thông thường.\n";
 }
 }
-let examples = "\n\nMỘT SỐ VÍ DỤ MINH HỌA:\n";
-if (lang === 'zh') {
-examples += `- Câu gốc: "我喜欢吃苹果。" -> displaySentence: "我喜欢吃[__________]。", targetWord: "苹果", distractors: ["香蕉", "汽车", "跑"]\n`;
-examples += `- Câu gốc: "今天天气很好。" -> displaySentence: "今天天气很[__________]。", targetWord: "好", distractors: ["坏", "下雨", "吃"]\n`;
-} else if (lang === 'en') {
-examples += `- Câu gốc: "She is reading a book." -> displaySentence: "She is [__________] a book.", targetWord: "reading", distractors: ["running", "read", "reads"]\n`;
-examples += `- Câu gốc: "The apple is red." -> displaySentence: "The apple is [__________].", targetWord: "red", distractors: ["blue", "car", "eat"]\n`;
+let prompt = `Bạn là một giám khảo ra đề thi ngôn ngữ quốc tế (IELTS/TOEIC/HSK) chuyên nghiệp.\n`;
+prompt += `Nhiệm vụ: Tạo một câu hỏi ĐIỀN TỪ VÀO CHỖ TRỐNG (Cloze test) từ câu/từ vựng gốc sau đây: "${text}". Nghĩa tham khảo: "${hintFallback}". Ngôn ngữ đích: ${langName}.\n\n`;
+if (strategy === 1) {
+prompt += `[CHIẾN LƯỢC 1: ĐÁNH GIÁ CỤM TỪ CỐ ĐỊNH - COLLOCATIONS]\n`;
+prompt += `- Chỉ thị: Quét câu và tìm một cụm từ cố định (Verb + Noun, Adjective + Noun, Phrasal Verb...). Đục lỗ MỘT TỪ DUY NHẤT cấu thành nên cụm đó.\n`;
+prompt += `- Quy tắc Nhiễu (distractors): Tạo 3 đáp án nhiễu CÙNG TỪ LOẠI. ĐÂY BẮT BUỘC LÀ NHỮNG TỪ MÀ HỌC VIÊN HAY GHÉP SAI do thói quen dịch word-by-word từ tiếng mẹ đẻ (Ví dụ tiếng Anh: make thay vì do).\n`;
+prompt += `- Gợi ý (hint): Dịch nghĩa ngắn gọn của TỪ BỊ ĐỤC LỖ sang tiếng Việt.\n`;
+} else if (strategy === 2) {
+prompt += `[CHIẾN LƯỢC 2: ĐÁNH GIÁ NGỮ PHÁP & LIÊN KẾT - GRAMMAR & COHESION]\n`;
+prompt += `- Chỉ thị: Quét câu và đục lỗ tại các vị trí ngữ pháp nhạy cảm: Giới từ, Mạo từ, Đại từ quan hệ, Từ nối, hoặc Động từ chia theo thì.\n`;
+prompt += `- Quy tắc Nhiễu: 3 đáp án nhiễu BẮT BUỘC phải thuộc CHÍNH XÁC cùng nhóm từ loại ngữ pháp (VD: cùng là giới từ, cùng là từ nối) nhưng dùng sai về logic, số ít/nhiều hoặc cấu trúc.\n`;
+prompt += `- Gợi ý (hint): Giải thích ngắn gọn bằng tiếng Việt tại sao lại dùng từ này (Ví dụ: "Đi với danh từ X", "Chỉ thời gian trong quá khứ").\n`;
 } else {
-examples += `- Câu gốc: "Hôm nay trời rất đẹp." -> displaySentence: "Hôm nay trời rất [__________].", targetWord: "đẹp", distractors: ["xấu", "chạy", "bàn"]\n`;
+prompt += `[CHIẾN LƯỢC 3: KIỂM TRA TỪ ĐỒNG NGHĨA - PARAPHRASING]\n`;
+prompt += `- Chỉ thị: Đục lỗ một Tính từ, Động từ, hoặc Danh từ mang ý nghĩa cốt lõi trong câu.\n`;
+prompt += `- Quy tắc Nhiễu: 3 đáp án nhiễu là các từ vựng hợp lệ về mặt ngữ pháp nhưng làm sai lệch hoàn toàn ý nghĩa ngữ cảnh của câu.\n`;
+prompt += `- Gợi ý (hint): TUYỆT ĐỐI KHÔNG DỊCH SANG TIẾNG VIỆT. Hãy viết lại (paraphrase) phần nghĩa của từ bị đục bằng 1-2 từ đồng nghĩa (synonyms) hoặc cụm từ tương đương BẰNG CHÍNH NGÔN NGỮ ĐÍCH (${langName}). Học viên phải đọc hiểu gợi ý ngoại ngữ để điền.\n`;
+}
+prompt += `\n[QUY TẮC ĐỤC LỖ CHUNG]:\n`;
+prompt += `- Phải thay thế từ bị đục trong câu bằng chuỗi "[__________]" (chính xác 10 dấu gạch dưới).\n`;
+prompt += `- Phải giữ nguyên dấu câu xung quanh (chấm, phẩy).\n`;
+let examples = "\n[VÍ DỤ MINH HỌA - ĐẦU RA YÊU CẦU]:\n";
+if (lang === 'zh') {
+examples += `- Strategy 1 (Collocation): Câu "她做出了决定。" -> displaySentence: "她[__________]出了决定。", targetWord: "做", distractors: ["拿", "给", "打"], hint: "tạo ra (đi với 决定)"\n`;
+examples += `- Strategy 2 (Grammar): Câu "我对艺术感兴趣。" -> displaySentence: "我[__________]艺术感兴趣。", targetWord: "对", distractors: ["在", "和", "给"], hint: "Giới từ đi với 感兴趣"\n`;
+examples += `- Strategy 3 (Paraphrase): Câu "价格快速下降。" -> displaySentence: "价格快速[__________]。", targetWord: "下降", distractors: ["发展", "成功", "上升"], hint: "减少 / 跌落 (Paraphrase)"\n`;
+} else if (lang === 'en') {
+examples += `- Strategy 1 (Collocation): Câu "She made a mistake." -> displaySentence: "She [__________] a mistake.", targetWord: "made", distractors: ["did", "took", "had"], hint: "làm, tạo ra"\n`;
+examples += `- Strategy 2 (Grammar): Câu "He is interested in art." -> displaySentence: "He is interested [__________] art.", targetWord: "in", distractors: ["on", "at", "of"], hint: "Giới từ đi với interested"\n`;
+examples += `- Strategy 3 (Paraphrase): Câu "There was a fast decline in price." -> displaySentence: "There was a fast [__________] in price.", targetWord: "decline", distractors: ["development", "success", "increase"], hint: "decrease / drop (Paraphrase)"\n`;
 }
 prompt += examples;
 let injectedRule = "";
@@ -1838,7 +1847,7 @@ const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_le
 let mappedKey = oldToNewMap[level] || level;
 if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'en_level_4';
 const ruleStr = window.IoeDataEngine.getMicroTierClozeRule(targetLang, dataMode, mappedKey, topic);
-if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG ĐỤC LỖ]: " + ruleStr;
+if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG BỔ SUNG TỪ HỆ THỐNG]: " + ruleStr;
 }
 prompt += microPrompt;
 prompt += injectedRule;
@@ -4095,11 +4104,11 @@ formattedData = { ...tempGeneratedData, isAiGenerated: true, type: 'listening' }
 }
 return formattedData;
 };
-// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 2.9
-// Last Updated: 2026-06-13 15:59
+// Block 2.7d: TẦNG 2: BỘ ĐỊNH TUYẾN TRUNG TÂM (The Core Hydrator) - Version 3.0
+// Last Updated: 2026-07-05 11:55
 // Nhiệm vụ: Động cơ nạp đề thi nguyên tử. Đóng vai trò Cảnh sát giao thông điều phối giữa DB, AI, Normalizer.
-// Cập nhật V2.9: [GRAMMAR PIPELINE INJECTION] Xuyên thủng ống dẫn dữ liệu từ Tầng 5 xuống Lò đúc. Cấy hàm extractGrammarPrompt kèm màng lọc tương thích ngược, tiêm lén metadata.grammarId vào biến HistoryPrompt để điều hướng AI sinh câu hỏi đúng chủ điểm ngữ pháp mà không làm vỡ kiến trúc hàm.
-// Cập nhật V2.8: [UNIVERSAL LOCAL FALLBACK] Gỡ bỏ chốt chặn isMinigame trong động cơ cứu hộ getEmergencyFallback. Ưu tiên quét và sử dụng "Thẻ của tôi".
+// Cập nhật V3.0: [3-MATRIX ROULETTE INJECTION] Nhúng thành công Động cơ 3 Ma trận (Collocations, Grammar, Paraphrasing) vào lõi định tuyến của "AI Pure Mode" cho game Điền từ (ioe_fill_blank). Cưỡng chế AI sinh ra mảng 'distractors' chứa 3 nhiễu cực độc. Tương thích chéo với Grammar Pipeline.
+// Cập nhật V2.9: [GRAMMAR PIPELINE INJECTION] Xuyên thủng ống dẫn dữ liệu từ Tầng 5 xuống Lò đúc.
 // ==================================================================================
 // Khởi tạo Base Object nếu chưa tồn tại
 window.ExamEngine = window.ExamEngine || {};
@@ -4440,7 +4449,23 @@ else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_SPOT_MISTAKE || tTy
 tempGeneratedData = await window.AiFactoryEngine.forgeContext('spot_mistake', level, targetLang, apiKey, topic, finalHistoryPrompt);
 }
 else if (tType === window.IoeDataEngine?.QUESTION_TYPES?.IOE_FILL_BLANK || tType === 'ioe_fill_blank' || tType === 'fillblank') {
-tempGeneratedData = await window.AiFactoryEngine.forgeContext('fill_blank', level, targetLang, apiKey, topic, finalHistoryPrompt);
+// [CẬP NHẬT V3.0] INJECTION ĐỘNG CƠ 3 MA TRẬN
+let matrixInstruction = "\n[YÊU CẦU SƯ PHẠM QUỐC TẾ CHO GAME ĐIỀN TỪ]:\n";
+matrixInstruction += "1. BẮT BUỘC TRẢ VỀ: Sinh thêm một mảng 'distractors' chứa CHÍNH XÁC 3 từ nhiễu sai (Bẫy). TUYỆT ĐỐI không để mảng này rỗng.\n";
+if (userGrammarConstraint) {
+matrixInstruction += "2. CHIẾN LƯỢC NGỮ PHÁP (Khóa cứng): Câu đố PHẢI tuân thủ tuyệt đối [YÊU CẦU NGỮ PHÁP ÉP BUỘC TỪ NGƯỜI DÙNG] ở trên. 'targetWord' phải là từ/cụm từ phản ánh đúng cấu trúc ngữ pháp đó.\n";
+} else {
+const matrixRoll = Math.random();
+if (matrixRoll < 0.35) {
+matrixInstruction += "2. CHIẾN LƯỢC COLLOCATIONS (35%): Câu đố kiểm tra Cụm từ cố định / Phrasal Verbs / Idioms. Từ đục lỗ (targetWord) nằm trong cụm đó. 3 distractors phải là các từ dễ nhầm lẫn nếu học sinh dịch word-by-word.\n";
+} else if (matrixRoll < 0.70) {
+matrixInstruction += "2. CHIẾN LƯỢC NGỮ PHÁP (35%): Kiểm tra chuyên sâu một mảng Ngữ pháp bất kỳ (Giới từ, Mạo từ, Liên từ, Chia động từ...). 'targetWord' phải là từ mang chức năng ngữ pháp.\n";
+} else {
+matrixInstruction += "2. CHIẾN LƯỢC PARAPHRASING (30%): Kiểm tra Đọc hiểu từ đồng nghĩa. Trường 'hint' (Gợi ý) TUYỆT ĐỐI KHÔNG DỊCH SANG TIẾNG VIỆT, mà phải là một cụm từ đồng nghĩa / giải nghĩa bằng ngôn ngữ đích.\n";
+}
+}
+const upgradedPrompt = finalHistoryPrompt + matrixInstruction;
+tempGeneratedData = await window.AiFactoryEngine.forgeContext('fill_blank', level, targetLang, apiKey, topic, upgradedPrompt);
 if (tempGeneratedData && tempGeneratedData.displaySentence && tempGeneratedData.targetWord && !tempGeneratedData.displaySentence.includes('[__________]')) {
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const safeWord = escapeRegExp(tempGeneratedData.targetWord);
