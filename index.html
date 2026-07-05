@@ -14592,8 +14592,18 @@ const safeConfig = config || { level: 'level_4_discovery_basic', sourceMode: 'ca
 const hookCallbacks = { onFinish, showToast: window.globalShowToast, onLogWrong, onUpdateCards, onSaveToHarvest, onAutoSave, onBack: onQuit, addToRetryBag, removeFromRetryBag, onEndGame: gameCallbacks.onEndGame };
 const logic = useFillBlankLogic(cards, { ...safeConfig, isAiMode, apiKey, lang, savedState, globalRetryBag }, hookCallbacks);
 const isBookmarked = logic.currentQuestion?.targetWord && notebook?.some(n => n.term.includes(logic.currentQuestion.targetWord));
-const FillBlankPlayScreen = window.FillBlankPlayScreen || window.Block5_8_FillBlankPlayScreen;
-if (!FillBlankPlayScreen) return <div className="p-4 text-red-500">Lỗi: Không tìm thấy FillBlankPlayScreen</div>;
+// [HOTFIX V2.31] Lưới lọc an toàn chống lỗi React #130 (Element type is invalid)
+const FillBlankPlayScreen = window.Block5_8_FillBlankPlayScreen || window.FillBlankPlayScreen;
+if (!FillBlankPlayScreen || typeof FillBlankPlayScreen !== 'function') {
+console.error("Critical Error: FillBlankPlayScreen is undefined. Check Block 5.8 definition.");
+return (
+<div className="flex flex-col items-center justify-center h-full p-4 text-center">
+<div className="text-red-500 font-bold text-xl mb-2">Lỗi Tích Hợp Component (#130)</div>
+<div className="text-gray-600 text-sm mb-4">Hệ thống không tìm thấy Giao diện của Game Điền Từ (Block 5.8).</div>
+<button onClick={onQuit} className="px-4 py-2 bg-blue-500 text-white rounded-lg">Quay lại</button>
+</div>
+);
+}
 return (
 <FillBlankPlayScreen
 t={t} mainColor={mainColor} config={safeConfig}
