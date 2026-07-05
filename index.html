@@ -5715,12 +5715,12 @@ if (key.startsWith('eng_')) return 'Tiếng Anh (Chung)';
 return 'Chuyên đề Khác';
 }
 };
-// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.04
-// Last Updated: 2026-07-04 13:36
+<script type="text/babel">
+// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.05
+// Last Updated: 2026-07-05 16:44
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
 // Quy tắc: Tuyệt đối không nhúng logic nghiệp vụ vào Tầng này. Tuân thủ Hiến pháp Quy tắc 3.
-// Cập nhật V1.04: [VIETNAMESE DEPRECATION] Gỡ bỏ hoàn toàn cờ chặn `if (lang === 'vi') return null;` trong LevelSelector. Tối ưu hoá logic vì ứng dụng giờ chỉ còn 2 ngôn ngữ là en và zh.
-// Cập nhật V1.03: [BULLETPROOF DROPDOWN] Tái cấu trúc TopicSelectorDropdown. Cấy Thuật toán Trích xuất 3 Lớp...
+// Cập nhật V1.05: [DEFENSIVE RENDERING] Vá lỗ hổng trí mạng lỗi #130 tại MenuToggle khi thiếu Prop `icon`. Bổ sung Icon Zap cho Hell Mode.
 // ==================================================================================
 // 1. Error Boundary
 class ErrorBoundary extends React.Component {
@@ -5810,7 +5810,8 @@ MessageSquare: createIcon(<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2
 Star: createIcon(<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>),
 Info: createIcon(<><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></>),
 Plus: createIcon(<><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></>),
-Search: createIcon(<><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></>)
+Search: createIcon(<><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></>),
+Zap: createIcon(<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></>)
 };
 // 3. Shared Components
 const AiModeSwitch = ({ isAiMode, setAiMode, t, onMissingKey, isLoading, className }) => (
@@ -5831,11 +5832,16 @@ title={isLoading ? "AI đang xử lý..." : (isAiMode ? "Chế độ AI: Tự đ
 </div>
 </div>
 );
+// [VÁ LỖI TẦNG 3] Bảo vệ thuộc tính 'icon' không bị undefined
 const MenuToggle = ({ active, setActive, icon: Icon, color, title, subtitle, extra, disabled }) => (
 <div className={`px-4 py-3 rounded-xl border transition-all ${active ? `bg-${color}-50 border-${color}-200` : 'bg-white border-gray-200'} ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}>
 <div className={`flex items-center justify-between ${!disabled ? 'cursor-pointer' : ''}`} onClick={() => !disabled && setActive(!active)}>
 <div className="flex items-center gap-3">
-<div className={`p-2 rounded-full ${active ? `bg-${color}-100 text-${color}-600` : 'bg-gray-100 text-gray-400'}`}><Icon size={18} /></div>
+{Icon && (
+<div className={`p-2 rounded-full ${active ? `bg-${color}-100 text-${color}-600` : 'bg-gray-100 text-gray-400'}`}>
+<Icon size={18} />
+</div>
+)}
 <div className="text-left">
 <div className={`text-sm font-bold ${active ? `text-${color}-800` : 'text-gray-600'}`}>{title}</div>
 <div className="text-xs text-gray-500">{subtitle}</div>
@@ -5949,6 +5955,7 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
+</script>
 // Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.08
 // Last Updated: 2026-05-16 22:25
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
