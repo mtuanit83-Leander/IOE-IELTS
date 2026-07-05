@@ -5715,11 +5715,12 @@ if (key.startsWith('eng_')) return 'Tiếng Anh (Chung)';
 return 'Chuyên đề Khác';
 }
 };
-// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 1.05
-// Last Updated: 2026-07-05 16:57
-// Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập, có thể tái sử dụng trên toàn hệ thống.
-// Quy tắc: Tuyệt đối không nhúng logic nghiệp vụ vào Tầng này. Tuân thủ Hiến pháp Quy tắc 3.
-// Cập nhật V1.05: [DEFENSIVE RENDERING] Vá lỗ hổng trí mạng lỗi #130 tại MenuToggle khi thiếu Prop `icon`. Bổ sung Icon Zap cho Hell Mode. (Đã sửa lỗi ngắt dòng).
+// Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 2.01 (Multi-Select Bulletproof)
+// Last Updated: 2026-07-05 21:30
+// Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập.
+// Cập nhật V2.01: [HOTFIX] Triệt tiêu hoàn toàn hàm `.split()` để xử lý triệt để lỗi TypeError khi ép kiểu Mảng. Sử dụng logic chuỗi an toàn.
+// Cập nhật V2.0: [MULTI-SELECT UPGRADE] Đổi thiết kế Dropdown của Cấp độ và Chủ đề từ Single-select sang Multi-select (Checkbox array). Ngăn dropdown tự đóng khi chọn.
+// Cập nhật V1.05: [DEFENSIVE RENDERING] Vá lỗ hổng thiếu Prop `icon` tại MenuToggle. Bổ sung Icon Zap, Database, SkipForward. Sửa lỗi ngắt dòng.
 // ==================================================================================
 // 1. Error Boundary
 class ErrorBoundary extends React.Component {
@@ -5832,8 +5833,11 @@ title={isLoading ? "AI đang xử lý..." : (isAiMode ? "Chế độ AI: Tự đ
 </div>
 );
 // [VÁ LỖI TẦNG 3] Bảo vệ thuộc tính 'icon' không bị undefined
-const MenuToggle = ({ active, setActive, icon: Icon, color, title, subtitle, extra, disabled }) => (
-<div className={`px-4 py-3 rounded-xl border transition-all ${active ? "bg-" + color + "-50 border-" + color + "-200" : "bg-white border-gray-200"} ${disabled ? "opacity-50 grayscale cursor-not-allowed" : ""}`}>
+const MenuToggle = ({ active, setActive, icon: Icon, color, title, subtitle, extra, disabled }) => {
+const activeClass = active ? "bg-" + color + "-50 border-" + color + "-200" : "bg-white border-gray-200";
+const disabledClass = disabled ? "opacity-50 grayscale cursor-not-allowed" : "";
+return (
+<div className={`px-4 py-3 rounded-xl border transition-all ${activeClass} ${disabledClass}`}>
 <div className={`flex items-center justify-between ${!disabled ? 'cursor-pointer' : ''}`} onClick={() => !disabled && setActive(!active)}>
 <div className="flex items-center gap-3">
 {Icon && (
@@ -5853,7 +5857,8 @@ const MenuToggle = ({ active, setActive, icon: Icon, color, title, subtitle, ext
 {active && extra && !disabled && extra}
 </div>
 );
-// [CẬP NHẬT V1.04] Bộ chọn Cấp độ (Level Selector) - Đã thanh trừng tiếng Việt
+};
+// [CẬP NHẬT V2.0] Bộ chọn Cấp độ (Level Selector) - MULTI-SELECT
 const LevelSelector = ({ lang, currentLevel, onSelectLevel, mainColor = 'blue' }) => {
 const [isOpen, setIsOpen] = React.useState(false);
 const enLevels = [
@@ -5878,15 +5883,32 @@ const zhLevels = [
 { id: 'zh_level_8', label: 'HSK 8', sub: 'Cao cấp' },
 { id: 'zh_level_9', label: 'HSK 9', sub: 'Cao cấp' }
 ];
-// Luôn trả về danh sách của zh hoặc en, mặc định sẽ là enLevels nếu lang không phải 'zh'
 const levels = lang === 'zh' ? zhLevels : enLevels;
-const currentObj = levels.find(l => l.id === currentLevel) || levels[3];
+// Tự động chuyển đổi String (legacy) sang Array
+const currentArr = Array.isArray(currentLevel) ? currentLevel : (currentLevel ? [currentLevel] : []);
+const handleToggle = (id) => {
+if (currentArr.includes(id)) {
+onSelectLevel(currentArr.filter(x => x !== id));
+} else {
+onSelectLevel([...currentArr, id]);
+}
+};
+// Logic tính toán nhãn hiển thị bên ngoài Dropdown
+let displayMain = "Tất cả";
+let displaySub = "Cấp độ";
+if (currentArr.length === 1) {
+const obj = levels.find(l => l.id === currentArr[0]);
+if (obj) { displayMain = obj.label; displaySub = obj.sub; }
+} else if (currentArr.length > 1) {
+displayMain = `Đã chọn ${currentArr.length}`;
+displaySub = "Nhiều cấp độ";
+}
 return (
 <div className="relative inline-block text-left w-full h-full">
 <button onClick={() => setIsOpen(!isOpen)} className={`flex items-center justify-between w-full h-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors`}>
 <div className="flex flex-col items-start overflow-hidden">
-<span className={`text-[10px] sm:text-[11px] font-bold text-${mainColor}-700 leading-none truncate`}>{currentObj.label}</span>
-<span className="text-[8px] sm:text-[9px] text-gray-400 font-medium leading-none mt-1 truncate">{currentObj.sub}</span>
+<span className={`text-[10px] sm:text-[11px] font-bold text-${mainColor}-700 leading-none truncate`}>{displayMain}</span>
+<span className="text-[8px] sm:text-[9px] text-gray-400 font-medium leading-none mt-1 truncate">{displaySub}</span>
 </div>
 <Icons.ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 shrink-0 ml-1 ${isOpen ? 'rotate-180' : ''}`} />
 </button>
@@ -5895,32 +5917,82 @@ return (
 )}
 {isOpen && (
 <div className="absolute right-0 left-0 mt-1 min-w-[160px] bg-white border border-gray-100 rounded-xl shadow-lg z-50 py-1 animate-in fade-in slide-in-from-top-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
-{levels.map(lv => (
-<button key={lv.id} onClick={() => { onSelectLevel(lv.id); setIsOpen(false); }} className={`w-full text-left px-3 py-2 flex justify-between items-center transition-colors ${currentLevel === lv.id ? "bg-" + mainColor + "-50 text-" + mainColor + "-700" : "text-gray-700 hover:bg-gray-50"}`}>
-<span className="font-bold text-sm">{lv.label}</span>
-<span className={`text-[10px] ${currentLevel === lv.id ? "text-" + mainColor + "-500" : "text-gray-400"}`}>{lv.sub}</span>
+{/* Nút Reset chọn tất cả */}
+<button onClick={() => { onSelectLevel([]); setIsOpen(false); }} className={`w-full text-left px-3 py-2 flex items-center justify-between border-b border-gray-100 transition-colors ${currentArr.length === 0 ? "bg-" + mainColor + "-50 text-" + mainColor + "-700" : "text-gray-700 hover:bg-gray-50"}`}>
+<span className="font-bold text-sm">Tất cả cấp độ</span>
+{currentArr.length === 0 && <Icons.Check size={16} className={`text-${mainColor}-500`} />}
 </button>
-))}
+{/* Danh sách các Cấp độ với Checkbox */}
+{levels.map(lv => {
+const isSelected = currentArr.includes(lv.id);
+return (
+<button key={lv.id} onClick={() => handleToggle(lv.id)} className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors hover:bg-gray-50`}>
+<div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? "bg-" + mainColor + "-500 border-" + mainColor + "-500 text-white" : "border-gray-300 bg-white"}`}>
+{isSelected && <Icons.Check size={12} strokeWidth={3} />}
+</div>
+<div className="flex flex-col flex-1">
+<span className={`font-bold text-sm ${isSelected ? "text-" + mainColor + "-700" : "text-gray-700"}`}>{lv.label}</span>
+<span className="text-[10px] text-gray-400">{lv.sub}</span>
+</div>
+</button>
+);
+})}
 </div>
 )}
 </div>
 );
 };
-// [NEW v1.4 -> Updated v1.03] Bộ chọn Chủ đề (Topic Selector) - Responsive 100%
+// [CẬP NHẬT V2.01] Bộ chọn Chủ đề (Topic Selector) - MULTI-SELECT (Bulletproof String Handling)
 const TopicSelectorDropdown = ({ currentLevel, currentTopic, onSelectTopic, mainColor = 'blue' }) => {
 const [isOpen, setIsOpen] = React.useState(false);
-// [BẢN VÁ V1.03] THUẬT TOÁN TRÍCH XUẤT 3 LỚP (TRIPLE-LAYER EXTRACTION)
+// Mảng hóa state cho tương thích ngược (chống TypeError)
+const levelArr = Array.isArray(currentLevel) ? currentLevel : (currentLevel ? [currentLevel] : []);
+const topicArr = Array.isArray(currentTopic) ? currentTopic : (currentTopic ? [currentTopic] : []);
 const fallbackTopics = ["Self & Body", "Social Connections", "Living Spaces", "The Natural World", "Food & Health", "Daily Life & Leisure", "School & Career", "Travel & Exploration", "Other"];
+// Hợp nhất Chủ đề từ nhiều Level
 let topics = fallbackTopics;
 const rawTopics = window.IoeDataEngine?.TOPICS;
 if (Array.isArray(rawTopics) && rawTopics.length > 0) {
 topics = rawTopics;
 } else if (rawTopics && typeof rawTopics === 'object' && !Array.isArray(rawTopics)) {
-if (rawTopics[currentLevel] && Array.isArray(rawTopics[currentLevel])) {
-topics = rawTopics[currentLevel];
+let merged = new Set();
+if (levelArr.length > 0) {
+levelArr.forEach(lv => {
+if (rawTopics[lv] && Array.isArray(rawTopics[lv])) {
+rawTopics[lv].forEach(t => merged.add(t));
+}
+});
+if (merged.size > 0) topics = Array.from(merged);
+} else {
+// Nếu không chọn level nào, lấy tất cả chủ đề có thể
+Object.values(rawTopics).forEach(arr => {
+if(Array.isArray(arr)) arr.forEach(t => merged.add(t));
+});
+if (merged.size > 0) topics = Array.from(merged);
 }
 }
-const displayLabel = currentTopic ? currentTopic.split(' (')[0].substring(0, 15) + (currentTopic.length > 15 ? '...' : '') : 'Tất cả chủ đề';
+const handleToggle = (topic) => {
+if (topicArr.includes(topic)) {
+onSelectTopic(topicArr.filter(x => x !== topic));
+} else {
+onSelectTopic([...topicArr, topic]);
+}
+};
+// Logic tính toán nhãn hiển thị an toàn tuyệt đối
+let displayLabel = "Tất cả chủ đề";
+if (topicArr.length === 1) {
+const firstTopic = topicArr[0];
+if (typeof firstTopic === 'string') {
+// Thay thế .split() bằng .indexOf() và .substring() để an toàn bộ nhớ
+const braceIndex = firstTopic.indexOf(' (');
+const cleanTopic = braceIndex !== -1 ? firstTopic.substring(0, braceIndex) : firstTopic;
+displayLabel = cleanTopic.length > 15 ? cleanTopic.substring(0, 15) + '...' : cleanTopic;
+} else {
+displayLabel = "1 chủ đề";
+}
+} else if (topicArr.length > 1) {
+displayLabel = `Đã chọn ${topicArr.length} chủ đề`;
+}
 return (
 <div className="relative inline-block text-left w-full h-full">
 <button onClick={() => setIsOpen(!isOpen)} className={`flex items-center justify-between w-full h-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors`}>
@@ -5933,14 +6005,23 @@ return (
 {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>}
 {isOpen && (
 <div className="absolute right-0 left-0 mt-1 min-w-[200px] bg-white border border-gray-100 rounded-xl shadow-lg z-50 py-1 animate-in fade-in slide-in-from-top-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
-<button onClick={() => { onSelectTopic(""); setIsOpen(false); }} className={`w-full text-left px-3 py-2 flex justify-between items-center transition-colors ${!currentTopic ? "bg-" + mainColor + "-50 text-" + mainColor + "-700" : "text-gray-700 hover:bg-gray-50"}`}>
+{/* Nút Reset chọn tất cả */}
+<button onClick={() => { onSelectTopic([]); setIsOpen(false); }} className={`w-full text-left px-3 py-2 flex items-center justify-between border-b border-gray-100 transition-colors ${topicArr.length === 0 ? "bg-" + mainColor + "-50 text-" + mainColor + "-700" : "text-gray-700 hover:bg-gray-50"}`}>
 <span className="font-bold text-sm">Tất cả chủ đề</span>
+{topicArr.length === 0 && <Icons.Check size={16} className={`text-${mainColor}-500`} />}
 </button>
-{topics.map((topic, idx) => (
-<button key={idx} onClick={() => { onSelectTopic(topic); setIsOpen(false); }} className={`w-full text-left px-3 py-2 flex flex-col items-start transition-colors ${currentTopic === topic ? "bg-" + mainColor + "-50 text-" + mainColor + "-700" : "text-gray-700 hover:bg-gray-50"}`}>
-<span className="font-bold text-xs w-full leading-snug">{topic}</span>
+{/* Danh sách Chủ đề với Checkbox */}
+{topics.map((topic, idx) => {
+const isSelected = topicArr.includes(topic);
+return (
+<button key={idx} onClick={() => handleToggle(topic)} className={`w-full text-left px-3 py-2.5 flex items-start gap-3 transition-colors hover:bg-gray-50`}>
+<div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? "bg-" + mainColor + "-500 border-" + mainColor + "-500 text-white" : "border-gray-300 bg-white"}`}>
+{isSelected && <Icons.Check size={12} strokeWidth={3} />}
+</div>
+<span className={`font-bold text-xs w-full leading-snug ${isSelected ? "text-" + mainColor + "-700" : "text-gray-700"}`}>{topic}</span>
 </button>
-))}
+);
+})}
 </div>
 )}
 </div>
