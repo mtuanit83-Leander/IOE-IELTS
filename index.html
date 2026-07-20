@@ -10286,11 +10286,11 @@ queueLength={queueLength} aiWaitTime={aiWaitTime}
 };
 window.MatchGame = MatchGame;
 window.Block5_2_MatchGame = MatchGame;
-// Block 5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.08
-// Last Updated: 2026-07-02 22:20
+// Block 5.3: TẦNG 5: TRÒ CHƠI HÓA (Scramble UI) - Version 1.10
+// Last Updated: 2026-07-20 09:45
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Ghép Câu (Scramble Game).
-// Cập nhật V1.08: [BABEL ERROR FIX] Mở khóa (Uncomment) các dòng khai báo Component và lệnh return bị lỗi. Áp dụng SafeIcons và SafeMenuToggle để an toàn tuyệt đối trong Single-File.
-// Cập nhật V1.07: [ĐẠI PHẪU VOICE UI & ĐỊA NGỤC] Thêm cấu hình Sudden Death. Thiết kế lại UI Voice sang Real-time Preview, mở khóa nộp thủ công.
+// Cập nhật V1.10: [HOTFIX] Defensive Rendering cho config.level. Xử lý triệt để lỗi sập App khi config.level là một mảng (Array) do cập nhật Multi-select.
+// Cập nhật V1.09: [ANTI-CHEAT LOCK] Ẩn hoàn toàn nút Bookmark khi đang chơi để chống xem trước đáp án. Chuyển nút Bookmark sang màn hình kết quả (Finished State).
 // ==================================================================================
 const ScrambleSetup = ({ t, mainColor, onStart, onBack }) => {
 const [sourceMode, setSourceMode] = React.useState('card');
@@ -10438,7 +10438,7 @@ onCancel={() => onEndGame(stats)}
 queueLength={queueLength}
 text={config?.sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
-levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
+levelStr={config?.sourceMode === 'ai_pure' && config?.level ? (Array.isArray(config.level) ? config.level[0] : config.level).replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
 );
 }
@@ -10637,6 +10637,10 @@ Thoát ngay
 <div className="flex-1 flex justify-center sm:justify-end max-w-lg ml-auto">
 {gameState.isCorrect === true || (gameState.isCorrect === false && gameState.attempts >= 3) ? (
 <div className="w-full flex gap-2 sm:gap-3">
+{/* [ANTI-CHEAT LOCK]: Nút Bookmark chỉ xuất hiện ở màn hình Kết quả */}
+<button onClick={(e) => { e.stopPropagation(); if (onBookmark && gameState.origin) { let scrambledDisplay = ""; if (gameState.chunks && gameState.chunks.length > 0) { scrambledDisplay = gameState.chunks.map(c => c.text).join(lang === 'zh' ? '' : ' '); } else { scrambledDisplay = scrambledDisplay = gameState.origin.term.split(lang === 'zh' ? '' : ' ').sort(() => Math.random() - 0.5).join(lang === 'zh' ? '' : ' '); } onBookmark({ isSmartTarget: true, display: scrambledDisplay, save: gameState.origin.term, analysis: gameState.origin.definition }); } }} disabled={isPaused || isGenerating} className={`px-3 sm:px-4 py-3 rounded-xl font-bold transition-colors border shadow-sm ${isBookmarked ? 'bg-yellow-50 text-yellow-600 border-yellow-200' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-yellow-600'}`} title={t('addToNotebook')}>
+<SafeIcons.Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} className="sm:w-5 sm:h-5" />
+</button>
 <button onClick={handleExplain} disabled={isPaused || isGenerating} className="flex-1 py-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs sm:text-sm hover:bg-blue-100 transition-colors flex items-center justify-center gap-1 shadow-sm">
 <SafeIcons.BookOpen size={16} className="sm:w-[18px] sm:h-[18px]"/> Giải thích
 </button>
@@ -10649,15 +10653,12 @@ Thoát ngay
 </div>
 ) : (
 <div className="w-full flex gap-2 sm:gap-3">
+{/* Nút Bookmark đã được gỡ bỏ khỏi khu vực Active State để chống xem trộm */}
 <button onClick={() => handleSkip(false)} disabled={isPaused || isGenerating || aiWaitTime > 0} className={`flex-1 py-3 bg-gray-100 text-gray-600 font-bold text-xs sm:text-sm rounded-xl hover:bg-gray-200 transition-all border border-gray-200 ${(isPaused || isGenerating || aiWaitTime > 0) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
 Bỏ qua
 </button>
-{/* [VOICE UI FIX] Cho phép hiển thị nút Kiểm tra ngay cả ở chế độ Voice */}
 <button onClick={checkAnswer} disabled={isPaused || isGenerating || aiWaitTime > 0 || (!gameState.userAnswer?.length && !inputBuffer.trim())} className={`flex-[1.5] sm:flex-[2] py-3 bg-${mainColor}-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg hover:bg-${mainColor}-700 transition-all ${(isPaused || isGenerating || aiWaitTime > 0 || (!gameState.userAnswer?.length && !inputBuffer.trim())) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
 Kiểm tra
-</button>
-<button onClick={(e) => { e.stopPropagation(); if (onBookmark && gameState.origin) { let scrambledDisplay = ""; if (gameState.chunks && gameState.chunks.length > 0) { scrambledDisplay = gameState.chunks.map(c => c.text).join(lang === 'zh' ? '' : ' '); } else { scrambledDisplay = scrambledDisplay = gameState.origin.term.split(lang === 'zh' ? '' : ' ').sort(() => Math.random() - 0.5).join(lang === 'zh' ? '' : ' '); } onBookmark({ isSmartTarget: true, display: scrambledDisplay, save: gameState.origin.term, analysis: gameState.origin.definition }); } }} disabled={isPaused || isGenerating} className={`px-3 sm:px-4 py-3 rounded-xl font-bold transition-colors border shadow-sm ${isBookmarked ? 'bg-yellow-50 text-yellow-600 border-yellow-200' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-yellow-600'}`} title={t('addToNotebook')}>
-<SafeIcons.Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} className="sm:w-5 sm:h-5" />
 </button>
 </div>
 )}
