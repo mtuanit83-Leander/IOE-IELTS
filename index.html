@@ -13550,10 +13550,10 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.61 (Hotfix #130)
-// Last Updated: 2026-07-05 16:27
+// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.62 (Hotfix #131 - Multi-Select Bulletproof)
+// Last Updated: 2026-07-20 09:20
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật V2.61: Vá lỗi sập trắng màn hình (React Error #130) bằng kỹ thuật Render Phòng thủ (Defensive Rendering) cho GlobalLoadingScreen.
+// Cập nhật V2.62: [HOTFIX #131] Triệt tiêu lỗi TypeError do array.split() trên Badge LEVEL ở Header. Nâng cấp bộ lọc đa nhiệm.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -13562,7 +13562,7 @@ const [mode, setMode] = React.useState('ai');
 const [timerMode, setTimerMode] = React.useState(false);
 const [timeLimit, setTimeLimit] = React.useState(30);
 const [difficulty, setDifficulty] = React.useState('easy');
-const [aiChallenge, setAiChallenge] = React.useState(false); // State cho nhánh Thử thách AI đục lỗ
+const [aiChallenge, setAiChallenge] = React.useState(false);
 React.useEffect(() => {
 try {
 const savedConfig = localStorage.getItem('fc_fillblank_config');
@@ -13579,7 +13579,6 @@ setAiChallenge(config.aiChallenge || false);
 const handleStart = () => {
 const config = {
 sourceMode: mode === 'ai' ? 'ai_pure' : 'card',
-// Tự động bật aiMode nếu người dùng chọn mode 'ai' HOẶC bật thử thách AI ở chế độ thẻ gốc
 aiMode: mode === 'ai' || (mode === 'cards' && aiChallenge),
 timerMode,
 timeLimit,
@@ -13625,7 +13624,6 @@ className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 transition-a
 </div>
 {mode === 'cards' && <Icons.CheckCircle size={20} className="text-gray-800" />}
 </button>
-{/* TÍNH NĂNG THỬ THÁCH AI ĐỤC LỖ (Chỉ hiện ở mode Thẻ Gốc) */}
 {mode === 'cards' && (
 <div className="animate-in fade-in slide-in-from-top-2">
 <MenuToggle
@@ -13638,7 +13636,6 @@ subtitle="AI tự chọn từ cốt lõi để đục lỗ thay vì chọn ngẫ
 />
 </div>
 )}
-{}
 <div className="w-full flex gap-2 pt-2">
 <button
 onClick={() => setDifficulty('easy')}
@@ -13725,17 +13722,15 @@ config
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
-const [showHint, setShowHint] = React.useState(false); // State quản lý Bóng đèn gợi ý
+const [showHint, setShowHint] = React.useState(false);
 const inputRef = React.useRef(null);
-// Bóc tách Component Loading để chống lỗi Babel JSX HTML
 const GlobalLoadingScreen = window.GlobalLoadingScreen;
 React.useEffect(() => {
-setShowHint(false); // Luôn tắt gợi ý khi sang câu mới
+setShowHint(false);
 if (checkStatus === 'idle' && inputRef.current) {
 setTimeout(() => inputRef.current?.focus(), 100);
 }
 }, [currentQuestion, checkStatus]);
-// THUẬT TOÁN TRỘN 4 ĐÁP ÁN TĨNH (READ-ONLY OPTIONS)
 const displayOptions = React.useMemo(() => {
 if (!currentQuestion) return [];
 let opts = [];
@@ -13751,7 +13746,6 @@ opts[0] = currentQuestion.targetWord;
 }
 return window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(opts) : opts;
 }, [currentQuestion?.id, currentQuestion?.targetWord]);
-// [HELL MODE] Định nghĩa cờ giao diện
 const isHellMode = config?.difficulty === 'hell';
 const isHintDisabled = config?.difficulty === 'hard' || isHellMode;
 const formatTime = (seconds) => {
@@ -13778,13 +13772,20 @@ save: cleanSentence,
 analysis: currentQuestion.hint || currentQuestion.explanation || ""
 });
 };
-// [HOTFIX #130] Bọc áo giáp cho GlobalLoadingScreen để tránh sập app khi Component chưa được Mount
 if (isGenerating && !currentQuestion) {
 if (config?.sourceMode === 'card' && !config?.aiMode) {
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
 }
-// Kiểm tra xem Tầng 3 (GlobalLoadingScreen) đã tồn tại chưa
 if (GlobalLoadingScreen) {
+// XỬ LÝ AN TOÀN CHO BIẾN LEVEL TRONG MÀN HÌNH CHỜ AI:
+let levelStr = "TẤT CẢ";
+if (config?.level) {
+if (Array.isArray(config.level) && config.level.length > 0) {
+levelStr = `${config.level.length} CẤP ĐỘ`;
+} else if (typeof config.level === 'string') {
+levelStr = config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase();
+}
+}
 return (
 <GlobalLoadingScreen
 duration={aiCountdown > 0 ? aiCountdown : 0}
@@ -13793,11 +13794,10 @@ queueLength={aiAmmoCount}
 text={aiCountdown > 0 ? "AI đang phân tích dữ liệu..." : (config?.sourceMode === 'ai_pure' ? 'AI đang tạo câu đố...' : 'Đang thiết lập trò chơi...')}
 subText={aiCountdown > 0 ? "(Vui lòng đợi giây lát để có câu hỏi hay)" : ""}
 mainColor={mainColor}
-levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
+levelStr={config?.sourceMode === 'ai_pure' ? levelStr : ""}
 />
 );
 } else {
-// Giao diện dự phòng (Fallback UI) nếu rớt mạng hoặc lỗi thứ tự Load File
 return (
 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 p-6 text-center animate-in fade-in">
 <div className={`w-12 h-12 border-4 border-${mainColor}-500 border-t-transparent rounded-full animate-spin mb-4`}></div>
@@ -13837,13 +13837,11 @@ return (
 if (!currentQuestion) return null;
 return (
 <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-gray-50 relative overflow-hidden">
-{/* Thanh đếm ngược thời gian */}
 {config?.timerMode && checkStatus !== 'correct' && checkStatus !== 'wrong' && !isGenerating && (
 <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 z-50">
 <div className={`h-full transition-all duration-1000 ease-linear ${timeLeft <= 5 ? 'bg-red-500' : `bg-${mainColor}-500`}`} style={{ width: `${(timeLeft / config.timeLimit) * 100}%` }}></div>
 </div>
 )}
-{/* POPUP XÁC NHẬN THOÁT GAME */}
 {showConfirmEnd && (
 <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
 <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center border-2 border-red-100 flex flex-col items-center">
@@ -13859,17 +13857,17 @@ return (
 </div>
 </div>
 )}
-{/* Header */}
 <div className="flex items-center justify-between p-3 sm:p-4 bg-white border-b border-gray-200 shadow-sm shrink-0 z-10 relative">
 <button onClick={handleSaveAndBack} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Quay lại">
 <Icons.ChevronLeft size={24} />
 </button>
 <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
-<div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">LEVEL {(config?.level || 'level_4_discovery_basic').split('_')[1]?.toUpperCase()}</div>
+<div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">
+LEVEL {(Array.isArray(config?.level) ? config.level[0] : config?.level || '4').match(/\d+/)?.[0] || '4'}
+</div>
 <div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1">
 Câu {playedCount + 1} <span className="font-serif text-lg leading-none text-gray-400 ml-0.5">∞</span>
 </div>
-{/* [HELL MODE] Badge Cảnh báo */}
 {isHellMode && (
 <div className="text-[10px] font-bold text-purple-100 bg-purple-600 border border-purple-800 px-2 py-1 rounded hidden sm:flex items-center gap-1 animate-pulse shadow-sm">
 <Icons.Zap size={12}/> ĐỊA NGỤC
@@ -13918,10 +13916,8 @@ title="Lưu vào Sổ tay"
 </button>
 </div>
 </div>
-{/* Main Play Area */}
 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 flex flex-col items-center justify-center relative">
 <div className="w-full max-w-3xl bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center relative animate-in zoom-in duration-300">
-{/* KHU VỰC BÓNG ĐÈN GỢI Ý & CÂU HỎI */}
 <div className="flex flex-col items-center gap-2 w-full mb-6 relative">
 <button
 onClick={() => !isHintDisabled && setShowHint(!showHint)}
@@ -13945,7 +13941,6 @@ title={isHintDisabled ? "Gợi ý bị khóa ở chế độ Khó/Địa Ngục"
 ))}
 </div>
 </div>
-{/* KHU VỰC 4 ĐÁP ÁN TĨNH (READ-ONLY) CHỈ ĐỂ NHÌN */}
 {displayOptions.length > 0 && !isHellMode && (
 <div className="w-full max-w-xl mx-auto mt-2 grid grid-cols-2 gap-3 px-4 animate-in fade-in">
 {displayOptions.map((opt, i) => (
@@ -13956,7 +13951,6 @@ title={isHintDisabled ? "Gợi ý bị khóa ở chế độ Khó/Địa Ngục"
 ))}
 </div>
 )}
-{/* KHU VỰC NHẬP LIỆU (INPUT) */}
 <div className="mt-8 flex gap-3 w-full max-w-md animate-in slide-in-from-bottom-4">
 <input
 ref={inputRef}
@@ -13986,7 +13980,6 @@ className={`px-6 bg-${isHellMode && checkStatus !== 'correct' && checkStatus !==
 {checkStatus !== 'correct' && checkStatus !== 'wrong' && (
 <p className={`text-xs text-center font-medium mt-4 ${isHellMode ? 'text-purple-400' : 'text-gray-400'}`}>Bạn có {3 - attempts} lượt thử. Bấm Enter để kiểm tra.</p>
 )}
-{/* Bảng Tóm tắt Kiến thức */}
 {(checkStatus === 'correct' || checkStatus === 'wrong') && (
 <div className={`mt-8 w-full rounded-2xl animate-in slide-in-from-bottom-4 flex flex-col shadow-lg border-2 ${checkStatus === 'correct' ? 'border-green-200' : 'border-red-200'}`}>
 <div className={`p-4 ${checkStatus === 'correct' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center justify-between px-6 font-bold rounded-t-xl relative`}>
@@ -14003,7 +13996,6 @@ className={`px-6 bg-${isHellMode && checkStatus !== 'correct' && checkStatus !==
 )}
 </div>
 </div>
-{/* FOOTER */}
 <div className="w-full p-3 sm:p-4 bg-white border-t border-gray-200 shrink-0 flex items-center justify-between z-10 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative">
 <button onClick={() => setShowConfirmEnd(true)} className="absolute left-2 sm:left-4 text-red-500 hover:text-red-700 font-bold text-xs flex items-center gap-1 transition-colors px-2 py-2 hover:bg-red-50 rounded-lg" title="Kết thúc">
 <Icons.X size={16} /> <span className="hidden sm:inline">Kết thúc</span>
@@ -24356,7 +24348,7 @@ view.setUint32(40, numSamples * 2, true);
 // Tạo sóng Sine 600Hz với hiệu ứng nhỏ dần (Fade out)
 for (let i = 0; i < numSamples; i++) {
 const t = i / sampleRate;
-const amplitude = 32767 * 0.1 * Math.max(0, 1 - (t / duration)); // Âm lượng 15%
+const amplitude = 32767 * 0.15 * Math.max(0, 1 - (t / duration)); // Âm lượng 15%
 const sample = amplitude * Math.sin(2 * Math.PI * 10 * t);
 view.setInt16(44 + i * 2, sample, true);
 }
