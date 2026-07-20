@@ -11474,9 +11474,10 @@ suddenDeath={suddenDeath}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.28
-// Last Updated: 2026-07-01 23:05
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.29
+// Last Updated: 2026-07-20 10:05
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.29: [HOTFIX] Khắc phục triệt để lỗi TypeError .replace is not a function do biến config.level trả về mảng (Multi-select) bằng kỹ thuật Render Phòng thủ Array.isArray() tại GlobalLoadingScreen.
 // Cập nhật V1.28: [FORCED AI GUARD] Bắt buộc bật và khóa chức năng "Thử thách AI" khi chọn Chế độ Khó + Không Đảo ngược (Hỏi ngoại ngữ - Chọn tiếng mẹ đẻ) để triệt tiêu lỗi tạo nhiễu sai chính tả nội bộ.
 // Cập nhật V1.27: [ANTI-LEAK UI] Vá lỗ hổng lộ đáp án qua nút Bookmark trong Listening Mode. Gắn trạng thái khóa `isBookmarkLocked` cho cả 2 nút Bookmark, đồng bộ chu kỳ hiển thị với state `isChecking` để bảo vệ tính toàn vẹn của câu hỏi.
 // Cập nhật V1.26: [UI DECLUTTER] Ẩn hoàn toàn section Ngữ pháp khi ở chế độ "Thẻ của tôi" để giảm nhiễu thị giác, do AI đã hoàn toàn xử lý ngầm (Auto-Diagnostic / Original Grammar Gene). Khối Ngữ pháp nay chỉ xuất hiện độc quyền cho chế độ "AI Tự sinh".
@@ -11732,13 +11733,14 @@ if (sourceMode === 'card' && !isAiMode) {
 // Trả về UI trống tàng hình để tránh chớp màn hình 0.1s
 return <div className="w-full h-full bg-gray-50 flex items-center justify-center pointer-events-none"></div>;
 }
+// [BẢN VÁ V1.29] Render phòng thủ cho config.level bằng Array.isArray()
 return (
 <window.GlobalLoadingScreen
 onCancel={() => onEndGame()}
 queueLength={aiAmmoCount}
 text={sourceMode === 'ai_pure' ? 'AI đang sáng tác câu đố...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
-levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
+levelStr={config?.sourceMode === 'ai_pure' && config?.level ? (Array.isArray(config.level) ? config.level[0] : config.level).replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
 );
 }
