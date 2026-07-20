@@ -12019,12 +12019,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.39
-// Last Updated: 2026-07-01 23:15
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.40
+// Last Updated: 2026-07-20 09:55
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.39: [SAFETY FALLBACK] Triển khai Giai đoạn 2 của cơ chế bảo vệ tiếng mẹ đẻ: Nếu ở chế độ Khó + Không Đảo ngược nhưng AI gặp sự cố (Timeout, Hết Token, Rớt mạng), hệ thống BẮT LỖI và bypass quá trình bóp méo Offline, ép hạ cấp xuống độ khó "Dễ" để nạp thẻ ngẫu nhiên, giúp UI không bị kẹt và không văng ra chữ lỗi.
-// Cập nhật V1.38: [REFERENCE ERROR FIX] Vá lỗi crash ứng dụng ngầm do thiếu định danh `React.` tại biến `aiGeneratedCountRef`.
-// Cập nhật V1.37: [STRICT TYPE ROUTING] Thực thi Mũi khoan 1: Xóa bỏ thuật toán đoán chữ dựa vào khoảng trắng (textSafe.includes(' ')). Sử dụng trực tiếp config.dataMode để xác định chính xác type ('word' hay 'sentence').
+// Cập nhật V1.40: [HOTFIX] Triển khai vắc-xin Array.isArray() cho biến `level` để tương thích kiến trúc Multi-select. Ép kiểu về String trước khi gửi xuống Động cơ Tầng 2 (ExamEngine/Fallback) để chống crash toàn tập (TypeError: split is not a function).
+// Cập nhật V1.39: [SAFETY FALLBACK] Triển khai Giai đoạn 2 của cơ chế bảo vệ tiếng mẹ đẻ...
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12085,6 +12084,12 @@ React.useEffect(() => { configRef.current = config; }, [config]);
 React.useEffect(() => {
 stateRef.current = { gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, deck: deckRef.current, isAiMode, listenPlayCount, aiWaitTime };
 }, [gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, listenPlayCount, aiWaitTime]);
+// [BẢN VÁ V1.40] Hàm trích xuất Level an toàn chống lỗi Multi-select
+const getSafeLevelString = (defaultLevel = 'level_4_discovery_basic') => {
+const lvl = configRef.current?.level || level;
+const strLvl = Array.isArray(lvl) ? lvl[0] : lvl;
+return strLvl || defaultLevel;
+};
 // ==================================================================================
 // HÀM TRIGGGER AUTO SAVE
 // ==================================================================================
@@ -12195,7 +12200,7 @@ const randomIndex = fallbackIndexRef.current++;
 const meta = {
 id: `quiz_fallback_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
 type: 'quiz',
-level: configRef.current?.level || level || 'level_4_discovery_basic',
+level: getSafeLevelString(), // ĐÃ VÁ: Chống Crash Array
 topic: configRef.current?.topic || '',
 dataMode: configRef.current?.dataMode || dataMode || 'vocab',
 difficulty: hardMode ? 'hard' : 'easy',
@@ -12219,7 +12224,7 @@ _isRescued: true
 }
 if (!fallbackFormatted) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
-fallbackFormatted = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, configRef.current?.level || level, { isReverse: askMode === 'def' }) : null;
+fallbackFormatted = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('quiz', safeLang, getSafeLevelString(), { isReverse: askMode === 'def' }) : null;
 if (fallbackFormatted) {
 console.log(`[DEBUG FALLBACK] 🟡 NGUỒN: Kho tĩnh dự phòng | Loại: ${meta.dataMode}`, fallbackFormatted);
 }
@@ -12243,7 +12248,7 @@ let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 let activeGrammarId = null;
 const currentDataMode = configRef.current?.dataMode || dataMode;
-const currentLevelStr = configRef.current?.level || level;
+const currentLevelStr = getSafeLevelString(); // ĐÃ VÁ
 const currentAskMode = configRef.current?.askMode || askMode;
 const canUseGrammar = currentAskMode === 'def' && sourceMode === 'ai_pure';
 if (canUseGrammar && configRef.current && configRef.current.grammarFocus) {
@@ -12270,7 +12275,7 @@ try {
 const meta = {
 id: `quiz_${Date.now()}`,
 type: 'quiz',
-level: configRef.current?.level || level || 'level_4_discovery_basic',
+level: getSafeLevelString(), // ĐÃ VÁ
 topic: configRef.current?.topic || '',
 dataMode: configRef.current?.dataMode || dataMode || 'vocab',
 difficulty: hardMode ? 'hard' : 'easy',
@@ -12300,7 +12305,7 @@ let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !=
 if (validCards.length < 4 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1'); // ĐÃ VÁ
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
@@ -12356,7 +12361,7 @@ try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
 if (aiCfg && aiCfg.loadingTime) dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 } catch(e) {}
-const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(card, distractorLang, type, currentApiKey, numOptions - 1, configRef.current?.level || level, configRef.current?.topic, isReverse);
+const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(card, distractorLang, type, currentApiKey, numOptions - 1, getSafeLevelString(), configRef.current?.topic, isReverse); // ĐÃ VÁ
 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout")), dynamicTimeout));
 const dists = await Promise.race([aiCallPromise, timeoutPromise]);
 if (dists && dists.length > 0) {
@@ -12370,12 +12375,8 @@ localStorage.setItem('fc_total_tokens', currentTotal + 150);
 // [BẢN VÁ V1.39] Kiểm soát Bóp méo Offline (Offline Distractor Guard)
 if (distractors.length === 0 && hardMode) {
 if (!isReverse) {
-// Nếu là chế độ Không Đảo ngược (Hỏi ngoại ngữ, đáp án tiếng mẹ đẻ):
-// AI đã tạch hoặc không dùng AI -> Không cho phép bóp méo tiếng Việt bằng thuật toán Offline.
-// Bypass việc gọi OfflineDistractorEngine, tự động rớt xuống thuật toán bên dưới lấy đáp án "Dễ" ngẫu nhiên.
 console.warn("[AI Guard] Fallback: Hạ cấp xuống độ khó Dễ để bảo vệ toàn vẹn chính tả tiếng Việt.");
 } else {
-// Nếu là chế độ Đảo ngược (Đáp án là ngoại ngữ): An toàn để bóp méo bằng engine cục bộ.
 if (window.OfflineDistractorEngine && window.OfflineDistractorEngine.generate) {
 const cleanDeckForTraps = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 const distTexts = window.OfflineDistractorEngine.generate(correctOptText, cleanDeckForTraps, lang, askMode);
@@ -12392,7 +12393,7 @@ let pool = cleanDeckForPool.filter(c => c.term !== card.term && !historyQueueRef
 if (pool.length < numOptions - 1 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1'); // ĐÃ VÁ
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 15);
 if (fbItems) {
 const existingTerms = new Set(pool.map(p => p.term));
@@ -12439,7 +12440,7 @@ safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ li�
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1'); // ĐÃ VÁ
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
