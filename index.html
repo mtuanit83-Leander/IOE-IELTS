@@ -13550,10 +13550,11 @@ window.Block5_7_GameMenu = GameMenu;
 window.GameMenu = GameMenu;
 window.Block5_7_GameView = GameView;
 window.GameView = GameView;
-// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.62 (Hotfix #131 - Multi-Select Bulletproof)
-// Last Updated: 2026-07-20 09:20
+// Sheet 5.8: TẦNG 5: TRÒ CHƠI HÓA (Fill Blank Game UI) - Version 2.63 (Anti-Cheat Lock)
+// Last Updated: 2026-07-20 09:35
 // Nhiệm vụ: Giao diện Cấu hình và Màn hình chơi chính cho Game Điền từ.
-// Cập nhật V2.62: [HOTFIX #131] Triệt tiêu lỗi TypeError do array.split() trên Badge LEVEL ở Header. Nâng cấp bộ lọc đa nhiệm.
+// Cập nhật V2.63: [ANTI-CHEAT] Ẩn nút Bookmark khi đang làm bài (Trạng thái idle/wrong_retry) để ngăn chặn rò rỉ đáp án.
+// Cập nhật V2.62: [HOTFIX #131] Triệt tiêu lỗi TypeError do array.split() trên Badge LEVEL ở Header.
 // ==================================================================================
 const FillBlankSetup = ({ t, mainColor = 'blue', onStart, onBack }) => {
 const Icons = window.Icons;
@@ -13907,6 +13908,8 @@ Câu {playedCount + 1} <span className="font-serif text-lg leading-none text-gra
 <Icons.Clock size={12} className="text-indigo-500" /> {aiWaitTime}s
 </span>
 )}
+{/* [ANTI-CHEAT LOCK]: Chỉ hiển thị nút Bookmark khi đã chốt đáp án để tránh lộ nguyên văn từ vựng */}
+{(checkStatus === 'correct' || checkStatus === 'wrong') && (
 <button
 onClick={handleBookmark}
 className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'}`}
@@ -13914,6 +13917,7 @@ title="Lưu vào Sổ tay"
 >
 <Icons.Bookmark size={20} fill={isBookmarked ? "currentColor" : "none"} />
 </button>
+)}
 </div>
 </div>
 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 flex flex-col items-center justify-center relative">
