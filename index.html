@@ -9245,10 +9245,10 @@ return (
 );
 };
 window.ExamPoolManagerModal = ExamPoolManagerModal;
-// Sheet 5.1: Tầng 5-Nối Ô (Match UI) - Version 1.07
-// Last Updated: 2026-06-02 09:59
+// Sheet 5.1: Tầng 5-Nối Ô (Match UI) - Version 1.08
+// Last Updated: 2026-07-20 19:11
 // Nhiệm vụ: Giao diện (Presentation) của Game Nối ô. Chỉ chứa thẻ HTML/Tailwind.
-// Cập nhật V1.07: [UI REFACTOR] Gỡ bỏ khung viền, nền trắng và shadow của `#match-container` để tối ưu hóa không gian (Edge-to-Edge Design) cho các thẻ câu văn dài, chống vỡ Layout.
+// Cập nhật V1.08: [DEFENSIVE RENDER] Tiêm vắc-xin Array.isArray() bọc an toàn config.level để chống sập khi nhận mảng (Multi-select update). Dọn dẹp rác định danh Babel.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (MATCH SETUP)
 const MatchSetup = ({ t, mainColor, onStart, onBack }) => {
@@ -9279,8 +9279,6 @@ const handleHardModeChange = (val) => {
 setHardMode(val);
 if (!val) setAiMode(false);
 };
-const MenuToggle = window.MenuToggle;
-const Icons = window.Icons;
 return (
 <div className="relative z-10 flex flex-col items-center mx-auto w-full max-w-sm animate-in slide-in-from-right-8 py-4 h-full">
 <div className="w-full flex items-center justify-between mb-4 shrink-0">
@@ -9339,9 +9337,9 @@ timerMode, timeLeft, timeLimit, gameStats, accuracy, difficulty, isAiMode, match
 handleMatchClick, checkMatch, generateMatch, toggleResultPause,
 isGenerating, aiCountdown, config, queueLength, aiWaitTime = 0
 }) => {
-const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
-const GlobalLoadingScreen = window.GlobalLoadingScreen;
+// [DEFENSIVE RENDER] Ép kiểu an toàn đón đầu lỗi Multi-select
+const safeLevelStr = Array.isArray(config?.level) ? config.level[0] : (config?.level || '');
 const getTimerColor = (time, total) => {
 const ratio = time / total;
 if (ratio > 0.6) return 'text-green-600';
@@ -9378,7 +9376,7 @@ onCancel={() => onEndGame(gameStats)}
 queueLength={queueLength}
 text={config?.sourceMode === 'ai_pure' ? 'AI đang tạo các cặp từ...' : 'Đang thiết lập trò chơi...'}
 mainColor={mainColor}
-levelStr={config?.sourceMode === 'ai_pure' && config?.level ? config.level.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
+levelStr={config?.sourceMode === 'ai_pure' && safeLevelStr ? safeLevelStr.replace('level_', '').replace(/_/g, ' ').toUpperCase() : ""}
 />
 );
 }
@@ -9447,7 +9445,7 @@ mainColor={mainColor}
 </button>
 <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
 <div className="text-[10px] font-bold text-gray-400 bg-gray-50 border px-2 py-1 rounded hidden sm:block">
-LEVEL {(config?.level || '').match(/\d+/)?.[0] || '4'}
+LEVEL {safeLevelStr.match(/\d+/)?.[0] || '4'}
 </div>
 <div className="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-inner flex items-center gap-1" title="Chế độ Nối Ô">
 Nối Ô <Icons.InfinityIcon size={14} className="text-gray-400 ml-0.5" />
@@ -9648,11 +9646,11 @@ window.MatchSetup = MatchSetup;
 window.MatchPlayScreen = MatchPlayScreen;
 window.Block5_1_MatchSetup = MatchSetup;
 window.Block5_1_MatchPlayScreen = MatchPlayScreen;
-// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.14
-// Last Updated: 2026-07-03 10:03
+// Block 5.2: TẦNG 5: TRÒ CHƠI HÓA (Match Logic) - Version 1.15
+// Last Updated: 2026-07-20 19:22
 // Nhiệm vụ: Động cơ xử lý Logic, quản lý dữ liệu, State và Timer của Game Nối ô.
-// Cập nhật V1.14: [STRICT ROUTING] Khai tử thuật toán đoán mò `detectSentence` và `.includes(' ')`. Ép định tuyến tuyệt đối qua biến `configRef.current.dataMode` để xác định ngữ cảnh Từ vựng hay Câu văn khi sinh bẫy.
-// Cập nhật V1.13: [JIT PROCESSING] Khai tử "kẻ cắp thời gian" batchEnrich ở đầu game. Di dời logic dịch thuật (Enrich) vào hàm fetchTask để xử lý ngầm On-demand, giải phóng tốc độ khởi động về 0s. Đồng thời cạo sạch tàn dư silentUtterance.
+// Cập nhật V1.15: [DEFENSIVE CASTING] Tiêm vắc-xin Array.isArray() bảo vệ biến config.level trước khi ném xuống các API Tầng 2 (ExamEngine, FallbackDataEngine, DistortionEngine) để tránh sập chuỗi.
+// Cập nhật V1.14: [STRICT ROUTING] Khai tử thuật toán đoán mò detectSentence. Ép định tuyến tuyệt đối qua biến configRef.current.dataMode.
 // ==================================================================================
 const MatchGame = ({ cards, t, onBack, onEndGame, onPause, mainColor, isAiMode: propAiMode, lang, onBookmark, notebook, isPaused, onLogWrong, savedState, settings, timerMode, timeLimit, initialDifficulty: propDifficulty, onAutoSave, onUpdateCards, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag }) => {
 const cardsRef = React.useRef(cards);
@@ -9795,6 +9793,8 @@ const currentDataMode = configRef.current?.dataMode || 'vocab';
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 const targetCount = currentDiff === 'hard' ? 4 : 5;
 let retryCards = [];
+// [VẮC-XIN ÉP KIỂU] Bảo vệ config.level khỏi lỗi Multi-select
+const safeLevelString = Array.isArray(configRef.current?.level) ? configRef.current.level[0] : (configRef.current?.level || '');
 if (window.Utils && window.Utils.pullRetryCardWithLock) {
 const pulledCard = window.Utils.pullRetryCardWithLock('match', globalRetryBagRef.current);
 if (pulledCard) {
@@ -9806,7 +9806,7 @@ try {
 const meta = {
 id: `match_${Date.now()}`,
 type: 'ioe_match',
-level: configRef.current?.level || 'level_4_discovery_basic',
+level: safeLevelString || 'level_4_discovery_basic',
 topic: configRef.current?.topic || '',
 dataMode: currentDataMode,
 difficulty: currentDiff,
@@ -9832,12 +9832,11 @@ let attempts = 0;
 let maxAttempts = (cardsRef.current?.length || 20) * 2;
 while (pool.length < targetCount && attempts < maxAttempts) {
 if (deckRef.current.length === 0 && currentSourceMode !== 'ai_pure') {
-// KHÔNG LỌC definition Ở ĐÂY NỮA, để JIT xử lý
 let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < targetCount && window.FallbackDataEngine) {
 const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRef.current : 'en';
 const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = safeLevelString || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length >= targetCount) validCards = fbItems;
 }
@@ -9879,7 +9878,6 @@ console.warn("[JIT Enrich] Lỗi dịch thuật ngầm cho từ:", c.term, e.mes
 }
 }
 }
-// Chỉ đẩy vào pool nếu thẻ đã có nghĩa (đã được JIT hoặc có sẵn)
 if (c && c.definition && c.definition.trim() !== '') {
 if (!pool.some(r => r.term === c.term)) pool.push(c);
 }
@@ -9892,7 +9890,7 @@ const needed = targetCount - pool.length;
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRef.current : 'en';
 const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = safeLevelString || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, needed + 10);
 if (fbItems && fbItems.length > 0) {
 for (const fb of fbItems) {
@@ -9917,7 +9915,7 @@ const needed = 2 - trapSources.length;
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRef.current : 'en';
 const mode = currentDataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = safeLevelString || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 15);
 if (fbItems) {
 const validFbs = fbItems.filter(c => !realCards.some(r => r.term === c.term) && !trapSources.some(t => t.term === c.term));
@@ -9937,7 +9935,7 @@ const type = isSentence ? 'sentence' : 'word';
 const isAiModeActive = JSON.parse(localStorage.getItem('fc_match_config'))?.aiMode || false;
 if (isAiModeActive && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.DistortionEngine.ai_distort) {
 try {
-const res = await window.GameAlgoEngine.DistortionEngine.ai_distort(trapCard.term, langRef.current, type, currentApiKey, configRef.current?.level, configRef.current?.topic);
+const res = await window.GameAlgoEngine.DistortionEngine.ai_distort(trapCard.term, langRef.current, type, currentApiKey, safeLevelString, configRef.current?.topic);
 const returnedDistortion = type === 'word' ? res.wrongWord : res.wrongSentence;
 if (returnedDistortion && returnedDistortion !== trapCard.term) {
 distortedTerm = returnedDistortion;
@@ -10017,22 +10015,20 @@ setTimeout(() => triggerAutoSave(), 150);
 const startMatch = async () => {
 isInitializingRef.current = true;
 setIsGenerating(true);
-// Đánh thức loa vật lý an toàn thay cho silentUtterance
+const safeLevelString = Array.isArray(configRef.current?.level) ? configRef.current.level[0] : (configRef.current?.level || '');
 if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
 window.fc_audioCtx.resume();
 }
 let currentDeck = sourceMode === 'card' ? [...(cardsRef.current || [])] : [];
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-// ĐÃ KHAI TỬ BATCH ENRICH Ở ĐÂY!
 if (sourceMode === 'card') {
-// KHÔNG LỌC ĐỊNH NGHĨA Ở ĐÂY NỮA ĐỂ JIT ENGINE XỬ LÝ NGẦM
 let validCards = currentDeck.filter(c => c.term && c.term.trim() !== '');
 if (validCards.length < 4) {
 safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ liệu dự phòng...", "warning");
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (langRef.current === 'en' || langRef.current === 'zh') ? langRef.current : 'en';
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = configRef.current?.level || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
+const safeLevel = safeLevelString || (safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
@@ -10064,7 +10060,7 @@ let firstData = coordinatorRef.current.pop();
 if (!firstData) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc khởi tạo Game Nối Ô", "Kích hoạt Hard Fallback");
 if (window.globalShowToast) window.globalShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, configRef.current?.level, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
+firstData = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, safeLevelString, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
 }
 if (isGameActiveRef.current && firstData) {
 applyMatchData(firstData);
@@ -10129,7 +10125,8 @@ let fresh = coordinatorRef.current.pop();
 if (!fresh) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc Resume Game Nối Ô", "Kích hoạt Hard Fallback");
 if (window.globalShowToast) window.globalShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-fresh = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, configRef.current?.level, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
+const safeLevelString = Array.isArray(configRef.current?.level) ? configRef.current.level[0] : (configRef.current?.level || '');
+fresh = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, safeLevelString, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
 }
 if (fresh) {
 applyMatchData(fresh);
@@ -10260,7 +10257,8 @@ let fresh = coordinatorRef.current.pop();
 if (!fresh) {
 if (window.logSystemEvent) window.logSystemEvent("Queue cạn đạn lúc chuyển vòng Game Nối Ô", "Kích hoạt Hard Fallback");
 if (window.globalShowToast) window.globalShowToast("Mạng yếu, đã kích hoạt dữ liệu dự phòng!", "warning");
-fresh = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, configRef.current?.level, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
+const safeLevelString = Array.isArray(configRef.current?.level) ? configRef.current.level[0] : (configRef.current?.level || '');
+fresh = window.FallbackDataEngine ? window.FallbackDataEngine.getGameReadyFallback('match', langRef.current, safeLevelString, { difficulty: diffRef.current, dataMode: configRef.current?.dataMode }) : null;
 }
 if (isGameActiveRef.current && fresh) {
 applyMatchData(fresh);
