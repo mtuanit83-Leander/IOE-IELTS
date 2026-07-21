@@ -22909,10 +22909,11 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 2.1 (Multi-Select Engine Stable)
-// Last Updated: 2026-07-05 21:05
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 2.2 (Multi-Select Engine Stable)
+// Last Updated: 2026-07-21 23:45
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks. TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
+// Cập nhật V2.2: [STATE RETAIN] Nhổ bỏ isAiLoading khỏi mảng dependency của Động cơ Vòi nước. Khắc phục triệt để lỗi thẻ bị lùi về vị trí số 0 (index=0) sau khi tính năng AI Phân tích ngữ pháp hoặc Làm giàu thẻ hoàn tất.
 // Cập nhật V2.1: [BULLETPROOF DATA] Bổ sung Regex dọn dẹp chuỗi lỗi trong parseArrayStorage. Tối ưu Động cơ "Vòi nước" chống sập khi mảng data rỗng.
 // ==================================================================================
 const loadFont = (id, url) => {
@@ -23148,7 +23149,8 @@ setCurrentTopic(parseArrayStorage('fc_current_topic_' + lang, []));
 prevLangRef.current = lang;
 }
 }, [lang, isDbReady]);
-// [ĐẠI PHẪU V2.1] ĐỘNG CƠ "VÒI NƯỚC" - ĐỒNG BỘ DỮ LIỆU ĐA CHIỀU (MULTI-SELECT MATRIX)
+// [ĐẠI PHẪU V2.2] ĐỘNG CƠ "VÒI NƯỚC" - ĐỒNG BỘ DỮ LIỆU ĐA CHIỀU (MULTI-SELECT MATRIX)
+// Loại bỏ isAiLoading khỏi mảng dependency để triệt tiêu lỗi reset index=0 khi AI phân tích xong
 useEffect(() => {
 if (isStudyingNotebook || studySourceName) return;
 const storageKey = `fc_master_data_${lang}_${dataMode}`;
@@ -23180,12 +23182,12 @@ if (targetCards.length > 0) {
 setCards(targetCards);
 window.Utils?.safeLocalStorageSet('fc_data_' + lang, targetCards);
 setCurrentCardIndex(0);
-} else if (!isAiLoading) {
+} else {
 setCards([]);
 window.Utils?.safeLocalStorageSet('fc_data_' + lang, []);
 setCurrentCardIndex(0);
 }
-}, [lang, dataMode, currentLevel, currentTopic, isStudyingNotebook, studySourceName, isAiLoading]);
+}, [lang, dataMode, currentLevel, currentTopic, isStudyingNotebook, studySourceName]);
 // 4. Persistence Effects
 useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); } }, [toast]);
 useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
@@ -23266,9 +23268,10 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.11
-// Last Updated: 2026-07-21 23:35
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.12
+// Last Updated: 2026-07-21 23:45
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
+// Cập nhật V1.12: [MASTER DATA MUTATION] Trực tiếp tiêm dữ liệu AI (Enrich và Grammar Analysis) vào tận kho lõi `fc_master_data_${lang}_${dataMode}`. Vĩnh viễn khắc phục lỗi bốc hơi kết quả phân tích.
 // Cập nhật V1.11: [STATE TARGETING & CROSS-ARRAY SYNC] Sửa triệt để lỗi "thành công ảo" khi học ở Sổ tay/Đã thuộc. Hàm handleExplainGrammar và handleAiEnrichCard nay tự động nhận diện mảng Active. Dữ liệu AI trả về được đồng bộ xuyên suốt (setCards, setNotebook, setMastered, setIncorrectList) xuống cả LocalStorage và IndexedDB.
 // Cập nhật V1.10: [LEGACY DETECTION REMOVAL] Nhổ bỏ thuật toán đoán mò `detectSentence`. Sử dụng trực tiếp `core.dataMode` từ UI truyền xuống để định tuyến mảng `requiredFields`.
 // ==================================================================================
@@ -23529,11 +23532,29 @@ if (dbKey && window.FcDB) window.FcDB.set(dbKey, next);
 else if (storageKey) window.Utils.safeLocalStorageSet(storageKey, next);
 return next;
 };
-// Phân tán bản cập nhật tới tất cả các chiều không gian dữ liệu
+// Phân tán bản cập nhật tới tất cả các chiều không gian dữ liệu cục bộ
 setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKey || `fc_data_${core.lang}`));
 setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
 if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
 if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
+// [BẢN VÁ V1.12] CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
+const masterDataKey = `fc_master_data_${core.lang}_${core.dataMode}`;
+const masterData = window.Utils.safeJsonParse(masterDataKey, null);
+if (masterData) {
+let updatedMaster = false;
+Object.keys(masterData).forEach(levelKey => {
+if (Array.isArray(masterData[levelKey])) {
+const mIdx = masterData[levelKey].findIndex(c => c.term === cardTerm);
+if (mIdx !== -1) {
+masterData[levelKey][mIdx] = { ...masterData[levelKey][mIdx], ...enrichedData };
+updatedMaster = true;
+}
+}
+});
+if (updatedMaster) {
+window.Utils.safeLocalStorageSet(masterDataKey, masterData);
+}
+}
 if (enriched._tokenUsage) {
 const newTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10) + (enriched._tokenUsage.totalTokenCount || 0);
 setTotalTokens(newTotal); localStorage.setItem('fc_total_tokens', newTotal);
@@ -23580,6 +23601,24 @@ setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKe
 setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
 if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
 if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
+// [BẢN VÁ V1.12] CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
+const masterDataKey = `fc_master_data_${core.lang}_${core.dataMode}`;
+const masterData = window.Utils.safeJsonParse(masterDataKey, null);
+if (masterData) {
+let updatedMaster = false;
+Object.keys(masterData).forEach(levelKey => {
+if (Array.isArray(masterData[levelKey])) {
+const mIdx = masterData[levelKey].findIndex(c => c.term === cardTerm);
+if (mIdx !== -1) {
+masterData[levelKey][mIdx] = { ...masterData[levelKey][mIdx], ...newData };
+updatedMaster = true;
+}
+}
+});
+if (updatedMaster) {
+window.Utils.safeLocalStorageSet(masterDataKey, masterData);
+}
+}
 if (result._tokenUsage) {
 const newTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10) + (result._tokenUsage.totalTokenCount || 0);
 setTotalTokens(newTotal); localStorage.setItem('fc_total_tokens', newTotal);
