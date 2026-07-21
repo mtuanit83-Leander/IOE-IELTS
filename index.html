@@ -613,9 +613,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.22
-// Last Updated: 2026-07-21 23:47
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.23
+// Last Updated: 2026-07-21 23:55
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.23: [GRAMMAR FOCUS PROMPT] Ép AI đóng vai giáo viên ngôn ngữ trong nhánh Trimming. Bắt buộc mổ xẻ cấu trúc ngữ pháp (Thì, từ loại, giới từ...), cấm tuyệt đối việc giải thích ngữ cảnh chung chung.
 // Cập nhật V2.22: [DIRECTIONAL PROMPT] Nâng cấp Prompt nhánh Trimming thành dạng Định hướng (Directional). Khóa chặt ngôn ngữ trả về là Tiếng Việt và ép buộc độ dài cực kỳ ngắn gọn (2-3 câu) để tối ưu giao diện thẻ.
 // Cập nhật V2.21: [PROMPT CLASH RESOLUTION] Xóa sổ hiện tượng mâu thuẫn nhận thức. Tự động vô hiệu hóa `systemInstruction` gốc (chứa các lệnh ép buộc 10 trường) nếu hệ thống đang chạy ở chế độ Cắt Tỉa (Trimming), giúp AI phản hồi tức thì khi chỉ cần 1 trường analysis.
 // Cập nhật V2.20: [DYNAMIC SCHEMA TRIMMING] Ép hàm fillCardWithAi phải Cắt tỉa (Trim) JSON Schema dựa trên tham số targetFields.
@@ -865,9 +866,10 @@ let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ gốc: ${lang}).\n`;
 userQuery += `[ĐỊNH HƯỚNG TRẢ LỜI BẮT BUỘC]:\n`;
-userQuery += `1. NGÔN NGỮ: Mọi lời giải thích, phân tích (đặc biệt là trường analysis) BẮT BUỘC phải viết bằng TIẾNG VIỆT dễ hiểu.\n`;
-userQuery += `2. ĐỘ DÀI & PHONG CÁCH: Phải cực kỳ NGẮN GỌN, SÚC TÍCH, đi thẳng vào bản chất cốt lõi (tối đa 2-3 câu). Tuyệt đối không lan man dài dòng.\n`;
-userQuery += `3. ĐỊNH DẠNG: Chỉ xuất CHÍNH XÁC các trường có trong JSON Schema (${requiredFields.join(', ')}). Không sinh dữ liệu rác.\n`;
+userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai giáo viên ngôn ngữ. Hãy mổ xẻ cấu trúc câu, chỉ ra các điểm ngữ pháp trọng tâm (Ví dụ: Thì của động từ, Cụm động từ - Phrasal verbs, Giới từ, Cấu trúc câu điều kiện...). TUYỆT ĐỐI KHÔNG giải thích ý nghĩa ngữ cảnh chung chung.\n`;
+userQuery += `2. NGÔN NGỮ: Mọi lời giải thích, phân tích (đặc biệt là trường analysis) BẮT BUỘC phải viết bằng TIẾNG VIỆT dễ hiểu.\n`;
+userQuery += `3. ĐỘ DÀI & PHONG CÁCH: Phải cực kỳ NGẮN GỌN, SÚC TÍCH, đi thẳng vào bản chất cốt lõi (tối đa 2-3 câu). Tuyệt đối không lan man dài dòng.\n`;
+userQuery += `4. ĐỊNH DẠNG: Chỉ xuất CHÍNH XÁC các trường có trong JSON Schema (${requiredFields.join(', ')}). Không sinh dữ liệu rác.\n`;
 userQuery += `${topicRestriction}${dynamicInstruction}`;
 } else {
 userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}${dynamicInstruction}`;
