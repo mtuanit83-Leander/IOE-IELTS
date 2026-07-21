@@ -613,14 +613,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.20
-// Last Updated: 2026-07-21 22:50
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.21
+// Last Updated: 2026-07-21 23:25
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.20: [DYNAMIC SCHEMA TRIMMING] Ép hàm fillCardWithAi phải Cắt tỉa (Trim) JSON Schema dựa trên tham số targetFields. AI giờ đây chỉ trả về ĐÚNG những trường bị khuyết hoặc chỉ trả về phân tích ngữ pháp khi được gọi, tối ưu 80% lượng Token tiêu thụ và tránh ghi đè dữ liệu người dùng.
-// Cập nhật V2.19: [LEGACY DETECTION REMOVAL] Xóa bỏ thuật toán `detectSentence` lỗi thời trong hàm `fillCardWithAi`. Thêm tham số `dataMode` để nhận lệnh trực tiếp từ Tầng UI.
-// Cập nhật V2.18: [FREE TIER COOLDOWN OPTIMIZATION] Giảm án phạt thành công của Key từ 30s xuống 5s.
-// Cập nhật V2.17: [JSON SANITIZATION] Tiêm bộ lọc cạo sạch rác Markdown (```json) trước khi Parse JSON.
-// Cập nhật V2.16: [GLOBAL COOLDOWN INJECTION] Cấy phanh hãm vật lý (3 giây) vào cuối chu trình thành công.
+// Cập nhật V2.21: [PROMPT CLASH RESOLUTION] Xóa sổ hiện tượng mâu thuẫn nhận thức. Tự động vô hiệu hóa `systemInstruction` gốc (chứa các lệnh ép buộc 10 trường) nếu hệ thống đang chạy ở chế độ Cắt Tỉa (Trimming), giúp AI phản hồi tức thì khi chỉ cần 1 trường analysis.
+// Cập nhật V2.20: [DYNAMIC SCHEMA TRIMMING] Ép hàm fillCardWithAi phải Cắt tỉa (Trim) JSON Schema dựa trên tham số targetFields.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -771,13 +768,11 @@ if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả v�
 const resultText = d.candidates[0].content.parts[0].text;
 const tokenMetadata = d.usageMetadata || null;
 if (keyPool.length > 1) {
-// [BẢN VÁ 2.18] GIẢM ÁN PHẠT THÀNH CÔNG TỪ 30s XUỐNG 5s
 window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 }
-// [BẢN VÁ 2.16] ÉP NGỦ ĐÔNG GLOBAL MUTEX 3 GIÂY ĐỂ LÀM NGUỘI API
 await new Promise(r => setTimeout(r, 3000));
 return { text: resultText, tokenMetadata };
 } catch (e) {
@@ -818,7 +813,6 @@ const isSentence = dataMode === 'sentence';
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) ? window.IoeDataEngine.TOPICS : [];
 const topicRestriction = predefinedTopics.length > 0 ? ` Mục topic BẮT BUỘC chọn chính xác 1 từ khóa trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.` : '';
-// [BẢN VÁ V2.20] Chuyển đổi thành Let để cho phép Cắt Tỉa (Trim)
 let propertiesToFetch = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
@@ -840,7 +834,7 @@ if (!isSentence) {
 delete propertiesToFetch.grammar_type;
 requiredFields = requiredFields.filter(f => f !== 'grammar_type');
 }
-// [BẢN VÁ V2.20] BỘ LỌC CẮT TỈA LƯỢC ĐỒ (DYNAMIC SCHEMA TRIMMING)
+// BỘ LỌC CẮT TỈA LƯỢC ĐỒ (DYNAMIC SCHEMA TRIMMING)
 let isTrimming = false;
 if (targetFields && Array.isArray(targetFields) && targetFields.length > 0) {
 isTrimming = true;
@@ -865,7 +859,7 @@ const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
 basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
 let dynamicInstruction = lang === 'zh' ? " Đối với pronunciation: xuất Pinyin. Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : " Đối với pronunciation: xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
-// [BẢN VÁ V2.20] ĐIỀU HƯỚNG PROMPT TỐI ƯU
+// ĐIỀU HƯỚNG PROMPT TỐI ƯU
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}).\nCHÚ Ý QUAN TRỌNG: Chỉ phân tích và xuất CHÍNH XÁC các trường được định nghĩa trong JSON Schema (các trường: ${requiredFields.join(', ')}). Tuyệt đối KHÔNG sinh thêm dữ liệu thừa gây lãng phí Token.${topicRestriction}${dynamicInstruction}`;
@@ -874,7 +868,6 @@ userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}
 }
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
-systemInstruction: { parts: [{ text: basePrompt }] },
 generationConfig: {
 responseMimeType: "application/json",
 responseSchema: {
@@ -885,6 +878,12 @@ required: requiredFields
 temperature: Math.random() * (1.1 - 0.7) + 0.7
 }
 };
+// [BẢN VÁ V2.21] DỌN DẸP XUNG ĐỘT CHỈ THỊ (PROMPT CLASH)
+// Chỉ nhồi systemInstruction gốc nếu ĐANG phân tích toàn diện.
+// Nếu đang Trimming (Ví dụ chỉ cần 1 trường analysis), gỡ bỏ hoàn toàn gánh nặng này để AI khỏi bị mâu thuẫn.
+if (!isTrimming) {
+payload.systemInstruction = { parts: [{ text: basePrompt }] };
+}
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
 // --- TÌM KEY RẢNH RỖI ---
@@ -927,7 +926,6 @@ if (data.error.code === 403 || data.error.code === 400 || (data.error.message &&
 throw new Error(data.error.message);
 }
 if (keyPool.length > 1) {
-// [BẢN VÁ 2.18] GIẢM ÁN PHẠT THÀNH CÔNG TỪ 30s XUỐNG 5s
 window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
@@ -935,7 +933,6 @@ localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 }
 const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 if (!text) throw new Error("AI không trả về kết quả");
-// [BẢN VÁ 2.17] Cạo sạch rác Markdown (```json) do LLM trả về trước khi Parse
 let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
 const parsed = JSON.parse(cleanText);
 if (lang === 'zh' && parsed.sinoViet) {
@@ -946,7 +943,6 @@ if (parsed.image_keyword) {
 imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
 }
 const meta = data.usageMetadata ? { _tokenUsage: data.usageMetadata } : {};
-// [BẢN VÁ 2.16] ÉP NGỦ ĐÔNG GLOBAL MUTEX 3 GIÂY ĐỂ LÀM NGUỘI API
 await new Promise(r => setTimeout(r, 3000));
 return { ...parsed, term: term, image: imgUrl, ...meta };
 } catch (e) {
@@ -960,7 +956,7 @@ window.__apiCooldowns[targetKey] = Date.now() + 86400000;
 } else {
 window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
-throw e; // Ném lỗi ra ngoài
+throw e;
 }
 });
 };
@@ -23270,11 +23266,11 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.10
-// Last Updated: 2026-06-30 22:05
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.11
+// Last Updated: 2026-07-21 23:35
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
-// Cập nhật V1.10: [LEGACY DETECTION REMOVAL] Nhổ bỏ thuật toán đoán mò `detectSentence`. Sử dụng trực tiếp `core.dataMode` từ UI truyền xuống để định tuyến mảng `requiredFields` và truyền tham số thứ 5 xuống Lõi API (Block 2.1c). Khắc phục triệt để lỗi AI phân tích sai cấu trúc câu ngắn.
-// Cập nhật V1.09: [CONTEXT-AWARE FILTER HOTFIX] Phẫu thuật mảng `requiredFields`. Tích hợp thuật toán nhận diện ngữ cảnh `detectSentence`. Từ vựng (Vocab) sẽ KHÔNG bị ép kiểm tra `grammar_type`, và Câu văn (Sentence) sẽ KHÔNG bị ép kiểm tra `sinoViet`. Triệt tiêu hoàn toàn lỗi API bắn nhầm thẻ Từ vựng đã đầy đủ dữ liệu (False Positive Enrichment).
+// Cập nhật V1.11: [STATE TARGETING & CROSS-ARRAY SYNC] Sửa triệt để lỗi "thành công ảo" khi học ở Sổ tay/Đã thuộc. Hàm handleExplainGrammar và handleAiEnrichCard nay tự động nhận diện mảng Active. Dữ liệu AI trả về được đồng bộ xuyên suốt (setCards, setNotebook, setMastered, setIncorrectList) xuống cả LocalStorage và IndexedDB.
+// Cập nhật V1.10: [LEGACY DETECTION REMOVAL] Nhổ bỏ thuật toán đoán mò `detectSentence`. Sử dụng trực tiếp `core.dataMode` từ UI truyền xuống để định tuyến mảng `requiredFields`.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23436,7 +23432,7 @@ setTotalTokens(newTotal);
 }
 setNotebook(prev => {
 const newData = prev.map(item => item.term === term ? { ...item, ...res, ai_explanation: res.example || item.example || "Enriched" } : item);
-window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[core.lang].noteKey, newData);
+window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`, newData);
 return newData;
 });
 }
@@ -23471,15 +23467,20 @@ isAiQueueProcessing.current = false;
 // Xử lý tham số đầu vào linh hoạt (index, card object, hoặc Event)
 const handleAiEnrichCard = async (indexOrCardOrEvent, silent = false) => {
 if (!apiKey) { if (!silent) callbacks.showToast("Chưa có API Key!", "error"); return false; }
+// [BẢN VÁ V1.11] Tự động nhận diện mảng dữ liệu đang Active (State Targeting)
+const state = latestStateRef.current;
+let activeArr = state.cards;
+if (state.isStudyingNotebook) activeArr = state.notebook;
+else if (state.studySourceName === 'mastered') activeArr = state.mastered;
+else if (state.studySourceName === 'incorrect') activeArr = state.incorrectList;
 let cardTerm = null;
-// Logic xác định từ khóa cần tra cứu
 if (typeof indexOrCardOrEvent === 'number') {
-cardTerm = latestStateRef.current.cards[indexOrCardOrEvent]?.term;
+cardTerm = activeArr[indexOrCardOrEvent]?.term;
 } else if (indexOrCardOrEvent && typeof indexOrCardOrEvent === 'object' && indexOrCardOrEvent.term) {
 cardTerm = indexOrCardOrEvent.term;
 } else {
-const idx = latestStateRef.current.currentCardIndex;
-cardTerm = latestStateRef.current.cards[idx]?.term;
+const idx = state.currentCardIndex;
+cardTerm = activeArr[idx]?.term;
 }
 if (!cardTerm) {
 if (!silent) callbacks.showToast("Không xác định được từ vựng!", "error");
@@ -23492,7 +23493,7 @@ return false;
 processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
-const currentCard = latestStateRef.current.cards.find(c => c.term === cardTerm);
+const currentCard = activeArr.find(c => c.term === cardTerm);
 // [HOTFIX v1.10] Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
 const isSentence = core.dataMode === 'sentence';
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
@@ -23517,19 +23518,27 @@ if (missingFields.includes('image') && (!enriched.image || !enriched.image.start
 const q = (currentCard?.image && currentCard.image.trim()) || cardTerm;
 enriched.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(q)}&w=300&h=300&c=7&rs=1&p=0`;
 }
-setCards(prev => {
+// [BẢN VÁ V1.11] ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
+const enrichedData = { ...enriched, ai_explanation: enriched.example || currentCard?.example || "Enriched", is_enriched: true };
+const updateFn = (prev, dbKey = null, storageKey = null) => {
 const idx = prev.findIndex(c => c.term === cardTerm);
 if (idx === -1) return prev;
 const next = [...prev];
-next[idx] = { ...next[idx], ...enriched, ai_explanation: enriched.example || next[idx].example || "Enriched", is_enriched: true };
-window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[core.lang].dataKey, next);
+next[idx] = { ...next[idx], ...enrichedData };
+if (dbKey && window.FcDB) window.FcDB.set(dbKey, next);
+else if (storageKey) window.Utils.safeLocalStorageSet(storageKey, next);
 return next;
-});
+};
+// Phân tán bản cập nhật tới tất cả các chiều không gian dữ liệu
+setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKey || `fc_data_${core.lang}`));
+setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
+if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
+if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
 if (enriched._tokenUsage) {
 const newTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10) + (enriched._tokenUsage.totalTokenCount || 0);
 setTotalTokens(newTotal); localStorage.setItem('fc_total_tokens', newTotal);
 }
-if (!silent) callbacks.showToast("Đã bổ bổ sung thông tin!", "success");
+if (!silent) callbacks.showToast("Đã bổ sung thông tin!", "success");
 return true; // Trả về true báo hiệu API đã bị hit
 } catch (e) {
 if (!silent) callbacks.showToast("Lỗi AI: " + e.message, "error");
@@ -23541,21 +23550,36 @@ if (!silent) setIsAiLoading(false);
 };
 const handleExplainGrammar = async (index) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
-const cardTerm = latestStateRef.current.cards[index]?.term;
+// [BẢN VÁ V1.11] Tự động nhận diện mảng dữ liệu đang Active thay vì hardcode thẻ Cards
+const state = latestStateRef.current;
+let activeArr = state.cards;
+if (state.isStudyingNotebook) activeArr = state.notebook;
+else if (state.studySourceName === 'mastered') activeArr = state.mastered;
+else if (state.studySourceName === 'incorrect') activeArr = state.incorrectList;
+const targetIdx = typeof index === 'number' ? index : state.currentCardIndex;
+const cardTerm = activeArr[targetIdx]?.term;
 if (!cardTerm) return;
 setIsAiLoading(true);
 try {
 // [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
 const result = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, ['analysis'], core.dataMode);
 if (result?.analysis) {
-setCards(prev => {
+// [BẢN VÁ V1.11] ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
+const newData = { analysis: result.analysis };
+const updateFn = (prev, dbKey = null, storageKey = null) => {
 const idx = prev.findIndex(c => c.term === cardTerm);
 if (idx === -1) return prev;
 const next = [...prev];
-next[idx] = { ...next[idx], analysis: result.analysis };
-window.Utils.safeLocalStorageSet(window.CONFIG_SAMPLES[core.lang].dataKey, next);
+next[idx] = { ...next[idx], ...newData };
+if (dbKey && window.FcDB) window.FcDB.set(dbKey, next);
+else if (storageKey) window.Utils.safeLocalStorageSet(storageKey, next);
 return next;
-});
+};
+// Phân tán bản cập nhật tới tất cả các kho
+setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKey || `fc_data_${core.lang}`));
+setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
+if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
+if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
 if (result._tokenUsage) {
 const newTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10) + (result._tokenUsage.totalTokenCount || 0);
 setTotalTokens(newTotal); localStorage.setItem('fc_total_tokens', newTotal);
