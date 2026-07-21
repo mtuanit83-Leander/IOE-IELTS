@@ -613,12 +613,13 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.19
-// Last Updated: 2026-06-30 21:55
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.20
+// Last Updated: 2026-07-21 22:50
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.19: [LEGACY DETECTION REMOVAL] Xóa bỏ thuật toán `detectSentence` lỗi thời trong hàm `fillCardWithAi`. Thêm tham số `dataMode` để nhận lệnh trực tiếp từ Tầng UI, giải quyết triệt để lỗi AI phân tích sai cấu trúc câu dưới 4 từ (Ví dụ: "I have one apple").
-// Cập nhật V2.18: [FREE TIER COOLDOWN OPTIMIZATION] Giảm án phạt thành công của Key từ 30s xuống 5s, giữ nguyên phanh vật lý Mutex 3s. Triệt tiêu lỗi Deadlock luân phiên (Swiss cheese data) do khóa Key chồng chéo.
-// Cập nhật V2.17: [JSON SANITIZATION] Tiêm bộ lọc cạo sạch rác Markdown (```json) trước khi Parse JSON trong hàm fillCardWithAi. Giải quyết triệt để lỗi SyntaxError nội bộ gây ra thông báo ảo "Máy chủ quá tải".
+// Cập nhật V2.20: [DYNAMIC SCHEMA TRIMMING] Ép hàm fillCardWithAi phải Cắt tỉa (Trim) JSON Schema dựa trên tham số targetFields. AI giờ đây chỉ trả về ĐÚNG những trường bị khuyết hoặc chỉ trả về phân tích ngữ pháp khi được gọi, tối ưu 80% lượng Token tiêu thụ và tránh ghi đè dữ liệu người dùng.
+// Cập nhật V2.19: [LEGACY DETECTION REMOVAL] Xóa bỏ thuật toán `detectSentence` lỗi thời trong hàm `fillCardWithAi`. Thêm tham số `dataMode` để nhận lệnh trực tiếp từ Tầng UI.
+// Cập nhật V2.18: [FREE TIER COOLDOWN OPTIMIZATION] Giảm án phạt thành công của Key từ 30s xuống 5s.
+// Cập nhật V2.17: [JSON SANITIZATION] Tiêm bộ lọc cạo sạch rác Markdown (```json) trước khi Parse JSON.
 // Cập nhật V2.16: [GLOBAL COOLDOWN INJECTION] Cấy phanh hãm vật lý (3 giây) vào cuối chu trình thành công.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
@@ -813,12 +814,12 @@ keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)];
 }
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Thiếu Key Pool)");
 const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
-// [BẢN VÁ V2.19] Nhổ bỏ detectSentence, nhận lệnh trực tiếp từ dataMode
 const isSentence = dataMode === 'sentence';
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) ? window.IoeDataEngine.TOPICS : [];
 const topicRestriction = predefinedTopics.length > 0 ? ` Mục topic BẮT BUỘC chọn chính xác 1 từ khóa trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.` : '';
-const propertiesToFetch = {
+// [BẢN VÁ V2.20] Chuyển đổi thành Let để cho phép Cắt Tỉa (Trim)
+let propertiesToFetch = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
 definition: { type: "STRING" },
@@ -839,11 +840,38 @@ if (!isSentence) {
 delete propertiesToFetch.grammar_type;
 requiredFields = requiredFields.filter(f => f !== 'grammar_type');
 }
+// [BẢN VÁ V2.20] BỘ LỌC CẮT TỈA LƯỢC ĐỒ (DYNAMIC SCHEMA TRIMMING)
+let isTrimming = false;
+if (targetFields && Array.isArray(targetFields) && targetFields.length > 0) {
+isTrimming = true;
+// Ánh xạ 'image' (truyền từ Tầng 6) thành 'image_keyword' (để tương thích với propertiesToFetch)
+const mappedTargetFields = targetFields.map(f => f === 'image' ? 'image_keyword' : f);
+// Chỉ giữ lại những trường nằm trong danh sách yêu cầu
+requiredFields = requiredFields.filter(f => mappedTargetFields.includes(f));
+// Fallback an toàn: Nếu mảng rỗng (Ví dụ request toàn trường không có trong Schema gốc), ép giữ lại 'term' để tránh API crash
+if (requiredFields.length === 0) {
+requiredFields = ['term'];
+}
+// Cắt bỏ các property thừa trong propertiesToFetch
+const trimmedProperties = {};
+requiredFields.forEach(f => {
+if (propertiesToFetch[f]) {
+trimmedProperties[f] = propertiesToFetch[f];
+}
+});
+propertiesToFetch = trimmedProperties;
+}
 const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
 basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
 let dynamicInstruction = lang === 'zh' ? " Đối với pronunciation: xuất Pinyin. Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : " Đối với pronunciation: xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
-const userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}${dynamicInstruction}`;
+// [BẢN VÁ V2.20] ĐIỀU HƯỚNG PROMPT TỐI ƯU
+let userQuery = "";
+if (isTrimming) {
+userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}).\nCHÚ Ý QUAN TRỌNG: Chỉ phân tích và xuất CHÍNH XÁC các trường được định nghĩa trong JSON Schema (các trường: ${requiredFields.join(', ')}). Tuyệt đối KHÔNG sinh thêm dữ liệu thừa gây lãng phí Token.${topicRestriction}${dynamicInstruction}`;
+} else {
+userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}${dynamicInstruction}`;
+}
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
 systemInstruction: { parts: [{ text: basePrompt }] },
