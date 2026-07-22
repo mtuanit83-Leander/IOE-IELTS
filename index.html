@@ -613,9 +613,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.25
-// Last Updated: 2026-07-22 11:45
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.26
+// Last Updated: 2026-07-22 14:35
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'. Nâng mức phạt 429 lên 120 phút. Ghi nhận thời gian bắt đầu. Tích hợp quyền kết án trực tiếp cho Radar pingGeminiKey.
 // Cập nhật V2.25: [WHITELIST INJECTION] Cấy trực tiếp danh sách mã ngữ pháp hợp lệ từ IoeEnumRegistry vào fieldRules để triệt tiêu lỗi ảo giác mã mới khi chạy Trimming.
 // Cập nhật V2.24: [STRICT FIELD CONSTRAINTS] Bổ sung Bộ luật Định dạng Trường (Field Definitions) cực kỳ nghiêm ngặt để trị dứt điểm bệnh AI chép lại câu gốc vào trường example và lải nhải văn bản vào trường grammar_type. Sử dụng dấu phân cách | cho câu ví dụ.
 // Cập nhật V2.23: [GRAMMAR FOCUS PROMPT] Ép AI đóng vai giáo viên ngôn ngữ trong nhánh Trimming. Bắt buộc mổ xẻ cấu trúc ngữ pháp (Thì, từ loại, giới từ...), cấm tuyệt đối việc giải thích ngữ cảnh chung chung.
@@ -624,7 +625,7 @@ return Array.from(distractors).slice(0, 4);
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
 // ============================================================================
-// 0. CƠ CHẾ KHÓA ĐA LUỒNG (GLOBAL MUTEX LOCK) - CHỐNG RACE CONDITION
+// 0.A CƠ CHẾ KHÓA ĐA LUỒNG (GLOBAL MUTEX LOCK) - CHỐNG RACE CONDITION
 // ============================================================================
 window.Utils.__apiMutex = window.Utils.__apiMutex || Promise.resolve();
 window.Utils.withApiLock = async (taskFn) => {
@@ -638,6 +639,32 @@ return await taskFn();
 } finally {
 releaseLock(); // Mở khóa cho luồng tiếp theo
 }
+};
+// ============================================================================
+// 0.B HỆ THỐNG QUẢN LÝ ÁN PHẠT API (PERSISTENT COOLDOWNS - V2.26)
+// ============================================================================
+window.Utils.getPersistentCooldowns = () => {
+return window.Utils.safeJsonParse('fc_api_cooldowns', {});
+};
+window.Utils.setKeyCooldown = (key, durationMs) => {
+if (!key) return;
+const cooldowns = window.Utils.getPersistentCooldowns();
+const now = Date.now();
+cooldowns[key] = { startedAt: now, expireAt: now + durationMs };
+localStorage.setItem('fc_api_cooldowns', JSON.stringify(cooldowns));
+};
+window.Utils.cleanExpiredCooldowns = () => {
+const cooldowns = window.Utils.getPersistentCooldowns();
+let changed = false;
+const now = Date.now();
+for (let k in cooldowns) {
+if (now > cooldowns[k].expireAt) {
+delete cooldowns[k];
+changed = true;
+}
+}
+if (changed) localStorage.setItem('fc_api_cooldowns', JSON.stringify(cooldowns));
+return cooldowns;
 };
 // ============================================================================
 // 1. TẢI DỮ LIỆU TỪ GOOGLE SHEETS QUA PROXY
@@ -668,7 +695,7 @@ console.warn(`[Proxy Fallback] ${s.name} thất bại, thử node tiếp theo...
 throw new Error("Lỗi tải dữ liệu mạng (Tất cả Proxy đều bị chặn)");
 };
 // ============================================================================
-// 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING)
+// 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING - V2.26)
 // ============================================================================
 window.Utils.pingGeminiKey = async (apiKey) => {
 try {
@@ -683,6 +710,12 @@ body: JSON.stringify(body),
 signal: controller.signal
 });
 clearTimeout(timeoutId);
+// [CẬP NHẬT V2.26] Radar trực tiếp ban phát án phạt nếu thấy 429
+if (res.status === 429) {
+window.Utils.setKeyCooldown(k, 120 * 60 * 1000); // Đóng băng 120 phút
+} else if (res.status === 403 || res.status === 400) {
+window.Utils.setKeyCooldown(k, 24 * 60 * 60 * 1000); // Khóa 24h
+}
 return { status: res.status, ok: res.ok };
 } catch (e) {
 return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message };
@@ -693,7 +726,6 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
 return window.Utils.withApiLock(async () => {
-window.__apiCooldowns = window.__apiCooldowns || {};
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if (currentKey && !keyPool.includes(currentKey)) {
@@ -711,13 +743,16 @@ dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 } catch(e) {}
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY RẢNH RỖI ---
+// --- TÌM KEY RẢNH RỖI TỪ Ổ CỨNG (V2.26) ---
+window.Utils.cleanExpiredCooldowns();
+const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
 let shortestWaitMs = Infinity;
 for (const rawK of keyPool) {
 if (!rawK || rawK.length < 10) continue;
 const cleanK = rawK.replace(/["'\s]/g, "");
-const cooldownUntil = window.__apiCooldowns[cleanK] || 0;
+const cdData = activeCooldowns[cleanK];
+const cooldownUntil = cdData ? cdData.expireAt : 0;
 const waitMs = cooldownUntil - Date.now();
 if (waitMs <= 0) {
 targetKey = cleanK;
@@ -729,7 +764,7 @@ shortestWaitMs = waitMs;
 }
 // Ném lỗi ngay lập tức nếu kho đạn đang bị khóa phạt
 if (!targetKey) {
-throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/1000)}s.`);
+throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
 // --- THỰC THI BẮN API (1 LẦN DUY NHẤT) ---
 try {
@@ -770,7 +805,7 @@ if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả v�
 const resultText = d.candidates[0].content.parts[0].text;
 const tokenMetadata = d.usageMetadata || null;
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 5000;
+window.Utils.setKeyCooldown(targetKey, 5000); // 5s giãn cách giữa các lượt bắn
 }
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
@@ -778,19 +813,19 @@ localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 await new Promise(r => setTimeout(r, 3000));
 return { text: resultText, tokenMetadata };
 } catch (e) {
-// --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
+// --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY (V2.26) ---
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
 if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[targetKey] = Date.now() + 80000;
-console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 80s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+window.Utils.setKeyCooldown(targetKey, 120 * 60 * 1000); // Đóng băng 120 phút
+console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 120 phút.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
-window.__apiCooldowns[targetKey] = Date.now() + 20000;
+window.Utils.setKeyCooldown(targetKey, 20000); // Đóng băng 20s
 console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('403')) {
-window.__apiCooldowns[targetKey] = Date.now() + 86400000;
+window.Utils.setKeyCooldown(targetKey, 86400000); // Đóng băng 24h
 console.error(`%c[Round-Robin FATAL] Key ...${targetKey.slice(-5)} bị từ chối (403). Đóng băng 24h.`, "color: #dc2626; font-weight: bold; font-size: 11px;");
 } else {
-window.__apiCooldowns[targetKey] = Date.now() + 5000;
+window.Utils.setKeyCooldown(targetKey, 5000);
 }
 throw e;
 }
@@ -801,7 +836,6 @@ throw e;
 // ============================================================================
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab') => {
 return window.Utils.withApiLock(async () => {
-window.__apiCooldowns = window.__apiCooldowns || {};
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKey;
 if (currentKey && !keyPool.includes(currentKey)) {
@@ -840,15 +874,11 @@ requiredFields = requiredFields.filter(f => f !== 'grammar_type');
 let isTrimming = false;
 if (targetFields && Array.isArray(targetFields) && targetFields.length > 0) {
 isTrimming = true;
-// Ánh xạ 'image' (truyền từ Tầng 6) thành 'image_keyword' (để tương thích với propertiesToFetch)
 const mappedTargetFields = targetFields.map(f => f === 'image' ? 'image_keyword' : f);
-// Chỉ giữ lại những trường nằm trong danh sách yêu cầu
 requiredFields = requiredFields.filter(f => mappedTargetFields.includes(f));
-// Fallback an toàn
 if (requiredFields.length === 0) {
 requiredFields = ['term'];
 }
-// Cắt bỏ các property thừa
 const trimmedProperties = {};
 requiredFields.forEach(f => {
 if (propertiesToFetch[f]) {
@@ -861,7 +891,6 @@ const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
 basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
 let dynamicInstruction = lang === 'zh' ? " Đối với pronunciation: xuất Pinyin. Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : " Đối với pronunciation: xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
-// ĐIỀU HƯỚNG PROMPT TỐI ƯU (Cơ bản)
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ gốc: ${lang}).\n`;
@@ -893,7 +922,6 @@ validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 }
 // [BẢN VÁ V2.24 & V2.25] BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
-// Ép buộc cho cả 2 chế độ Full và Trimming để chống AI "ảo giác"
 let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
 if (requiredFields.includes('example') && isSentence) {
 fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác một câu hoàn toàn mới sử dụng CẤU TRÚC NGỮ PHÁP TƯƠNG TỰ câu gốc, kèm theo bản dịch tiếng Việt phân cách bằng dấu | (Ví dụ: They are playing | Họ đang chơi).\n`;
@@ -901,7 +929,6 @@ fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại c�
 if (requiredFields.includes('grammar_type')) {
 fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải thích dài dòng. ${validTagsStr}\n`;
 }
-// Nối luật thép vào Prompt cuối cùng
 userQuery += fieldRules;
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
@@ -915,20 +942,21 @@ required: requiredFields
 temperature: Math.random() * (1.1 - 0.7) + 0.7
 }
 };
-// [BẢN VÁ V2.21] DỌN DẸP XUNG ĐỘT CHỈ THỊ (PROMPT CLASH)
-// Chỉ nhồi systemInstruction gốc nếu ĐANG phân tích toàn diện.
 if (!isTrimming) {
 payload.systemInstruction = { parts: [{ text: basePrompt }] };
 }
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY RẢNH RỖI ---
+// --- TÌM KEY RẢNH RỖI (V2.26) ---
+window.Utils.cleanExpiredCooldowns();
+const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
 let shortestWaitMs = Infinity;
 for (const rawK of keyPool) {
 if (!rawK || rawK.length < 10) continue;
 const cleanK = rawK.replace(/["'\s]/g, "");
-const cooldownUntil = window.__apiCooldowns[cleanK] || 0;
+const cdData = activeCooldowns[cleanK];
+const cooldownUntil = cdData ? cdData.expireAt : 0;
 const waitMs = cooldownUntil - Date.now();
 if (waitMs <= 0) {
 targetKey = cleanK;
@@ -939,7 +967,7 @@ shortestWaitMs = waitMs;
 }
 }
 if (!targetKey) {
-throw new Error(`[API_COOLDOWN] SmartFill: Toàn bộ kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/1000)}s.`);
+throw new Error(`[API_COOLDOWN] SmartFill: Toàn bộ kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
 // --- THỰC THI BẮN API ---
 try {
@@ -962,7 +990,7 @@ if (data.error.code === 403 || data.error.code === 400 || (data.error.message &&
 throw new Error(data.error.message);
 }
 if (keyPool.length > 1) {
-window.__apiCooldowns[targetKey] = Date.now() + 5000;
+window.Utils.setKeyCooldown(targetKey, 5000);
 }
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
@@ -984,13 +1012,13 @@ return { ...parsed, term: term, image: imgUrl, ...meta };
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
 if (e.message && e.message.includes('429')) {
-window.__apiCooldowns[targetKey] = Date.now() + 80000;
+window.Utils.setKeyCooldown(targetKey, 120 * 60 * 1000); // 120 phút
 } else if (e.message && e.message.includes('503')) {
-window.__apiCooldowns[targetKey] = Date.now() + 20000;
+window.Utils.setKeyCooldown(targetKey, 20000); // 20s
 } else if (e.message && e.message.includes('403')) {
-window.__apiCooldowns[targetKey] = Date.now() + 86400000;
+window.Utils.setKeyCooldown(targetKey, 86400000); // 24h
 } else {
-window.__apiCooldowns[targetKey] = Date.now() + 5000;
+window.Utils.setKeyCooldown(targetKey, 5000);
 }
 throw e;
 }
@@ -1003,7 +1031,7 @@ window.Utils.fetchAiDistractors = async (baseText, targetText, lang) => {
 const cleanTarget = targetText ? targetText.replace(/\u0332/g, '') : '';
 const schema = { type: "object", properties: { distractors: { type: "array", items: { type: "string" } } }, required: ["distractors"] };
 const isSentence = window.Utils.detectSentence(cleanTarget);
-const promptKey = isSentence ? 'quiz_sentence' : 'quiz_word';
+const promptKey = isSentence ? 'quiz_sentence' : 'quizword';
 const prompt = window.Utils.getPrompt(promptKey, { baseText, targetText: cleanTarget, term: baseText, definition: cleanTarget });
 try {
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, schema);
@@ -8056,11 +8084,12 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.08
-// Last Updated: 2026-06-09 21:35
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.09
+// Last Updated: 2026-07-22 14:35
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
-// Cập nhật V1.08: [SMART ABORT MECHANISM] Khắc phục lỗi "Kiểm tra Key chạy ngầm". Bổ sung abortTestRef để ngắt mạch vòng lặp pingGeminiKey khi người dùng bấm "Dừng kiểm tra" hoặc khi Modal bị đóng (unmounted).
+// Cập nhật V1.09: [ANTI-429 UI] Bổ sung huy hiệu ❄️ Đóng băng 120 phút có hiển thị thời gian bắt đầu. Tăng delay Radar từ 500ms lên 8000ms. Radar thông minh tự bỏ qua Key đang thụ án.
+// Cập nhật V1.08: [SMART ABORT MECHANISM] Khắc phục lỗi "Kiểm tra Key chạy ngầm".
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
@@ -8082,10 +8111,11 @@ initialPool = [currentKey, ...initialPool.filter(k => k !== currentKey)];
 }
 setKeyPool(initialPool);
 setNewKeyInput('');
+// Cập nhật lại UI để hiển thị án phạt ngay lập tức (nếu có)
 setTestResults({});
 }
 return () => {
-abortTestRef.current = true; // [HOTFIX V1.08] Giết vòng lặp khi đóng cửa sổ
+abortTestRef.current = true; // Giết vòng lặp khi đóng cửa sổ
 };
 }, [isOpen]);
 const handleAddKey = () => {
@@ -8117,7 +8147,7 @@ if (window.globalShowToast) window.globalShowToast("Đã đổi Key ưu tiên!",
 };
 // [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích có ngắt mạch
 const handleTestKeys = async () => {
-// [HOTFIX V1.08] Biến nút thành công tắc Bật/Tắt
+// Biến nút thành công tắc Bật/Tắt
 if (isTesting) {
 abortTestRef.current = true;
 setIsTesting(false);
@@ -8129,26 +8159,49 @@ setIsTesting(true);
 abortTestRef.current = false; // Reset cờ trước khi chạy
 const results = { ...testResults };
 for (const k of keyPool) {
-if (abortTestRef.current) break; // [HOTFIX V1.08] Ngắt mạch giữa chừng
+if (abortTestRef.current) break; // Ngắt mạch giữa chừng
+// [CẬP NHẬT V1.09] Bóc băng ghi án từ LocalStorage
+const cooldowns = window.Utils?.getPersistentCooldowns ? window.Utils.getPersistentCooldowns() : JSON.parse(localStorage.getItem('fc_api_cooldowns') || '{}');
+const cleanK = k.replace(/["'\s]/g, "");
+const cdData = cooldowns[cleanK];
+// Nếu Key đang thụ án -> Bỏ qua, không cống nạp Request
+if (cdData && cdData.expireAt > Date.now()) {
+results[k] = 'cooldown';
+setTestResults({ ...results });
+continue;
+}
 results[k] = 'testing';
 setTestResults({ ...results });
 if (window.Utils && window.Utils.pingGeminiKey) {
 const res = await window.Utils.pingGeminiKey(k);
-if (abortTestRef.current) break; // [HOTFIX V1.08] Kiểm tra lại sau khi Ping xong
+if (abortTestRef.current) break;
 results[k] = res.status;
 } else {
 results[k] = 0; // Fallback nếu chưa có hàm ping
 }
 setTestResults({ ...results });
-// Delay nhỏ để tránh spam quá nhanh
-await new Promise(r => setTimeout(r, 500));
+// [CẬP NHẬT V1.09] Delay 8 giây để chống Spam 429
+await new Promise(r => setTimeout(r, 8000));
 }
 if (!abortTestRef.current) {
 setIsTesting(false);
 if (window.globalShowToast) window.globalShowToast("Đã hoàn tất kiểm tra kho đạn!", "info");
 }
 };
-const getStatusBadge = (status) => {
+// [CẬP NHẬT V1.09] Phân giải Huy hiệu thông minh có đọc án phạt
+const getStatusBadge = (status, keyStr) => {
+// Kiểm tra án phạt vĩnh cửu trước
+const cooldowns = window.Utils?.getPersistentCooldowns ? window.Utils.getPersistentCooldowns() : JSON.parse(localStorage.getItem('fc_api_cooldowns') || '{}');
+const cleanK = keyStr.replace(/["'\s]/g, "");
+const cdData = cooldowns[cleanK];
+const now = Date.now();
+if (cdData && cdData.expireAt > now) {
+const startedAt = new Date(cdData.startedAt);
+const hours = startedAt.getHours().toString().padStart(2, '0');
+const minutes = startedAt.getMinutes().toString().padStart(2, '0');
+const remainMin = Math.ceil((cdData.expireAt - now) / 60000);
+return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200" title="API Key bị tạm khóa để tránh spam">❄️ Khóa lúc {hours}:{minutes} (Còn {remainMin}p)</span>;
+}
 if (status === 'testing') return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 animate-pulse">Đang thử...</span>;
 if (status === 200) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">🟢 Sẵn sàng</span>;
 if (status === 429) return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">🟠 Quá tải</span>;
@@ -8224,7 +8277,7 @@ return (
 )}
 <div className="flex flex-col">
 <span className="font-mono text-sm font-bold text-gray-700">{displayKey}</span>
-{status !== undefined && <div className="mt-0.5">{getStatusBadge(status)}</div>}
+<div className="mt-0.5">{getStatusBadge(status, k)}</div>
 </div>
 </div>
 <button onClick={() => handleRemoveKey(k)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa Key">
@@ -8581,7 +8634,6 @@ return (
 </div>
 );
 };
-// [NEW v1.05] AiConfigModal
 const AiConfigModal = ({ isOpen, onClose, aiConfig, setAiConfig, mainColor = 'purple' }) => {
 const [localConfig, setLocalConfig] = React.useState(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9 });
 React.useEffect(() => {
