@@ -613,9 +613,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.24
-// Last Updated: 2026-07-22 10:45
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.25
+// Last Updated: 2026-07-22 11:45
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.25: [WHITELIST INJECTION] Cấy trực tiếp danh sách mã ngữ pháp hợp lệ từ IoeEnumRegistry vào fieldRules để triệt tiêu lỗi ảo giác mã mới khi chạy Trimming.
 // Cập nhật V2.24: [STRICT FIELD CONSTRAINTS] Bổ sung Bộ luật Định dạng Trường (Field Definitions) cực kỳ nghiêm ngặt để trị dứt điểm bệnh AI chép lại câu gốc vào trường example và lải nhải văn bản vào trường grammar_type. Sử dụng dấu phân cách | cho câu ví dụ.
 // Cập nhật V2.23: [GRAMMAR FOCUS PROMPT] Ép AI đóng vai giáo viên ngôn ngữ trong nhánh Trimming. Bắt buộc mổ xẻ cấu trúc ngữ pháp (Thì, từ loại, giới từ...), cấm tuyệt đối việc giải thích ngữ cảnh chung chung.
 // Cập nhật V2.22: [DIRECTIONAL PROMPT] Nâng cấp Prompt nhánh Trimming thành dạng Định hướng (Directional). Khóa chặt ngôn ngữ trả về là Tiếng Việt và ép buộc độ dài cực kỳ ngắn gọn (2-3 câu) để tối ưu giao diện thẻ.
@@ -873,14 +874,32 @@ userQuery += `${topicRestriction}${dynamicInstruction}`;
 } else {
 userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}${dynamicInstruction}`;
 }
-// [BẢN VÁ V2.24] BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
+// [BẢN VÁ V2.25] TIÊM DANH SÁCH TRẮNG NGỮ PHÁP (GRAMMAR WHITELIST INJECTION)
+let validTagsStr = "";
+if (window.IoeEnumRegistry && window.IoeEnumRegistry.LEVEL_TO_TRAPS) {
+let tagsArr = [];
+const prefix = lang === 'zh' ? 'zh' : 'en';
+for (const [lvl, traps] of Object.entries(window.IoeEnumRegistry.LEVEL_TO_TRAPS)) {
+if (lvl.startsWith(prefix)) {
+tagsArr.push(...traps);
+}
+}
+if (tagsArr.length > 0) {
+validTagsStr = `BẮT BUỘC CHỈ ĐƯỢC CHỌN từ danh sách sau: [${tagsArr.join(', ')}]. Tuyệt đối không tự tạo mã mới.`;
+} else {
+validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
+}
+} else {
+validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
+}
+// [BẢN VÁ V2.24 & V2.25] BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
 // Ép buộc cho cả 2 chế độ Full và Trimming để chống AI "ảo giác"
 let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
 if (requiredFields.includes('example') && isSentence) {
 fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác một câu hoàn toàn mới sử dụng CẤU TRÚC NGỮ PHÁP TƯƠNG TỰ câu gốc, kèm theo bản dịch tiếng Việt phân cách bằng dấu | (Ví dụ: They are playing | Họ đang chơi).\n`;
 }
 if (requiredFields.includes('grammar_type')) {
-fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải thích dài dòng. BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) ngắn gọn phân tách bằng dấu phẩy (Ví dụ: eng_past_simple, pre_a1_article_an...).\n`;
+fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải thích dài dòng. ${validTagsStr}\n`;
 }
 // Nối luật thép vào Prompt cuối cùng
 userQuery += fieldRules;
