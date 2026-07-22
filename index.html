@@ -8113,10 +8113,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.10
-// Last Updated: 2026-07-22 15:10
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.11
+// Last Updated: 2026-07-22 15:45
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
+// Cập nhật V1.11: [HOTFIX] Dời thanh trượt Tùy chỉnh Thời gian phạt 429 sang ApiKeyModal (Radar) với cơ chế Độc lập trạng thái (State Decoupling) đọc ghi trực tiếp Storage.
 // Cập nhật V1.10: [DYNAMIC COOLDOWN] Thêm tùy chỉnh Thời gian phạt 429 vào AiConfigModal. Tích hợp đồng bộ với Lõi mạng.
 // Cập nhật V1.09: [ANTI-429 UI] Bổ sung huy hiệu ❄️ Đóng băng có hiển thị thời gian bắt đầu. Tăng delay Radar từ 500ms lên 8000ms. Radar tự bỏ qua Key đang thụ án.
 // ==================================================================================
@@ -8125,6 +8126,8 @@ const [keyPool, setKeyPool] = React.useState([]);
 const [isTesting, setIsTesting] = React.useState(false);
 const [testResults, setTestResults] = React.useState({});
 const [newKeyInput, setNewKeyInput] = React.useState('');
+// [V1.11] Local State cho Cooldown Slider
+const [localCooldown, setLocalCooldown] = React.useState(120);
 const abortTestRef = React.useRef(false);
 React.useEffect(() => {
 if (isOpen) {
@@ -8140,6 +8143,9 @@ initialPool = [currentKey, ...initialPool.filter(k => k !== currentKey)];
 setKeyPool(initialPool);
 setNewKeyInput('');
 setTestResults({});
+// [V1.11] Khởi tạo giá trị Cooldown từ Storage
+const config = window.Utils?.safeJsonParse('fc_ai_config', {});
+setLocalCooldown(config.cooldown429 || 120);
 }
 return () => {
 abortTestRef.current = true;
@@ -8171,6 +8177,14 @@ setKeyPool(newPool);
 window.Utils.safeLocalStorageSet('fc_apikey_pool', newPool);
 setApiKey(k);
 if (window.globalShowToast) window.globalShowToast("Đã đổi Key ưu tiên!", "success");
+};
+// [V1.11] Xử lý kéo Slider và lưu thẳng xuống Storage (Decoupled I/O)
+const handleCooldownChange = (val) => {
+const newVal = Number(val);
+setLocalCooldown(newVal);
+const config = window.Utils?.safeJsonParse('fc_ai_config', {});
+config.cooldown429 = newVal;
+window.Utils?.safeLocalStorageSet('fc_ai_config', config);
 };
 // [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích có ngắt mạch
 const handleTestKeys = async () => {
@@ -8260,6 +8274,19 @@ placeholder={t('apiKeyPlace')}
 <button onClick={handleAddKey} disabled={!newKeyInput.trim()} className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold shadow hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1 transition-all active:scale-95">
 <window.Icons.Plus size={18} /> Thêm
 </button>
+</div>
+</div>
+{/* [V1.11] Khối cài đặt Thời gian phạt 429 dời từ AiConfigModal sang */}
+<div className="space-y-2 bg-orange-50 p-3 rounded-xl border border-orange-100 shadow-sm">
+<div className="flex justify-between items-center">
+<label className="text-[11px] font-bold text-orange-800 uppercase tracking-widest flex items-center gap-1"><window.Icons.Clock size={12}/> Thời gian phạt 429</label>
+<span className="text-sm font-mono font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-lg">{localCooldown} phút</span>
+</div>
+<p className="text-[10px] text-orange-700/80 mb-2 leading-tight">Thời gian đóng băng API Key khi bị lỗi Quá tải (Mặc định: 120p). Áp dụng ngay khi kéo.</p>
+<input type="range" min="10" max="1440" step="10" value={localCooldown} onChange={(e) => handleCooldownChange(e.target.value)} className="w-full h-1.5 bg-orange-200 rounded-lg appearance-none cursor-pointer accent-orange-500" />
+<div className="flex justify-between text-[9px] text-orange-400 mt-1 font-bold">
+<span>10p</span>
+<span>24h</span>
 </div>
 </div>
 <div className="space-y-3 border-t pt-4">
@@ -8646,7 +8673,7 @@ return (
 );
 };
 const AiConfigModal = ({ isOpen, onClose, aiConfig, setAiConfig, mainColor = 'purple' }) => {
-// [CẬP NHẬT V1.10] Bổ sung cooldown429 vào state khởi tạo (mặc định 120 phút)
+// [V1.11] Khởi tạo localConfig. Cooldown 429 đã dời sang Radar, nhưng vẫn giữ trong State để tương thích hàm Lưu
 const [localConfig, setLocalConfig] = React.useState(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9, cooldown429: 120 });
 React.useEffect(() => {
 if (isOpen) {
@@ -8681,20 +8708,7 @@ return (
 <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-xs text-yellow-800 font-medium">
 Cảnh báo: Thay đổi các thông số này có thể ảnh hưởng đến trải nghiệm game hoặc gây lỗi giới hạn API (Rate Limit).
 </div>
-{/* Cooldown 429 - [CẬP NHẬT V1.10] */}
-<div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
-<div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
-<div className="flex justify-between items-center">
-<label className="text-sm font-bold text-gray-700">Thời gian phạt 429 (API Khóa)</label>
-<span className={`text-sm font-mono font-bold text-orange-600`}>{localConfig.cooldown429 || 120} phút</span>
-</div>
-<p className="text-[10px] text-gray-500">Thời gian đóng băng API Key khi bị Google báo lỗi Quá tải 429 (Mặc định: 120 phút).</p>
-<input type="range" min="10" max="1440" step="10" value={localConfig.cooldown429 || 120} onChange={(e) => handleChange('cooldown429', e.target.value)} className={`w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500`} />
-<div className="flex justify-between text-[9px] text-gray-400 mt-1">
-<span>10p</span>
-<span>24h</span>
-</div>
-</div>
+{/* [V1.11] Thanh trượt Cooldown 429 đã bị di dời sang ApiKeyModal */}
 {/* Loading Time */}
 <div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
 <div className="flex justify-between items-center">
