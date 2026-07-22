@@ -613,14 +613,13 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.26
-// Last Updated: 2026-07-22 14:35
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.27
+// Last Updated: 2026-07-22 15:00
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'. Nâng mức phạt 429 lên 120 phút. Ghi nhận thời gian bắt đầu. Tích hợp quyền kết án trực tiếp cho Radar pingGeminiKey.
-// Cập nhật V2.25: [WHITELIST INJECTION] Cấy trực tiếp danh sách mã ngữ pháp hợp lệ từ IoeEnumRegistry vào fieldRules để triệt tiêu lỗi ảo giác mã mới khi chạy Trimming.
-// Cập nhật V2.24: [STRICT FIELD CONSTRAINTS] Bổ sung Bộ luật Định dạng Trường (Field Definitions) cực kỳ nghiêm ngặt để trị dứt điểm bệnh AI chép lại câu gốc vào trường example và lải nhải văn bản vào trường grammar_type. Sử dụng dấu phân cách | cho câu ví dụ.
-// Cập nhật V2.23: [GRAMMAR FOCUS PROMPT] Ép AI đóng vai giáo viên ngôn ngữ trong nhánh Trimming. Bắt buộc mổ xẻ cấu trúc ngữ pháp (Thì, từ loại, giới từ...), cấm tuyệt đối việc giải thích ngữ cảnh chung chung.
-// Cập nhật V2.22: [DIRECTIONAL PROMPT] Nâng cấp Prompt nhánh Trimming thành dạng Định hướng (Directional). Khóa chặt ngôn ngữ trả về là Tiếng Việt và ép buộc độ dài cực kỳ ngắn gọn (2-3 câu) để tối ưu giao diện thẻ.
+// Cập nhật V2.27: [DOMINO DEATH PREVENTION] Cấy Cầu dao Toàn cục (Global Pause 15s) chống bộ lọc IP Google. Thời gian phạt 429 nay là biến động, đọc từ fc_ai_config.
+// Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'. Ghi nhận thời gian bắt đầu. Radar tự động ban phát án phạt.
+// Cập nhật V2.25: [WHITELIST INJECTION] Cấy trực tiếp danh sách mã ngữ pháp hợp lệ từ IoeEnumRegistry vào fieldRules.
+// Cập nhật V2.24: [STRICT FIELD CONSTRAINTS] Bổ sung Bộ luật Định dạng Trường (Field Definitions) cực kỳ nghiêm ngặt.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -641,7 +640,7 @@ releaseLock(); // Mở khóa cho luồng tiếp theo
 }
 };
 // ============================================================================
-// 0.B HỆ THỐNG QUẢN LÝ ÁN PHẠT API (PERSISTENT COOLDOWNS - V2.26)
+// 0.B HỆ THỐNG QUẢN LÝ ÁN PHẠT API & CẦU DAO TOÀN CỤC (V2.27)
 // ============================================================================
 window.Utils.getPersistentCooldowns = () => {
 return window.Utils.safeJsonParse('fc_api_cooldowns', {});
@@ -665,6 +664,19 @@ changed = true;
 }
 if (changed) localStorage.setItem('fc_api_cooldowns', JSON.stringify(cooldowns));
 return cooldowns;
+};
+// [CẬP NHẬT V2.27] Cầu dao Toàn cục chống hiệu ứng Domino
+window.Utils.isGlobalPaused = () => {
+const pauseUntil = parseInt(localStorage.getItem('fc_global_api_pause') || '0', 10);
+return Date.now() < pauseUntil;
+};
+window.Utils.triggerGlobalPause = (durationMs = 15000) => {
+localStorage.setItem('fc_global_api_pause', Date.now() + durationMs);
+};
+// Lấy thời gian phạt 429 từ Cấu hình động
+window.Utils.getCooldown429Ms = () => {
+const config = window.Utils.safeJsonParse('fc_ai_config', {});
+return (config.cooldown429 || 120) * 60 * 1000;
 };
 // ============================================================================
 // 1. TẢI DỮ LIỆU TỪ GOOGLE SHEETS QUA PROXY
@@ -695,7 +707,7 @@ console.warn(`[Proxy Fallback] ${s.name} thất bại, thử node tiếp theo...
 throw new Error("Lỗi tải dữ liệu mạng (Tất cả Proxy đều bị chặn)");
 };
 // ============================================================================
-// 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING - V2.26)
+// 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING - V2.27)
 // ============================================================================
 window.Utils.pingGeminiKey = async (apiKey) => {
 try {
@@ -710,9 +722,10 @@ body: JSON.stringify(body),
 signal: controller.signal
 });
 clearTimeout(timeoutId);
-// [CẬP NHẬT V2.26] Radar trực tiếp ban phát án phạt nếu thấy 429
+// [CẬP NHẬT V2.27] Radar trực tiếp ban phát án phạt và sập Cầu dao
 if (res.status === 429) {
-window.Utils.setKeyCooldown(k, 120 * 60 * 1000); // Đóng băng 120 phút
+window.Utils.setKeyCooldown(k, window.Utils.getCooldown429Ms());
+window.Utils.triggerGlobalPause(15000); // Trốn soi IP 15s
 } else if (res.status === 403 || res.status === 400) {
 window.Utils.setKeyCooldown(k, 24 * 60 * 60 * 1000); // Khóa 24h
 }
@@ -726,6 +739,10 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
 return window.Utils.withApiLock(async () => {
+// [CẬP NHẬT V2.27] CHỐT CHẶN DOMINO: Kiểm tra Cầu dao Toàn cục
+if (window.Utils.isGlobalPaused()) {
+throw new Error("[GLOBAL_PAUSE] Mạng đang tạm nghỉ 15s để chống bộ lọc IP Spam.");
+}
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 if (currentKey && !keyPool.includes(currentKey)) {
@@ -736,14 +753,14 @@ keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)];
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Vui lòng cấu hình trong Settings)");
 let dynamicTimeoutMs = 20000;
 try {
-const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
+const aiCfg = window.Utils.safeJsonParse('fc_ai_config', {});
 if (aiCfg && aiCfg.loadingTime) {
 dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 }
 } catch(e) {}
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY RẢNH RỖI TỪ Ổ CỨNG (V2.26) ---
+// --- TÌM KEY RẢNH RỖI TỪ Ổ CỨNG ---
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
@@ -813,14 +830,18 @@ localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 await new Promise(r => setTimeout(r, 3000));
 return { text: resultText, tokenMetadata };
 } catch (e) {
-// --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY (V2.26) ---
+// --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
+if (e.message && e.message.includes('GLOBAL_PAUSE')) throw e;
 if (e.message && e.message.includes('429')) {
-window.Utils.setKeyCooldown(targetKey, 120 * 60 * 1000); // Đóng băng 120 phút
-console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Đóng băng 120 phút.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
+// [CẬP NHẬT V2.27] Phạt Key và Cúp Cầu dao Toàn cục
+window.Utils.setKeyCooldown(targetKey, window.Utils.getCooldown429Ms());
+window.Utils.triggerGlobalPause(15000); // Trốn IP 15s
+console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Sập cầu dao 15s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
 window.Utils.setKeyCooldown(targetKey, 20000); // Đóng băng 20s
-console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Đóng băng 20s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
+window.Utils.triggerGlobalPause(10000);
+console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Sập cầu dao 10s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('403')) {
 window.Utils.setKeyCooldown(targetKey, 86400000); // Đóng băng 24h
 console.error(`%c[Round-Robin FATAL] Key ...${targetKey.slice(-5)} bị từ chối (403). Đóng băng 24h.`, "color: #dc2626; font-weight: bold; font-size: 11px;");
@@ -836,6 +857,10 @@ throw e;
 // ============================================================================
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab') => {
 return window.Utils.withApiLock(async () => {
+// [CẬP NHẬT V2.27] CHỐT CHẶN DOMINO: Kiểm tra Cầu dao Toàn cục
+if (window.Utils.isGlobalPaused()) {
+throw new Error("[GLOBAL_PAUSE] Mạng đang tạm nghỉ 15s để chống bộ lọc IP Spam.");
+}
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
 let currentKey = apiKey;
 if (currentKey && !keyPool.includes(currentKey)) {
@@ -903,7 +928,7 @@ userQuery += `${topicRestriction}${dynamicInstruction}`;
 } else {
 userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}${dynamicInstruction}`;
 }
-// [BẢN VÁ V2.25] TIÊM DANH SÁCH TRẮNG NGỮ PHÁP (GRAMMAR WHITELIST INJECTION)
+// TIÊM DANH SÁCH TRẮNG NGỮ PHÁP (GRAMMAR WHITELIST INJECTION)
 let validTagsStr = "";
 if (window.IoeEnumRegistry && window.IoeEnumRegistry.LEVEL_TO_TRAPS) {
 let tagsArr = [];
@@ -921,7 +946,7 @@ validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 } else {
 validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 }
-// [BẢN VÁ V2.24 & V2.25] BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
+// BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
 let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
 if (requiredFields.includes('example') && isSentence) {
 fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác một câu hoàn toàn mới sử dụng CẤU TRÚC NGỮ PHÁP TƯƠNG TỰ câu gốc, kèm theo bản dịch tiếng Việt phân cách bằng dấu | (Ví dụ: They are playing | Họ đang chơi).\n`;
@@ -947,7 +972,7 @@ payload.systemInstruction = { parts: [{ text: basePrompt }] };
 }
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY RẢNH RỖI (V2.26) ---
+// --- TÌM KEY RẢNH RỖI ---
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
@@ -1010,11 +1035,15 @@ const meta = data.usageMetadata ? { _tokenUsage: data.usageMetadata } : {};
 await new Promise(r => setTimeout(r, 3000));
 return { ...parsed, term: term, image: imgUrl, ...meta };
 } catch (e) {
+// --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
+if (e.message && e.message.includes('GLOBAL_PAUSE')) throw e;
 if (e.message && e.message.includes('429')) {
-window.Utils.setKeyCooldown(targetKey, 120 * 60 * 1000); // 120 phút
+window.Utils.setKeyCooldown(targetKey, window.Utils.getCooldown429Ms());
+window.Utils.triggerGlobalPause(15000); // Trốn IP 15s
 } else if (e.message && e.message.includes('503')) {
-window.Utils.setKeyCooldown(targetKey, 20000); // 20s
+window.Utils.setKeyCooldown(targetKey, 20000);
+window.Utils.triggerGlobalPause(10000);
 } else if (e.message && e.message.includes('403')) {
 window.Utils.setKeyCooldown(targetKey, 86400000); // 24h
 } else {
@@ -8084,25 +8113,24 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.09
-// Last Updated: 2026-07-22 14:35
+// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.10
+// Last Updated: 2026-07-22 15:10
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
-// Cập nhật V1.09: [ANTI-429 UI] Bổ sung huy hiệu ❄️ Đóng băng 120 phút có hiển thị thời gian bắt đầu. Tăng delay Radar từ 500ms lên 8000ms. Radar thông minh tự bỏ qua Key đang thụ án.
-// Cập nhật V1.08: [SMART ABORT MECHANISM] Khắc phục lỗi "Kiểm tra Key chạy ngầm".
+// Cập nhật V1.10: [DYNAMIC COOLDOWN] Thêm tùy chỉnh Thời gian phạt 429 vào AiConfigModal. Tích hợp đồng bộ với Lõi mạng.
+// Cập nhật V1.09: [ANTI-429 UI] Bổ sung huy hiệu ❄️ Đóng băng có hiển thị thời gian bắt đầu. Tăng delay Radar từ 500ms lên 8000ms. Radar tự bỏ qua Key đang thụ án.
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
 const [isTesting, setIsTesting] = React.useState(false);
 const [testResults, setTestResults] = React.useState({});
 const [newKeyInput, setNewKeyInput] = React.useState('');
-const abortTestRef = React.useRef(false); // [HOTFIX V1.08] Cờ ngắt mạch
+const abortTestRef = React.useRef(false);
 React.useEffect(() => {
 if (isOpen) {
-abortTestRef.current = false; // Reset cờ khi mở
+abortTestRef.current = false;
 const pool = window.Utils?.safeJsonParse('fc_apikey_pool', []);
 const currentKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '';
-// Đảm bảo currentKey luôn nằm ở đầu nếu chưa có trong pool
 let initialPool = [...pool];
 if (currentKey && !initialPool.includes(currentKey)) {
 initialPool.unshift(currentKey);
@@ -8111,11 +8139,10 @@ initialPool = [currentKey, ...initialPool.filter(k => k !== currentKey)];
 }
 setKeyPool(initialPool);
 setNewKeyInput('');
-// Cập nhật lại UI để hiển thị án phạt ngay lập tức (nếu có)
 setTestResults({});
 }
 return () => {
-abortTestRef.current = true; // Giết vòng lặp khi đóng cửa sổ
+abortTestRef.current = true;
 };
 }, [isOpen]);
 const handleAddKey = () => {
@@ -8124,7 +8151,7 @@ if (k && k.length > 20 && !keyPool.includes(k)) {
 const newPool = [k, ...keyPool];
 setKeyPool(newPool);
 window.Utils.safeLocalStorageSet('fc_apikey_pool', newPool);
-setApiKey(k); // Đặt làm key chính luôn
+setApiKey(k);
 setNewKeyInput('');
 if (window.globalShowToast) window.globalShowToast("Đã thêm API Key mới!", "success");
 }
@@ -8147,7 +8174,6 @@ if (window.globalShowToast) window.globalShowToast("Đã đổi Key ưu tiên!",
 };
 // [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích có ngắt mạch
 const handleTestKeys = async () => {
-// Biến nút thành công tắc Bật/Tắt
 if (isTesting) {
 abortTestRef.current = true;
 setIsTesting(false);
@@ -8156,11 +8182,11 @@ return;
 }
 if (keyPool.length === 0) return;
 setIsTesting(true);
-abortTestRef.current = false; // Reset cờ trước khi chạy
+abortTestRef.current = false;
 const results = { ...testResults };
 for (const k of keyPool) {
-if (abortTestRef.current) break; // Ngắt mạch giữa chừng
-// [CẬP NHẬT V1.09] Bóc băng ghi án từ LocalStorage
+if (abortTestRef.current) break;
+// Bóc băng ghi án từ LocalStorage
 const cooldowns = window.Utils?.getPersistentCooldowns ? window.Utils.getPersistentCooldowns() : JSON.parse(localStorage.getItem('fc_api_cooldowns') || '{}');
 const cleanK = k.replace(/["'\s]/g, "");
 const cdData = cooldowns[cleanK];
@@ -8177,10 +8203,10 @@ const res = await window.Utils.pingGeminiKey(k);
 if (abortTestRef.current) break;
 results[k] = res.status;
 } else {
-results[k] = 0; // Fallback nếu chưa có hàm ping
+results[k] = 0;
 }
 setTestResults({ ...results });
-// [CẬP NHẬT V1.09] Delay 8 giây để chống Spam 429
+// Delay 8 giây để chống Spam 429
 await new Promise(r => setTimeout(r, 8000));
 }
 if (!abortTestRef.current) {
@@ -8188,9 +8214,8 @@ setIsTesting(false);
 if (window.globalShowToast) window.globalShowToast("Đã hoàn tất kiểm tra kho đạn!", "info");
 }
 };
-// [CẬP NHẬT V1.09] Phân giải Huy hiệu thông minh có đọc án phạt
+// Phân giải Huy hiệu thông minh có đọc án phạt
 const getStatusBadge = (status, keyStr) => {
-// Kiểm tra án phạt vĩnh cửu trước
 const cooldowns = window.Utils?.getPersistentCooldowns ? window.Utils.getPersistentCooldowns() : JSON.parse(localStorage.getItem('fc_api_cooldowns') || '{}');
 const cleanK = keyStr.replace(/["'\s]/g, "");
 const cdData = cooldowns[cleanK];
@@ -8214,7 +8239,6 @@ if (!isOpen) return null;
 return (
 <div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
 <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-{/* Header */}
 <div className="flex justify-between items-center p-4 border-b bg-purple-50 shrink-0 rounded-t-xl">
 <h3 className="font-bold text-lg flex items-center gap-2 text-purple-700">
 <window.Icons.Key /> Quản lý API Key (Radar)
@@ -8222,7 +8246,6 @@ return (
 <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><window.Icons.X /></button>
 </div>
 <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 bg-gray-50/50">
-{/* Thêm Key Mới */}
 <div className="space-y-2">
 <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Thêm Key thủ công</label>
 <div className="flex gap-2">
@@ -8239,7 +8262,6 @@ placeholder={t('apiKeyPlace')}
 </button>
 </div>
 </div>
-{/* Radar Dashboard */}
 <div className="space-y-3 border-t pt-4">
 <div className="flex justify-between items-center">
 <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Kho đạn dự phòng ({keyPool.length})</label>
@@ -8310,10 +8332,8 @@ aiHarvestPool = {}, onExportHarvestToExcel, onClearHarvestPool
 const fileInputRef = React.useRef(null);
 const [notebookUrl, setNotebookUrl] = React.useState('');
 const [showPreview, setShowPreview] = React.useState(false);
-// [UX] State Kéo thả (Draggable)
 const [position, setPosition] = React.useState({ x: 0, y: 0 });
 const dragRef = React.useRef({ isDragging: false, startX: 0, startY: 0, initialX: 0, initialY: 0 });
-// Master Links State
 const defaultVocabKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_vocab';
 const defaultSentenceKey = window.STORAGE_KEYS.DEFAULT_URL + '_' + lang + '_sentence';
 const [vocabUrl, setVocabUrl] = React.useState('');
@@ -8323,7 +8343,6 @@ if (isOpen) {
 setVocabUrl(localStorage.getItem(defaultVocabKey) || window.DEFAULT_SHEETS?.[lang]?.vocab || '');
 setSentenceUrl(localStorage.getItem(defaultSentenceKey) || window.DEFAULT_SHEETS?.[lang]?.sentence || '');
 setShowPreview(false);
-// Reset tọa độ kéo thả mỗi lần mở
 setPosition({ x: 0, y: 0 });
 }
 }, [isOpen, lang]);
@@ -8367,7 +8386,6 @@ transform: `translate(${position.x}px, ${position.y}px)`,
 transition: dragRef.current.isDragging ? 'none' : 'transform 0.1s ease-out'
 }}
 >
-{/* Header Cố định & Draggable */}
 <div
 className="flex justify-between items-center p-4 border-b bg-green-50 shrink-0 rounded-t-xl cursor-move select-none"
 onMouseDown={handleMouseDown}
@@ -8384,7 +8402,6 @@ className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1.5 rounded tra
 <window.Icons.X />
 </button>
 </div>
-{/* Vùng Nội dung Cuộn được */}
 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-white">
 <div className="mb-4 bg-purple-50 p-3 rounded-lg border border-purple-100">
 <label className="block text-sm font-bold text-purple-700 mb-1">{t('apiKeySheetLabel')}</label>
@@ -8395,7 +8412,6 @@ className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1.5 rounded tra
 <button onClick={() => onSaveSettings(window.STORAGE_KEYS.API_KEY_SHEET, apiKeySheetUrl)} className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700" title="Lưu làm mặc định"><window.Icons.Save size={16} /></button>
 </div>
 </div>
-{/* TRẠM NẠP 1: NGUỒN TỪ VỰNG */}
 <div className="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100 shadow-sm">
 <label className="block text-sm font-bold text-blue-800 mb-1 flex items-center gap-2">
 <window.Icons.Layers size={16}/> Nguồn Từ Vựng (Master File)
@@ -8410,7 +8426,6 @@ className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1.5 rounded tra
 </div>
 </div>
 </div>
-{/* TRẠM NẠP 2: NGUỒN CÂU VĂN */}
 <div className="mb-4 bg-teal-50 p-3 rounded-lg border border-teal-100 shadow-sm">
 <label className="block text-sm font-bold text-teal-800 mb-1 flex items-center gap-2">
 <window.Icons.BookOpen size={16}/> Nguồn Câu Văn (Master File)
@@ -8437,7 +8452,6 @@ className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1.5 rounded tra
 </button>
 </div>
 </div>
-{/* BẢNG QUẢN LÝ KHO AI */}
 <div className="mb-4 bg-indigo-50 p-3 rounded-lg border border-indigo-200 shadow-sm relative overflow-hidden">
 <div className="absolute -right-4 -top-4 opacity-10"><window.Icons.Sparkles size={64}/></div>
 <label className="block text-sm font-bold text-indigo-800 mb-1 flex items-center gap-2 relative z-10">
@@ -8450,7 +8464,6 @@ Tự động thu thập các câu hỏi/thử thách do AI sáng tác trong quá
 <span className="text-xs font-bold text-gray-600">Tổng số câu đã thu hoạch:</span>
 <span className="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{totalHarvested}</span>
 </div>
-{/* Lưới nút bấm quản lý */}
 <div className="grid grid-cols-2 gap-2 mb-2 relative z-10">
 <button onClick={() => setShowPreview(!showPreview)} disabled={totalHarvested === 0} className={`p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-sm border ${showPreview ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'} disabled:opacity-50`}>
 <window.Icons.Eye size={14}/> {showPreview ? 'Đóng xem trước' : 'Xem trước'}
@@ -8462,7 +8475,6 @@ Tự động thu thập các câu hỏi/thử thách do AI sáng tác trong quá
 <button onClick={onExportHarvestToExcel} disabled={totalHarvested === 0} className="w-full p-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:from-gray-400 disabled:to-gray-500 shadow-md transition-all active:scale-95 relative z-10">
 <window.Icons.Download size={18}/> Xuất Kho AI ra Excel
 </button>
-{/* Khung Preview Nội bộ */}
 {showPreview && totalHarvested > 0 && (
 <div className="mt-3 bg-white border border-indigo-100 rounded-lg p-2 max-h-[250px] overflow-y-auto custom-scrollbar relative z-10 animate-in slide-in-from-top-2">
 {Object.entries(aiHarvestPool).map(([level, items]) => {
@@ -8475,10 +8487,9 @@ return (
 </div>
 <div className="space-y-2">
 {items.map((item, idx) => {
-// Nội suy linh hoạt để hỗ trợ nhiều format Game
 const qText = item.wrongSentence || item.displaySentence || item.term || 'Chưa rõ';
 const aText = item.correction || item.targetWord || item.oddWord || 'Chưa rõ';
-const isWordsArray = Array.isArray(item.words); // Game Từ Khác Loại
+const isWordsArray = Array.isArray(item.words);
 const displayQ = isWordsArray ? item.words.join(' • ') : qText;
 return (
 <div key={idx} className="bg-gray-50 p-2 rounded border border-gray-100 text-[10px]">
@@ -8635,10 +8646,11 @@ return (
 );
 };
 const AiConfigModal = ({ isOpen, onClose, aiConfig, setAiConfig, mainColor = 'purple' }) => {
-const [localConfig, setLocalConfig] = React.useState(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9 });
+// [CẬP NHẬT V1.10] Bổ sung cooldown429 vào state khởi tạo (mặc định 120 phút)
+const [localConfig, setLocalConfig] = React.useState(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9, cooldown429: 120 });
 React.useEffect(() => {
 if (isOpen) {
-setLocalConfig(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9 });
+setLocalConfig(aiConfig || { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9, cooldown429: 120 });
 }
 }, [isOpen, aiConfig]);
 if (!isOpen) return null;
@@ -8651,7 +8663,7 @@ if (window.globalShowToast) window.globalShowToast("Đã lưu cấu hình Lõi A
 onClose();
 };
 const handleReset = () => {
-const def = { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9 };
+const def = { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9, cooldown429: 120 };
 setLocalConfig(def);
 };
 return (
@@ -8668,6 +8680,20 @@ return (
 <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 bg-gray-50/50">
 <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-xs text-yellow-800 font-medium">
 Cảnh báo: Thay đổi các thông số này có thể ảnh hưởng đến trải nghiệm game hoặc gây lỗi giới hạn API (Rate Limit).
+</div>
+{/* Cooldown 429 - [CẬP NHẬT V1.10] */}
+<div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
+<div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
+<div className="flex justify-between items-center">
+<label className="text-sm font-bold text-gray-700">Thời gian phạt 429 (API Khóa)</label>
+<span className={`text-sm font-mono font-bold text-orange-600`}>{localConfig.cooldown429 || 120} phút</span>
+</div>
+<p className="text-[10px] text-gray-500">Thời gian đóng băng API Key khi bị Google báo lỗi Quá tải 429 (Mặc định: 120 phút).</p>
+<input type="range" min="10" max="1440" step="10" value={localConfig.cooldown429 || 120} onChange={(e) => handleChange('cooldown429', e.target.value)} className={`w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500`} />
+<div className="flex justify-between text-[9px] text-gray-400 mt-1">
+<span>10p</span>
+<span>24h</span>
+</div>
 </div>
 {/* Loading Time */}
 <div className="space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -23356,12 +23382,12 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.12
-// Last Updated: 2026-07-21 23:45
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.13
+// Last Updated: 2026-07-22 15:10
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
-// Cập nhật V1.12: [MASTER DATA MUTATION] Trực tiếp tiêm dữ liệu AI (Enrich và Grammar Analysis) vào tận kho lõi `fc_master_data_${lang}_${dataMode}`. Vĩnh viễn khắc phục lỗi bốc hơi kết quả phân tích.
-// Cập nhật V1.11: [STATE TARGETING & CROSS-ARRAY SYNC] Sửa triệt để lỗi "thành công ảo" khi học ở Sổ tay/Đã thuộc. Hàm handleExplainGrammar và handleAiEnrichCard nay tự động nhận diện mảng Active. Dữ liệu AI trả về được đồng bộ xuyên suốt (setCards, setNotebook, setMastered, setIncorrectList) xuống cả LocalStorage và IndexedDB.
-// Cập nhật V1.10: [LEGACY DETECTION REMOVAL] Nhổ bỏ thuật toán đoán mò `detectSentence`. Sử dụng trực tiếp `core.dataMode` từ UI truyền xuống để định tuyến mảng `requiredFields`.
+// Cập nhật V1.13: [DOMINO RESCUE] Dạy Động cơ Hàng đợi AI cách lắng nghe Cầu dao Toàn cục. Nếu bắt được lỗi GLOBAL_PAUSE, giữ lại từ vựng hiện tại (không shift) và đứng chờ 15s để chuyển sang Key mới. Chấm dứt triệt để lỗi chết chùm Domino.
+// Cập nhật V1.12: [MASTER DATA MUTATION] Trực tiếp tiêm dữ liệu AI vào tận kho lõi master.
+// Cập nhật V1.11: [STATE TARGETING] Sửa lỗi thành công ảo, đồng bộ xuyên suốt các kho (Data, Note, Mastered, Incorrect).
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23484,11 +23510,13 @@ while (aiQueueRef.current.length > 0) {
 const term = aiQueueRef.current[0];
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 let shouldDelay = false;
+let shouldShift = true; // [V1.13] Cờ quyết định có vứt bỏ từ vựng hay không
+let customDelayMs = 0;  // [V1.13] Thời gian ngủ đông đặc biệt
 try {
 if (!currentApiKey) { continue; }
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
-// [HOTFIX v1.10] Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
+// Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
 const isSentence = core.dataMode === 'sentence';
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
 if (isSentence) {
@@ -23507,7 +23535,7 @@ return strVal === "";
 }) : requiredFields;
 if (missingFields && missingFields.length === 0) { continue; }
 shouldDelay = true; // Sẽ gọi API, cần delay sau đó để hãm phanh
-// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+// Truyền core.dataMode xuống tầng Lõi API
 const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields, core.dataMode);
 if (missingFields.includes('image')) {
 if (!res.image || !res.image.startsWith('http')) {
@@ -23529,7 +23557,13 @@ return newData;
 }
 consecutiveFailures = 0; // Reset bộ đếm nếu thành công
 } catch (e) {
-shouldDelay = true; // Lỗi mạng, bắt buộc phải delay
+// [V1.13] Xử lý lỗi Cầu dao Toàn cục (Global Pause)
+if (e.message && e.message.includes('GLOBAL_PAUSE')) {
+shouldShift = false; // Không vứt bỏ từ vựng
+customDelayMs = 15500; // Ngủ đông 15.5 giây đợi hết bão
+console.warn(`[AI Queue] Tạm nghỉ 15s để trốn bộ lọc 429... Giữ lại từ vựng: ${term}`);
+} else {
+shouldDelay = true; // Lỗi mạng thông thường, bắt buộc phải delay 5s
 console.warn(`Auto-fill skipped for ${term}:`, e);
 consecutiveFailures++;
 if (consecutiveFailures >= 3) {
@@ -23539,13 +23573,16 @@ callbacks.showToast("Máy chủ AI quá tải. Đã dừng tự động điền 
 aiQueueRef.current = []; // Hủy toàn bộ đạn
 break; // Cắt đứt vòng lặp vô tận
 }
+}
 } finally {
-// [BẢN VÁ 1.08] LUÔN LUÔN thực thi shift
-if (aiQueueRef.current.length > 0) {
+// [V1.13] LUÔN LUÔN thực thi shift CHỈ KHI Cờ shouldShift cho phép
+if (shouldShift && aiQueueRef.current.length > 0) {
 aiQueueRef.current.shift();
 }
-// [BẢN VÁ 1.08] Khóa cứng luồng 5s MIỄN LÀ API ĐÃ ĐƯỢC GỌI, KHÔNG QUAN TÂM HÀNG ĐỢI CÒN HAY KHÔNG
-if (shouldDelay) {
+// [V1.13] Xử lý Delay: Ngủ đông dài (nếu có bão) hoặc Delay ngắn 5s
+if (customDelayMs > 0) {
+await new Promise(r => setTimeout(r, customDelayMs));
+} else if (shouldDelay) {
 await new Promise(r => setTimeout(r, 5000));
 }
 }
@@ -23558,7 +23595,7 @@ isAiQueueProcessing.current = false;
 // Xử lý tham số đầu vào linh hoạt (index, card object, hoặc Event)
 const handleAiEnrichCard = async (indexOrCardOrEvent, silent = false) => {
 if (!apiKey) { if (!silent) callbacks.showToast("Chưa có API Key!", "error"); return false; }
-// [BẢN VÁ V1.11] Tự động nhận diện mảng dữ liệu đang Active (State Targeting)
+// Tự động nhận diện mảng dữ liệu đang Active (State Targeting)
 const state = latestStateRef.current;
 let activeArr = state.cards;
 if (state.isStudyingNotebook) activeArr = state.notebook;
@@ -23585,7 +23622,7 @@ processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
 const currentCard = activeArr.find(c => c.term === cardTerm);
-// [HOTFIX v1.10] Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
+// Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
 const isSentence = core.dataMode === 'sentence';
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
 if (isSentence) {
@@ -23603,13 +23640,13 @@ return !currentCard?.[f] || (f === 'image' && !currentCard[f].startsWith('http')
 // Trả về false nếu không gọi API, giúp quá trình chạy ngầm quét 0ms
 if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return false; }
 if (silent && !missingFields.length) return false;
-// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+// Truyền core.dataMode xuống tầng Lõi API
 const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields, core.dataMode);
 if (missingFields.includes('image') && (!enriched.image || !enriched.image.startsWith('http'))) {
 const q = (currentCard?.image && currentCard.image.trim()) || cardTerm;
 enriched.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(q)}&w=300&h=300&c=7&rs=1&p=0`;
 }
-// [BẢN VÁ V1.11] ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
+// ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
 const enrichedData = { ...enriched, ai_explanation: enriched.example || currentCard?.example || "Enriched", is_enriched: true };
 const updateFn = (prev, dbKey = null, storageKey = null) => {
 const idx = prev.findIndex(c => c.term === cardTerm);
@@ -23625,7 +23662,7 @@ setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKe
 setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
 if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
 if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
-// [BẢN VÁ V1.12] CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
+// CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
 const masterDataKey = `fc_master_data_${core.lang}_${core.dataMode}`;
 const masterData = window.Utils.safeJsonParse(masterDataKey, null);
 if (masterData) {
@@ -23651,7 +23688,7 @@ if (!silent) callbacks.showToast("Đã bổ sung thông tin!", "success");
 return true; // Trả về true báo hiệu API đã bị hit
 } catch (e) {
 if (!silent) callbacks.showToast("Lỗi AI: " + e.message, "error");
-throw e; // Bắt buộc ném lỗi ra ngoài để processEnrichQueue có thể đếm
+throw e; // Bắt buộc ném lỗi ra ngoài để processEnrichQueue có thể đếm và bắt lỗi Global Pause
 } finally {
 processingCardsRef.current.delete(cardTerm);
 if (!silent) setIsAiLoading(false);
@@ -23659,7 +23696,7 @@ if (!silent) setIsAiLoading(false);
 };
 const handleExplainGrammar = async (index) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
-// [BẢN VÁ V1.11] Tự động nhận diện mảng dữ liệu đang Active thay vì hardcode thẻ Cards
+// Tự động nhận diện mảng dữ liệu đang Active thay vì hardcode thẻ Cards
 const state = latestStateRef.current;
 let activeArr = state.cards;
 if (state.isStudyingNotebook) activeArr = state.notebook;
@@ -23670,10 +23707,10 @@ const cardTerm = activeArr[targetIdx]?.term;
 if (!cardTerm) return;
 setIsAiLoading(true);
 try {
-// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+// Truyền core.dataMode xuống tầng Lõi API
 const result = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, ['analysis'], core.dataMode);
 if (result?.analysis) {
-// [BẢN VÁ V1.11] ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
+// ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
 const newData = { analysis: result.analysis };
 const updateFn = (prev, dbKey = null, storageKey = null) => {
 const idx = prev.findIndex(c => c.term === cardTerm);
@@ -23689,7 +23726,7 @@ setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKe
 setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
 if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
 if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
-// [BẢN VÁ V1.12] CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
+// CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
 const masterDataKey = `fc_master_data_${core.lang}_${core.dataMode}`;
 const masterData = window.Utils.safeJsonParse(masterDataKey, null);
 if (masterData) {
@@ -23720,7 +23757,7 @@ const handleManualAiFill = async (term) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
 setIsAiLoading(true);
 try {
-// [BẢN VÁ V1.10] Truyền core.dataMode xuống tầng Lõi API
+// Truyền core.dataMode xuống tầng Lõi API
 return await window.Utils.fillCardWithAi(term, core.lang, apiKey, null, core.dataMode);
 }
 catch (e) { callbacks.showToast(e.message, "error"); return null; }
@@ -23736,6 +23773,8 @@ let consecutiveFailures = 0;
 while (enrichQueueRef.current.length > 0) {
 const termToEnrich = enrichQueueRef.current[0];
 let shouldDelay = false;
+let shouldShift = true; // [V1.13] Cờ quyết định vứt bỏ từ vựng
+let customDelayMs = 0;  // [V1.13] Thời gian ngủ đông đặc biệt
 try {
 // Tái sử dụng hàm handleAiEnrichCard với tham số silent=true để xử lý ngầm
 // Nhận cờ boolean để biết API có thực sự bị gọi hay không
@@ -23743,6 +23782,12 @@ const apiHit = await handleAiEnrichCard({ term: termToEnrich }, true);
 shouldDelay = apiHit;
 consecutiveFailures = 0; // Reset bộ đếm nếu chạy êm ái
 } catch (e) {
+// [V1.13] Xử lý lỗi Cầu dao Toàn cục (Global Pause)
+if (e.message && e.message.includes('GLOBAL_PAUSE')) {
+shouldShift = false; // Ôm chặt từ vựng, không vứt đi
+customDelayMs = 15500; // Ngủ đông 15.5 giây chờ Cầu dao mở lại
+console.warn(`[Enrich Queue] Tạm nghỉ 15s để né bão 429... Giữ lại từ vựng: ${termToEnrich}`);
+} else {
 shouldDelay = true; // Nếu lỗi xảy ra tức là API đã bị hit và bị từ chối
 console.warn(`Background enrich error for ${termToEnrich}:`, e);
 consecutiveFailures++;
@@ -23753,14 +23798,16 @@ callbacks.showToast("Máy chủ AI quá tải. Tiến trình Làm giàu thẻ t�
 enrichQueueRef.current = []; // Hủy toàn bộ hàng đợi
 break; // Thoát vòng lặp
 }
+}
 } finally {
-// [BẢN VÁ 1.08] LUÔN LUÔN thực thi shift để tránh kẹt
-if (enrichQueueRef.current.length > 0) {
+// [V1.13] LUÔN LUÔN thực thi shift CHỈ KHI Cờ shouldShift cho phép
+if (shouldShift && enrichQueueRef.current.length > 0) {
 enrichQueueRef.current.shift();
 }
-// [BẢN VÁ 1.08] Khóa cứng luồng 5s MIỄN LÀ API ĐÃ ĐƯỢC GỌI, KHÔNG QUAN TÂM HÀNG ĐỢI CÒN HAY KHÔNG
-// Việc này giam giữ isProcessingEnrichQueue.current = true, chặn đứng mọi nỗ lực sinh thêm request từ useEffect
-if (shouldDelay) {
+// [V1.13] Khóa cứng luồng bằng customDelay (15.5s) HOẶC delay thường (5s)
+if (customDelayMs > 0) {
+await new Promise(r => setTimeout(r, customDelayMs));
+} else if (shouldDelay) {
 await new Promise(r => setTimeout(r, 5000));
 }
 }
@@ -23797,7 +23844,7 @@ processEnrichQueue();
 } else {
 // Dọn dẹp hàng đợi nếu tắt tính năng hoặc thoát màn hình
 enrichQueueRef.current = [];
-// [HOTFIX V1.05] Kích hoạt Kill Switch: Chém đứt mọi tiến trình đang bay trên mạng
+// Kích hoạt Kill Switch: Chém đứt mọi tiến trình đang bay trên mạng
 if (window.__currentGameAbortController) {
 window.__currentGameAbortController.abort("User toggled off AI");
 // Khởi tạo lại Controller mới ngay lập tức để không cản trở các lệnh gọi thủ công tiếp theo
