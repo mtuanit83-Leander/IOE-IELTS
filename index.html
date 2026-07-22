@@ -613,13 +613,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.23
-// Last Updated: 2026-07-21 23:55
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.24
+// Last Updated: 2026-07-22 10:45
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.24: [STRICT FIELD CONSTRAINTS] Bổ sung Bộ luật Định dạng Trường (Field Definitions) cực kỳ nghiêm ngặt để trị dứt điểm bệnh AI chép lại câu gốc vào trường example và lải nhải văn bản vào trường grammar_type. Sử dụng dấu phân cách | cho câu ví dụ.
 // Cập nhật V2.23: [GRAMMAR FOCUS PROMPT] Ép AI đóng vai giáo viên ngôn ngữ trong nhánh Trimming. Bắt buộc mổ xẻ cấu trúc ngữ pháp (Thì, từ loại, giới từ...), cấm tuyệt đối việc giải thích ngữ cảnh chung chung.
 // Cập nhật V2.22: [DIRECTIONAL PROMPT] Nâng cấp Prompt nhánh Trimming thành dạng Định hướng (Directional). Khóa chặt ngôn ngữ trả về là Tiếng Việt và ép buộc độ dài cực kỳ ngắn gọn (2-3 câu) để tối ưu giao diện thẻ.
-// Cập nhật V2.21: [PROMPT CLASH RESOLUTION] Xóa sổ hiện tượng mâu thuẫn nhận thức. Tự động vô hiệu hóa `systemInstruction` gốc (chứa các lệnh ép buộc 10 trường) nếu hệ thống đang chạy ở chế độ Cắt Tỉa (Trimming), giúp AI phản hồi tức thì khi chỉ cần 1 trường analysis.
-// Cập nhật V2.20: [DYNAMIC SCHEMA TRIMMING] Ép hàm fillCardWithAi phải Cắt tỉa (Trim) JSON Schema dựa trên tham số targetFields.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -727,7 +726,7 @@ if (waitMs < shortestWaitMs) {
 shortestWaitMs = waitMs;
 }
 }
-// Ném lỗi ngay lập tức nếu kho đạn đang bị khóa phạt (Không dùng setTimeout ngâm luồng)
+// Ném lỗi ngay lập tức nếu kho đạn đang bị khóa phạt
 if (!targetKey) {
 throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/1000)}s.`);
 }
@@ -792,7 +791,7 @@ console.error(`%c[Round-Robin FATAL] Key ...${targetKey.slice(-5)} bị từ ch�
 } else {
 window.__apiCooldowns[targetKey] = Date.now() + 5000;
 }
-throw e; // Lõi mạng ném thẳng lỗi ra ngoài, từ chối thử lại ngầm
+throw e;
 }
 });
 };
@@ -844,11 +843,11 @@ isTrimming = true;
 const mappedTargetFields = targetFields.map(f => f === 'image' ? 'image_keyword' : f);
 // Chỉ giữ lại những trường nằm trong danh sách yêu cầu
 requiredFields = requiredFields.filter(f => mappedTargetFields.includes(f));
-// Fallback an toàn: Nếu mảng rỗng (Ví dụ request toàn trường không có trong Schema gốc), ép giữ lại 'term' để tránh API crash
+// Fallback an toàn
 if (requiredFields.length === 0) {
 requiredFields = ['term'];
 }
-// Cắt bỏ các property thừa trong propertiesToFetch
+// Cắt bỏ các property thừa
 const trimmedProperties = {};
 requiredFields.forEach(f => {
 if (propertiesToFetch[f]) {
@@ -861,7 +860,7 @@ const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
 basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
 let dynamicInstruction = lang === 'zh' ? " Đối với pronunciation: xuất Pinyin. Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : " Đối với pronunciation: xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
-// ĐIỀU HƯỚNG PROMPT TỐI ƯU
+// ĐIỀU HƯỚNG PROMPT TỐI ƯU (Cơ bản)
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ gốc: ${lang}).\n`;
@@ -874,6 +873,17 @@ userQuery += `${topicRestriction}${dynamicInstruction}`;
 } else {
 userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}${dynamicInstruction}`;
 }
+// [BẢN VÁ V2.24] BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
+// Ép buộc cho cả 2 chế độ Full và Trimming để chống AI "ảo giác"
+let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
+if (requiredFields.includes('example') && isSentence) {
+fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác một câu hoàn toàn mới sử dụng CẤU TRÚC NGỮ PHÁP TƯƠNG TỰ câu gốc, kèm theo bản dịch tiếng Việt phân cách bằng dấu | (Ví dụ: They are playing | Họ đang chơi).\n`;
+}
+if (requiredFields.includes('grammar_type')) {
+fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải thích dài dòng. BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) ngắn gọn phân tách bằng dấu phẩy (Ví dụ: eng_past_simple, pre_a1_article_an...).\n`;
+}
+// Nối luật thép vào Prompt cuối cùng
+userQuery += fieldRules;
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
 generationConfig: {
@@ -888,7 +898,6 @@ temperature: Math.random() * (1.1 - 0.7) + 0.7
 };
 // [BẢN VÁ V2.21] DỌN DẸP XUNG ĐỘT CHỈ THỊ (PROMPT CLASH)
 // Chỉ nhồi systemInstruction gốc nếu ĐANG phân tích toàn diện.
-// Nếu đang Trimming (Ví dụ chỉ cần 1 trường analysis), gỡ bỏ hoàn toàn gánh nặng này để AI khỏi bị mâu thuẫn.
 if (!isTrimming) {
 payload.systemInstruction = { parts: [{ text: basePrompt }] };
 }
