@@ -613,13 +613,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.27
-// Last Updated: 2026-07-22 15:00
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.28
+// Last Updated: 2026-07-22 16:01
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.28: [TRUE ROUND-ROBIN] Loại bỏ hiệu ứng cuộn ngược mảng (Zero-Index Bias). Áp dụng Con trỏ Luân lưu (Modulo Loop) trải đều tải trọng lên 100% Key Pool.
 // Cập nhật V2.27: [DOMINO DEATH PREVENTION] Cấy Cầu dao Toàn cục (Global Pause 15s) chống bộ lọc IP Google. Thời gian phạt 429 nay là biến động, đọc từ fc_ai_config.
 // Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'. Ghi nhận thời gian bắt đầu. Radar tự động ban phát án phạt.
-// Cập nhật V2.25: [WHITELIST INJECTION] Cấy trực tiếp danh sách mã ngữ pháp hợp lệ từ IoeEnumRegistry vào fieldRules.
-// Cập nhật V2.24: [STRICT FIELD CONSTRAINTS] Bổ sung Bộ luật Định dạng Trường (Field Definitions) cực kỳ nghiêm ngặt.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -744,11 +743,9 @@ if (window.Utils.isGlobalPaused()) {
 throw new Error("[GLOBAL_PAUSE] Mạng đang tạm nghỉ 15s để chống bộ lọc IP Spam.");
 }
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-let currentKey = apiKeyOverride || localStorage.getItem(window.STORAGE_KEYS.API_KEY);
-if (currentKey && !keyPool.includes(currentKey)) {
-keyPool.unshift(currentKey);
-} else if (currentKey) {
-keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)];
+// [V2.28] Nếu có Key chèn ngoài, đẩy tạm vào Pool mà không xáo trộn thứ tự
+if (apiKeyOverride && !keyPool.includes(apiKeyOverride)) {
+keyPool.push(apiKeyOverride);
 }
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Vui lòng cấu hình trong Settings)");
 let dynamicTimeoutMs = 20000;
@@ -760,12 +757,18 @@ dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 } catch(e) {}
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY RẢNH RỖI TỪ Ổ CỨNG ---
+// --- [V2.28] CON TRỎ LUÂN LƯU (POINTER-BASED ROUND ROBIN) ---
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
 let shortestWaitMs = Infinity;
-for (const rawK of keyPool) {
+let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
+const poolSize = keyPool.length;
+let selectedIndex = -1;
+// Quét vòng tròn (Modulo Loop) để chia đều tải trọng
+for (let i = 0; i < poolSize; i++) {
+const checkIndex = (pointer + i) % poolSize;
+const rawK = keyPool[checkIndex];
 if (!rawK || rawK.length < 10) continue;
 const cleanK = rawK.replace(/["'\s]/g, "");
 const cdData = activeCooldowns[cleanK];
@@ -773,7 +776,8 @@ const cooldownUntil = cdData ? cdData.expireAt : 0;
 const waitMs = cooldownUntil - Date.now();
 if (waitMs <= 0) {
 targetKey = cleanK;
-break;
+selectedIndex = checkIndex;
+break; // Tìm thấy Key rảnh rỗi là thoát vòng lặp ngay
 }
 if (waitMs < shortestWaitMs) {
 shortestWaitMs = waitMs;
@@ -783,6 +787,8 @@ shortestWaitMs = waitMs;
 if (!targetKey) {
 throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
+// [V2.28] Cập nhật con trỏ tiến lên 1 bước, chuẩn bị cho lượt bắn tiếp theo
+localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
 // --- THỰC THI BẮN API (1 LẦN DUY NHẤT) ---
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
@@ -822,8 +828,9 @@ if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả v�
 const resultText = d.candidates[0].content.parts[0].text;
 const tokenMetadata = d.usageMetadata || null;
 if (keyPool.length > 1) {
-window.Utils.setKeyCooldown(targetKey, 5000); // 5s giãn cách giữa các lượt bắn
+window.Utils.setKeyCooldown(targetKey, 5000); // 5s giãn cách giữa các lượt bắn để tránh dồn Request
 }
+// Vẫn lưu Key hiện tại để UI nhận diện, nhưng không dùng nó để xáo trộn mảng nữa
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 }
@@ -862,11 +869,9 @@ if (window.Utils.isGlobalPaused()) {
 throw new Error("[GLOBAL_PAUSE] Mạng đang tạm nghỉ 15s để chống bộ lọc IP Spam.");
 }
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-let currentKey = apiKey;
-if (currentKey && !keyPool.includes(currentKey)) {
-keyPool.unshift(currentKey);
-} else if (currentKey) {
-keyPool = [currentKey, ...keyPool.filter(k => k !== currentKey)];
+// [V2.28] Truyền apiKey vào nhưng không xáo trộn
+if (apiKey && !keyPool.includes(apiKey)) {
+keyPool.push(apiKey);
 }
 if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Thiếu Key Pool)");
 const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
@@ -972,12 +977,18 @@ payload.systemInstruction = { parts: [{ text: basePrompt }] };
 }
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY RẢNH RỖI ---
+// --- [V2.28] CON TRỎ LUÂN LƯU (POINTER-BASED ROUND ROBIN) ---
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
 let shortestWaitMs = Infinity;
-for (const rawK of keyPool) {
+let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
+const poolSize = keyPool.length;
+let selectedIndex = -1;
+// Quét vòng tròn (Modulo Loop)
+for (let i = 0; i < poolSize; i++) {
+const checkIndex = (pointer + i) % poolSize;
+const rawK = keyPool[checkIndex];
 if (!rawK || rawK.length < 10) continue;
 const cleanK = rawK.replace(/["'\s]/g, "");
 const cdData = activeCooldowns[cleanK];
@@ -985,6 +996,7 @@ const cooldownUntil = cdData ? cdData.expireAt : 0;
 const waitMs = cooldownUntil - Date.now();
 if (waitMs <= 0) {
 targetKey = cleanK;
+selectedIndex = checkIndex;
 break;
 }
 if (waitMs < shortestWaitMs) {
@@ -994,6 +1006,8 @@ shortestWaitMs = waitMs;
 if (!targetKey) {
 throw new Error(`[API_COOLDOWN] SmartFill: Toàn bộ kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
+// [V2.28] Cập nhật con trỏ
+localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
 // --- THỰC THI BẮN API ---
 try {
 const controller = new AbortController();
