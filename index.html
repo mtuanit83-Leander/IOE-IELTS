@@ -613,9 +613,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.31
-// Last Updated: 2026-07-23 13:45
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.32
+// Last Updated: 2026-07-23 15:06
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.32: [DATA INTEGRITY] Tuyệt đối hóa Object trả về. Tránh ghi đè link ảnh hợp lệ bằng link rỗng khi merge ở Tầng 6.
 // Cập nhật V2.31: [CLOUDFLARE PROXY] Chuyển hướng 100% lưu lượng API qua Trạm trung chuyển (gemini-proxy.mtuanit83.workers.dev) để ẩn IP thực, vượt mặt bức tường lửa WAF của Google.
 // Cập nhật V2.30: [NETWORK LEVEL INTERCEPT] Bắt sóng HTTP Status 429/503 trước khi ép kiểu JSON.
 // Cập nhật V2.29: [PRONUNCIATION STRICT MODE] Ép buộc AI phải phiên âm toàn bộ câu văn.
@@ -1073,13 +1074,22 @@ const parsed = JSON.parse(cleanText);
 if (lang === 'zh' && parsed.sinoViet) {
 parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
 }
-let imgUrl = "";
+const finalResult = { ...parsed, term: term };
+// [CẬP NHẬT V2.32] Tuyệt đối hóa Object trả về - Bảo vệ dữ liệu ảnh
 if (parsed.image_keyword) {
-imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
+finalResult.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
+} else {
+// Chỉ khởi tạo key 'image' rỗng NẾU Tầng 6 thực sự yêu cầu lấy ảnh
+const isImageRequested = !isTrimming || (targetFields && targetFields.includes('image'));
+if (isImageRequested) {
+finalResult.image = "";
 }
-const meta = data.usageMetadata ? { _tokenUsage: data.usageMetadata } : {};
+}
+if (data.usageMetadata) {
+finalResult._tokenUsage = data.usageMetadata;
+}
 await new Promise(r => setTimeout(r, 3000));
-return { ...parsed, term: term, image: imgUrl, ...meta };
+return finalResult;
 } catch (e) {
 // --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
