@@ -613,15 +613,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.31
-// Last Updated: 2026-07-23 13:45
-// Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.31: [CLOUDFLARE PROXY] Chuyển hướng 100% lưu lượng API qua Trạm trung chuyển (gemini-proxy.mtuanit83.workers.dev) để ẩn IP thực, vượt mặt bức tường lửa WAF của Google.
-// Cập nhật V2.30: [NETWORK LEVEL INTERCEPT] Bắt sóng HTTP Status 429/503 trước khi ép kiểu JSON.
-// Cập nhật V2.29: [PRONUNCIATION STRICT MODE] Ép buộc AI phải phiên âm toàn bộ câu văn.
-// Cập nhật V2.28: [TRUE ROUND-ROBIN] Áp dụng Con trỏ Luân lưu (Modulo Loop) trải đều tải trọng lên 100% Key Pool.
-// Cập nhật V2.27: [DOMINO DEATH PREVENTION] Cấy Cầu dao Toàn cục (Global Pause 15s) chống bộ lọc IP Google.
-// Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'.
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.34
+// Last Updated: 2026-07-23 16:00
+// Nhiệm vụ: Giao tiếp HTTP, tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.34: [DIRECT CONNECTION] Gỡ bỏ hoàn toàn Cloudflare Proxy. Trở về kết nối trực tiếp Google API do dính lỗi Geo-blocking (400 Failed Precondition).
+// Cập nhật V2.33: [TRANSPARENT ERROR] Cho phép HTTP 400 và 403 đi qua chốt chặn Network để parse JSON, giúp UI đọc được chính xác thông báo lỗi từ Google thay vì bị mù thông tin.
+// Cập nhật V2.32: [DATA INTEGRITY] Tuyệt đối hóa Object trả về. Tránh ghi đè link ảnh hợp lệ bằng link rỗng khi merge ở Tầng 6.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -642,7 +639,7 @@ releaseLock(); // Mở khóa cho luồng tiếp theo
 }
 };
 // ============================================================================
-// 0.B HỆ THỐNG QUẢN LÝ ÁN PHẠT API & CẦU DAO TOÀN CỤC (V2.27)
+// 0.B HỆ THỐNG QUẢN LÝ ÁN PHẠT API & CẦU DAO TOÀN CỤC
 // ============================================================================
 window.Utils.getPersistentCooldowns = () => {
 return window.Utils.safeJsonParse('fc_api_cooldowns', {});
@@ -667,7 +664,6 @@ changed = true;
 if (changed) localStorage.setItem('fc_api_cooldowns', JSON.stringify(cooldowns));
 return cooldowns;
 };
-// [CẬP NHẬT V2.27] Cầu dao Toàn cục chống hiệu ứng Domino
 window.Utils.isGlobalPaused = () => {
 const pauseUntil = parseInt(localStorage.getItem('fc_global_api_pause') || '0', 10);
 return Date.now() < pauseUntil;
@@ -675,13 +671,12 @@ return Date.now() < pauseUntil;
 window.Utils.triggerGlobalPause = (durationMs = 15000) => {
 localStorage.setItem('fc_global_api_pause', Date.now() + durationMs);
 };
-// Lấy thời gian phạt 429 từ Cấu hình động
 window.Utils.getCooldown429Ms = () => {
 const config = window.Utils.safeJsonParse('fc_ai_config', {});
 return (config.cooldown429 || 120) * 60 * 1000;
 };
 // ============================================================================
-// 1. TẢI DỮ LIỆU TỪ GOOGLE SHEETS QUA PROXY
+// 1. TẢI DỮ LIỆU TỪ GOOGLE SHEETS BẰNG MẢNG PROXY THÔNG MINH
 // ============================================================================
 window.Utils.fetchWithFallback = async (url) => {
 if (!url) throw new Error("Đường dẫn URL trống");
@@ -709,7 +704,7 @@ console.warn(`[Proxy Fallback] ${s.name} thất bại, thử node tiếp theo...
 throw new Error("Lỗi tải dữ liệu mạng (Tất cả Proxy đều bị chặn)");
 };
 // ============================================================================
-// 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING - V2.27)
+// 2. THĂM DÒ XUNG KÍCH (HEURISTIC PROBING - RADAR)
 // ============================================================================
 window.Utils.pingGeminiKey = async (apiKey) => {
 try {
@@ -717,19 +712,19 @@ const k = apiKey.replace(/["'\s]/g, "");
 const body = { contents: [{ parts: [{ text: "Hãy trả lời 'OK'" }] }] };
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 10000);
-// [CẬP NHẬT V2.31] Chuyển hướng qua Cloudflare Proxy
-const res = await fetch(`https://gemini-proxy.mtuanit83.workers.dev/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+// [V2.34] Gỡ Cloudflare Proxy, Trở về Direct Connection
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
 signal: controller.signal
 });
 clearTimeout(timeoutId);
-// [CẬP NHẬT V2.27] Radar trực tiếp ban phát án phạt và sập Cầu dao
+// Radar trực tiếp ban phát án phạt và sập Cầu dao
 if (res.status === 429) {
 window.Utils.setKeyCooldown(k, window.Utils.getCooldown429Ms());
 window.Utils.triggerGlobalPause(15000); // Trốn soi IP 15s
-} else if (res.status === 403 || res.status === 400) {
+} else if (res.status === 403) {
 window.Utils.setKeyCooldown(k, 24 * 60 * 60 * 1000); // Khóa 24h
 }
 return { status: res.status, ok: res.ok };
@@ -742,12 +737,11 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
 return window.Utils.withApiLock(async () => {
-// [CẬP NHẬT V2.27] CHỐT CHẶN DOMINO: Kiểm tra Cầu dao Toàn cục
+// CHỐT CHẶN DOMINO: Kiểm tra Cầu dao Toàn cục
 if (window.Utils.isGlobalPaused()) {
 throw new Error("[GLOBAL_PAUSE] Mạng đang tạm nghỉ 15s để chống bộ lọc IP Spam.");
 }
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-// [V2.28] Nếu có Key chèn ngoài, đẩy tạm vào Pool mà không xáo trộn thứ tự
 if (apiKeyOverride && !keyPool.includes(apiKeyOverride)) {
 keyPool.push(apiKeyOverride);
 }
@@ -761,7 +755,7 @@ dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 } catch(e) {}
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- [V2.28] CON TRỎ LUÂN LƯU (POINTER-BASED ROUND ROBIN) ---
+// --- CON TRỎ LUÂN LƯU (POINTER-BASED ROUND ROBIN) ---
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
@@ -769,7 +763,6 @@ let shortestWaitMs = Infinity;
 let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
 const poolSize = keyPool.length;
 let selectedIndex = -1;
-// Quét vòng tròn (Modulo Loop) để chia đều tải trọng
 for (let i = 0; i < poolSize; i++) {
 const checkIndex = (pointer + i) % poolSize;
 const rawK = keyPool[checkIndex];
@@ -781,19 +774,18 @@ const waitMs = cooldownUntil - Date.now();
 if (waitMs <= 0) {
 targetKey = cleanK;
 selectedIndex = checkIndex;
-break; // Tìm thấy Key rảnh rỗi là thoát vòng lặp ngay
+break;
 }
 if (waitMs < shortestWaitMs) {
 shortestWaitMs = waitMs;
 }
 }
-// Ném lỗi ngay lập tức nếu kho đạn đang bị khóa phạt
 if (!targetKey) {
 throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
-// [V2.28] Cập nhật con trỏ tiến lên 1 bước, chuẩn bị cho lượt bắn tiếp theo
+// Cập nhật con trỏ tiến lên 1 bước
 localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
-// --- THỰC THI BẮN API (1 LẦN DUY NHẤT) ---
+// --- THỰC THI BẮN API ---
 try {
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
@@ -805,8 +797,8 @@ body.generationConfig.responseSchema = schema;
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-// [CẬP NHẬT V2.31] Chuyển hướng qua Cloudflare Proxy
-const fetchPromise = fetch(`https://gemini-proxy.mtuanit83.workers.dev/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+// [V2.34] Gỡ Cloudflare Proxy, Trở về Direct Connection
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
@@ -821,12 +813,12 @@ reject(new Error(`Hết thời gian chờ API (${Math.round(dynamicTimeoutMs/100
 }, dynamicTimeoutMs);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
-// --- [CẬP NHẬT V2.30] BẮT STATUS CODE TẠI NETWORK LEVEL ---
-// Chặn đứng lỗi 429/503 (thường là HTML từ Load Balancer) trước khi lệnh res.json() làm văng SyntaxError
+// --- [V2.34] BẮT LỖI TẠI NETWORK LEVEL NHƯNG BẢO TOÀN LỖI JSON ---
+// Chặn 429 và 503 vì chúng trả về HTML rác từ Load Balancer
 if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
 if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
-if (res.status === 403 || res.status === 400) throw new Error(`${res.status}: Lỗi xác thực Key hoặc Bad Request`);
-if (!res.ok && res.status !== 200) {
+// Cho phép 400 và 403 đi qua để parse JSON
+if (!res.ok && res.status !== 200 && res.status !== 400 && res.status !== 403) {
 const contentType = res.headers.get("content-type");
 if (contentType && contentType.indexOf("application/json") === -1) {
 throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)`);
@@ -836,7 +828,8 @@ const d = await res.json();
 if (d.error) {
 if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || (d.error.message && d.error.message.includes('quota'))) throw new Error(`429: ${d.error.message}`);
 if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) throw new Error(`503: ${d.error.message}`);
-if (d.error.code === 403 || d.error.code === 400 || (d.error.message && (d.error.message.includes('API key') || d.error.message.includes('unregistered')))) throw new Error(`403: ${d.error.message}`);
+if (d.error.code === 403 || d.error.message.includes('API key') || d.error.message.includes('unregistered')) throw new Error(`403: ${d.error.message}`);
+if (d.error.code === 400) throw new Error(`400: ${d.error.message}`);
 throw new Error(d.error.message);
 }
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
@@ -844,30 +837,29 @@ if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả v�
 const resultText = d.candidates[0].content.parts[0].text;
 const tokenMetadata = d.usageMetadata || null;
 if (keyPool.length > 1) {
-window.Utils.setKeyCooldown(targetKey, 5000); // 5s giãn cách giữa các lượt bắn để tránh dồn Request
+window.Utils.setKeyCooldown(targetKey, 5000); // 5s giãn cách
 }
-// Vẫn lưu Key hiện tại để UI nhận diện, nhưng không dùng nó để xáo trộn mảng nữa
 if (targetKey !== localStorage.getItem(window.STORAGE_KEYS.API_KEY)) {
 localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 }
 await new Promise(r => setTimeout(r, 3000));
 return { text: resultText, tokenMetadata };
 } catch (e) {
-// --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
 if (e.message && e.message.includes('GLOBAL_PAUSE')) throw e;
 if (e.message && e.message.includes('429')) {
-// [CẬP NHẬT V2.27] Phạt Key và Cúp Cầu dao Toàn cục
 window.Utils.setKeyCooldown(targetKey, window.Utils.getCooldown429Ms());
-window.Utils.triggerGlobalPause(15000); // Trốn IP 15s
+window.Utils.triggerGlobalPause(15000);
 console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Sập cầu dao 15s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('503')) {
-window.Utils.setKeyCooldown(targetKey, 20000); // Đóng băng 20s
+window.Utils.setKeyCooldown(targetKey, 20000);
 window.Utils.triggerGlobalPause(10000);
 console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Sập cầu dao 10s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
 } else if (e.message && e.message.includes('403')) {
-window.Utils.setKeyCooldown(targetKey, 86400000); // Đóng băng 24h
+window.Utils.setKeyCooldown(targetKey, 86400000);
 console.error(`%c[Round-Robin FATAL] Key ...${targetKey.slice(-5)} bị từ chối (403). Đóng băng 24h.`, "color: #dc2626; font-weight: bold; font-size: 11px;");
+} else if (e.message && e.message.includes('400')) {
+window.Utils.setKeyCooldown(targetKey, 5000); // Bad request thường là lỗi ngữ pháp, không phải spam
 } else {
 window.Utils.setKeyCooldown(targetKey, 5000);
 }
@@ -876,16 +868,14 @@ throw e;
 });
 };
 // ============================================================================
-// 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (ROUND-ROBIN DYNAMIC POOL - FAIL FAST)
+// 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab') => {
 return window.Utils.withApiLock(async () => {
-// [CẬP NHẬT V2.27] CHỐT CHẶN DOMINO: Kiểm tra Cầu dao Toàn cục
 if (window.Utils.isGlobalPaused()) {
 throw new Error("[GLOBAL_PAUSE] Mạng đang tạm nghỉ 15s để chống bộ lọc IP Spam.");
 }
 let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-// [V2.28] Truyền apiKey vào nhưng không xáo trộn
 if (apiKey && !keyPool.includes(apiKey)) {
 keyPool.push(apiKey);
 }
@@ -916,7 +906,6 @@ if (!isSentence) {
 delete propertiesToFetch.grammar_type;
 requiredFields = requiredFields.filter(f => f !== 'grammar_type');
 }
-// BỘ LỌC CẮT TỈA LƯỢC ĐỒ (DYNAMIC SCHEMA TRIMMING)
 let isTrimming = false;
 if (targetFields && Array.isArray(targetFields) && targetFields.length > 0) {
 isTrimming = true;
@@ -949,7 +938,6 @@ userQuery += `${topicRestriction}${dynamicInstruction}`;
 } else {
 userQuery = `Hãy phân tích toàn diện ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}). Bắt buộc xuất đầy đủ JSON Schema đã định nghĩa.${topicRestriction}${dynamicInstruction}`;
 }
-// TIÊM DANH SÁCH TRẮNG NGỮ PHÁP (GRAMMAR WHITELIST INJECTION)
 let validTagsStr = "";
 if (window.IoeEnumRegistry && window.IoeEnumRegistry.LEVEL_TO_TRAPS) {
 let tagsArr = [];
@@ -967,9 +955,7 @@ validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 } else {
 validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 }
-// BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
 let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
-// [V2.29] Ép buộc phiên âm toàn bộ câu văn
 if (requiredFields.includes('pronunciation') && isSentence) {
 fieldRules += `- Với trường 'pronunciation': BẮT BUỘC phải phiên âm (IPA/Pinyin) cho TOÀN BỘ CÂU VĂN. TUYỆT ĐỐI KHÔNG chỉ phiên âm một từ đơn lẻ.\n`;
 }
@@ -997,7 +983,7 @@ payload.systemInstruction = { parts: [{ text: basePrompt }] };
 }
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- [V2.28] CON TRỎ LUÂN LƯU (POINTER-BASED ROUND ROBIN) ---
+// --- CON TRỎ LUÂN LƯU ---
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
 let targetKey = null;
@@ -1005,7 +991,6 @@ let shortestWaitMs = Infinity;
 let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
 const poolSize = keyPool.length;
 let selectedIndex = -1;
-// Quét vòng tròn (Modulo Loop)
 for (let i = 0; i < poolSize; i++) {
 const checkIndex = (pointer + i) % poolSize;
 const rawK = keyPool[checkIndex];
@@ -1026,15 +1011,14 @@ shortestWaitMs = waitMs;
 if (!targetKey) {
 throw new Error(`[API_COOLDOWN] SmartFill: Toàn bộ kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
-// [V2.28] Cập nhật con trỏ
 localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
 // --- THỰC THI BẮN API ---
 try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-// [CẬP NHẬT V2.31] Chuyển hướng qua Cloudflare Proxy
-const res = await fetch(`https://gemini-proxy.mtuanit83.workers.dev/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+// [V2.34] Gỡ Cloudflare Proxy, Trở về Direct Connection
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload),
@@ -1042,12 +1026,10 @@ signal: controller.signal
 }).finally(() => {
 if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
-// --- [CẬP NHẬT V2.30] BẮT STATUS CODE TẠI NETWORK LEVEL ---
-// Chặn đứng lỗi 429/503 (HTML từ Load Balancer) trước khi lệnh res.json() làm văng SyntaxError
+// [V2.34] Lọc Network tương tự hàm callGeminiApi
 if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
 if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
-if (res.status === 403 || res.status === 400) throw new Error(`${res.status}: Lỗi xác thực Key hoặc Bad Request`);
-if (!res.ok && res.status !== 200) {
+if (!res.ok && res.status !== 200 && res.status !== 400 && res.status !== 403) {
 const contentType = res.headers.get("content-type");
 if (contentType && contentType.indexOf("application/json") === -1) {
 throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)`);
@@ -1057,7 +1039,8 @@ const data = await res.json();
 if (data.error) {
 if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || (data.error.message && data.error.message.includes('quota'))) throw new Error(`429: ${data.error.message}`);
 if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) throw new Error(`503: ${data.error.message}`);
-if (data.error.code === 403 || data.error.code === 400 || (data.error.message && (data.error.message.includes('API key') || data.error.message.includes('unregistered')))) throw new Error(`403: ${data.error.message}`);
+if (data.error.code === 403 || data.error.message.includes('API key') || data.error.message.includes('unregistered')) throw new Error(`403: ${data.error.message}`);
+if (data.error.code === 400) throw new Error(`400: ${data.error.message}`);
 throw new Error(data.error.message);
 }
 if (keyPool.length > 1) {
@@ -1073,15 +1056,23 @@ const parsed = JSON.parse(cleanText);
 if (lang === 'zh' && parsed.sinoViet) {
 parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
 }
-let imgUrl = "";
+const finalResult = { ...parsed, term: term };
+// [V2.32 DATA INTEGRITY]: Tuyệt đối hóa Object trả về - Bảo vệ dữ liệu ảnh
 if (parsed.image_keyword) {
-imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
+finalResult.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
+} else {
+// Chỉ khởi tạo key 'image' rỗng NẾU Tầng 6 thực sự yêu cầu lấy ảnh
+const isImageRequested = !isTrimming || (targetFields && targetFields.includes('image'));
+if (isImageRequested) {
+finalResult.image = "";
 }
-const meta = data.usageMetadata ? { _tokenUsage: data.usageMetadata } : {};
+}
+if (data.usageMetadata) {
+finalResult._tokenUsage = data.usageMetadata;
+}
 await new Promise(r => setTimeout(r, 3000));
-return { ...parsed, term: term, image: imgUrl, ...meta };
+return finalResult;
 } catch (e) {
-// --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
 if (e.message && e.message.includes('GLOBAL_PAUSE')) throw e;
 if (e.message && e.message.includes('429')) {
@@ -1092,6 +1083,8 @@ window.Utils.setKeyCooldown(targetKey, 20000);
 window.Utils.triggerGlobalPause(10000);
 } else if (e.message && e.message.includes('403')) {
 window.Utils.setKeyCooldown(targetKey, 86400000); // 24h
+} else if (e.message && e.message.includes('400')) {
+window.Utils.setKeyCooldown(targetKey, 5000);
 } else {
 window.Utils.setKeyCooldown(targetKey, 5000);
 }
