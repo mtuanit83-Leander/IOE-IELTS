@@ -613,12 +613,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.34
-// Last Updated: 2026-07-23 16:00
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.35
+// Last Updated: 2026-07-23 16:30
 // Nhiệm vụ: Giao tiếp HTTP, tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.35: [ANTI-OVERWRITE SHIELD] Lắp đặt màng lọc vô trùng quét toàn bộ Object JSON AI trả về. Chủ động tiêu diệt mọi key có giá trị chuỗi rỗng ("") hoặc null để ngăn AI tạo ảo giác ghi đè xóa sổ dữ liệu hợp lệ (như link ảnh) ở Tầng 6.
 // Cập nhật V2.34: [DIRECT CONNECTION] Gỡ bỏ hoàn toàn Cloudflare Proxy. Trở về kết nối trực tiếp Google API do dính lỗi Geo-blocking (400 Failed Precondition).
 // Cập nhật V2.33: [TRANSPARENT ERROR] Cho phép HTTP 400 và 403 đi qua chốt chặn Network để parse JSON, giúp UI đọc được chính xác thông báo lỗi từ Google thay vì bị mù thông tin.
-// Cập nhật V2.32: [DATA INTEGRITY] Tuyệt đối hóa Object trả về. Tránh ghi đè link ảnh hợp lệ bằng link rỗng khi merge ở Tầng 6.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -968,6 +968,7 @@ fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải th
 userQuery += fieldRules;
 const payload = {
 contents: [{ parts: [{ text: userQuery }] }],
+systemInstruction: { parts: [{ text: "BẮT BUỘC TRẢ VỀ JSON HỢP LỆ THEO SCHEMA. Không bình luận." }] },
 generationConfig: {
 responseMimeType: "application/json",
 responseSchema: {
@@ -1057,15 +1058,21 @@ if (lang === 'zh' && parsed.sinoViet) {
 parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
 }
 const finalResult = { ...parsed, term: term };
-// [V2.32 DATA INTEGRITY]: Tuyệt đối hóa Object trả về - Bảo vệ dữ liệu ảnh
-if (parsed.image_keyword) {
-finalResult.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
-} else {
-// Chỉ khởi tạo key 'image' rỗng NẾU Tầng 6 thực sự yêu cầu lấy ảnh
-const isImageRequested = !isTrimming || (targetFields && targetFields.includes('image'));
-if (isImageRequested) {
-finalResult.image = "";
+// ====================================================================
+// [V2.35] MÀNG LỌC VÔ TRÙNG (ANTI-OVERWRITE SHIELD)
+// ====================================================================
+// 1. Quét toàn bộ Object, xóa sổ ngay lập tức các giá trị rỗng ("") hoặc null
+// Ngăn chặn việc AI ghi đè xóa sạch dữ liệu hợp lệ ở Tầng 6
+for (const key in finalResult) {
+if (finalResult[key] === "" || finalResult[key] === null) {
+delete finalResult[key];
 }
+}
+// 2. Mặc định AI không được phép can thiệp vào 'image'. Xóa key image (nếu AI lanh chanh tự tạo)
+delete finalResult.image;
+// 3. Chỉ chủ động tạo link ảnh NẾU AI trả về keyword hợp lệ
+if (finalResult.image_keyword && finalResult.image_keyword.trim() !== "") {
+finalResult.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(finalResult.image_keyword.trim())}&w=300&h=300&c=7&rs=1&p=0`;
 }
 if (data.usageMetadata) {
 finalResult._tokenUsage = data.usageMetadata;
