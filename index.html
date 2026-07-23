@@ -613,11 +613,9 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.33
-// Last Updated: 2026-07-23 15:25
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.31
+// Last Updated: 2026-07-23 13:45
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.33: [TRANSPARENT ERROR] Mở khóa JSON cho mã lỗi 400/403 tại chốt chặn Network. Bổ sung role: "system" vào systemInstruction để tuân thủ Schema khắt khe của Gemini API.
-// Cập nhật V2.32: [DATA INTEGRITY] Tuyệt đối hóa Object trả về. Tránh ghi đè link ảnh hợp lệ bằng link rỗng khi merge ở Tầng 6.
 // Cập nhật V2.31: [CLOUDFLARE PROXY] Chuyển hướng 100% lưu lượng API qua Trạm trung chuyển (gemini-proxy.mtuanit83.workers.dev) để ẩn IP thực, vượt mặt bức tường lửa WAF của Google.
 // Cập nhật V2.30: [NETWORK LEVEL INTERCEPT] Bắt sóng HTTP Status 429/503 trước khi ép kiểu JSON.
 // Cập nhật V2.29: [PRONUNCIATION STRICT MODE] Ép buộc AI phải phiên âm toàn bộ câu văn.
@@ -823,23 +821,23 @@ reject(new Error(`Hết thời gian chờ API (${Math.round(dynamicTimeoutMs/100
 }, dynamicTimeoutMs);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
-// --- [CẬP NHẬT V2.33] BẮT STATUS CODE TẠI NETWORK LEVEL (MỞ KHÓA JSON) ---
-// Chỉ chặn ném lỗi sớm nếu Response là HTML/Text (Lỗi Load Balancer) để tránh SyntaxError. Cho phép 400/403 đi qua để đọc lỗi chi tiết.
-if (!res.ok) {
-const contentType = res.headers.get("content-type");
-if (contentType && contentType.indexOf("application/json") === -1) {
+// --- [CẬP NHẬT V2.30] BẮT STATUS CODE TẠI NETWORK LEVEL ---
+// Chặn đứng lỗi 429/503 (thường là HTML từ Load Balancer) trước khi lệnh res.json() làm văng SyntaxError
 if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
 if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
+if (res.status === 403 || res.status === 400) throw new Error(`${res.status}: Lỗi xác thực Key hoặc Bad Request`);
+if (!res.ok && res.status !== 200) {
+const contentType = res.headers.get("content-type");
+if (contentType && contentType.indexOf("application/json") === -1) {
 throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)`);
 }
 }
 const d = await res.json();
 if (d.error) {
-const errMsg = d.error.message || "Lỗi không xác định từ AI";
-if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || errMsg.includes('quota')) throw new Error(`429: ${errMsg}`);
-if (d.error.code === 503 || d.error.code === 500 || errMsg.includes('overloaded')) throw new Error(`503: ${errMsg}`);
-if (d.error.code === 403 || d.error.code === 400) throw new Error(`${d.error.code} Bad Request/Auth: ${errMsg}`);
-throw new Error(errMsg);
+if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || (d.error.message && d.error.message.includes('quota'))) throw new Error(`429: ${d.error.message}`);
+if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) throw new Error(`503: ${d.error.message}`);
+if (d.error.code === 403 || d.error.code === 400 || (d.error.message && (d.error.message.includes('API key') || d.error.message.includes('unregistered')))) throw new Error(`403: ${d.error.message}`);
+throw new Error(d.error.message);
 }
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
 // --- XỬ LÝ KHI THÀNH CÔNG ---
@@ -870,9 +868,6 @@ console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Sập 
 } else if (e.message && e.message.includes('403')) {
 window.Utils.setKeyCooldown(targetKey, 86400000); // Đóng băng 24h
 console.error(`%c[Round-Robin FATAL] Key ...${targetKey.slice(-5)} bị từ chối (403). Đóng băng 24h.`, "color: #dc2626; font-weight: bold; font-size: 11px;");
-} else if (e.message && e.message.includes('400')) {
-window.Utils.setKeyCooldown(targetKey, 10000); // Phạt nhẹ 10s để thử lại
-console.warn(`%c[Round-Robin] Key ...${targetKey.slice(-5)} dính Bad Request (400).`, "color: #dc2626; font-weight: bold; font-size: 11px;");
 } else {
 window.Utils.setKeyCooldown(targetKey, 5000);
 }
@@ -998,8 +993,7 @@ temperature: Math.random() * (1.1 - 0.7) + 0.7
 }
 };
 if (!isTrimming) {
-// [V2.33] Bổ sung role: "system" để tuân thủ chuẩn Object Content của Gemini (Chống lỗi 400 Bad Request)
-payload.systemInstruction = { role: "system", parts: [{ text: basePrompt }] };
+payload.systemInstruction = { parts: [{ text: basePrompt }] };
 }
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
@@ -1048,22 +1042,23 @@ signal: controller.signal
 }).finally(() => {
 if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
-// --- [CẬP NHẬT V2.33] BẮT STATUS CODE TẠI NETWORK LEVEL (MỞ KHÓA JSON) ---
-if (!res.ok) {
-const contentType = res.headers.get("content-type");
-if (contentType && contentType.indexOf("application/json") === -1) {
+// --- [CẬP NHẬT V2.30] BẮT STATUS CODE TẠI NETWORK LEVEL ---
+// Chặn đứng lỗi 429/503 (HTML từ Load Balancer) trước khi lệnh res.json() làm văng SyntaxError
 if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
 if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
+if (res.status === 403 || res.status === 400) throw new Error(`${res.status}: Lỗi xác thực Key hoặc Bad Request`);
+if (!res.ok && res.status !== 200) {
+const contentType = res.headers.get("content-type");
+if (contentType && contentType.indexOf("application/json") === -1) {
 throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)`);
 }
 }
 const data = await res.json();
 if (data.error) {
-const errMsg = data.error.message || "Lỗi không xác định từ AI";
-if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || errMsg.includes('quota')) throw new Error(`429: ${errMsg}`);
-if (data.error.code === 503 || data.error.code === 500 || errMsg.includes('overloaded')) throw new Error(`503: ${errMsg}`);
-if (data.error.code === 403 || data.error.code === 400) throw new Error(`${data.error.code} Bad Request/Auth: ${errMsg}`);
-throw new Error(errMsg);
+if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || (data.error.message && data.error.message.includes('quota'))) throw new Error(`429: ${data.error.message}`);
+if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) throw new Error(`503: ${data.error.message}`);
+if (data.error.code === 403 || data.error.code === 400 || (data.error.message && (data.error.message.includes('API key') || data.error.message.includes('unregistered')))) throw new Error(`403: ${data.error.message}`);
+throw new Error(data.error.message);
 }
 if (keyPool.length > 1) {
 window.Utils.setKeyCooldown(targetKey, 5000);
@@ -1078,22 +1073,13 @@ const parsed = JSON.parse(cleanText);
 if (lang === 'zh' && parsed.sinoViet) {
 parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, '').trim();
 }
-const finalResult = { ...parsed, term: term };
-// [CẬP NHẬT V2.32] Tuyệt đối hóa Object trả về - Bảo vệ dữ liệu ảnh
+let imgUrl = "";
 if (parsed.image_keyword) {
-finalResult.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
-} else {
-// Chỉ khởi tạo key 'image' rỗng NẾU Tầng 6 thực sự yêu cầu lấy ảnh
-const isImageRequested = !isTrimming || (targetFields && targetFields.includes('image'));
-if (isImageRequested) {
-finalResult.image = "";
+imgUrl = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(parsed.image_keyword)}&w=300&h=300&c=7&rs=1&p=0`;
 }
-}
-if (data.usageMetadata) {
-finalResult._tokenUsage = data.usageMetadata;
-}
+const meta = data.usageMetadata ? { _tokenUsage: data.usageMetadata } : {};
 await new Promise(r => setTimeout(r, 3000));
-return finalResult;
+return { ...parsed, term: term, image: imgUrl, ...meta };
 } catch (e) {
 // --- XỬ LÝ ÁN PHẠT VÀ NÉM LỖI NGAY ---
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
@@ -1106,8 +1092,6 @@ window.Utils.setKeyCooldown(targetKey, 20000);
 window.Utils.triggerGlobalPause(10000);
 } else if (e.message && e.message.includes('403')) {
 window.Utils.setKeyCooldown(targetKey, 86400000); // 24h
-} else if (e.message && e.message.includes('400')) {
-window.Utils.setKeyCooldown(targetKey, 10000); // Phạt nhẹ 10s
 } else {
 window.Utils.setKeyCooldown(targetKey, 5000);
 }
@@ -1162,7 +1146,6 @@ const cleanSentence = sentence ? sentence.replace(/\u0332/g, '') : '';
 const prompt = window.Utils.getPrompt('grammar', { sentence: cleanSentence, lang });
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, null, apiKey);
 return { text: window.Utils.cleanText(text), _tokenUsage: tokenMetadata };
-};
 // Block 2.1d: TẦNG 2: CƠ SỞ DỮ LIỆU & ĐỒNG BỘ (Database & Memory Sync) - Version 2.1
 // Last Updated: 2026-06-12 09:56
 // Nhiệm vụ: Khởi tạo IndexedDB (FcDB) siêu tốc, quản lý lưu trữ offline và Động cơ Khóa nguyên tử Đa luồng (Atomic Lock).
