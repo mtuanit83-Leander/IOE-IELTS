@@ -613,9 +613,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.29
-// Last Updated: 2026-07-23 09:30
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.30
+// Last Updated: 2026-07-23 10:00
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.30: [NETWORK LEVEL INTERCEPT] Bắt sóng HTTP Status 429/503 trước khi ép kiểu JSON. Ngăn chặn lỗi "SyntaxError: Unexpected token <" do Google trả về HTML, khắc phục triệt để lỗi Bypass Cầu dao toàn cục gây ra cái chết dây chuyền.
 // Cập nhật V2.29: [PRONUNCIATION STRICT MODE] Ép buộc AI phải phiên âm toàn bộ câu văn, khắc phục lỗi chỉ phiên âm 1 từ đơn lẻ trong mode 'sentence'.
 // Cập nhật V2.28: [TRUE ROUND-ROBIN] Loại bỏ hiệu ứng cuộn ngược mảng (Zero-Index Bias). Áp dụng Con trỏ Luân lưu (Modulo Loop) trải đều tải trọng lên 100% Key Pool.
 // Cập nhật V2.27: [DOMINO DEATH PREVENTION] Cấy Cầu dao Toàn cục (Global Pause 15s) chống bộ lọc IP Google. Thời gian phạt 429 nay là biến động, đọc từ fc_ai_config.
@@ -817,6 +818,17 @@ reject(new Error(`Hết thời gian chờ API (${Math.round(dynamicTimeoutMs/100
 }, dynamicTimeoutMs);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
+// --- [CẬP NHẬT V2.30] BẮT STATUS CODE TẠI NETWORK LEVEL ---
+// Chặn đứng lỗi 429/503 (thường là HTML từ Load Balancer) trước khi lệnh res.json() làm văng SyntaxError
+if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
+if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
+if (res.status === 403 || res.status === 400) throw new Error(`${res.status}: Lỗi xác thực Key hoặc Bad Request`);
+if (!res.ok && res.status !== 200) {
+const contentType = res.headers.get("content-type");
+if (contentType && contentType.indexOf("application/json") === -1) {
+throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)`);
+}
+}
 const d = await res.json();
 if (d.error) {
 if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || (d.error.message && d.error.message.includes('quota'))) throw new Error(`429: ${d.error.message}`);
@@ -1026,6 +1038,17 @@ signal: controller.signal
 }).finally(() => {
 if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
+// --- [CẬP NHẬT V2.30] BẮT STATUS CODE TẠI NETWORK LEVEL ---
+// Chặn đứng lỗi 429/503 (HTML từ Load Balancer) trước khi lệnh res.json() làm văng SyntaxError
+if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
+if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
+if (res.status === 403 || res.status === 400) throw new Error(`${res.status}: Lỗi xác thực Key hoặc Bad Request`);
+if (!res.ok && res.status !== 200) {
+const contentType = res.headers.get("content-type");
+if (contentType && contentType.indexOf("application/json") === -1) {
+throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)`);
+}
+}
 const data = await res.json();
 if (data.error) {
 if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || (data.error.message && data.error.message.includes('quota'))) throw new Error(`429: ${data.error.message}`);
