@@ -613,14 +613,15 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.30
-// Last Updated: 2026-07-23 10:00
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.31
+// Last Updated: 2026-07-23 13:45
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.30: [NETWORK LEVEL INTERCEPT] Bắt sóng HTTP Status 429/503 trước khi ép kiểu JSON. Ngăn chặn lỗi "SyntaxError: Unexpected token <" do Google trả về HTML, khắc phục triệt để lỗi Bypass Cầu dao toàn cục gây ra cái chết dây chuyền.
-// Cập nhật V2.29: [PRONUNCIATION STRICT MODE] Ép buộc AI phải phiên âm toàn bộ câu văn, khắc phục lỗi chỉ phiên âm 1 từ đơn lẻ trong mode 'sentence'.
-// Cập nhật V2.28: [TRUE ROUND-ROBIN] Loại bỏ hiệu ứng cuộn ngược mảng (Zero-Index Bias). Áp dụng Con trỏ Luân lưu (Modulo Loop) trải đều tải trọng lên 100% Key Pool.
-// Cập nhật V2.27: [DOMINO DEATH PREVENTION] Cấy Cầu dao Toàn cục (Global Pause 15s) chống bộ lọc IP Google. Thời gian phạt 429 nay là biến động, đọc từ fc_ai_config.
-// Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'. Ghi nhận thời gian bắt đầu. Radar tự động ban phát án phạt.
+// Cập nhật V2.31: [CLOUDFLARE PROXY] Chuyển hướng 100% lưu lượng API qua Trạm trung chuyển (gemini-proxy.mtuanit83.workers.dev) để ẩn IP thực, vượt mặt bức tường lửa WAF của Google.
+// Cập nhật V2.30: [NETWORK LEVEL INTERCEPT] Bắt sóng HTTP Status 429/503 trước khi ép kiểu JSON.
+// Cập nhật V2.29: [PRONUNCIATION STRICT MODE] Ép buộc AI phải phiên âm toàn bộ câu văn.
+// Cập nhật V2.28: [TRUE ROUND-ROBIN] Áp dụng Con trỏ Luân lưu (Modulo Loop) trải đều tải trọng lên 100% Key Pool.
+// Cập nhật V2.27: [DOMINO DEATH PREVENTION] Cấy Cầu dao Toàn cục (Global Pause 15s) chống bộ lọc IP Google.
+// Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -716,7 +717,8 @@ const k = apiKey.replace(/["'\s]/g, "");
 const body = { contents: [{ parts: [{ text: "Hãy trả lời 'OK'" }] }] };
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 10000);
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+// [CẬP NHẬT V2.31] Chuyển hướng qua Cloudflare Proxy
+const res = await fetch(`https://gemini-proxy.mtuanit83.workers.dev/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
@@ -803,7 +805,8 @@ body.generationConfig.responseSchema = schema;
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+// [CẬP NHẬT V2.31] Chuyển hướng qua Cloudflare Proxy
+const fetchPromise = fetch(`https://gemini-proxy.mtuanit83.workers.dev/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
@@ -1030,7 +1033,8 @@ try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+// [CẬP NHẬT V2.31] Chuyển hướng qua Cloudflare Proxy
+const res = await fetch(`https://gemini-proxy.mtuanit83.workers.dev/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload),
