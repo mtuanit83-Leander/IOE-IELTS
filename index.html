@@ -613,9 +613,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.28
-// Last Updated: 2026-07-22 16:01
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.29
+// Last Updated: 2026-07-23 09:30
 // Nhiệm vụ: Giao tiếp HTTP, proxy tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.29: [PRONUNCIATION STRICT MODE] Ép buộc AI phải phiên âm toàn bộ câu văn, khắc phục lỗi chỉ phiên âm 1 từ đơn lẻ trong mode 'sentence'.
 // Cập nhật V2.28: [TRUE ROUND-ROBIN] Loại bỏ hiệu ứng cuộn ngược mảng (Zero-Index Bias). Áp dụng Con trỏ Luân lưu (Modulo Loop) trải đều tải trọng lên 100% Key Pool.
 // Cập nhật V2.27: [DOMINO DEATH PREVENTION] Cấy Cầu dao Toàn cục (Global Pause 15s) chống bộ lọc IP Google. Thời gian phạt 429 nay là biến động, đọc từ fc_ai_config.
 // Cập nhật V2.26: [ANTI-429 ROTATION] Thay thế hoàn toàn __apiCooldowns trên RAM bằng localStorage 'fc_api_cooldowns'. Ghi nhận thời gian bắt đầu. Radar tự động ban phát án phạt.
@@ -953,6 +954,10 @@ validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 }
 // BỘ LUẬT ĐỊNH DẠNG TRƯỜNG (FIELD DEFINITIONS)
 let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
+// [V2.29] Ép buộc phiên âm toàn bộ câu văn
+if (requiredFields.includes('pronunciation') && isSentence) {
+fieldRules += `- Với trường 'pronunciation': BẮT BUỘC phải phiên âm (IPA/Pinyin) cho TOÀN BỘ CÂU VĂN. TUYỆT ĐỐI KHÔNG chỉ phiên âm một từ đơn lẻ.\n`;
+}
 if (requiredFields.includes('example') && isSentence) {
 fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác một câu hoàn toàn mới sử dụng CẤU TRÚC NGỮ PHÁP TƯƠNG TỰ câu gốc, kèm theo bản dịch tiếng Việt phân cách bằng dấu | (Ví dụ: They are playing | Họ đang chơi).\n`;
 }
