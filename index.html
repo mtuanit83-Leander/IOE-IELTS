@@ -111,7 +111,7 @@ window.DEFAULT_SHEETS = {
 en: { vocab: "https://docs.google.com/spreadsheets/d/1k9blJ9jo-GHmqYEHQ_DEYlC5nVuZ-Zce2ZY4o7kU5kw/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1LwzLSR27rvCrc7d6_uCuIXiVfnDlfTCkRN4mgxz_STY/edit?usp=drive_link" },
 zh: { vocab: "https://docs.google.com/spreadsheets/d/17lPYQ1mVWisPhHydugT6IEtl2bvcnmWmm367V_3dQHE/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1YMXhI2_aKdVDZp6hS5p4JqU3PJBDxI_JpVAUZdnDHiw/edit?usp=drive_link" }
 };
-window.DEFAULT_API_KEY_SHEET = "https://docs.google.com/spreadsheets/d/...../edit?usp=drive_link";
+window.DEFAULT_API_KEY_SHEET = "https://docs.google.com/spreadsheets/d/..../edit?usp=drive_link";
 // KHÔI PHỤC DI SẢN (Chỉ chứa định tuyến Key, tuyệt đối không chứa Thẻ mẫu)
 window.CONFIG_SAMPLES = {
 en: { dataKey: 'fc_data_en', noteKey: 'fc_notebook_en' },
@@ -613,9 +613,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.37
-// Last Updated: 2026-07-30 21:45
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.38
+// Last Updated: 2026-07-30 22:20
 // Nhiệm vụ: Giao tiếp HTTP, tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.38 (Definition Trimmer): Thiết quân luật trường dịch nghĩa (definition), ép độ dài 3-6 từ cho từ vựng và tiêm ngữ cảnh độ khó (Level Context) để dịch sát nghĩa nhất.
 // Cập nhật V2.37 (Dynamic Level-Based Examples): Bơm ngữ cảnh `levelContext` vào lõi sinh Prompt để điều khiển độ khó câu/từ. Gỡ bỏ giới hạn "dưới 10 từ", giải phóng sức sáng tạo cho AI.
 // Cập nhật V2.36 (Đại phẫu Smart Fill): Tái cấu trúc hoàn toàn hệ thống Build Prompt cho cơ chế Trimming. Tách bạch Persona giữa Từ vựng và Câu văn. Thiết quân luật Chủ đề, chuẩn hóa Ví dụ.
 // Cập nhật V2.35: [ANTI-OVERWRITE SHIELD] Lắp đặt màng lọc vô trùng quét toàn bộ Object JSON AI trả về.
@@ -975,6 +976,18 @@ validTagsStr = `BẮT BUỘC CHỈ xuất các mã nhãn (Tag IDs) hợp lệ.`;
 let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
 if (requiredFields.includes('pronunciation') && isSentence) {
 fieldRules += `- Với trường 'pronunciation': BẮT BUỘC phải phiên âm (IPA/Pinyin) cho TOÀN BỘ CÂU VĂN. TUYỆT ĐỐI KHÔNG chỉ phiên âm một từ đơn lẻ.\n`;
+}
+// [V2.38] Thiết quân luật trường Dịch nghĩa (Definition)
+if (requiredFields.includes('definition')) {
+let defDifficulty = "";
+if (levelContext && Array.isArray(levelContext) && levelContext.length > 0) {
+defDifficulty = ` (LƯU Ý: Hãy chọn lọc từ ngữ tiếng Việt sao cho phù hợp với trình độ [${levelContext.join(', ')}]).`;
+}
+if (isSentence) {
+fieldRules += `- Với trường 'definition': BẮT BUỘC cung cấp bản dịch Tiếng Việt tự nhiên, trôi chảy cho toàn bộ câu.${defDifficulty}\n`;
+} else {
+fieldRules += `- Với trường 'definition': BẮT BUỘC chỉ xuất nghĩa tiếng Việt trực tiếp (Giống như từ điển bỏ túi). TUYỆT ĐỐI NGẮN GỌN (Tối đa 3-6 từ). TUYỆT ĐỐI KHÔNG giải thích dài dòng.${defDifficulty}\n`;
+}
 }
 // [V3.0 BẢN VÁ SỐ 3] Thiết quân luật Chủ đề (Topic Dictatorship)
 if (requiredFields.includes('topic')) {
