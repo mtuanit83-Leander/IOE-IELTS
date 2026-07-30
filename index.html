@@ -613,10 +613,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.36
-// Last Updated: 2026-07-30 17:15
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.37
+// Last Updated: 2026-07-30 21:45
 // Nhiệm vụ: Giao tiếp HTTP, tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V3.0 (Đại phẫu Smart Fill): Tái cấu trúc hoàn toàn hệ thống Build Prompt cho cơ chế Trimming. Tách bạch Persona giữa Từ vựng và Câu văn. Thiết quân luật Chủ đề, chuẩn hóa Ví dụ bằng dấu phân cách '|', và chỉ tiêm lệnh sinoViet khi Schema yêu cầu.
+// Cập nhật V2.37 (Dynamic Level-Based Examples): Bơm ngữ cảnh `levelContext` vào lõi sinh Prompt để điều khiển độ khó câu/từ. Gỡ bỏ giới hạn "dưới 10 từ", giải phóng sức sáng tạo cho AI.
+// Cập nhật V2.36 (Đại phẫu Smart Fill): Tái cấu trúc hoàn toàn hệ thống Build Prompt cho cơ chế Trimming. Tách bạch Persona giữa Từ vựng và Câu văn. Thiết quân luật Chủ đề, chuẩn hóa Ví dụ.
 // Cập nhật V2.35: [ANTI-OVERWRITE SHIELD] Lắp đặt màng lọc vô trùng quét toàn bộ Object JSON AI trả về.
 // Cập nhật V2.34: [DIRECT CONNECTION] Gỡ bỏ hoàn toàn Cloudflare Proxy. Trở về kết nối trực tiếp Google API.
 // ==================================================================================
@@ -870,7 +871,8 @@ throw e;
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab') => {
+// [V2.37] Bơm thêm mảng levelContext để định hướng độ khó cho AI
+window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = []) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
 throw new Error("[GLOBAL_PAUSE] Mạng đang tạm nghỉ 15s để chống bộ lọc IP Spam.");
@@ -981,12 +983,19 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
 }
-// [V3.0 BẢN VÁ SỐ 4] Chuẩn hóa Ví dụ bằng dấu ngắt |
+// [V2.37] Chuẩn hóa Ví dụ (Dynamic Level Control & Dấu ngắt |)
 if (requiredFields.includes('example')) {
+// Khởi tạo chuỗi định hướng độ khó rỗng
+let difficultyPrompt = "";
+// Nếu có mảng levelContext, tiêm lệnh ép độ khó cho AI
+if (levelContext && Array.isArray(levelContext) && levelContext.length > 0) {
+difficultyPrompt = ` (ĐỊNH HƯỚNG ĐỘ KHÓ: BẮT BUỘC sử dụng ngữ pháp và từ vựng phù hợp với trình độ người học: [${levelContext.join(', ')}]. Hãy tự do sáng tạo độ dài câu sao cho tự nhiên nhất).`;
+}
 if (isSentence) {
-fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác 1 CÂU MỚI mang cấu trúc ngữ pháp tương tự.\n`;
+fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác 1 CÂU MỚI mang cấu trúc ngữ pháp tương tự.${difficultyPrompt}\n`;
 } else {
-fieldRules += `- Với trường 'example': BẮT BUỘC tự sáng tác 1 CÂU NGẮN (dưới 10 từ) có chứa từ vựng "${cleanTermForAi}".\n`;
+// Đã gỡ bỏ giới hạn "dưới 10 từ", giải phóng sáng tạo cho AI
+fieldRules += `- Với trường 'example': BẮT BUỘC tự sáng tác 1 CÂU có chứa từ vựng "${cleanTermForAi}".${difficultyPrompt}\n`;
 }
 fieldRules += `  -> BẮT BUỘC DÙNG ĐỊNH DẠNG: Câu ngoại ngữ | Bản dịch tiếng Việt (Ví dụ: They are playing | Họ đang chơi). TUYỆT ĐỐI KHÔNG chứa Pinyin, giải thích hay bất kỳ ký tự dư thừa nào khác ngoài dấu phân cách.\n`;
 }
@@ -23464,9 +23473,10 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.13
-// Last Updated: 2026-07-22 15:10
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.14
+// Last Updated: 2026-07-30 21:50
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
+// Cập nhật V1.14: [DYNAMIC LEVEL CONTEXT] Trích xuất và bơm mảng `currentLevel` xuống tầng dưới qua tham số `levelContext` cho mọi luồng gọi AI (Auto Queue, Enrich, Manual, Explain).
 // Cập nhật V1.13: [DOMINO RESCUE] Dạy Động cơ Hàng đợi AI cách lắng nghe Cầu dao Toàn cục. Nếu bắt được lỗi GLOBAL_PAUSE, giữ lại từ vựng hiện tại (không shift) và đứng chờ 15s để chuyển sang Key mới. Chấm dứt triệt để lỗi chết chùm Domino.
 // Cập nhật V1.12: [MASTER DATA MUTATION] Trực tiếp tiêm dữ liệu AI vào tận kho lõi master.
 // Cập nhật V1.11: [STATE TARGETING] Sửa lỗi thành công ảo, đồng bộ xuyên suốt các kho (Data, Note, Mastered, Incorrect).
@@ -23617,8 +23627,11 @@ return strVal === "";
 }) : requiredFields;
 if (missingFields && missingFields.length === 0) { continue; }
 shouldDelay = true; // Sẽ gọi API, cần delay sau đó để hãm phanh
-// Truyền core.dataMode xuống tầng Lõi API
-const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields, core.dataMode);
+// [V1.14] Trích xuất LevelContext
+const currentLevelState = latestStateRef.current.currentLevel;
+const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
+// Truyền core.dataMode và levelContext xuống tầng Lõi API
+const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields, core.dataMode, levelContext);
 if (missingFields.includes('image')) {
 if (!res.image || !res.image.startsWith('http')) {
 const fallbackQuery = noteCard && noteCard.image && noteCard.image.trim() !== "" ? noteCard.image : term;
@@ -23722,8 +23735,11 @@ return !currentCard?.[f] || (f === 'image' && !currentCard[f].startsWith('http')
 // Trả về false nếu không gọi API, giúp quá trình chạy ngầm quét 0ms
 if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return false; }
 if (silent && !missingFields.length) return false;
-// Truyền core.dataMode xuống tầng Lõi API
-const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields, core.dataMode);
+// [V1.14] Trích xuất LevelContext
+const currentLevelState = state.currentLevel;
+const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
+// Truyền core.dataMode và levelContext xuống tầng Lõi API
+const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields, core.dataMode, levelContext);
 if (missingFields.includes('image') && (!enriched.image || !enriched.image.startsWith('http'))) {
 const q = (currentCard?.image && currentCard.image.trim()) || cardTerm;
 enriched.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(q)}&w=300&h=300&c=7&rs=1&p=0`;
@@ -23789,8 +23805,11 @@ const cardTerm = activeArr[targetIdx]?.term;
 if (!cardTerm) return;
 setIsAiLoading(true);
 try {
-// Truyền core.dataMode xuống tầng Lõi API
-const result = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, ['analysis'], core.dataMode);
+// [V1.14] Trích xuất LevelContext
+const currentLevelState = state.currentLevel;
+const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
+// Truyền core.dataMode và levelContext xuống tầng Lõi API
+const result = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, ['analysis'], core.dataMode, levelContext);
 if (result?.analysis) {
 // ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
 const newData = { analysis: result.analysis };
@@ -23839,8 +23858,11 @@ const handleManualAiFill = async (term) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
 setIsAiLoading(true);
 try {
-// Truyền core.dataMode xuống tầng Lõi API
-return await window.Utils.fillCardWithAi(term, core.lang, apiKey, null, core.dataMode);
+// [V1.14] Trích xuất LevelContext
+const currentLevelState = latestStateRef.current.currentLevel;
+const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
+// Truyền core.dataMode và levelContext xuống tầng Lõi API
+return await window.Utils.fillCardWithAi(term, core.lang, apiKey, null, core.dataMode, levelContext);
 }
 catch (e) { callbacks.showToast(e.message, "error"); return null; }
 finally { setIsAiLoading(false); }
