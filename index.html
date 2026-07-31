@@ -613,13 +613,14 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.39
-// Last Updated: 2026-07-31 09:00
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.40
+// Last Updated: 2026-07-31 09:15
 // Nhiệm vụ: Giao tiếp HTTP, tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.39: [PEDAGOGICAL CONTEXT MAP] Bổ sung Từ điển Sư phạm dịch các mã Level kỹ thuật (zh_level_1) sang ngôn ngữ tự nhiên (Tiếng Trung HSK 1) để AI hiểu. Tích hợp Lưới vét an toàn (Safety Net) khi mảng rỗng.
+// Cập nhật V2.40: [INCLUSIVE FALLBACK & DICTIONARY EXPANSION] Nâng cấp lưới vét an toàn thành "Phổ thông, tự nhiên" thay vì "Cơ bản". Mở rộng ánh xạ Từ điển sư phạm (bao gồm cả các mã viết tắt hsk, a1, b1...).
+// Cập nhật V2.39: [PEDAGOGICAL CONTEXT MAP] Bổ sung Từ điển Sư phạm dịch các mã Level kỹ thuật sang ngôn ngữ tự nhiên.
 // Cập nhật V2.38 (Definition Trimmer): Thiết quân luật trường dịch nghĩa (definition), ép độ dài 3-6 từ cho từ vựng và tiêm ngữ cảnh độ khó (Level Context) để dịch sát nghĩa nhất.
-// Cập nhật V2.37 (Dynamic Level-Based Examples): Bơm ngữ cảnh `levelContext` vào lõi sinh Prompt để điều khiển độ khó câu/từ. Gỡ bỏ giới hạn "dưới 10 từ", giải phóng sức sáng tạo cho AI.
-// Cập nhật V2.36 (Đại phẫu Smart Fill): Tái cấu trúc hoàn toàn hệ thống Build Prompt cho cơ chế Trimming. Tách bạch Persona giữa Từ vựng và Câu văn. Thiết quân luật Chủ đề, chuẩn hóa Ví dụ.
+// Cập nhật V2.37 (Dynamic Level-Based Examples): Bơm ngữ cảnh `levelContext` vào lõi sinh Prompt để điều khiển độ khó câu/từ. Gỡ bỏ giới hạn "dưới 10 từ".
+// Cập nhật V2.36 (Đại phẫu Smart Fill): Tái cấu trúc hệ thống Build Prompt cho cơ chế Trimming. Tách bạch Persona giữa Từ vựng và Câu văn. Thiết quân luật Chủ đề, chuẩn hóa Ví dụ.
 // Cập nhật V2.35: [ANTI-OVERWRITE SHIELD] Lắp đặt màng lọc vô trùng quét toàn bộ Object JSON AI trả về.
 // Cập nhật V2.34: [DIRECT CONNECTION] Gỡ bỏ hoàn toàn Cloudflare Proxy. Trở về kết nối trực tiếp Google API.
 // ==================================================================================
@@ -873,7 +874,7 @@ throw e;
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V2.39] Từ điển Sư phạm & Lưới vét LevelContext
+// [V2.40] Nâng cấp Từ điển Sư phạm & Lưới vét LevelContext (Phổ thông, tự nhiên)
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = []) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -888,29 +889,29 @@ const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
 const isSentence = dataMode === 'sentence';
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 // ============================================================================
-// [V2.39] TỪ ĐIỂN SƯ PHẠM (PEDAGOGICAL DICTIONARY) & LƯỚI VÉT AN TOÀN
+// [V2.40] TỪ ĐIỂN SƯ PHẠM MỞ RỘNG (EXPANDED PEDAGOGICAL DICTIONARY)
 // ============================================================================
 const levelDictionary = {
-'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)',
-'zh_level_2': 'Tiếng Trung HSK 2 (Sơ cấp)',
-'zh_level_3': 'Tiếng Trung HSK 3 (Trung cấp)',
-'zh_level_4': 'Tiếng Trung HSK 4 (Trung cấp)',
-'zh_level_5': 'Tiếng Trung HSK 5 (Cao cấp)',
-'zh_level_6': 'Tiếng Trung HSK 6 (Cao cấp)',
-'en_level_1': 'Tiếng Anh Mầm non / Pre-A1',
-'en_level_2': 'Tiếng Anh A1 (Sơ cấp)',
-'en_level_3': 'Tiếng Anh A2 (Tiền trung cấp)',
-'en_level_4': 'Tiếng Anh B1 (Trung cấp)',
-'en_level_5': 'Tiếng Anh B2 (Trung cao cấp)',
-'en_level_6': 'Tiếng Anh C1/C2 (Thành thạo)'
+'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)', 'hsk1': 'Tiếng Trung HSK 1 (Sơ cấp)',
+'zh_level_2': 'Tiếng Trung HSK 2 (Sơ cấp)', 'hsk2': 'Tiếng Trung HSK 2 (Sơ cấp)',
+'zh_level_3': 'Tiếng Trung HSK 3 (Trung cấp)', 'hsk3': 'Tiếng Trung HSK 3 (Trung cấp)',
+'zh_level_4': 'Tiếng Trung HSK 4 (Trung cấp)', 'hsk4': 'Tiếng Trung HSK 4 (Trung cấp)',
+'zh_level_5': 'Tiếng Trung HSK 5 (Cao cấp)', 'hsk5': 'Tiếng Trung HSK 5 (Cao cấp)',
+'zh_level_6': 'Tiếng Trung HSK 6 (Cao cấp)', 'hsk6': 'Tiếng Trung HSK 6 (Cao cấp)',
+'en_level_1': 'Tiếng Anh A1 (Sơ cấp)', 'a1': 'Tiếng Anh A1 (Sơ cấp)',
+'en_level_2': 'Tiếng Anh A2 (Tiền trung cấp)', 'a2': 'Tiếng Anh A2 (Tiền trung cấp)',
+'en_level_3': 'Tiếng Anh B1 (Trung cấp)', 'b1': 'Tiếng Anh B1 (Trung cấp)',
+'en_level_4': 'Tiếng Anh B2 (Trung cao cấp)', 'b2': 'Tiếng Anh B2 (Trung cao cấp)',
+'en_level_5': 'Tiếng Anh C1 (Cao cấp)', 'c1': 'Tiếng Anh C1 (Cao cấp)',
+'en_level_6': 'Tiếng Anh C2 (Thành thạo)', 'c2': 'Tiếng Anh C2 (Thành thạo)'
 };
 let translatedLevels = [];
 if (levelContext && Array.isArray(levelContext) && levelContext.length > 0) {
 // Dịch các mã kỹ thuật sang ngôn ngữ tự nhiên
 translatedLevels = levelContext.map(lvl => levelDictionary[lvl] || lvl);
 } else {
-// Lưới vét an toàn (Safety Net): Trả về ngôn ngữ mặc định nếu rỗng
-translatedLevels = [lang === 'zh' ? 'Tiếng Trung cơ bản' : 'Tiếng Anh cơ bản'];
+// Lưới vét an toàn (Safety Net): Trả về ngôn ngữ tự nhiên bao hàm nếu rỗng
+translatedLevels = [lang === 'zh' ? 'Tiếng Trung phổ thông, tự nhiên (Phù hợp mọi cấp độ)' : 'Tiếng Anh phổ thông, tự nhiên (Phù hợp mọi cấp độ)'];
 }
 // Khởi tạo Schema mặc định
 let propertiesToFetch = {
@@ -953,7 +954,7 @@ propertiesToFetch = trimmedProperties;
 const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
 basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
-// [V3.0 BẢN VÁ SỐ 2] Tiêm lệnh Hán Việt thông minh (Chỉ tiêm khi Schema có yêu cầu)
+// Tiêm lệnh Hán Việt thông minh (Chỉ tiêm khi Schema có yêu cầu)
 let dynamicInstruction = "";
 if (requiredFields.includes('pronunciation') || requiredFields.includes('sinoViet')) {
 dynamicInstruction = lang === 'zh'
@@ -964,7 +965,7 @@ let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ gốc: ${lang}).\n`;
 userQuery += `[ĐỊNH HƯỚNG TRẢ LỜI BẮT BUỘC]:\n`;
-// [V3.0 BẢN VÁ SỐ 1] Tách bạch Persona
+// Tách bạch Persona
 if (requiredFields.length === 1 && requiredFields[0] === 'analysis') {
 // Nhánh: Gọi riêng Analysis mặt sau thẻ
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: Bạn là chuyên gia ngôn ngữ. Hãy phân tích cực kỳ ngắn gọn (1-2 câu) về từ loại, ngữ pháp hoặc cách dùng của từ/câu này. Trả lời đi thẳng vào bản chất.\n`;
@@ -1003,7 +1004,7 @@ let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
 if (requiredFields.includes('pronunciation') && isSentence) {
 fieldRules += `- Với trường 'pronunciation': BẮT BUỘC phải phiên âm (IPA/Pinyin) cho TOÀN BỘ CÂU VĂN. TUYỆT ĐỐI KHÔNG chỉ phiên âm một từ đơn lẻ.\n`;
 }
-// [V2.38] Thiết quân luật trường Dịch nghĩa (Definition) - [V2.39] Tích hợp Lưới Level
+// Thiết quân luật trường Dịch nghĩa (Definition) & Lưới Level
 if (requiredFields.includes('definition')) {
 let defDifficulty = "";
 if (translatedLevels.length > 0) {
@@ -1015,14 +1016,14 @@ fieldRules += `- Với trường 'definition': BẮT BUỘC cung cấp bản d�
 fieldRules += `- Với trường 'definition': BẮT BUỘC chỉ xuất nghĩa tiếng Việt trực tiếp (Giống như từ điển bỏ túi). TUYỆT ĐỐI NGẮN GỌN (Tối đa 3-6 từ). TUYỆT ĐỐI KHÔNG giải thích dài dòng.${defDifficulty}\n`;
 }
 }
-// [V3.0 BẢN VÁ SỐ 3] Thiết quân luật Chủ đề (Topic Dictatorship)
+// Thiết quân luật Chủ đề (Topic Dictatorship)
 if (requiredFields.includes('topic')) {
 const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.IoeDataEngine.TOPICS.length > 0
 ? window.IoeDataEngine.TOPICS
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
 }
-// [V2.37] Chuẩn hóa Ví dụ (Dynamic Level Control & Dấu ngắt |) - [V2.39] Tích hợp Lưới Level
+// Chuẩn hóa Ví dụ (Dynamic Level Control & Dấu ngắt |)
 if (requiredFields.includes('example')) {
 let difficultyPrompt = "";
 if (translatedLevels.length > 0) {
@@ -23509,9 +23510,10 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.15
-// Last Updated: 2026-07-31 09:15
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.16
+// Last Updated: 2026-07-31 09:17
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
+// Cập nhật V1.16: [DEEP SCANNER FALLBACK] Nâng cấp cơ chế lưới vét dự phòng (Fallback) 3 lớp: State -> LocalStorage -> Mặc định theo ngôn ngữ (zh_level_1/en_level_1), đảm bảo LevelContext không bao giờ rỗng.
 // Cập nhật V1.15: [STATE BINDING] Bổ sung cơ chế lưới vét dự phòng (Fallback) từ localStorage cho mảng currentLevel, đảm bảo levelContext không bao giờ rỗng khi truyền xuống AI Core.
 // Cập nhật V1.14: [DYNAMIC LEVEL CONTEXT] Trích xuất và bơm mảng `currentLevel` xuống tầng dưới qua tham số `levelContext` cho mọi luồng gọi AI.
 // Cập nhật V1.13: [DOMINO RESCUE] Dạy Động cơ Hàng đợi AI cách lắng nghe Cầu dao Toàn cục chống lỗi chết chùm Domino.
@@ -23663,13 +23665,16 @@ return strVal === "";
 }) : requiredFields;
 if (missingFields && missingFields.length === 0) { continue; }
 shouldDelay = true; // Sẽ gọi API, cần delay sau đó để hãm phanh
-// [V1.15] Trích xuất LevelContext & Lưới vét dự phòng State
+// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = latestStateRef.current.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
 const settings = JSON.parse(localStorage.getItem('fc_settings') || '{}');
 currentLevelState = settings.currentLevel;
 } catch (e) {}
+}
+if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
+currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
 // Truyền core.dataMode và levelContext xuống tầng Lõi API
@@ -23777,13 +23782,16 @@ return !currentCard?.[f] || (f === 'image' && !currentCard[f].startsWith('http')
 // Trả về false nếu không gọi API, giúp quá trình chạy ngầm quét 0ms
 if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return false; }
 if (silent && !missingFields.length) return false;
-// [V1.15] Trích xuất LevelContext & Lưới vét dự phòng State
+// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = state.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
 const settings = JSON.parse(localStorage.getItem('fc_settings') || '{}');
 currentLevelState = settings.currentLevel;
 } catch (e) {}
+}
+if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
+currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
 // Truyền core.dataMode và levelContext xuống tầng Lõi API
@@ -23853,13 +23861,16 @@ const cardTerm = activeArr[targetIdx]?.term;
 if (!cardTerm) return;
 setIsAiLoading(true);
 try {
-// [V1.15] Trích xuất LevelContext & Lưới vét dự phòng State
+// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = state.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
 const settings = JSON.parse(localStorage.getItem('fc_settings') || '{}');
 currentLevelState = settings.currentLevel;
 } catch (e) {}
+}
+if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
+currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
 // Truyền core.dataMode và levelContext xuống tầng Lõi API
@@ -23912,13 +23923,16 @@ const handleManualAiFill = async (term) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
 setIsAiLoading(true);
 try {
-// [V1.15] Trích xuất LevelContext & Lưới vét dự phòng State
+// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = latestStateRef.current.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
 const settings = JSON.parse(localStorage.getItem('fc_settings') || '{}');
 currentLevelState = settings.currentLevel;
 } catch (e) {}
+}
+if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
+currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
 // Truyền core.dataMode và levelContext xuống tầng Lõi API
