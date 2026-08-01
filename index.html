@@ -87,9 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.06
-// Last Updated: 2026-07-03 18:45
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.07
+// Last Updated: 2026-08-01 09:55
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
+// Cập nhật V1.07: [TRAFFIC OBFUSCATION] Bổ sung kho đạn 50 câu lệnh mồi (DECOY_PROMPTS) phục vụ hệ thống ngụy trang lưu lượng.
 // Cập nhật V1.06: [VIETNAMESE DEPRECATION] Nhổ tận gốc định tuyến cấu hình, UI Text và Fallback URL của ngôn ngữ 'vi'.
 // Cập nhật V1.05: [DYNAMIC PROMPT PREPARATION] Thực thi Mũi khoan 1: Làm sạch các Template tĩnh. Cắt bỏ hoàn toàn các hướng dẫn phần cứng (như IPA/Pinyin, sinoViet) ra khỏi chuỗi enrich_word để chuẩn bị cho cơ chế tiêm ngữ cảnh động (Dynamic Injection) tại Tầng 2.1c.
 // ==================================================================================
@@ -111,7 +112,7 @@ window.DEFAULT_SHEETS = {
 en: { vocab: "https://docs.google.com/spreadsheets/d/1k9blJ9jo-GHmqYEHQ_DEYlC5nVuZ-Zce2ZY4o7kU5kw/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1LwzLSR27rvCrc7d6_uCuIXiVfnDlfTCkRN4mgxz_STY/edit?usp=drive_link" },
 zh: { vocab: "https://docs.google.com/spreadsheets/d/17lPYQ1mVWisPhHydugT6IEtl2bvcnmWmm367V_3dQHE/edit?usp=drive_link", sentence: "https://docs.google.com/spreadsheets/d/1YMXhI2_aKdVDZp6hS5p4JqU3PJBDxI_JpVAUZdnDHiw/edit?usp=drive_link" }
 };
-window.DEFAULT_API_KEY_SHEET = "https://docs.google.com/spreadsheets/d/..../edit?usp=drive_link";
+window.DEFAULT_API_KEY_SHEET = "https://docs.google.com/spreadsheets/d/1Pv3At-Qpz110ni2nxfSG9KN5j_wKFwHlH_6UORuCalY/edit?usp=drive_link";
 // KHÔI PHỤC DI SẢN (Chỉ chứa định tuyến Key, tuyệt đối không chứa Thẻ mẫu)
 window.CONFIG_SAMPLES = {
 en: { dataKey: 'fc_data_en', noteKey: 'fc_notebook_en' },
@@ -140,6 +141,61 @@ getAvailableTraps: function(levelKey) {
 return this.LEVEL_TO_TRAPS[levelKey] || [];
 }
 };
+// ============================================================================
+// HỆ THỐNG MỒI LỆNH NGỤY TRANG LƯU LƯỢNG (DECOY PROMPTS)
+// ============================================================================
+window.DECOY_PROMPTS = [
+1 cộng 1 bằng mấy? Trả lời 1 số.,
+2 nhân 5 bằng bao nhiêu?,
+10 trừ 3 còn mấy?,
+20 chia 4 bằng mấy?,
+Số chẵn liền sau số 2 là gì?,
+Căn bậc 2 của 9 là mấy?,
+3 bình phương bằng mấy?,
+Số lẻ nhỏ nhất là số nào?,
+1 tá là bao nhiêu cái?,
+Một nửa của 50 là mấy?,
+Dịch từ 'Apple' sang tiếng Việt.,
+Dịch từ 'Hello' sang tiếng Pháp.,
+Dịch từ 'Nước' sang tiếng Anh.,
+Từ 'Dog' tiếng Việt nghĩa là gì?,
+Dịch từ 'Mèo' sang tiếng Anh.,
+Viết chữ 'Một' bằng tiếng Anh.,
+Từ 'Cảm ơn' tiếng Anh là gì?,
+Dịch chữ 'Love' sang tiếng Việt.,
+Nói 'Tạm biệt' bằng tiếng Anh.,
+Dịch 'Đỏ' sang tiếng Anh.,
+Thủ đô của Việt Nam là gì?,
+Trái đất có mấy châu lục?,
+Nước sôi ở bao nhiêu độ C?,
+Mặt trời mọc hướng nào?,
+Tên hành tinh thứ 3 từ Mặt Trời.,
+Động vật lớn nhất thế giới là gì?,
+Loài chim nào chạy nhanh nhất?,
+Đỉnh núi cao nhất thế giới tên gì?,
+Thủ đô của Pháp là gì?,
+Một năm có bao nhiêu tháng?,
+Từ trái nghĩa với 'Cao' là gì?,
+Từ đồng nghĩa với 'Đẹp' là gì?,
+Đếm từ 1 đến 3.,
+Chữ cái đầu tiên trong bảng chữ cái.,
+Đọc tên 3 màu cơ bản.,
+Liệt kê 2 loại trái cây.,
+Nêu tên 1 phương tiện giao thông.,
+Trái nghĩa của 'Nóng' là gì?,
+Đồng nghĩa của 'To' là gì?,
+Chữ cái cuối cùng của bảng chữ cái tiếng Anh.,
+Con mèo có mấy chân?,
+Máu có màu gì?,
+Bầu trời màu gì?,
+Lá cây thường có màu gì?,
+Con chó sủa như thế nào?,
+Một tuần có mấy ngày?,
+Một ngày có bao nhiêu giờ?,
+Hình vuông có mấy cạnh?,
+Hình tam giác có mấy góc?,
+Cá thở bằng gì?
+];
 // ============================================================================
 // HỆ THỐNG PROMPT TÁCH BIỆT (KHAI PHÓNG SỰ SÁNG TẠO)
 // ============================================================================
@@ -613,12 +669,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.41
-// Last Updated: 2026-08-01 07:30
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.43
+// Last Updated: 2026-08-01 10:20
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.43: [DUAL-KEY DECOY] Cấy ghép hàm sát thủ ẩn danh fireDecoyApi() phục vụ chiến dịch Bắn mồi tàng hình. Tự động "nhìn trộm" con trỏ để lấy Key cũ hoặc Key mới mà không làm xáo trộn thứ tự Round-Robin của luồng chính.
+// Cập nhật V2.42: [TRAFFIC OBFUSCATION] Tiêm nhiễu ký tự tàng hình (\u200B) vào cuối prompt dựa trên cài đặt fc_obfuscation_mode để lách bộ lọc Cache/Hash của Google Load Balancer.
 // Cập nhật V2.41: [SMART COOLDOWN & SYSTEM LOGGING] Bóc tách lỗi 429 thành Spam (phạt 5p) và Cạn Quota (phạt theo cài đặt Radar). Trích xuất 5 số cuối của Key để ném lỗi chi tiết phục vụ Nhật ký hệ thống.
-// Cập nhật V2.40: [INCLUSIVE FALLBACK & DICTIONARY EXPANSION] Nâng cấp lưới vét an toàn thành "Phổ thông, tự nhiên". Mở rộng ánh xạ Từ điển sư phạm.
-// Cập nhật V2.38: (Definition Trimmer) Thiết quân luật trường dịch nghĩa.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -709,7 +765,15 @@ throw new Error("Lỗi tải dữ liệu mạng (Tất cả Proxy đều bị ch
 window.Utils.pingGeminiKey = async (apiKey) => {
 try {
 const k = apiKey.replace(/["'\s]/g, "");
-const body = { contents: [{ parts: [{ text: "Hãy trả lời 'OK'" }] }] };
+// [V2.42] BƠM KÝ TỰ TÀNG HÌNH CHỐNG BỘ LỌC HÀNH VI
+let pingText = "Hãy trả lời 'OK'";
+const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+if (obfuscationMode === '1' || obfuscationMode === '2') {
+const zeroWidthSpace = '\u200B';
+const randomPadding = Math.floor(Math.random() * 15) + 1;
+pingText += zeroWidthSpace.repeat(randomPadding);
+}
+const body = { contents: [{ parts: [{ text: pingText }] }] };
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 10000);
 // Gỡ Cloudflare Proxy, Trở về Direct Connection
@@ -787,7 +851,15 @@ throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cầ
 localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
 // --- THỰC THI BẮN API ---
 try {
-const body = { contents: [{ parts: [{ text: prompt }] }] };
+// [V2.42] BƠM KÝ TỰ TÀNG HÌNH CHỐNG BỘ LỌC HÀNH VI
+let finalPrompt = prompt;
+const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+if (obfuscationMode === '1' || obfuscationMode === '2') {
+const zeroWidthSpace = '\u200B';
+const randomPadding = Math.floor(Math.random() * 15) + 1;
+finalPrompt += zeroWidthSpace.repeat(randomPadding);
+}
+const body = { contents: [{ parts: [{ text: finalPrompt }] }] };
 const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
 body.generationConfig = { temperature: randomTemp };
 if (schema) {
@@ -1037,8 +1109,16 @@ if (requiredFields.includes('grammar_type')) {
 fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải thích dài dòng. ${validTagsStr}\n`;
 }
 userQuery += fieldRules;
+// [V2.42] BƠM KÝ TỰ TÀNG HÌNH CHỐNG BỘ LỌC HÀNH VI
+let finalUserQuery = userQuery;
+const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+if (obfuscationMode === '1' || obfuscationMode === '2') {
+const zeroWidthSpace = '\u200B';
+const randomPadding = Math.floor(Math.random() * 15) + 1;
+finalUserQuery += zeroWidthSpace.repeat(randomPadding);
+}
 const payload = {
-contents: [{ parts: [{ text: userQuery }] }],
+contents: [{ parts: [{ text: finalUserQuery }] }],
 systemInstruction: { parts: [{ text: "BẮT BUỘC TRẢ VỀ JSON HỢP LỆ THEO SCHEMA. Không bình luận." }] },
 generationConfig: {
 responseMimeType: "application/json",
@@ -1226,6 +1306,49 @@ const cleanSentence = sentence ? sentence.replace(/\u0332/g, '') : '';
 const prompt = window.Utils.getPrompt('grammar', { sentence: cleanSentence, lang });
 const { text, tokenMetadata } = await window.Utils.callGeminiApi(prompt, null, apiKey);
 return { text: window.Utils.cleanText(text), _tokenUsage: tokenMetadata };
+};
+// ============================================================================
+// 7. ĐỘNG CƠ BẮN MỒI TÀNG HÌNH (STEALTH DECOY ENGINE)
+// ============================================================================
+window.Utils.fireDecoyApi = async (prompt, useNextKey = false) => {
+try {
+let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
+if (keyPool.length === 0) return;
+let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
+const poolSize = keyPool.length;
+let targetIndex = 0;
+if (useNextKey) {
+// Mồi 2: Nhìn trộm Key sắp được dùng (đứng tại vị trí con trỏ hiện tại)
+targetIndex = pointer % poolSize;
+} else {
+// Mồi 1: Lấy lại Key cũ (lùi 1 bước so với con trỏ hiện tại)
+targetIndex = (pointer - 1 + poolSize) % poolSize;
+}
+const rawK = keyPool[targetIndex];
+if (!rawK || rawK.length < 10) return;
+const targetKey = rawK.replace(/["'\s]/g, "");
+// Bơm thêm ký tự tàng hình để tạo mã Hash hoàn toàn mới
+let finalPrompt = prompt;
+const zeroWidthSpace = '\u200B';
+const randomPadding = Math.floor(Math.random() * 15) + 1;
+finalPrompt += zeroWidthSpace.repeat(randomPadding);
+const body = { contents: [{ parts: [{ text: finalPrompt }] }] };
+const randomTemp = Math.random() * (1.1 - 0.7) + 0.7;
+body.generationConfig = { temperature: randomTemp };
+// Cài đặt cầu dao ngắt sớm để không treo mạng
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 10000);
+// Bắn trực tiếp, không sử dụng Mutex Lock để không chặn luồng chính
+await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(body),
+signal: controller.signal
+}).catch(() => {}); // Nuốt sạch mọi lỗi trả về
+clearTimeout(timeoutId);
+} catch (e) {
+// Im lặng tuyệt đối
+}
 };
 // Block 2.1d: TẦNG 2: CƠ SỞ DỮ LIỆU & ĐỒNG BỘ (Database & Memory Sync) - Version 2.1
 // Last Updated: 2026-06-12 09:56
@@ -23554,14 +23677,12 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.16
-// Last Updated: 2026-07-31 09:17
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.18
+// Last Updated: 2026-08-01 10:15
 // Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
-// Cập nhật V1.16: [DEEP SCANNER FALLBACK] Nâng cấp cơ chế lưới vét dự phòng (Fallback) 3 lớp: State -> LocalStorage -> Mặc định theo ngôn ngữ (zh_level_1/en_level_1), đảm bảo LevelContext không bao giờ rỗng.
-// Cập nhật V1.15: [STATE BINDING] Bổ sung cơ chế lưới vét dự phòng (Fallback) từ localStorage cho mảng currentLevel, đảm bảo levelContext không bao giờ rỗng khi truyền xuống AI Core.
-// Cập nhật V1.14: [DYNAMIC LEVEL CONTEXT] Trích xuất và bơm mảng `currentLevel` xuống tầng dưới qua tham số `levelContext` cho mọi luồng gọi AI.
-// Cập nhật V1.13: [DOMINO RESCUE] Dạy Động cơ Hàng đợi AI cách lắng nghe Cầu dao Toàn cục chống lỗi chết chùm Domino.
-// Cập nhật V1.12: [MASTER DATA MUTATION] Trực tiếp tiêm dữ liệu AI vào tận kho lõi master.
+// Cập nhật V1.18: [STEALTH DECOY ENGINE] Kích hoạt Chiến lược Bắn mồi Kép (Dual-Key Decoy). Chuyển sang gọi hàm sát thủ fireDecoyApi() luân phiên giữa Key cũ và Key mới bằng decoyToggleRef để mô phỏng hoàn hảo hành vi Follow-up của con người.
+// Cập nhật V1.17: [TRAFFIC OBFUSCATION] Bơm thuật toán Jitter (Nhiễu thời gian ngẫu nhiên) vào hàm wait() của luồng lật thẻ tự động và hàng đợi AI. Tích hợp vòng lặp bắn mồi độc lập ngẫu nhiên (Mode 2).
+// Cập nhật V1.16: [DEEP SCANNER FALLBACK] Nâng cấp cơ chế lưới vét dự phòng (Fallback) 3 lớp đảm bảo LevelContext không bao giờ rỗng.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23575,13 +23696,37 @@ const isLoopRunning = useRef(false);
 // Hàng đợi tuần tự cho tính năng Làm giàu thẻ khi đang học
 const enrichQueueRef = useRef([]);
 const isProcessingEnrichQueue = useRef(false);
+// Trí nhớ lưu trạng thái chọn Key bắn mồi (false: Key cũ, true: Key mới)
+const decoyToggleRef = useRef(false);
 // ==================================================================================
 // 1. LOGIC AUTO-PLAY (STABLE VERSION)
 // ==================================================================================
-// Hàm đợi an toàn
+// Hàm đợi an toàn (Có bơm nhiễu Jitter và Mồi lệnh)
 const wait = (ms) => new Promise(resolve => {
 if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current);
-autoPlayTimeoutRef.current = setTimeout(resolve, ms);
+let finalMs = ms;
+const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+// [OBFUSCATION] Bơm thuật toán Jitter (Nhiễu thời gian ngẫu nhiên +/- 15%)
+if (obfuscationMode === '1' || obfuscationMode === '2') {
+const jitter = ms * 0.15;
+finalMs = ms + (Math.random() * jitter * 2 - jitter);
+}
+// [OBFUSCATION MODE 2] Bắn mồi ngẫu nhiên trong thời gian chờ (Tỷ lệ 25% nếu chờ > 1500ms)
+if (obfuscationMode === '2' && finalMs >= 1500 && Math.random() < 0.25) {
+setTimeout(() => {
+if (window.DECOY_PROMPTS && window.DECOY_PROMPTS.length > 0) {
+const randomPrompt = window.DECOY_PROMPTS[Math.floor(Math.random() * window.DECOY_PROMPTS.length)];
+// Bắn mồi bằng khẩu súng ẩn danh (Luân phiên Key cũ/mới)
+if (window.Utils && window.Utils.fireDecoyApi) {
+const useNext = decoyToggleRef.current;
+console.log(`[Obfuscation] Đang bắn mồi ngụy trang (Key ${useNext ? 'Mới' : 'Cũ'})...`);
+window.Utils.fireDecoyApi(randomPrompt, useNext);
+decoyToggleRef.current = !useNext; // Đảo cờ cho lần bắn sau
+}
+}
+}, finalMs * 0.4); // Bắn mồi vào khoảng 40% thời gian chờ để không đụng độ
+}
+autoPlayTimeoutRef.current = setTimeout(resolve, finalMs);
 });
 const runAutoPlay = useCallback(async () => {
 if (isLoopRunning.current) return;
@@ -23765,11 +23910,16 @@ break; // Cắt đứt vòng lặp vô tận
 if (shouldShift && aiQueueRef.current.length > 0) {
 aiQueueRef.current.shift();
 }
-// [V1.13] Xử lý Delay: Ngủ đông dài (nếu có bão) hoặc Delay ngắn 5s
+// [V1.13] Xử lý Delay: Ngủ đông dài (nếu có bão) hoặc Delay ngắn 5s (Có Jitter)
 if (customDelayMs > 0) {
 await new Promise(r => setTimeout(r, customDelayMs));
 } else if (shouldDelay) {
-await new Promise(r => setTimeout(r, 5000));
+let delayMs = 5000;
+const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+if (obfuscationMode === '1' || obfuscationMode === '2') {
+delayMs += Math.floor(Math.random() * 2000) - 1000; // Jitter +/- 1s
+}
+await new Promise(r => setTimeout(r, delayMs));
 }
 }
 }
@@ -24026,11 +24176,16 @@ break; // Thoát vòng lặp
 if (shouldShift && enrichQueueRef.current.length > 0) {
 enrichQueueRef.current.shift();
 }
-// [V1.13] Khóa cứng luồng bằng customDelay (15.5s) HOẶC delay thường (5s)
+// [V1.13] Khóa cứng luồng bằng customDelay (15.5s) HOẶC delay thường (5s có Jitter)
 if (customDelayMs > 0) {
 await new Promise(r => setTimeout(r, customDelayMs));
 } else if (shouldDelay) {
-await new Promise(r => setTimeout(r, 5000));
+let delayMs = 5000;
+const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+if (obfuscationMode === '1' || obfuscationMode === '2') {
+delayMs += Math.floor(Math.random() * 2000) - 1000; // Nhiễu +/- 1s
+}
+await new Promise(r => setTimeout(r, delayMs));
 }
 }
 }
