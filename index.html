@@ -613,16 +613,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.40
-// Last Updated: 2026-07-31 09:15
-// Nhiệm vụ: Giao tiếp HTTP, tải Google Sheets, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.40: [INCLUSIVE FALLBACK & DICTIONARY EXPANSION] Nâng cấp lưới vét an toàn thành "Phổ thông, tự nhiên" thay vì "Cơ bản". Mở rộng ánh xạ Từ điển sư phạm (bao gồm cả các mã viết tắt hsk, a1, b1...).
-// Cập nhật V2.39: [PEDAGOGICAL CONTEXT MAP] Bổ sung Từ điển Sư phạm dịch các mã Level kỹ thuật sang ngôn ngữ tự nhiên.
-// Cập nhật V2.38 (Definition Trimmer): Thiết quân luật trường dịch nghĩa (definition), ép độ dài 3-6 từ cho từ vựng và tiêm ngữ cảnh độ khó (Level Context) để dịch sát nghĩa nhất.
-// Cập nhật V2.37 (Dynamic Level-Based Examples): Bơm ngữ cảnh `levelContext` vào lõi sinh Prompt để điều khiển độ khó câu/từ. Gỡ bỏ giới hạn "dưới 10 từ".
-// Cập nhật V2.36 (Đại phẫu Smart Fill): Tái cấu trúc hệ thống Build Prompt cho cơ chế Trimming. Tách bạch Persona giữa Từ vựng và Câu văn. Thiết quân luật Chủ đề, chuẩn hóa Ví dụ.
-// Cập nhật V2.35: [ANTI-OVERWRITE SHIELD] Lắp đặt màng lọc vô trùng quét toàn bộ Object JSON AI trả về.
-// Cập nhật V2.34: [DIRECT CONNECTION] Gỡ bỏ hoàn toàn Cloudflare Proxy. Trở về kết nối trực tiếp Google API.
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.41
+// Last Updated: 2026-08-01 07:30
+// Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.41: [SMART COOLDOWN & SYSTEM LOGGING] Bóc tách lỗi 429 thành Spam (phạt 5p) và Cạn Quota (phạt theo cài đặt Radar). Trích xuất 5 số cuối của Key để ném lỗi chi tiết phục vụ Nhật ký hệ thống.
+// Cập nhật V2.40: [INCLUSIVE FALLBACK & DICTIONARY EXPANSION] Nâng cấp lưới vét an toàn thành "Phổ thông, tự nhiên". Mở rộng ánh xạ Từ điển sư phạm.
+// Cập nhật V2.38: (Definition Trimmer) Thiết quân luật trường dịch nghĩa.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -716,7 +712,7 @@ const k = apiKey.replace(/["'\s]/g, "");
 const body = { contents: [{ parts: [{ text: "Hãy trả lời 'OK'" }] }] };
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 10000);
-// [V2.34] Gỡ Cloudflare Proxy, Trở về Direct Connection
+// Gỡ Cloudflare Proxy, Trở về Direct Connection
 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
@@ -801,7 +797,6 @@ body.generationConfig.responseSchema = schema;
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-// [V2.34] Gỡ Cloudflare Proxy, Trở về Direct Connection
 const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
@@ -817,10 +812,10 @@ reject(new Error(`Hết thời gian chờ API (${Math.round(dynamicTimeoutMs/100
 }, dynamicTimeoutMs);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
-// --- [V2.34] BẮT LỖI TẠI NETWORK LEVEL NHƯNG BẢO TOÀN LỖI JSON ---
-// Chặn 429 và 503 vì chúng trả về HTML rác từ Load Balancer
+// --- BẮT LỖI TẠI NETWORK LEVEL ---
 if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
 if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
+if (res.status === 500) throw new Error("500: Internal Server Error");
 // Cho phép 400 và 403 đi qua để parse JSON
 if (!res.ok && res.status !== 200 && res.status !== 400 && res.status !== 403) {
 const contentType = res.headers.get("content-type");
@@ -829,6 +824,7 @@ throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)
 }
 }
 const d = await res.json();
+// CHUẨN HÓA LỖI ĐỂ TRUYỀN VÀO CATCH BÊN DƯỚI
 if (d.error) {
 if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || (d.error.message && d.error.message.includes('quota'))) throw new Error(`429: ${d.error.message}`);
 if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) throw new Error(`503: ${d.error.message}`);
@@ -849,32 +845,44 @@ localStorage.setItem(window.STORAGE_KEYS.API_KEY, targetKey);
 await new Promise(r => setTimeout(r, 3000));
 return { text: resultText, tokenMetadata };
 } catch (e) {
+// [V2.41] BỘ PHIÊN DỊCH LỖI VÀ ĐỊNH BỆNH XUẤT NHẬT KÝ
+const maskedKey = targetKey ? "..." + targetKey.slice(-5) : "Unknown";
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
 if (e.message && e.message.includes('GLOBAL_PAUSE')) throw e;
 if (e.message && e.message.includes('429')) {
-window.Utils.setKeyCooldown(targetKey, window.Utils.getCooldown429Ms());
-window.Utils.triggerGlobalPause(15000);
-console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 429. Sập cầu dao 15s.`, "color: #ef4444; font-weight: bold; font-size: 11px;");
-} else if (e.message && e.message.includes('503')) {
-window.Utils.setKeyCooldown(targetKey, 20000);
-window.Utils.triggerGlobalPause(10000);
-console.warn(`%c[Round-Robin NG] Key ...${targetKey.slice(-5)} dính 503. Sập cầu dao 10s.`, "color: #f59e0b; font-weight: bold; font-size: 11px;");
+const msgLower = e.message.toLowerCase();
+// Phân biệt 429 Spam vs 429 Cạn Quota
+if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLower.includes('load balancer')) {
+// Lỗi spam nhanh -> Khóa 5 phút
+window.Utils.setKeyCooldown(targetKey, 5 * 60 * 1000);
+window.Utils.triggerGlobalPause(15000); // Nín thở 15s để chống dồn dập
+throw new Error(`[Spam 429] Key ${maskedKey} gọi quá nhanh. Phạt 5 phút.`);
+} else {
+// Lỗi cạn Quota ngày -> Khóa theo cài đặt (mặc định 120p)
+const configCooldown = window.Utils.getCooldown429Ms();
+window.Utils.setKeyCooldown(targetKey, configCooldown);
+throw new Error(`[Cạn Quota] Key ${maskedKey} hết hạn mức. Đóng băng ${Math.round(configCooldown/60000)} phút.`);
+}
+} else if (e.message && (e.message.includes('503') || e.message.includes('500'))) {
+window.Utils.setKeyCooldown(targetKey, 60000); // 1 phút
+window.Utils.triggerGlobalPause(15000); // 15s
+throw new Error(`[Server ${e.message.includes('500') ? '500' : '503'}] Máy chủ quá tải. Phạt Key ${maskedKey} 1 phút, sập cầu dao 15s.`);
 } else if (e.message && e.message.includes('403')) {
-window.Utils.setKeyCooldown(targetKey, 86400000);
-console.error(`%c[Round-Robin FATAL] Key ...${targetKey.slice(-5)} bị từ chối (403). Đóng băng 24h.`, "color: #dc2626; font-weight: bold; font-size: 11px;");
+window.Utils.setKeyCooldown(targetKey, 24 * 60 * 60 * 1000); // 24h
+throw new Error(`[Lỗi 403] Key ${maskedKey} bị từ chối truy cập (Hỏng/Chặn IP). Đóng băng 24h.`);
 } else if (e.message && e.message.includes('400')) {
-window.Utils.setKeyCooldown(targetKey, 5000); // Bad request thường là lỗi ngữ pháp, không phải spam
+window.Utils.setKeyCooldown(targetKey, 5000); // 5s
+throw new Error(`[Lỗi 400] Sai cú pháp hoặc bị AI từ chối. Phạt Key ${maskedKey} 5s.`);
 } else {
 window.Utils.setKeyCooldown(targetKey, 5000);
+throw new Error(`[Lỗi Mạng] Key ${maskedKey} gặp sự cố: ${e.message}`);
 }
-throw e;
 }
 });
 };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V2.40] Nâng cấp Từ điển Sư phạm & Lưới vét LevelContext (Phổ thông, tự nhiên)
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = []) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -889,7 +897,7 @@ const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
 const isSentence = dataMode === 'sentence';
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 // ============================================================================
-// [V2.40] TỪ ĐIỂN SƯ PHẠM MỞ RỘNG (EXPANDED PEDAGOGICAL DICTIONARY)
+// TỪ ĐIỂN SƯ PHẠM MỞ RỘNG (EXPANDED PEDAGOGICAL DICTIONARY)
 // ============================================================================
 const levelDictionary = {
 'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)', 'hsk1': 'Tiếng Trung HSK 1 (Sơ cấp)',
@@ -907,13 +915,10 @@ const levelDictionary = {
 };
 let translatedLevels = [];
 if (levelContext && Array.isArray(levelContext) && levelContext.length > 0) {
-// Dịch các mã kỹ thuật sang ngôn ngữ tự nhiên
 translatedLevels = levelContext.map(lvl => levelDictionary[lvl] || lvl);
 } else {
-// Lưới vét an toàn (Safety Net): Trả về ngôn ngữ tự nhiên bao hàm nếu rỗng
 translatedLevels = [lang === 'zh' ? 'Tiếng Trung phổ thông, tự nhiên (Phù hợp mọi cấp độ)' : 'Tiếng Anh phổ thông, tự nhiên (Phù hợp mọi cấp độ)'];
 }
-// Khởi tạo Schema mặc định
 let propertiesToFetch = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
@@ -954,7 +959,6 @@ propertiesToFetch = trimmedProperties;
 const promptKey = isSentence ? 'enrich_sentence' : 'enrich_word';
 let basePrompt = window.DEFAULT_PROMPTS ? window.DEFAULT_PROMPTS[promptKey] : "Phân tích {term} ({lang})";
 basePrompt = basePrompt.replace(/{term}/g, cleanTermForAi).replace(/{lang}/g, lang);
-// Tiêm lệnh Hán Việt thông minh (Chỉ tiêm khi Schema có yêu cầu)
 let dynamicInstruction = "";
 if (requiredFields.includes('pronunciation') || requiredFields.includes('sinoViet')) {
 dynamicInstruction = lang === 'zh'
@@ -965,15 +969,11 @@ let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ gốc: ${lang}).\n`;
 userQuery += `[ĐỊNH HƯỚNG TRẢ LỜI BẮT BUỘC]:\n`;
-// Tách bạch Persona
 if (requiredFields.length === 1 && requiredFields[0] === 'analysis') {
-// Nhánh: Gọi riêng Analysis mặt sau thẻ
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: Bạn là chuyên gia ngôn ngữ. Hãy phân tích cực kỳ ngắn gọn (1-2 câu) về từ loại, ngữ pháp hoặc cách dùng của từ/câu này. Trả lời đi thẳng vào bản chất.\n`;
 } else if (isSentence) {
-// Nhánh: Câu văn
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai giáo viên ngôn ngữ. Hãy mổ xẻ cấu trúc câu, chỉ ra các điểm ngữ pháp trọng tâm (Ví dụ: Thì, Phrasal verbs, Giới từ, Cấu trúc...). TUYỆT ĐỐI KHÔNG giải thích ý nghĩa ngữ cảnh chung chung.\n`;
 } else {
-// Nhánh: Từ vựng
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai chuyên gia từ vựng. Hãy phân tích ngắn gọn sắc thái ý nghĩa hoặc cách sử dụng đặc trưng của từ vựng này.\n`;
 }
 userQuery += `2. NGÔN NGỮ: Mọi lời giải thích, phân tích (đặc biệt là trường analysis) BẮT BUỘC phải viết bằng TIẾNG VIỆT dễ hiểu.\n`;
@@ -1004,7 +1004,6 @@ let fieldRules = `\n[LUẬT ĐỊNH DẠNG TỪNG TRƯỜNG]:\n`;
 if (requiredFields.includes('pronunciation') && isSentence) {
 fieldRules += `- Với trường 'pronunciation': BẮT BUỘC phải phiên âm (IPA/Pinyin) cho TOÀN BỘ CÂU VĂN. TUYỆT ĐỐI KHÔNG chỉ phiên âm một từ đơn lẻ.\n`;
 }
-// Thiết quân luật trường Dịch nghĩa (Definition) & Lưới Level
 if (requiredFields.includes('definition')) {
 let defDifficulty = "";
 if (translatedLevels.length > 0) {
@@ -1016,14 +1015,12 @@ fieldRules += `- Với trường 'definition': BẮT BUỘC cung cấp bản d�
 fieldRules += `- Với trường 'definition': BẮT BUỘC chỉ xuất nghĩa tiếng Việt trực tiếp (Giống như từ điển bỏ túi). TUYỆT ĐỐI NGẮN GỌN (Tối đa 3-6 từ). TUYỆT ĐỐI KHÔNG giải thích dài dòng.${defDifficulty}\n`;
 }
 }
-// Thiết quân luật Chủ đề (Topic Dictatorship)
 if (requiredFields.includes('topic')) {
 const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.IoeDataEngine.TOPICS.length > 0
 ? window.IoeDataEngine.TOPICS
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
 }
-// Chuẩn hóa Ví dụ (Dynamic Level Control & Dấu ngắt |)
 if (requiredFields.includes('example')) {
 let difficultyPrompt = "";
 if (translatedLevels.length > 0) {
@@ -1102,6 +1099,7 @@ if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
 if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
 if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
+if (res.status === 500) throw new Error("500: Internal Server Error");
 if (!res.ok && res.status !== 200 && res.status !== 400 && res.status !== 403) {
 const contentType = res.headers.get("content-type");
 if (contentType && contentType.indexOf("application/json") === -1) {
@@ -1109,6 +1107,7 @@ throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)
 }
 }
 const data = await res.json();
+// CHUẨN HÓA LỖI ĐỂ TRUYỀN VÀO CATCH BÊN DƯỚI
 if (data.error) {
 if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || (data.error.message && data.error.message.includes('quota'))) throw new Error(`429: ${data.error.message}`);
 if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) throw new Error(`503: ${data.error.message}`);
@@ -1131,7 +1130,7 @@ parsed.sinoViet = parsed.sinoViet.replace(/\(.*?\)/g, '').replace(/（.*?）/g, 
 }
 const finalResult = { ...parsed, term: term };
 // ====================================================================
-// [V2.35] MÀNG LỌC VÔ TRÙNG (ANTI-OVERWRITE SHIELD)
+// MÀNG LỌC VÔ TRÙNG (ANTI-OVERWRITE SHIELD)
 // ====================================================================
 for (const key in finalResult) {
 if (finalResult[key] === "" || finalResult[key] === null) {
@@ -1148,22 +1147,35 @@ finalResult._tokenUsage = data.usageMetadata;
 await new Promise(r => setTimeout(r, 3000));
 return finalResult;
 } catch (e) {
+// [V2.41] BỘ PHIÊN DỊCH LỖI VÀ ĐỊNH BỆNH XUẤT NHẬT KÝ
+const maskedKey = targetKey ? "..." + targetKey.slice(-5) : "Unknown";
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy thao tác'))) throw e;
 if (e.message && e.message.includes('GLOBAL_PAUSE')) throw e;
 if (e.message && e.message.includes('429')) {
-window.Utils.setKeyCooldown(targetKey, window.Utils.getCooldown429Ms());
-window.Utils.triggerGlobalPause(15000); // Trốn IP 15s
-} else if (e.message && e.message.includes('503')) {
-window.Utils.setKeyCooldown(targetKey, 20000);
-window.Utils.triggerGlobalPause(10000);
+const msgLower = e.message.toLowerCase();
+if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLower.includes('load balancer')) {
+window.Utils.setKeyCooldown(targetKey, 5 * 60 * 1000); // 5 phút
+window.Utils.triggerGlobalPause(15000);
+throw new Error(`[Spam 429] Key ${maskedKey} gọi quá nhanh. Phạt 5 phút.`);
+} else {
+const configCooldown = window.Utils.getCooldown429Ms();
+window.Utils.setKeyCooldown(targetKey, configCooldown);
+throw new Error(`[Cạn Quota] Key ${maskedKey} hết hạn mức. Đóng băng ${Math.round(configCooldown/60000)} phút.`);
+}
+} else if (e.message && (e.message.includes('503') || e.message.includes('500'))) {
+window.Utils.setKeyCooldown(targetKey, 60000); // 1 phút
+window.Utils.triggerGlobalPause(15000); // 15s
+throw new Error(`[Server ${e.message.includes('500') ? '500' : '503'}] Máy chủ quá tải. Phạt Key ${maskedKey} 1 phút, nín thở 15s.`);
 } else if (e.message && e.message.includes('403')) {
-window.Utils.setKeyCooldown(targetKey, 86400000); // 24h
+window.Utils.setKeyCooldown(targetKey, 24 * 60 * 60 * 1000); // 24h
+throw new Error(`[Lỗi 403] Key ${maskedKey} bị từ chối truy cập (Hỏng/Chặn IP). Đóng băng 24h.`);
 } else if (e.message && e.message.includes('400')) {
-window.Utils.setKeyCooldown(targetKey, 5000);
+window.Utils.setKeyCooldown(targetKey, 5000); // 5s
+throw new Error(`[Lỗi 400] Sai cú pháp hoặc bị AI từ chối. Phạt Key ${maskedKey} 5s.`);
 } else {
 window.Utils.setKeyCooldown(targetKey, 5000);
+throw new Error(`[Lỗi Mạng] Key ${maskedKey} gặp sự cố: ${e.message}`);
 }
-throw e;
 }
 });
 };
