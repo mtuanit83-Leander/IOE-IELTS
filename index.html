@@ -8239,13 +8239,12 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.11
-// Last Updated: 2026-07-22 15:45
+// Block 4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.12
+// Last Updated: 2026-08-01 09:55
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
+// Cập nhật V1.12: [TRAFFIC OBFUSCATION] Thêm giao diện A/B Testing Chế độ Ngụy trang (Tắt / Chế độ 1 / Chế độ 2) vào ApiKeyModal.
 // Cập nhật V1.11: [HOTFIX] Dời thanh trượt Tùy chỉnh Thời gian phạt 429 sang ApiKeyModal (Radar) với cơ chế Độc lập trạng thái (State Decoupling) đọc ghi trực tiếp Storage.
-// Cập nhật V1.10: [DYNAMIC COOLDOWN] Thêm tùy chỉnh Thời gian phạt 429 vào AiConfigModal. Tích hợp đồng bộ với Lõi mạng.
-// Cập nhật V1.09: [ANTI-429 UI] Bổ sung huy hiệu ❄️ Đóng băng có hiển thị thời gian bắt đầu. Tăng delay Radar từ 500ms lên 8000ms. Radar tự bỏ qua Key đang thụ án.
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
@@ -8254,6 +8253,8 @@ const [testResults, setTestResults] = React.useState({});
 const [newKeyInput, setNewKeyInput] = React.useState('');
 // [V1.11] Local State cho Cooldown Slider
 const [localCooldown, setLocalCooldown] = React.useState(120);
+// [V1.12] Local State cho Obfuscation Mode
+const [obfuscationMode, setObfuscationMode] = React.useState('0');
 const abortTestRef = React.useRef(false);
 React.useEffect(() => {
 if (isOpen) {
@@ -8272,6 +8273,9 @@ setTestResults({});
 // [V1.11] Khởi tạo giá trị Cooldown từ Storage
 const config = window.Utils?.safeJsonParse('fc_ai_config', {});
 setLocalCooldown(config.cooldown429 || 120);
+// [V1.12] Khởi tạo giá trị Obfuscation Mode
+const savedMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+setObfuscationMode(savedMode);
 }
 return () => {
 abortTestRef.current = true;
@@ -8311,6 +8315,12 @@ setLocalCooldown(newVal);
 const config = window.Utils?.safeJsonParse('fc_ai_config', {});
 config.cooldown429 = newVal;
 window.Utils?.safeLocalStorageSet('fc_ai_config', config);
+};
+// [V1.12] Xử lý đổi chế độ ngụy trang
+const handleObfuscationChange = (val) => {
+setObfuscationMode(val);
+localStorage.setItem('fc_obfuscation_mode', val);
+if (window.globalShowToast) window.globalShowToast("Đã cập nhật Chế độ Ngụy trang!", "success");
 };
 // [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích có ngắt mạch
 const handleTestKeys = async () => {
@@ -8400,6 +8410,28 @@ placeholder={t('apiKeyPlace')}
 <button onClick={handleAddKey} disabled={!newKeyInput.trim()} className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold shadow hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1 transition-all active:scale-95">
 <window.Icons.Plus size={18} /> Thêm
 </button>
+</div>
+</div>
+{/* [V1.12] Khối cài đặt Chế độ Ngụy trang (Obfuscation Mode) */}
+<div className="space-y-2 bg-blue-50 p-3 rounded-xl border border-blue-100 shadow-sm">
+<div className="flex justify-between items-center mb-1">
+<label className="text-[11px] font-bold text-blue-800 uppercase tracking-widest flex items-center gap-1">
+<window.Icons.Eye size={12}/> Ngụy trang lưu lượng (Anti-Bot)
+</label>
+</div>
+<div className="flex flex-col gap-2">
+<label className="flex items-center gap-2 cursor-pointer">
+<input type="radio" name="obfuscation" value="0" checked={obfuscationMode === '0'} onChange={(e) => handleObfuscationChange(e.target.value)} className="w-4 h-4 text-blue-600 focus:ring-blue-500 accent-blue-600" />
+<span className="text-xs text-blue-900 font-medium">Tắt (Mặc định)</span>
+</label>
+<label className="flex items-center gap-2 cursor-pointer">
+<input type="radio" name="obfuscation" value="1" checked={obfuscationMode === '1'} onChange={(e) => handleObfuscationChange(e.target.value)} className="w-4 h-4 text-blue-600 focus:ring-blue-500 accent-blue-600" />
+<span className="text-xs text-blue-900 font-medium">Chế độ 1: Bơm Ký tự vô hình (Tiết kiệm)</span>
+</label>
+<label className="flex items-center gap-2 cursor-pointer">
+<input type="radio" name="obfuscation" value="2" checked={obfuscationMode === '2'} onChange={(e) => handleObfuscationChange(e.target.value)} className="w-4 h-4 text-blue-600 focus:ring-blue-500 accent-blue-600" />
+<span className="text-xs text-blue-900 font-medium">Chế độ 2: Ký tự vô hình + Bắn mồi (An toàn)</span>
+</label>
 </div>
 </div>
 {/* [V1.11] Khối cài đặt Thời gian phạt 429 dời từ AiConfigModal sang */}
