@@ -88,11 +88,12 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
 // Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.08
-// Last Updated: 2026-08-01 10:20
+// Last Updated: 2026-08-01 10:25
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
-// Cập nhật V1.08: [HOTFIX] Bọc ngoặc kép ("") cho 50 phần tử mảng DECOY_PROMPTS để sửa lỗi SyntaxError Babel.
+// Cập nhật V1.08: [HOTFIX SHEETS] Gộp toàn bộ mảng DECOY_PROMPTS thành 1 dòng duy nhất bọc trong ngoặc kép để tránh lỗi mất định dạng khi lưu trữ qua Google Sheets.
 // Cập nhật V1.07: [TRAFFIC OBFUSCATION] Bổ sung kho đạn 50 câu lệnh mồi (DECOY_PROMPTS) phục vụ hệ thống ngụy trang lưu lượng.
 // Cập nhật V1.06: [VIETNAMESE DEPRECATION] Nhổ tận gốc định tuyến cấu hình, UI Text và Fallback URL của ngôn ngữ 'vi'.
+// Cập nhật V1.05: [DYNAMIC PROMPT PREPARATION] Thực thi Mũi khoan 1: Làm sạch các Template tĩnh. Cắt bỏ hoàn toàn các hướng dẫn phần cứng (như IPA/Pinyin, sinoViet) ra khỏi chuỗi enrich_word để chuẩn bị cho cơ chế tiêm ngữ cảnh động (Dynamic Injection) tại Tầng 2.1c.
 // ==================================================================================
 window.STORAGE_KEYS = {
 SETTINGS: 'fc_settings',
@@ -144,58 +145,7 @@ return this.LEVEL_TO_TRAPS[levelKey] || [];
 // ============================================================================
 // HỆ THỐNG MỒI LỆNH NGỤY TRANG LƯU LƯỢNG (DECOY PROMPTS)
 // ============================================================================
-window.DECOY_PROMPTS = [
-1 cộng 1 bằng mấy? Trả lời 1 số.,
-2 nhân 5 bằng bao nhiêu?,
-10 trừ 3 còn mấy?,
-20 chia 4 bằng mấy?,
-Số chẵn liền sau số 2 là gì?,
-Căn bậc 2 của 9 là mấy?,
-3 bình phương bằng mấy?,
-Số lẻ nhỏ nhất là số nào?,
-1 tá là bao nhiêu cái?,
-Một nửa của 50 là mấy?,
-Dịch từ 'Apple' sang tiếng Việt.,
-Dịch từ 'Hello' sang tiếng Pháp.,
-Dịch từ 'Nước' sang tiếng Anh.,
-Từ 'Dog' tiếng Việt nghĩa là gì?,
-Dịch từ 'Mèo' sang tiếng Anh.,
-Viết chữ 'Một' bằng tiếng Anh.,
-Từ 'Cảm ơn' tiếng Anh là gì?,
-Dịch chữ 'Love' sang tiếng Việt.,
-Nói 'Tạm biệt' bằng tiếng Anh.,
-Dịch 'Đỏ' sang tiếng Anh.,
-Thủ đô của Việt Nam là gì?,
-Trái đất có mấy châu lục?,
-Nước sôi ở bao nhiêu độ C?,
-Mặt trời mọc hướng nào?,
-Tên hành tinh thứ 3 từ Mặt Trời.,
-Động vật lớn nhất thế giới là gì?,
-Loài chim nào chạy nhanh nhất?,
-Đỉnh núi cao nhất thế giới tên gì?,
-Thủ đô của Pháp là gì?,
-Một năm có bao nhiêu tháng?,
-Từ trái nghĩa với 'Cao' là gì?,
-Từ đồng nghĩa với 'Đẹp' là gì?,
-Đếm từ 1 đến 3.,
-Chữ cái đầu tiên trong bảng chữ cái.,
-Đọc tên 3 màu cơ bản.,
-Liệt kê 2 loại trái cây.,
-Nêu tên 1 phương tiện giao thông.,
-Trái nghĩa của 'Nóng' là gì?,
-Đồng nghĩa của 'To' là gì?,
-Chữ cái cuối cùng của bảng chữ cái tiếng Anh.,
-Con mèo có mấy chân?,
-Máu có màu gì?,
-Bầu trời màu gì?,
-Lá cây thường có màu gì?,
-Con chó sủa như thế nào?,
-Một tuần có mấy ngày?,
-Một ngày có bao nhiêu giờ?,
-Hình vuông có mấy cạnh?,
-Hình tam giác có mấy góc?,
-Cá thở bằng gì?
-];
+window.DECOY_PROMPTS = ["1 cộng 1 bằng mấy? Trả lời 1 số.", "2 nhân 5 bằng bao nhiêu?", "10 trừ 3 còn mấy?", "20 chia 4 bằng mấy?", "Số chẵn liền sau số 2 là gì?", "Căn bậc 2 của 9 là mấy?", "3 bình phương bằng mấy?", "Số lẻ nhỏ nhất là số nào?", "1 tá là bao nhiêu cái?", "Một nửa của 50 là mấy?", "Dịch từ 'Apple' sang tiếng Việt.", "Dịch từ 'Hello' sang tiếng Pháp.", "Dịch từ 'Nước' sang tiếng Anh.", "Từ 'Dog' tiếng Việt nghĩa là gì?", "Dịch từ 'Mèo' sang tiếng Anh.", "Viết chữ 'Một' bằng tiếng Anh.", "Từ 'Cảm ơn' tiếng Anh là gì?", "Dịch chữ 'Love' sang tiếng Việt.", "Nói 'Tạm biệt' bằng tiếng Anh.", "Dịch 'Đỏ' sang tiếng Anh.", "Thủ đô của Việt Nam là gì?", "Trái đất có mấy châu lục?", "Nước sôi ở bao nhiêu độ C?", "Mặt trời mọc hướng nào?", "Tên hành tinh thứ 3 từ Mặt Trời.", "Động vật lớn nhất thế giới là gì?", "Loài chim nào chạy nhanh nhất?", "Đỉnh núi cao nhất thế giới tên gì?", "Thủ đô của Pháp là gì?", "Một năm có bao nhiêu tháng?", "Từ trái nghĩa với 'Cao' là gì?", "Từ đồng nghĩa với 'Đẹp' là gì?", "Đếm từ 1 đến 3.", "Chữ cái đầu tiên trong bảng chữ cái.", "Đọc tên 3 màu cơ bản.", "Liệt kê 2 loại trái cây.", "Nêu tên 1 phương tiện giao thông.", "Trái nghĩa của 'Nóng' là gì?", "Đồng nghĩa của 'To' là gì?", "Chữ cái cuối cùng của bảng chữ cái tiếng Anh.", "Con mèo có mấy chân?", "Máu có màu gì?", "Bầu trời màu gì?", "Lá cây thường có màu gì?", "Con chó sủa như thế nào?", "Một tuần có mấy ngày?", "Một ngày có bao nhiêu giờ?", "Hình vuông có mấy cạnh?", "Hình tam giác có mấy góc?", "Cá thở bằng gì?"];
 // ============================================================================
 // HỆ THỐNG PROMPT TÁCH BIỆT (KHAI PHÓNG SỰ SÁNG TẠO)
 // ============================================================================
