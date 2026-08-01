@@ -619,12 +619,13 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.43
-// Last Updated: 2026-08-01 10:20
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.44
+// Last Updated: 2026-08-01 10:39
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.43: [DUAL-KEY DECOY] Cấy ghép hàm sát thủ ẩn danh fireDecoyApi() phục vụ chiến dịch Bắn mồi tàng hình. Tự động "nhìn trộm" con trỏ để lấy Key cũ hoặc Key mới mà không làm xáo trộn thứ tự Round-Robin của luồng chính.
-// Cập nhật V2.42: [TRAFFIC OBFUSCATION] Tiêm nhiễu ký tự tàng hình (\u200B) vào cuối prompt dựa trên cài đặt fc_obfuscation_mode để lách bộ lọc Cache/Hash của Google Load Balancer.
-// Cập nhật V2.41: [SMART COOLDOWN & SYSTEM LOGGING] Bóc tách lỗi 429 thành Spam (phạt 5p) và Cạn Quota (phạt theo cài đặt Radar). Trích xuất 5 số cuối của Key để ném lỗi chi tiết phục vụ Nhật ký hệ thống.
+// Cập nhật V2.44: [STRICT DECOY REGIME] Tước quyền tự đoán Key của fireDecoyApi. Yêu cầu truyền đích danh targetKey từ Tầng 6 để chấm dứt hoàn toàn hiện tượng Race Condition và trùng lặp Key khi bắn mồi.
+// Cập nhật V2.43: [DUAL-KEY DECOY] Cấy ghép hàm sát thủ ẩn danh fireDecoyApi() phục vụ chiến dịch Bắn mồi tàng hình.
+// Cập nhật V2.42: [TRAFFIC OBFUSCATION] Tiêm nhiễu ký tự tàng hình (\u200B) vào cuối prompt.
+// Cập nhật V2.41: [SMART COOLDOWN & SYSTEM LOGGING] Bóc tách lỗi 429 thành Spam và Cạn Quota. Trích xuất 5 số cuối của Key.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1260,23 +1261,9 @@ return { text: window.Utils.cleanText(text), _tokenUsage: tokenMetadata };
 // ============================================================================
 // 7. ĐỘNG CƠ BẮN MỒI TÀNG HÌNH (STEALTH DECOY ENGINE)
 // ============================================================================
-window.Utils.fireDecoyApi = async (prompt, useNextKey = false) => {
+window.Utils.fireDecoyApi = async (prompt, targetKey) => {
 try {
-let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
-if (keyPool.length === 0) return;
-let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
-const poolSize = keyPool.length;
-let targetIndex = 0;
-if (useNextKey) {
-// Mồi 2: Nhìn trộm Key sắp được dùng (đứng tại vị trí con trỏ hiện tại)
-targetIndex = pointer % poolSize;
-} else {
-// Mồi 1: Lấy lại Key cũ (lùi 1 bước so với con trỏ hiện tại)
-targetIndex = (pointer - 1 + poolSize) % poolSize;
-}
-const rawK = keyPool[targetIndex];
-if (!rawK || rawK.length < 10) return;
-const targetKey = rawK.replace(/["'\s]/g, "");
+if (!targetKey) return;
 // Bơm thêm ký tự tàng hình để tạo mã Hash hoàn toàn mới
 let finalPrompt = prompt;
 const zeroWidthSpace = '\u200B';
@@ -1294,10 +1281,10 @@ method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
 signal: controller.signal
-}).catch(() => {}); // Nuốt sạch mọi lỗi trả về
+});
 clearTimeout(timeoutId);
 } catch (e) {
-// Im lặng tuyệt đối
+// Im lặng tuyệt đối, nuốt sạch mọi lỗi (429, 503, timeout...)
 }
 };
 // Block 2.1d: TẦNG 2: CƠ SỞ DỮ LIỆU & ĐỒNG BỘ (Database & Memory Sync) - Version 2.1
@@ -23627,12 +23614,12 @@ audioTimeoutRef, autoPlayTimeoutRef, processingCardsRef, resetTimeoutRef, aiQueu
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.Block6_1_useCoreState = useCoreState;
 window.useCoreState = useCoreState;
-// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.18
-// Last Updated: 2026-08-01 10:15
-// Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini (Làm giàu thẻ, giải thích ngữ pháp).
-// Cập nhật V1.18: [STEALTH DECOY ENGINE] Kích hoạt Chiến lược Bắn mồi Kép (Dual-Key Decoy). Chuyển sang gọi hàm sát thủ fireDecoyApi() luân phiên giữa Key cũ và Key mới bằng decoyToggleRef để mô phỏng hoàn hảo hành vi Follow-up của con người.
-// Cập nhật V1.17: [TRAFFIC OBFUSCATION] Bơm thuật toán Jitter (Nhiễu thời gian ngẫu nhiên) vào hàm wait() của luồng lật thẻ tự động và hàng đợi AI. Tích hợp vòng lặp bắn mồi độc lập ngẫu nhiên (Mode 2).
-// Cập nhật V1.16: [DEEP SCANNER FALLBACK] Nâng cấp cơ chế lưới vét dự phòng (Fallback) 3 lớp đảm bảo LevelContext không bao giờ rỗng.
+// Block 6.2: TẦNG 6: LOGIC ỨNG DỤNG (AI Logic) - Version 1.19
+// Last Updated: 2026-08-01 10:34
+// Nhiệm vụ: Cung cấp hook useAiLogic xử lý tự động phát (Auto-Play) và giao tiếp với AI Gemini.
+// Cập nhật V1.19: [SMART OBFUSCATION] Nhúng thuật toán Jitter (+/- 15% thời gian) và quy trình Bắn Mồi Kép có await trực tiếp vào các hàm wait() và delay của Hàng đợi. Tầng 6 giờ đây toàn quyền quyết định API Key (cũ/mới) để truyền cho Tầng 2, giải quyết dứt điểm lỗi Race Condition và Bắn liên thanh.
+// Cập nhật V1.16: [DEEP SCANNER FALLBACK] Nâng cấp cơ chế lưới vét dự phòng (Fallback) 3 lớp: State -> LocalStorage -> Mặc định theo ngôn ngữ.
+// Cập nhật V1.13: [DOMINO RESCUE] Dạy Động cơ Hàng đợi AI cách lắng nghe Cầu dao Toàn cục chống lỗi chết chùm Domino.
 // ==================================================================================
 const useAiLogic = (core, latestStateRef, callbacks) => {
 const { speak, handleNext } = callbacks;
@@ -23643,41 +23630,98 @@ setNotebook, aiQueueRef, isAiQueueProcessing, processingCardsRef
 } = core;
 // Cờ báo hiệu vòng lặp đang chạy
 const isLoopRunning = useRef(false);
+// Cờ đảo pha Key (Toggle) cho chiến dịch Bắn Mồi Kép
+const decoyToggleRef = useRef(false);
 // Hàng đợi tuần tự cho tính năng Làm giàu thẻ khi đang học
 const enrichQueueRef = useRef([]);
 const isProcessingEnrichQueue = useRef(false);
-// Trí nhớ lưu trạng thái chọn Key bắn mồi (false: Key cũ, true: Key mới)
-const decoyToggleRef = useRef(false);
 // ==================================================================================
-// 1. LOGIC AUTO-PLAY (STABLE VERSION)
+// 1. CÁC HÀM TRÌ HOÃN THÔNG MINH (SMART DELAYS WITH JITTER & DECOY)
 // ==================================================================================
-// Hàm đợi an toàn (Có bơm nhiễu Jitter và Mồi lệnh)
-const wait = (ms) => new Promise(resolve => {
-if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current);
-let finalMs = ms;
+// Hàm wait dùng riêng cho AutoPlay (Có thể bị ngắt bởi autoPlayTimeoutRef)
+const wait = async (ms) => {
 const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
-// [OBFUSCATION] Bơm thuật toán Jitter (Nhiễu thời gian ngẫu nhiên +/- 15%)
+let finalMs = ms;
+// Thuật toán Jitter: Bẻ cong thời gian ngẫu nhiên +/- 15%
 if (obfuscationMode === '1' || obfuscationMode === '2') {
 const jitter = ms * 0.15;
 finalMs = ms + (Math.random() * jitter * 2 - jitter);
 }
-// [OBFUSCATION MODE 2] Bắn mồi ngẫu nhiên trong thời gian chờ (Tỷ lệ 25% nếu chờ > 1500ms)
-if (obfuscationMode === '2' && finalMs >= 1500 && Math.random() < 0.25) {
-setTimeout(() => {
-if (window.DECOY_PROMPTS && window.DECOY_PROMPTS.length > 0) {
-const randomPrompt = window.DECOY_PROMPTS[Math.floor(Math.random() * window.DECOY_PROMPTS.length)];
-// Bắn mồi bằng khẩu súng ẩn danh (Luân phiên Key cũ/mới)
-if (window.Utils && window.Utils.fireDecoyApi) {
-const useNext = decoyToggleRef.current;
-console.log(`[Obfuscation] Đang bắn mồi ngụy trang (Key ${useNext ? 'Mới' : 'Cũ'})...`);
-window.Utils.fireDecoyApi(randomPrompt, useNext);
-decoyToggleRef.current = !useNext; // Đảo cờ cho lần bắn sau
+// Nếu bật Chế độ 2 và thời gian chờ > 1.5s -> Kích hoạt Bắn mồi
+if (obfuscationMode === '2' && finalMs > 1500) {
+const decoyPrompts = window.DECOY_PROMPTS || ["1+1=?", "2x2=?"];
+const prompt = decoyPrompts[Math.floor(Math.random() * decoyPrompts.length)];
+// Tách khoảng chờ làm 2 phần để chèn mồi vào giữa
+const part1 = Math.floor(finalMs * (Math.random() * 0.4 + 0.1)); // 10% - 50%
+const part2 = finalMs - part1;
+await new Promise(resolve => {
+if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current);
+autoPlayTimeoutRef.current = setTimeout(resolve, part1);
+});
+if (latestStateRef.current.isAutoPlaying && window.Utils && window.Utils.fireDecoyApi) {
+decoyToggleRef.current = !decoyToggleRef.current;
+let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
+let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
+let poolSize = keyPool.length;
+if (poolSize > 0) {
+// Đảo pha Key: Lần 1 lấy Key cũ, Lần 2 lấy Key mới
+let targetIndex = decoyToggleRef.current ? (pointer % poolSize) : ((pointer - 1 + poolSize) % poolSize);
+let targetKey = keyPool[targetIndex];
+if (targetKey) {
+// Await để đảm bảo gói mồi bay đi hoàn tất trước khi chạy tiếp
+await window.Utils.fireDecoyApi(prompt, targetKey.replace(/["'\s]/g, ""));
 }
 }
-}, finalMs * 0.4); // Bắn mồi vào khoảng 40% thời gian chờ để không đụng độ
 }
+if (latestStateRef.current.isAutoPlaying) {
+await new Promise(resolve => {
+if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current);
+autoPlayTimeoutRef.current = setTimeout(resolve, part2);
+});
+}
+} else {
+// Chờ bình thường (Chỉ có Jitter)
+await new Promise(resolve => {
+if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current);
 autoPlayTimeoutRef.current = setTimeout(resolve, finalMs);
 });
+}
+};
+// Hàm smartQueueDelay dùng riêng cho Hàng đợi ngầm (Không bị ngắt bởi AutoPlay)
+const smartQueueDelay = async (ms, allowDecoy = false) => {
+const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
+let finalMs = ms;
+if (obfuscationMode === '1' || obfuscationMode === '2') {
+const jitter = ms * 0.15;
+finalMs = ms + (Math.random() * jitter * 2 - jitter);
+}
+if (obfuscationMode === '2' && allowDecoy && finalMs > 1500) {
+const decoyPrompts = window.DECOY_PROMPTS || ["1+1=?", "2x2=?"];
+const prompt = decoyPrompts[Math.floor(Math.random() * decoyPrompts.length)];
+const part1 = Math.floor(finalMs * (Math.random() * 0.4 + 0.1));
+const part2 = finalMs - part1;
+await new Promise(r => setTimeout(r, part1));
+if (window.Utils && window.Utils.fireDecoyApi) {
+decoyToggleRef.current = !decoyToggleRef.current;
+let keyPool = window.Utils.safeJsonParse('fc_apikey_pool', []);
+let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
+let poolSize = keyPool.length;
+if (poolSize > 0) {
+let targetIndex = decoyToggleRef.current ? (pointer % poolSize) : ((pointer - 1 + poolSize) % poolSize);
+let targetKey = keyPool[targetIndex];
+if (targetKey) {
+await window.Utils.fireDecoyApi(prompt, targetKey.replace(/["'\s]/g, ""));
+}
+}
+}
+await new Promise(r => setTimeout(r, part2));
+} else {
+await new Promise(r => setTimeout(r, finalMs));
+}
+};
+// ==================================================================================
+// 2. LOGIC AUTO-PLAY (STABLE VERSION)
+// ==================================================================================
 const runAutoPlay = useCallback(async () => {
 if (isLoopRunning.current) return;
 if (!latestStateRef.current.isAutoPlaying) return;
@@ -23707,7 +23751,6 @@ if (!latestStateRef.current.isAutoPlaying) break;
 // 2. Đọc (Speak)
 const minTimePromise = wait(1500);
 const speakPromise = new Promise(resolve => speak(textToSpeak, null, null, resolve));
-// Tính toán thời gian động dựa trên độ dài văn bản (150ms/ký tự, tối thiểu 10 giây)
 const dynamicTimeoutMs = Math.max(10000, (textToSpeak ? textToSpeak.length : 0) * 150);
 const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('timeout'), dynamicTimeoutMs));
 await Promise.all([
@@ -23769,7 +23812,7 @@ if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current);
 };
 }, [isAutoPlaying, currentCardIndex]);
 // ==================================================================================
-// 2. CÁC LOGIC KHÁC (AI QUEUE)
+// 3. CÁC LOGIC KHÁC (AI QUEUE)
 // ==================================================================================
 const processAiQueue = async () => {
 if (isAiQueueProcessing.current) return;
@@ -23785,7 +23828,6 @@ try {
 if (!currentApiKey) { continue; }
 const currentNotebook = latestStateRef.current.notebook;
 const noteCard = currentNotebook.find(n => n.term === term);
-// Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
 const isSentence = core.dataMode === 'sentence';
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
 if (isSentence) {
@@ -23804,7 +23846,6 @@ return strVal === "";
 }) : requiredFields;
 if (missingFields && missingFields.length === 0) { continue; }
 shouldDelay = true; // Sẽ gọi API, cần delay sau đó để hãm phanh
-// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = latestStateRef.current.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
@@ -23816,7 +23857,6 @@ if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState
 currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
-// Truyền core.dataMode và levelContext xuống tầng Lõi API
 const res = await window.Utils.fillCardWithAi(term, core.lang, currentApiKey, missingFields, core.dataMode, levelContext);
 if (missingFields.includes('image')) {
 if (!res.image || !res.image.startsWith('http')) {
@@ -23838,50 +23878,41 @@ return newData;
 }
 consecutiveFailures = 0; // Reset bộ đếm nếu thành công
 } catch (e) {
-// [V1.13] Xử lý lỗi Cầu dao Toàn cục (Global Pause)
 if (e.message && e.message.includes('GLOBAL_PAUSE')) {
-shouldShift = false; // Không vứt bỏ từ vựng
-customDelayMs = 15500; // Ngủ đông 15.5 giây đợi hết bão
+shouldShift = false;
+customDelayMs = 15500;
 console.warn(`[AI Queue] Tạm nghỉ 15s để trốn bộ lọc 429... Giữ lại từ vựng: ${term}`);
 } else {
-shouldDelay = true; // Lỗi mạng thông thường, bắt buộc phải delay 5s
+shouldDelay = true;
 console.warn(`Auto-fill skipped for ${term}:`, e);
 consecutiveFailures++;
 if (consecutiveFailures >= 3) {
 if (callbacks && callbacks.showToast) {
 callbacks.showToast("Máy chủ AI quá tải. Đã dừng tự động điền sổ tay!", "error");
 }
-aiQueueRef.current = []; // Hủy toàn bộ đạn
-break; // Cắt đứt vòng lặp vô tận
+aiQueueRef.current = [];
+break;
 }
 }
 } finally {
-// [V1.13] LUÔN LUÔN thực thi shift CHỈ KHI Cờ shouldShift cho phép
 if (shouldShift && aiQueueRef.current.length > 0) {
 aiQueueRef.current.shift();
 }
-// [V1.13] Xử lý Delay: Ngủ đông dài (nếu có bão) hoặc Delay ngắn 5s (Có Jitter)
+// Thay thế delay cứng bằng Smart Queue Delay (có Jitter và Bắn mồi)
 if (customDelayMs > 0) {
-await new Promise(r => setTimeout(r, customDelayMs));
+await smartQueueDelay(customDelayMs, true);
 } else if (shouldDelay) {
-let delayMs = 5000;
-const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
-if (obfuscationMode === '1' || obfuscationMode === '2') {
-delayMs += Math.floor(Math.random() * 2000) - 1000; // Jitter +/- 1s
-}
-await new Promise(r => setTimeout(r, delayMs));
+await smartQueueDelay(5000, true);
 }
 }
 }
 isAiQueueProcessing.current = false;
 };
 // ==================================================================================
-// 3. LOGIC ENRICH CARD (Làm giàu thẻ học hiện tại)
+// 4. LOGIC ENRICH CARD (Làm giàu thẻ học hiện tại)
 // ==================================================================================
-// Xử lý tham số đầu vào linh hoạt (index, card object, hoặc Event)
 const handleAiEnrichCard = async (indexOrCardOrEvent, silent = false) => {
 if (!apiKey) { if (!silent) callbacks.showToast("Chưa có API Key!", "error"); return false; }
-// Tự động nhận diện mảng dữ liệu đang Active (State Targeting)
 const state = latestStateRef.current;
 let activeArr = state.cards;
 if (state.isStudyingNotebook) activeArr = state.notebook;
@@ -23908,7 +23939,6 @@ processingCardsRef.current.add(cardTerm);
 if (!silent) setIsAiLoading(true);
 try {
 const currentCard = activeArr.find(c => c.term === cardTerm);
-// Lưới lọc thông minh nhận diện ngữ cảnh bằng dataMode
 const isSentence = core.dataMode === 'sentence';
 const requiredFields = ['pronunciation', 'definition', 'partOfSpeech', 'topic', 'example', 'image'];
 if (isSentence) {
@@ -23923,10 +23953,8 @@ return !val || (Array.isArray(val) && val.length === 0) || (typeof val === 'stri
 }
 return !currentCard?.[f] || (f === 'image' && !currentCard[f].startsWith('http'));
 });
-// Trả về false nếu không gọi API, giúp quá trình chạy ngầm quét 0ms
 if (!silent && !missingFields.length) { callbacks.showToast("Thẻ đã đầy đủ!", "success"); return false; }
 if (silent && !missingFields.length) return false;
-// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = state.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
@@ -23938,13 +23966,11 @@ if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState
 currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
-// Truyền core.dataMode và levelContext xuống tầng Lõi API
 const enriched = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, missingFields, core.dataMode, levelContext);
 if (missingFields.includes('image') && (!enriched.image || !enriched.image.startsWith('http'))) {
 const q = (currentCard?.image && currentCard.image.trim()) || cardTerm;
 enriched.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(q)}&w=300&h=300&c=7&rs=1&p=0`;
 }
-// ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
 const enrichedData = { ...enriched, ai_explanation: enriched.example || currentCard?.example || "Enriched", is_enriched: true };
 const updateFn = (prev, dbKey = null, storageKey = null) => {
 const idx = prev.findIndex(c => c.term === cardTerm);
@@ -23955,12 +23981,10 @@ if (dbKey && window.FcDB) window.FcDB.set(dbKey, next);
 else if (storageKey) window.Utils.safeLocalStorageSet(storageKey, next);
 return next;
 };
-// Phân tán bản cập nhật tới tất cả các chiều không gian dữ liệu cục bộ
 setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKey || `fc_data_${core.lang}`));
 setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
 if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
 if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
-// CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
 const masterDataKey = `fc_master_data_${core.lang}_${core.dataMode}`;
 const masterData = window.Utils.safeJsonParse(masterDataKey, null);
 if (masterData) {
@@ -23982,11 +24006,11 @@ if (enriched._tokenUsage) {
 const newTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10) + (enriched._tokenUsage.totalTokenCount || 0);
 setTotalTokens(newTotal); localStorage.setItem('fc_total_tokens', newTotal);
 }
-if (!silent) callbacks.showToast("Đã bổ sung thông Bản!", "success");
-return true; // Trả về true báo hiệu API đã bị hit
+if (!silent) callbacks.showToast("Đã bổ sung thông tin cơ bản!", "success");
+return true;
 } catch (e) {
 if (!silent) callbacks.showToast("Lỗi AI: " + e.message, "error");
-throw e; // Bắt buộc ném lỗi ra ngoài để processEnrichQueue có thể đếm và bắt lỗi Global Pause
+throw e;
 } finally {
 processingCardsRef.current.delete(cardTerm);
 if (!silent) setIsAiLoading(false);
@@ -23994,7 +24018,6 @@ if (!silent) setIsAiLoading(false);
 };
 const handleExplainGrammar = async (index) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
-// Tự động nhận diện mảng dữ liệu đang Active thay vì hardcode thẻ Cards
 const state = latestStateRef.current;
 let activeArr = state.cards;
 if (state.isStudyingNotebook) activeArr = state.notebook;
@@ -24005,7 +24028,6 @@ const cardTerm = activeArr[targetIdx]?.term;
 if (!cardTerm) return;
 setIsAiLoading(true);
 try {
-// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = state.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
@@ -24017,10 +24039,8 @@ if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState
 currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
-// Truyền core.dataMode và levelContext xuống tầng Lõi API
 const result = await window.Utils.fillCardWithAi(cardTerm, core.lang, apiKey, ['analysis'], core.dataMode, levelContext);
 if (result?.analysis) {
-// ĐỒNG BỘ XUYÊN MẢNG (CROSS-ARRAY SYNCHRONIZATION)
 const newData = { analysis: result.analysis };
 const updateFn = (prev, dbKey = null, storageKey = null) => {
 const idx = prev.findIndex(c => c.term === cardTerm);
@@ -24031,12 +24051,10 @@ if (dbKey && window.FcDB) window.FcDB.set(dbKey, next);
 else if (storageKey) window.Utils.safeLocalStorageSet(storageKey, next);
 return next;
 };
-// Phân tán bản cập nhật tới tất cả các kho
 setCards(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.dataKey || `fc_data_${core.lang}`));
 setNotebook(prev => updateFn(prev, null, window.CONFIG_SAMPLES?.[core.lang]?.noteKey || `fc_notebook_${core.lang}`));
 if (core.setMastered) core.setMastered(prev => updateFn(prev, `fc_mastered_${core.lang}`, null));
 if (core.setIncorrectList) core.setIncorrectList(prev => updateFn(prev, (window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + core.lang, null));
-// CẬP NHẬT THẲNG VÀO KHO LÕI MASTER DATA (Ngăn Vòi nước rửa trôi)
 const masterDataKey = `fc_master_data_${core.lang}_${core.dataMode}`;
 const masterData = window.Utils.safeJsonParse(masterDataKey, null);
 if (masterData) {
@@ -24067,7 +24085,6 @@ const handleManualAiFill = async (term) => {
 if (!apiKey) { callbacks.showToast("Cần API Key!", "warning"); return; }
 setIsAiLoading(true);
 try {
-// [V1.16] Trích xuất LevelContext & Lưới vét dự phòng State 3 Lớp
 let currentLevelState = latestStateRef.current.currentLevel;
 if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState.length === 0)) {
 try {
@@ -24079,14 +24096,13 @@ if (!currentLevelState || (Array.isArray(currentLevelState) && currentLevelState
 currentLevelState = [core.lang === 'zh' ? 'zh_level_1' : 'en_level_1'];
 }
 const levelContext = Array.isArray(currentLevelState) ? currentLevelState : (currentLevelState ? [currentLevelState] : []);
-// Truyền core.dataMode và levelContext xuống tầng Lõi API
 return await window.Utils.fillCardWithAi(term, core.lang, apiKey, null, core.dataMode, levelContext);
 }
 catch (e) { callbacks.showToast(e.message, "error"); return null; }
 finally { setIsAiLoading(false); }
 };
 // ==================================================================================
-// 4. ĐỘNG CƠ HÀNG ĐỢI LÀM GIÀU THẺ (ENRICH QUEUE WORKER)
+// 5. ĐỘNG CƠ HÀNG ĐỢI LÀM GIÀU THẺ (ENRICH QUEUE WORKER)
 // ==================================================================================
 const processEnrichQueue = async () => {
 if (isProcessingEnrichQueue.current) return;
@@ -24095,47 +24111,38 @@ let consecutiveFailures = 0;
 while (enrichQueueRef.current.length > 0) {
 const termToEnrich = enrichQueueRef.current[0];
 let shouldDelay = false;
-let shouldShift = true; // [V1.13] Cờ quyết định vứt bỏ từ vựng
-let customDelayMs = 0;  // [V1.13] Thời gian ngủ đông đặc biệt
+let shouldShift = true;
+let customDelayMs = 0;
 try {
-// Tái sử dụng hàm handleAiEnrichCard với tham số silent=true để xử lý ngầm
-// Nhận cờ boolean để biết API có thực sự bị gọi hay không
 const apiHit = await handleAiEnrichCard({ term: termToEnrich }, true);
 shouldDelay = apiHit;
-consecutiveFailures = 0; // Reset bộ đếm nếu chạy êm ái
+consecutiveFailures = 0;
 } catch (e) {
-// [V1.13] Xử lý lỗi Cầu dao Toàn cục (Global Pause)
 if (e.message && e.message.includes('GLOBAL_PAUSE')) {
-shouldShift = false; // Ôm chặt từ vựng, không vứt đi
-customDelayMs = 15500; // Ngủ đông 15.5 giây chờ Cầu dao mở lại
+shouldShift = false;
+customDelayMs = 15500;
 console.warn(`[Enrich Queue] Tạm nghỉ 15s để né bão 429... Giữ lại từ vựng: ${termToEnrich}`);
 } else {
-shouldDelay = true; // Nếu lỗi xảy ra tức là API đã bị hit và bị từ chối
+shouldDelay = true;
 console.warn(`Background enrich error for ${termToEnrich}:`, e);
 consecutiveFailures++;
 if (consecutiveFailures >= 3) {
 if (callbacks && callbacks.showToast) {
 callbacks.showToast("Máy chủ AI quá tải. Tiến trình Làm giàu thẻ tự động đã bị dừng!", "error");
 }
-enrichQueueRef.current = []; // Hủy toàn bộ hàng đợi
-break; // Thoát vòng lặp
+enrichQueueRef.current = [];
+break;
 }
 }
 } finally {
-// [V1.13] LUÔN LUÔN thực thi shift CHỈ KHI Cờ shouldShift cho phép
 if (shouldShift && enrichQueueRef.current.length > 0) {
 enrichQueueRef.current.shift();
 }
-// [V1.13] Khóa cứng luồng bằng customDelay (15.5s) HOẶC delay thường (5s có Jitter)
+// Thay thế delay cứng bằng Smart Queue Delay (có Jitter và Bắn mồi)
 if (customDelayMs > 0) {
-await new Promise(r => setTimeout(r, customDelayMs));
+await smartQueueDelay(customDelayMs, true);
 } else if (shouldDelay) {
-let delayMs = 5000;
-const obfuscationMode = localStorage.getItem('fc_obfuscation_mode') || '0';
-if (obfuscationMode === '1' || obfuscationMode === '2') {
-delayMs += Math.floor(Math.random() * 2000) - 1000; // Nhiễu +/- 1s
-}
-await new Promise(r => setTimeout(r, delayMs));
+await smartQueueDelay(5000, true);
 }
 }
 }
@@ -24144,15 +24151,13 @@ isProcessingEnrichQueue.current = false;
 // Effect: Batch Enrich (Chạy Tuần Tự)
 useEffect(() => {
 if (core.viewMode === 'learn' && core.isAiModeLearn && core.cards.length > 0 && apiKey) {
-// Đảm bảo Controller luôn sẵn sàng cho luồng chạy
 if (!window.__currentGameAbortController || window.__currentGameAbortController.signal.aborted) {
 window.__currentGameAbortController = new AbortController();
 }
 const currentTerm = core.cards[core.currentCardIndex]?.term;
 if (!currentTerm) return;
 const nextTerms = [];
-nextTerms.push(currentTerm); // Ưu tiên thẻ hiện tại
-// Nạp thêm 2 thẻ kế tiếp
+nextTerms.push(currentTerm);
 for (let i = 1; i <= 2; i++) {
 const nextIdx = (core.currentCardIndex + i) % core.cards.length;
 const nextTerm = core.cards[nextIdx]?.term;
@@ -24160,21 +24165,16 @@ if (nextTerm && !nextTerms.includes(nextTerm)) {
 nextTerms.push(nextTerm);
 }
 }
-// Đẩy vào hàng đợi (Loại bỏ các từ đã có sẵn trong queue)
 nextTerms.forEach(term => {
 if (!enrichQueueRef.current.includes(term)) {
 enrichQueueRef.current.push(term);
 }
 });
-// Kích hoạt động cơ
 processEnrichQueue();
 } else {
-// Dọn dẹp hàng đợi nếu tắt tính năng hoặc thoát màn hình
 enrichQueueRef.current = [];
-// Kích hoạt Kill Switch: Chém đứt mọi tiến trình đang bay trên mạng
 if (window.__currentGameAbortController) {
 window.__currentGameAbortController.abort("User toggled off AI");
-// Khởi tạo lại Controller mới ngay lập tức để không cản trở các lệnh gọi thủ công tiếp theo
 window.__currentGameAbortController = new AbortController();
 }
 }
