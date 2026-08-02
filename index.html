@@ -619,10 +619,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.44
-// Last Updated: 2026-08-01 10:39
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.45
+// Last Updated: 2026-08-02 20:58
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.44: [STRICT DECOY REGIME] Tước quyền tự đoán Key của fireDecoyApi. Yêu cầu truyền đích danh targetKey từ Tầng 6 để chấm dứt hoàn toàn hiện tượng Race Condition và trùng lặp Key khi bắn mồi.
+// Cập nhật V2.45: [MODEL MIGRATION] Dịch chuyển toàn bộ URL API sang mô hình gemini-3.5-flash-lite để tận dụng hạn mức 500 RPD và tốc độ xử lý siêu tốc.
+// Cập nhật V2.44: [STRICT DECOY REGIME] Tước quyền tự đoán Key của fireDecoyApi. Yêu cầu truyền đích danh targetKey từ Tầng 6 để chấm dứt hoàn toàn hiện tượng Race Condition.
 // Cập nhật V2.43: [DUAL-KEY DECOY] Cấy ghép hàm sát thủ ẩn danh fireDecoyApi() phục vụ chiến dịch Bắn mồi tàng hình.
 // Cập nhật V2.42: [TRAFFIC OBFUSCATION] Tiêm nhiễu ký tự tàng hình (\u200B) vào cuối prompt.
 // Cập nhật V2.41: [SMART COOLDOWN & SYSTEM LOGGING] Bóc tách lỗi 429 thành Spam và Cạn Quota. Trích xuất 5 số cuối của Key.
@@ -727,8 +728,8 @@ pingText += zeroWidthSpace.repeat(randomPadding);
 const body = { contents: [{ parts: [{ text: pingText }] }] };
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 10000);
-// Gỡ Cloudflare Proxy, Trở về Direct Connection
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k}`, {
+// Gỡ Cloudflare Proxy, Trở về Direct Connection, Dùng Mô hình Flash Lite
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${k}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
@@ -820,7 +821,7 @@ body.generationConfig.responseSchema = schema;
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
@@ -1120,7 +1121,7 @@ try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload),
@@ -1276,7 +1277,7 @@ body.generationConfig = { temperature: randomTemp };
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 10000);
 // Bắn trực tiếp, không sử dụng Mutex Lock để không chặn luồng chính
-await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${targetKey}`, {
+await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
