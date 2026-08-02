@@ -615,9 +615,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.48
-// Last Updated: 2026-08-02 22:26
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.49
+// Last Updated: 2026-08-02 22:37
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.49: [MISSING INSTRUCTIONS FIX] Bổ sung luật định dạng cứng cho trường `partOfSpeech` (Tiếng Việt) và `image_keyword` (Tiếng Anh) vào Prompt Động. Giải quyết triệt để lỗi AI bị "kẹt logic" (Deadlock) gây treo request khi được yêu cầu xuất 2 trường này ở mức Temperature thấp.
 // Cập nhật V2.48: [ZOMBIE KILLER] Kích hoạt "Máy chém thời gian" (Hard Timeout 15s) bằng Promise.race trong hàm fillCardWithAi. Ngăn chặn triệt để hiện tượng request bị treo cứng vô thời hạn ở tầng Network (Zombie Request).
 // Cập nhật V2.47: [SCHEMA DEADLOCK FIX] Vá lỗi xung đột Prompt. Chỉ ép AI đóng vai "Chuyên gia phân tích" và yêu cầu xuất trường "analysis" NẾU VÀ CHỈ NẾU trường này thực sự nằm trong danh sách cần bổ sung (requiredFields). Giải quyết triệt để lỗi AI bị "giằng xé nội tâm" dẫn đến treo máy 1-2 phút khi Temperature thấp.
 // Cập nhật V2.46: [DECOMMISSIONING & STABILIZATION] Gỡ bỏ hoàn toàn thuật toán tiêm ký tự tàng hình (\u200B) và xóa sổ hàm bắn mồi fireDecoyApi. Hạ nhiệt độ (Temperature) của LLM xuống 0.2-0.4 để ép xuất JSON chuẩn xác 100%.
@@ -1030,6 +1031,13 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 ? window.IoeDataEngine.TOPICS
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
+}
+// [V2.49 MISSING INSTRUCTIONS FIX] Bổ sung chỉ thị định dạng cứng cho partOfSpeech và image_keyword
+if (requiredFields.includes('partOfSpeech')) {
+fieldRules += `- Với trường 'partOfSpeech': BẮT BUỘC xuất từ loại bằng TIẾNG VIỆT thật ngắn gọn (Ví dụ: Danh từ, Động từ, Tính từ).\n`;
+}
+if (requiredFields.includes('image_keyword')) {
+fieldRules += `- Với trường 'image_keyword': BẮT BUỘC xuất 1 từ khóa bằng TIẾNG ANH mô tả trực quan nhất để tìm ảnh minh họa. Tuyệt đối không dùng Tiếng Việt.\n`;
 }
 if (requiredFields.includes('example')) {
 let difficultyPrompt = "";
