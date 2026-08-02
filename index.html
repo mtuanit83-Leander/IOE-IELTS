@@ -615,9 +615,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.47
-// Last Updated: 2026-08-02 22:15
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.48
+// Last Updated: 2026-08-02 22:26
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, và quản lý Mutex.
+// Cập nhật V2.48: [ZOMBIE KILLER] Kích hoạt "Máy chém thời gian" (Hard Timeout 15s) bằng Promise.race trong hàm fillCardWithAi. Ngăn chặn triệt để hiện tượng request bị treo cứng vô thời hạn ở tầng Network (Zombie Request).
 // Cập nhật V2.47: [SCHEMA DEADLOCK FIX] Vá lỗi xung đột Prompt. Chỉ ép AI đóng vai "Chuyên gia phân tích" và yêu cầu xuất trường "analysis" NẾU VÀ CHỈ NẾU trường này thực sự nằm trong danh sách cần bổ sung (requiredFields). Giải quyết triệt để lỗi AI bị "giằng xé nội tâm" dẫn đến treo máy 1-2 phút khi Temperature thấp.
 // Cập nhật V2.46: [DECOMMISSIONING & STABILIZATION] Gỡ bỏ hoàn toàn thuật toán tiêm ký tự tàng hình (\u200B) và xóa sổ hàm bắn mồi fireDecoyApi. Hạ nhiệt độ (Temperature) của LLM xuống 0.2-0.4 để ép xuất JSON chuẩn xác 100%.
 // Cập nhật V2.45: [MODEL MIGRATION] Dịch chuyển toàn bộ URL API sang mô hình gemini-3.5-flash-lite để tận dụng hạn mức 500 RPD và tốc độ xử lý siêu tốc.
@@ -1099,7 +1100,7 @@ try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${targetKey}`, {
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${targetKey}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload),
@@ -1107,6 +1108,14 @@ signal: controller.signal
 }).finally(() => {
 if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
+// [V2.48] ZOMBIE KILLER - Hard Timeout 15s (15000ms)
+const timeoutPromise = new Promise((_, reject) => {
+setTimeout(() => {
+controller.abort(); // Bóp cò diệt Request đang treo
+reject(new Error("Hết thời gian chờ 15s (Bị treo ở tầng Network - Zombie Request)."));
+}, 15000);
+});
+const res = await Promise.race([fetchPromise, timeoutPromise]);
 if (res.status === 429) throw new Error("429: Too Many Requests (Bị chặn bởi Google Load Balancer)");
 if (res.status === 503) throw new Error("503: Service Unavailable (Máy chủ quá tải)");
 if (res.status === 500) throw new Error("500: Internal Server Error");
