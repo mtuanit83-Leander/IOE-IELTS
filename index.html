@@ -615,12 +615,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.46
-// Last Updated: 2026-08-02 21:40
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 2.47
+// Last Updated: 2026-08-02 22:15
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, và quản lý Mutex.
-// Cập nhật V2.46: [DECOMMISSIONING & STABILIZATION] Gỡ bỏ hoàn toàn thuật toán tiêm ký tự tàng hình (\u200B) và xóa sổ hàm bắn mồi fireDecoyApi. Hạ nhiệt độ (Temperature) của LLM xuống 0.2-0.4 để ép xuất JSON chuẩn xác 100%, xóa bỏ tình trạng AI suy nghĩ lan man mất 1.2 phút.
+// Cập nhật V2.47: [SCHEMA DEADLOCK FIX] Vá lỗi xung đột Prompt. Chỉ ép AI đóng vai "Chuyên gia phân tích" và yêu cầu xuất trường "analysis" NẾU VÀ CHỈ NẾU trường này thực sự nằm trong danh sách cần bổ sung (requiredFields). Giải quyết triệt để lỗi AI bị "giằng xé nội tâm" dẫn đến treo máy 1-2 phút khi Temperature thấp.
+// Cập nhật V2.46: [DECOMMISSIONING & STABILIZATION] Gỡ bỏ hoàn toàn thuật toán tiêm ký tự tàng hình (\u200B) và xóa sổ hàm bắn mồi fireDecoyApi. Hạ nhiệt độ (Temperature) của LLM xuống 0.2-0.4 để ép xuất JSON chuẩn xác 100%.
 // Cập nhật V2.45: [MODEL MIGRATION] Dịch chuyển toàn bộ URL API sang mô hình gemini-3.5-flash-lite để tận dụng hạn mức 500 RPD và tốc độ xử lý siêu tốc.
-// Cập nhật V2.44: [STRICT DECOY REGIME] Tước quyền tự đoán Key của fireDecoyApi.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -972,7 +972,9 @@ let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ gốc: ${lang}).\n`;
 userQuery += `[ĐỊNH HƯỚNG TRẢ LỜI BẮT BUỘC]:\n`;
-if (requiredFields.length === 1 && requiredFields[0] === 'analysis') {
+// [V2.47 DEADLOCK FIX] Chỉ tiêm lệnh Role Analysis nếu Schema có yêu cầu xuất trường analysis
+if (requiredFields.includes('analysis')) {
+if (requiredFields.length === 1) {
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: Bạn là chuyên gia ngôn ngữ. Hãy phân tích cực kỳ ngắn gọn (1-2 câu) về từ loại, ngữ pháp hoặc cách dùng của từ/câu này. Trả lời đi thẳng vào bản chất.\n`;
 } else if (isSentence) {
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai giáo viên ngôn ngữ. Hãy mổ xẻ cấu trúc câu, chỉ ra các điểm ngữ pháp trọng tâm (Ví dụ: Thì, Phrasal verbs, Giới từ, Cấu trúc...). TUYỆT ĐỐI KHÔNG giải thích ý nghĩa ngữ cảnh chung chung.\n`;
@@ -980,6 +982,10 @@ userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai giáo viên n
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai chuyên gia từ vựng. Hãy phân tích ngắn gọn sắc thái ý nghĩa hoặc cách sử dụng đặc trưng của từ vựng này.\n`;
 }
 userQuery += `2. NGÔN NGỮ: Mọi lời giải thích, phân tích (đặc biệt là trường analysis) BẮT BUỘC phải viết bằng TIẾNG VIỆT dễ hiểu.\n`;
+} else {
+userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: Đóng vai trò là một máy trích xuất dữ liệu tự động.\n`;
+userQuery += `2. NGÔN NGỮ: BẮT BUỘC phải dịch và xử lý bằng TIẾNG VIỆT dễ hiểu.\n`;
+}
 userQuery += `3. ĐỘ DÀI & PHONG CÁCH: Phải cực kỳ NGẮN GỌN, SÚC TÍCH, đi thẳng vào bản chất cốt lõi (tối đa 2-3 câu). Tuyệt đối không lan man dài dòng.\n`;
 userQuery += `4. ĐỊNH DẠNG: Chỉ xuất CHÍNH XÁC các trường có trong JSON Schema (${requiredFields.join(', ')}). Không sinh dữ liệu rác.\n`;
 userQuery += `${dynamicInstruction}`;
