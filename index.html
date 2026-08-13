@@ -23187,10 +23187,13 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 2.2 (Multi-Select Engine Stable)
-// Last Updated: 2026-07-21 23:45
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 2.3 (Boot Hydration & Model State Fix)
+// Last Updated: 2026-08-14 06:00
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks. TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
+// Cập nhật V2.3:
+// 1. [BOOT HYDRATION FIX] Khắc phục lỗi "Bóng ma State" bằng cách ép kiểu mảng cho currentLevel ngay khi khởi tạo, quét dự phòng dữ liệu từ fc_settings cũ.
+// 2. [AI MODEL CASCADE] Bổ sung State aiModel để chuẩn bị cho cơ chế xoay vòng Mô hình dự phòng.
 // Cập nhật V2.2: [STATE RETAIN] Nhổ bỏ isAiLoading khỏi mảng dependency của Động cơ Vòi nước. Khắc phục triệt để lỗi thẻ bị lùi về vị trí số 0 (index=0) sau khi tính năng AI Phân tích ngữ pháp hoặc Làm giàu thẻ hoàn tất.
 // Cập nhật V2.1: [BULLETPROOF DATA] Bổ sung Regex dọn dẹp chuỗi lỗi trong parseArrayStorage. Tối ưu Động cơ "Vòi nước" chống sập khi mảng data rỗng.
 // ==================================================================================
@@ -23235,18 +23238,35 @@ srsEasy: '7d'
 const DEFAULT_AI_CONFIG = { loadingTime: 22, delayMs: 2500, maxAmmo: 4, uiCooldown: 9 };
 // --- STATE DEFINITIONS ---
 const [viewMode, setViewMode] = useState('learn');
-const [lang, setLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.LANG, 'en') || 'en');
+const [lang, setLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS?.LANG || 'fc_lang', 'en') || 'en');
 // Chốt chặn để phân biệt lần đầu tải trang và đổi ngôn ngữ
 const prevLangRef = useRef(lang);
-const [uiLang, setUiLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.UI_LANG, 'en') || 'en');
+const [uiLang, setUiLang] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS?.UI_LANG || 'fc_ui_lang', 'en') || 'en');
 const [dataMode, setDataMode] = useState(() => {
 const saved = localStorage.getItem('fc_data_mode');
 return saved ? saved.replace(/"/g, '') : 'vocab';
 });
-// [CẬP NHẬT V2.0] Trạng thái Mảng cho Cấp độ và Chủ đề
+// [BẢN VÁ V2.3] BOOT HYDRATION DESYNC FIX - Khởi tạo Level với độ tin cậy 100%
 const [currentLevel, setCurrentLevel] = useState(() => {
 const def = lang === 'zh' ? ['zh_level_1'] : ['en_level_4'];
-return parseArrayStorage('fc_current_level_' + lang, def);
+let initialVal = parseArrayStorage('fc_current_level_' + lang, null);
+// Quét dự phòng: Nếu chưa có trong storage chuẩn, thử tìm trong settings cũ
+if (!initialVal) {
+try {
+const settingsStr = localStorage.getItem('fc_settings');
+if (settingsStr) {
+const settingsObj = JSON.parse(settingsStr);
+if (settingsObj.currentLevel) {
+initialVal = Array.isArray(settingsObj.currentLevel) ? settingsObj.currentLevel : [settingsObj.currentLevel];
+}
+}
+} catch(e) {}
+}
+// Chốt chặn cuối cùng: Trả về Mặc định nếu vẫn rỗng
+if (!initialVal || initialVal.length === 0) {
+initialVal = def;
+}
+return initialVal;
 });
 const [currentTopic, setCurrentTopic] = useState(() => {
 return parseArrayStorage('fc_current_topic_' + lang, []);
@@ -23265,9 +23285,11 @@ const [globalRetryBag, setGlobalRetryBag] = useState({});
 // SYSTEM EVENT LOGS STATE
 const [systemLogs, setSystemLogs] = useState(() => window.Utils?.safeJsonParse('fc_system_logs', []) || []);
 // Config & Token
-const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY) || '');
+const [apiKey, setApiKey] = useState(() => localStorage.getItem(window.STORAGE_KEYS?.API_KEY || 'fc_apikey') || '');
 const [totalTokens, setTotalTokens] = useState(() => parseInt(localStorage.getItem('fc_total_tokens') || '0', 10));
 const [aiConfig, setAiConfig] = useState(() => window.Utils?.safeJsonParse('fc_ai_config', DEFAULT_AI_CONFIG) || DEFAULT_AI_CONFIG);
+// [V2.3] Bổ sung State quản lý Mô hình AI
+const [aiModel, setAiModel] = useState(() => localStorage.getItem('fc_ai_model') || 'gemini-3.5-flash-lite');
 // UI Toggles
 const [showSettings, setShowSettings] = useState(false);
 const [showApiKeyModal, setShowApiKeyModal] = useState(false);
@@ -23294,8 +23316,8 @@ const [isAiModeLearn, setIsAiModeLearn] = useState(false);
 const [isAiModeGame, setIsAiModeGame] = useState(false);
 const [resetPending, setResetPending] = useState(false);
 // URLs
-const [exportUrl, setExportUrl] = useState(() => localStorage.getItem(window.STORAGE_KEYS.EXPORT_URL) || "");
-const [apiKeySheetUrl, setApiKeySheetUrl] = useState(() => localStorage.getItem(window.STORAGE_KEYS.API_KEY_SHEET) || window.DEFAULT_API_KEY_SHEET || "");
+const [exportUrl, setExportUrl] = useState(() => localStorage.getItem(window.STORAGE_KEYS?.EXPORT_URL || 'fc_export_url') || "");
+const [apiKeySheetUrl, setApiKeySheetUrl] = useState(() => localStorage.getItem(window.STORAGE_KEYS?.API_KEY_SHEET || 'fc_apikey_sheet') || window.DEFAULT_API_KEY_SHEET || "");
 const [importUrl, setImportUrl] = useState('');
 const [defaultUrl, setDefaultUrl] = useState('');
 // Playback & Game State
@@ -23322,7 +23344,7 @@ return { ...prev, [lang]: nextLangSessions };
 });
 };
 const [isMuted, setIsMuted] = useState(false);
-const [settings, setSettings] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS));
+const [settings, setSettings] = useState(() => window.Utils?.safeJsonParse(window.STORAGE_KEYS?.SETTINGS || 'fc_settings', DEFAULT_SETTINGS));
 const [voices, setVoices] = useState([]);
 const [isContentHidden, setIsContentHidden] = useState(false);
 const [isBatterySaverMode, setIsBatterySaverMode] = useState(false);
@@ -23389,16 +23411,16 @@ window.speechSynthesis.onvoiceschanged = loadVoices;
 }, []);
 // Lưu UI Lang riêng biệt
 useEffect(() => {
-localStorage.setItem(window.STORAGE_KEYS.UI_LANG, JSON.stringify(uiLang));
+localStorage.setItem(window.STORAGE_KEYS?.UI_LANG || 'fc_ui_lang', JSON.stringify(uiLang));
 }, [uiLang]);
 // 3. EFFECT: Đổi Ngôn Ngữ -> Tải các Sổ tay, Túi Nháp và Khởi tạo Level
 useEffect(() => {
-localStorage.setItem(window.STORAGE_KEYS.LANG, JSON.stringify(lang));
+localStorage.setItem(window.STORAGE_KEYS?.LANG || 'fc_lang', JSON.stringify(lang));
 const loadUserData = async () => {
 if (isDbReady && window.FcDB) {
 const savedNote = await window.FcDB.get('fc_notebook_' + lang) || [];
 const savedMaster = await window.FcDB.get('fc_mastered_' + lang) || [];
-const savedIncorrect = await window.FcDB.get(window.STORAGE_KEYS.INCORRECT_LIST + '_' + lang) || [];
+const savedIncorrect = await window.FcDB.get((window.STORAGE_KEYS?.INCORRECT_LIST || 'fc_incorrect_list') + '_' + lang) || [];
 const savedRetryBag = await window.FcDB.get('fc_global_retry_bag_' + lang) || {};
 setNotebook(savedNote);
 setMastered(savedMaster);
@@ -23468,8 +23490,8 @@ setCurrentCardIndex(0);
 }, [lang, dataMode, currentLevel, currentTopic, isStudyingNotebook, studySourceName]);
 // 4. Persistence Effects
 useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); } }, [toast]);
-useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.SETTINGS, JSON.stringify(settings)); }, [settings]);
-useEffect(() => { localStorage.setItem(window.STORAGE_KEYS.API_KEY, apiKey); }, [apiKey]);
+useEffect(() => { localStorage.setItem(window.STORAGE_KEYS?.SETTINGS || 'fc_settings', JSON.stringify(settings)); }, [settings]);
+useEffect(() => { localStorage.setItem(window.STORAGE_KEYS?.API_KEY || 'fc_apikey', apiKey); }, [apiKey]);
 useEffect(() => { window.Utils?.safeLocalStorageSet('fc_game_sessions', globalGameSessions); }, [globalGameSessions]);
 // SYSTEM LOGS PERSISTENCE
 useEffect(() => {
@@ -23479,6 +23501,10 @@ window.Utils?.safeLocalStorageSet('fc_system_logs', systemLogs);
 useEffect(() => {
 window.Utils?.safeLocalStorageSet('fc_ai_config', aiConfig);
 }, [aiConfig]);
+// [V2.3] AI MODEL PERSISTENCE
+useEffect(() => {
+localStorage.setItem('fc_ai_model', aiModel);
+}, [aiModel]);
 // LƯU TRỮ TRÊN INDEXEDDB (ASYNC)
 useEffect(() => {
 if (isDbReady && window.FcDB) window.FcDB.set('fc_ai_harvest_pool', aiHarvestPool);
@@ -23498,7 +23524,7 @@ setCurrentCardIndex(0);
 }, [isShuffle]);
 // 6. Auto-load API Key
 useEffect(() => {
-const savedSheetUrl = localStorage.getItem(window.STORAGE_KEYS.API_KEY_SHEET);
+const savedSheetUrl = localStorage.getItem(window.STORAGE_KEYS?.API_KEY_SHEET || 'fc_apikey_sheet');
 if (savedSheetUrl && savedSheetUrl.trim().length > 5) {
 window.Utils.fetchWithFallback(savedSheetUrl)
 .then(res => res.text())
@@ -23518,7 +23544,7 @@ return {
 // State
 viewMode, lang, uiLang, cards, notebook, mastered, masteredCount: mastered.length, isStudyingNotebook,
 incorrectList, studySourceName, apiKey, totalTokens, aiHarvestPool, globalRetryBag, systemLogs,
-isDbReady, aiConfig,
+isDbReady, aiConfig, aiModel,
 // Multi-dimensional State
 dataMode, setDataMode,
 currentLevel, setCurrentLevel,
@@ -23532,7 +23558,7 @@ currentCardIndex, isFlipped, isAutoPlaying, isShuffle, isAutoMode, isFlipLocked,
 isMuted, isGamePlaying, settings, voices, DEFAULT_SETTINGS, isContentHidden, isBatterySaverMode, gameSessions,
 // Setters
 setViewMode, setLang, setUiLang, setCards, setNotebook, setMastered, setIsStudyingNotebook,
-setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag, setSystemLogs, setAiConfig,
+setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag, setSystemLogs, setAiConfig, setAiModel,
 setShowSettings, setShowApiKeyModal, setShowNotebook, setShowManual, setShowLinkManager, setShowWordSelect, setShowMastered, setShowIncorrectModal,
 setShowAiChat, setShowHelp, setShowSaveLoadModal, setShowHanziSelector, setShowHanziWriter, setCurrentHanziChar, setShowExamPoolManager, setShowAiConfigModal,
 setWordSelectTarget, setToast, setIsAiLoading, setIsAiModeLearn, setIsAiModeGame, setResetPending,
