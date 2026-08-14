@@ -630,9 +630,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 3.10
-// Last Updated: 2026-08-14 10:45
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 3.11
+// Last Updated: 2026-08-14 14:35
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V3.11: [PREMIUM MODE] Bỏ qua giới hạn RPD cục bộ nếu bật cờ Key Trả Phí (fc_is_premium_key = true).
 // Cập nhật V3.10: [8 MODELS CASCADE] Đồng bộ mảng modelsPool dự phòng với 8 mô hình (tổng 1120 RPD) để đảm bảo động cơ Thác nước không bao giờ cạn đạn.
 // Cập nhật V3.00: [AI MODEL CASCADE & RPD TRACKER] Tích hợp cỗ máy xoay vòng mô hình (Thác nước) và bộ đếm Quota Client-side tự động reset lúc 15:00 giờ VN.
 // Cập nhật V2.50: [DEPRECATION CLEANUP] Xóa bỏ hoàn toàn tham số `temperature`.
@@ -871,10 +872,13 @@ body.generationConfig = { responseMimeType: "application/json", responseSchema: 
 let finalData = null;
 let usedModelId = null;
 let lastError = null;
+// [V3.11] Kiểm tra trạng thái Key Trả Phí (Bypass RPD)
+const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
 // --- VÒNG LẶP THÁC NƯỚC (CASCADE EXECUTION) ---
 for (const model of cascadeModels) {
 const currentRpd = window.Utils.RPDTracker.getUsage(targetKey, model.id);
-if (currentRpd >= model.rpdLimit) {
+// Chỉ ngắt theo RPD Limit nếu không phải là Key Premium
+if (!isPremium && currentRpd >= model.rpdLimit) {
 console.warn(`[Cascade] Bỏ qua ${model.id} (Đã dùng ${currentRpd}/${model.rpdLimit} RPD).`);
 continue;
 }
@@ -1207,10 +1211,13 @@ modelsPool.forEach(m => { if (m.id !== primaryModelId) cascadeModels.push(m); })
 let finalData = null;
 let usedModelId = null;
 let lastError = null;
+// [V3.11] Kiểm tra trạng thái Key Trả Phí (Bypass RPD)
+const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
 // --- VÒNG LẶP THÁC NƯỚC (CASCADE EXECUTION) ---
 for (const model of cascadeModels) {
 const currentRpd = window.Utils.RPDTracker.getUsage(targetKey, model.id);
-if (currentRpd >= model.rpdLimit) {
+// Chỉ ngắt theo RPD Limit nếu không phải là Key Premium
+if (!isPremium && currentRpd >= model.rpdLimit) {
 continue;
 }
 try {
@@ -8388,14 +8395,14 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block 4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.15
-// Last Updated: 2026-08-14 11:15
+// Block 4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.16
+// Last Updated: 2026-08-14 14:30
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
+// Cập nhật V1.16: [PREMIUM MODE] Bổ sung công tắc "Key Trả Phí" (isPremium). Vô hiệu hoá thanh giới hạn RPD trên UI, hiển thị Vô cực (∞).
 // Cập nhật V1.15: [8 MODELS CASCADE] Đồng bộ mảng models dự phòng với 8 mô hình trong Giao diện Radar (Dropdown & RPD Tracker).
 // Cập nhật V1.14: [AI MODEL CASCADE] Tích hợp Giao diện Quản lý Đa Mô hình (Model Selector) và hiển thị thanh trạng thái RPD Tracker.
-// Cập nhật V1.13: [DECOMMISSIONING] Tháo dỡ hoàn toàn giao diện Ngụy trang lưu lượng (Obfuscation Mode) khỏi ApiKeyModal nhằm tinh gọn hệ thống sau khi chuyển sang mô hình Gemini Flash Lite.
-// Cập nhật V1.11: [HOTFIX] Dời thanh trượt Tùy chỉnh Thời gian phạt 429 sang ApiKeyModal (Radar) với cơ chế Độc lập trạng thái (State Decoupling) đọc ghi trực tiếp Storage.
+// Cập nhật V1.13: [DECOMMISSIONING] Tháo dỡ hoàn toàn giao diện Ngụy trang lưu lượng (Obfuscation Mode).
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, aiModel, setAiModel, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
@@ -8406,6 +8413,8 @@ const [newKeyInput, React_useState_newKeyInput] = React.useState('');
 const [localCooldown, setLocalCooldown] = React.useState(120);
 // [V1.14] Local State cho Model Selector
 const [localAiModel, setLocalAiModel] = React.useState('gemini-3.5-flash-lite');
+// [V1.16] Local State cho Premium Mode
+const [isPremium, setIsPremium] = React.useState(false);
 const abortTestRef = React.useRef(false);
 React.useEffect(() => {
 if (isOpen) {
@@ -8427,6 +8436,8 @@ setLocalCooldown(config.cooldown429 || 120);
 // Khởi tạo giá trị Model từ State hoặc Storage
 const currentAiModel = aiModel || localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 setLocalAiModel(currentAiModel);
+// [V1.16] Khởi tạo trạng thái Premium Mode
+setIsPremium(localStorage.getItem('fc_is_premium_key') === 'true');
 }
 return () => {
 abortTestRef.current = true;
@@ -8472,6 +8483,16 @@ const handleApplyModel = () => {
 if (setAiModel) setAiModel(localAiModel);
 localStorage.setItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model', localAiModel);
 if (window.globalShowToast) window.globalShowToast("Đã kích hoạt Mô hình AI ưu tiên!", "success");
+};
+// [V1.16] Toggle Premium Mode
+const handleTogglePremium = () => {
+const newVal = !isPremium;
+setIsPremium(newVal);
+localStorage.setItem('fc_is_premium_key', newVal.toString());
+if (window.globalShowToast) {
+if (newVal) window.globalShowToast("Đã KÍCH HOẠT chế độ Key Trả Phí!", "success");
+else window.globalShowToast("Đã TẮT chế độ Key Trả Phí!", "info");
+}
 };
 // [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích có ngắt mạch
 const handleTestKeys = async () => {
@@ -8597,6 +8618,15 @@ className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold shadow hover:bg
 Áp dụng
 </button>
 </div>
+{/* [V1.16] Công tắc Premium Mode */}
+<div className="flex items-center justify-between mt-3 pt-2 border-t border-blue-200/50">
+<label className="text-[11px] font-bold text-yellow-600 flex items-center gap-1 cursor-pointer select-none" onClick={handleTogglePremium}>
+<span className="text-sm">🌟</span> Bỏ qua giới hạn RPD (Cho Key Trả phí)
+</label>
+<div className={`w-8 h-4 rounded-full flex items-center p-0.5 cursor-pointer transition-colors ${isPremium ? 'bg-yellow-400' : 'bg-gray-300'}`} onClick={handleTogglePremium}>
+<div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${isPremium ? 'translate-x-4' : ''}`}></div>
+</div>
+</div>
 {/* RPD Progress Bar UI */}
 {(() => {
 const currentModels = window.AI_MODELS || [
@@ -8614,6 +8644,19 @@ const maxRpd = selectedModelObj.rpdLimit;
 const currentUsage = (window.Utils && window.Utils.RPDTracker && apiKey)
 ? window.Utils.RPDTracker.getUsage(apiKey.replace(/["'\s]/g, ""), localAiModel)
 : 0;
+if (isPremium) {
+return (
+<div className="mt-3 space-y-1 bg-gradient-to-r from-yellow-50 to-amber-50 p-2 rounded-lg border border-yellow-200">
+<div className="flex justify-between text-[10px] font-bold text-yellow-700 items-center">
+<span>Hạn mức RPD hôm nay (Premium)</span>
+<span className="text-lg leading-none font-black text-yellow-600">∞</span>
+</div>
+<div className="w-full bg-yellow-100 rounded-full h-1.5 overflow-hidden">
+<div className="h-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 w-full"></div>
+</div>
+</div>
+);
+}
 const percent = maxRpd > 0 ? Math.min(100, (currentUsage / maxRpd) * 100) : 0;
 const isWarning = percent >= 80;
 const isDanger = percent >= 100;
