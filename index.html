@@ -87,9 +87,10 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==================================================================================
 // Bắt đầu dán mã nguồn từ đây...
 // ==================================================================================
-// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.10
-// Last Updated: 2026-08-14 10:15
+// Block 2.1a: TẦNG 2: HẰNG SỐ & CẤU HÌNH (Global Constants & i18n) - Version 1.11
+// Last Updated: 2026-08-14 10:40
 // Nhiệm vụ: Chứa các tham số tĩnh, key lưu trữ, template Prompt AI và bộ từ điển Đa ngôn ngữ (UI_TEXT).
+// Cập nhật V1.11: [AI MODEL CASCADE EXPANSION] Mở rộng danh sách window.AI_MODELS lên 8 mô hình với tổng dung lượng 1,120 RPD.
 // Cập nhật V1.10: [AI MODEL CASCADE] Khai báo cấu hình AI_MODELS và các hằng số STORAGE_KEYS phục vụ bộ đếm RPD Tracker.
 // Cập nhật V1.09: [DECOMMISSIONING] Xóa bỏ hoàn toàn kho đạn mồi DECOY_PROMPTS sau khi gỡ bỏ tính năng Ngụy trang lưu lượng để giải phóng bộ nhớ RAM.
 // Cập nhật V1.08: [HOTFIX SHEETS] Gộp toàn bộ mảng DECOY_PROMPTS thành 1 dòng duy nhất bọc trong ngoặc kép để tránh lỗi mất định dạng khi lưu trữ qua Google Sheets.
@@ -114,8 +115,13 @@ QUOTA_TRACKER: 'fc_quota_tracker'
 // Danh mục Mô hình AI và Cấu hình Hạn mức (RPD Limit)
 window.AI_MODELS = [
 { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', rpdLimit: 500 },
+{ id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', rpdLimit: 500 },
 { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', rpdLimit: 20 },
-{ id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', rpdLimit: 20 }
+{ id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', rpdLimit: 20 },
+{ id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', rpdLimit: 20 },
+{ id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', rpdLimit: 20 },
+{ id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', rpdLimit: 20 },
+{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', rpdLimit: 20 }
 ];
 // Nâng cấp cấu trúc Link mặc định thành Đa chiều (Từ vựng / Câu văn)
 window.DEFAULT_SHEETS = {
@@ -624,9 +630,10 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 3.00
-// Last Updated: 2026-08-14 10:30
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 3.10
+// Last Updated: 2026-08-14 10:45
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V3.10: [8 MODELS CASCADE] Đồng bộ mảng modelsPool dự phòng với 8 mô hình (tổng 1120 RPD) để đảm bảo động cơ Thác nước không bao giờ cạn đạn.
 // Cập nhật V3.00: [AI MODEL CASCADE & RPD TRACKER] Tích hợp cỗ máy xoay vòng mô hình (Thác nước) và bộ đếm Quota Client-side tự động reset lúc 15:00 giờ VN.
 // Cập nhật V2.50: [DEPRECATION CLEANUP] Xóa bỏ hoàn toàn tham số `temperature`.
 // ==================================================================================
@@ -844,8 +851,13 @@ localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
 const primaryModelId = localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 const modelsPool = window.AI_MODELS ? [...window.AI_MODELS] : [
 { id: 'gemini-3.5-flash-lite', rpdLimit: 500 },
+{ id: 'gemini-3.1-flash-lite', rpdLimit: 500 },
 { id: 'gemini-2.5-flash-lite', rpdLimit: 20 },
-{ id: 'gemini-3.0-flash', rpdLimit: 20 }
+{ id: 'gemini-3.0-flash', rpdLimit: 20 },
+{ id: 'gemini-3.5-flash', rpdLimit: 20 },
+{ id: 'gemini-3.6-flash', rpdLimit: 20 },
+{ id: 'gemini-3.7-flash', rpdLimit: 20 },
+{ id: 'gemini-2.5-flash', rpdLimit: 20 }
 ];
 let cascadeModels = [];
 const primaryObj = modelsPool.find(m => m.id === primaryModelId);
@@ -1180,8 +1192,13 @@ localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
 const primaryModelId = localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 const modelsPool = window.AI_MODELS ? [...window.AI_MODELS] : [
 { id: 'gemini-3.5-flash-lite', rpdLimit: 500 },
+{ id: 'gemini-3.1-flash-lite', rpdLimit: 500 },
 { id: 'gemini-2.5-flash-lite', rpdLimit: 20 },
-{ id: 'gemini-3.0-flash', rpdLimit: 20 }
+{ id: 'gemini-3.0-flash', rpdLimit: 20 },
+{ id: 'gemini-3.5-flash', rpdLimit: 20 },
+{ id: 'gemini-3.6-flash', rpdLimit: 20 },
+{ id: 'gemini-3.7-flash', rpdLimit: 20 },
+{ id: 'gemini-2.5-flash', rpdLimit: 20 }
 ];
 let cascadeModels = [];
 const primaryObj = modelsPool.find(m => m.id === primaryModelId);
@@ -8371,10 +8388,11 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block 4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.14
-// Last Updated: 2026-08-14 11:00
+// Block 4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.15
+// Last Updated: 2026-08-14 11:15
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
+// Cập nhật V1.15: [8 MODELS CASCADE] Đồng bộ mảng models dự phòng với 8 mô hình trong Giao diện Radar (Dropdown & RPD Tracker).
 // Cập nhật V1.14: [AI MODEL CASCADE] Tích hợp Giao diện Quản lý Đa Mô hình (Model Selector) và hiển thị thanh trạng thái RPD Tracker.
 // Cập nhật V1.13: [DECOMMISSIONING] Tháo dỡ hoàn toàn giao diện Ngụy trang lưu lượng (Obfuscation Mode) khỏi ApiKeyModal nhằm tinh gọn hệ thống sau khi chuyển sang mô hình Gemini Flash Lite.
 // Cập nhật V1.11: [HOTFIX] Dời thanh trượt Tùy chỉnh Thời gian phạt 429 sang ApiKeyModal (Radar) với cơ chế Độc lập trạng thái (State Decoupling) đọc ghi trực tiếp Storage.
@@ -8383,7 +8401,7 @@ const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, aiModel, setAiModel, 
 const [keyPool, setKeyPool] = React.useState([]);
 const [isTesting, setIsTesting] = React.useState(false);
 const [testResults, setTestResults] = React.useState({});
-const [newKeyInput, setNewKeyInput] = React.useState('');
+const [newKeyInput, React_useState_newKeyInput] = React.useState('');
 // [V1.11] Local State cho Cooldown Slider
 const [localCooldown, setLocalCooldown] = React.useState(120);
 // [V1.14] Local State cho Model Selector
@@ -8401,7 +8419,7 @@ initialPool.unshift(currentKey);
 initialPool = [currentKey, ...initialPool.filter(k => k !== currentKey)];
 }
 setKeyPool(initialPool);
-setNewKeyInput('');
+React_useState_newKeyInput('');
 setTestResults({});
 // Khởi tạo giá trị Cooldown từ Storage
 const config = window.Utils?.safeJsonParse('fc_ai_config', {});
@@ -8421,7 +8439,7 @@ const newPool = [k, ...keyPool];
 setKeyPool(newPool);
 window.Utils.safeLocalStorageSet('fc_apikey_pool', newPool);
 setApiKey(k);
-setNewKeyInput('');
+React_useState_newKeyInput('');
 if (window.globalShowToast) window.globalShowToast("Đã thêm API Key mới!", "success");
 }
 };
@@ -8535,7 +8553,7 @@ return (
 <input
 type="password"
 value={newKeyInput}
-onChange={(e) => setNewKeyInput(e.target.value)}
+onChange={(e) => React_useState_newKeyInput(e.target.value)}
 onKeyDown={(e) => e.key === 'Enter' && handleAddKey()}
 className="flex-1 p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-purple-200 outline-none font-mono"
 placeholder={t('apiKeyPlace')}
@@ -8560,8 +8578,13 @@ className="flex-1 p-2 border border-blue-200 rounded-lg text-sm bg-white focus:r
 >
 {(window.AI_MODELS || [
 { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', rpdLimit: 500 },
+{ id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', rpdLimit: 500 },
 { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', rpdLimit: 20 },
-{ id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', rpdLimit: 20 }
+{ id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', rpdLimit: 20 },
+{ id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', rpdLimit: 20 },
+{ id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', rpdLimit: 20 },
+{ id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', rpdLimit: 20 },
+{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', rpdLimit: 20 }
 ]).map(m => (
 <option key={m.id} value={m.id}>{m.name}</option>
 ))}
@@ -8578,8 +8601,13 @@ className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold shadow hover:bg
 {(() => {
 const currentModels = window.AI_MODELS || [
 { id: 'gemini-3.5-flash-lite', rpdLimit: 500 },
+{ id: 'gemini-3.1-flash-lite', rpdLimit: 500 },
 { id: 'gemini-2.5-flash-lite', rpdLimit: 20 },
-{ id: 'gemini-3.0-flash', rpdLimit: 20 }
+{ id: 'gemini-3.0-flash', rpdLimit: 20 },
+{ id: 'gemini-3.5-flash', rpdLimit: 20 },
+{ id: 'gemini-3.6-flash', rpdLimit: 20 },
+{ id: 'gemini-3.7-flash', rpdLimit: 20 },
+{ id: 'gemini-2.5-flash', rpdLimit: 20 }
 ];
 const selectedModelObj = currentModels.find(m => m.id === localAiModel) || { rpdLimit: 0 };
 const maxRpd = selectedModelObj.rpdLimit;
