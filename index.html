@@ -12558,13 +12558,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.43
-// Last Updated: 2026-08-14 17:05
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.44
+// Last Updated: 2026-08-14 17:30
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.43: [AUDIO CLEANUP] Dọn dẹp hoàn toàn các mã rác quản lý âm thanh (AudioContext Cũ, speechSynthesis.cancel) để nhường quyền kiểm soát tuyệt đối cho Tầng 6 (Khiên sưởi ấm 10Hz), khắc phục lỗi treo Khiên gây hao pin.
-// Cập nhật V1.42: [ANTI-FREEZE UX] Vô hiệu hóa hoàn toàn cản trở của aiWaitTime (UI Cooldown) lên đồng hồ resultTimer. Giải quyết dứt điểm hiện tượng "Game đơ 3-4s" sau khi âm thanh bị ngắt. Trả lại nhịp độ chuyển câu mượt mà.
-// Cập nhật V1.41: [HOLD STATE FIX] Khắc phục triệt để lỗi nhảy câu ngay lập tức bằng cách gán setResultTimer(-1) để khóa useEffect.
-// Cập nhật V1.40: [HOTFIX] Triển khai vắc-xin Array.isArray() cho biến `level`.
+// Cập nhật V1.44: [BABEL PARSER FIX] Chuyển đổi toàn bộ các hàm bất đồng bộ (Arrow Async) sang cú pháp Hàm truyền thống (Standard Async Function) để khắc phục lỗi mất ngữ cảnh "Unexpected reserved word 'await'" của trình biên dịch Babel Standalone trên file lớn.
+// Cập nhật V1.43: [AUDIO CLEANUP] Dọn dẹp hoàn toàn các mã rác quản lý âm thanh.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12625,7 +12623,7 @@ React.useEffect(() => { configRef.current = config; }, [config]);
 React.useEffect(() => {
 stateRef.current = { gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, deck: deckRef.current, isAiMode, listenPlayCount, aiWaitTime };
 }, [gameMode, score, streak, wrongCount, currentQuestionData, timeLeft, listenPlayCount, aiWaitTime]);
-// [BẢN VÁ V1.40] Hàm trích xuất Level an toàn chống lỗi Multi-select
+// Hàm trích xuất Level an toàn chống lỗi Multi-select
 const getSafeLevelString = (defaultLevel = 'level_4_discovery_basic') => {
 const lvl = configRef.current?.level || level;
 const strLvl = Array.isArray(lvl) ? lvl[0] : lvl;
@@ -12741,7 +12739,7 @@ const randomIndex = fallbackIndexRef.current++;
 const meta = {
 id: `quiz_fallback_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
 type: 'quiz',
-level: getSafeLevelString(), // ĐÃ VÁ: Chống Crash Array
+level: getSafeLevelString(), // ĐÃ VÁ
 topic: configRef.current?.topic || '',
 dataMode: configRef.current?.dataMode || dataMode || 'vocab',
 difficulty: hardMode ? 'hard' : 'easy',
@@ -12784,7 +12782,8 @@ return fallbackFormatted;
 // ==================================================================================
 // ĐƯỜNG ỐNG DỮ LIỆU THỐNG NHẤT (UNIFIED DATA PIPELINE)
 // ==================================================================================
-const fetchTask = async () => {
+// [VÁ LỖI BABEL] Chuyển từ Arrow Async sang Standard Async Function
+async function fetchTask() {
 let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 let activeGrammarId = null;
@@ -12852,7 +12851,6 @@ if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
 const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
 validCards = [...validCards, ...newFbs];
-}
 }
 }
 deckRef.current = window.Utils.shuffleArray(validCards);
@@ -12959,11 +12957,12 @@ const correctPos = Math.floor(Math.random() * (distractors.length + 1));
 const finalOptions = [...distractors];
 finalOptions.splice(correctPos, 0, correctOpt);
 return { question: card, options: finalOptions, isAiGenerated };
-};
+}
 // ==================================================================================
 // XỬ LÝ KHỞI ĐỘNG VÒNG ĐỜI (LATCHING) KÈM TRY-CATCH AN TOÀN
 // ==================================================================================
-const handleStartGame = async () => {
+// [VÁ LỖI BABEL] Chuyển đổi sang Standard Async Function
+async function handleStartGame() {
 if (sourceMode === 'card' && (!cards || cards.length < 2)) return;
 setIsGenerating(true);
 setListenPlayCount(0);
@@ -13021,7 +13020,6 @@ if (isGameActiveRef.current && firstData) {
 setCurrentQuestionData(applyAntiStreak(firstData));
 setIsGenerating(false);
 isInitializingRef.current = false;
-// [BẢN VÁ V1.42] Tắt hoàn toàn aiWaitTime (UI Cooldown). Giao phó cho Loading Screen để tránh gây đơ màn hình
 setAiWaitTime(0);
 if (gameMode === 'listen') triggerAudio(firstData, 600);
 setTimeout(() => triggerAutoSave(), 150);
@@ -13030,7 +13028,7 @@ safeShowToast("Lỗi nghiêm trọng khi tải dữ liệu. Buộc kết thúc."
 setIsGenerating(false); isInitializingRef.current = false;
 onEndGame({ correct: score, wrong: wrongCount });
 }
-};
+}
 const hasStartedRef = React.useRef(false);
 React.useEffect(() => {
 if (hasStartedRef.current) return;
@@ -13043,7 +13041,6 @@ setStreak(savedState.streak || 0);
 setWrongCount(savedState.stats?.wrong || savedState.wrongCount || 0);
 setTimeLeft(savedState.timeLeft || timeLimit);
 if (savedState.quizState?.listenPlayCount !== undefined) setListenPlayCount(savedState.quizState.listenPlayCount);
-// [BẢN VÁ V1.42] Không phục hồi aiWaitTime cũ, dập nó về 0 luôn
 setAiWaitTime(0);
 if (savedState.deck) {
 deckRef.current = [...savedState.deck];
@@ -13071,7 +13068,7 @@ qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (savedState.gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(0); // [BẢN VÁ V1.42]
+setAiWaitTime(0);
 } else {
 safeShowToast("Lỗi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -13086,7 +13083,7 @@ let qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (savedState.gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(0); // [BẢN VÁ V1.42]
+setAiWaitTime(0);
 } else {
 setIsGenerating(false);
 onEndGame({ correct: savedState.stats?.correct || 0, wrong: savedState.stats?.wrong || 0 });
@@ -13154,7 +13151,8 @@ _needsNextOnResume: needsNext
 }));
 onBack({ ...sessionData, timerMode, listenMode, hardMode, timeLimit });
 };
-const handleNext = async () => {
+// [VÁ LỖI BABEL] Chuyển đổi sang Standard Async Function
+async function handleNext() {
 if (!isGameActiveRef.current || isGenerating) return;
 cleanupTimers();
 setSelectedOptionIndex(null); setIsChecking(false); setFeedbackType(null); setClickedWrongIndices(new Set());
@@ -13166,7 +13164,7 @@ if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const qData = coordinatorRef.current.pop();
 setCurrentQuestionData(applyAntiStreak(qData));
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(0); // [BẢN VÁ V1.42]
+setAiWaitTime(0);
 setTimeout(() => triggerAutoSave(), 150);
 } else {
 setIsGenerating(true);
@@ -13182,7 +13180,7 @@ qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(0); // [BẢN VÁ V1.42]
+setAiWaitTime(0);
 } else {
 safeShowToast("Lỗi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -13198,7 +13196,7 @@ let qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(0); // [BẢN VÁ V1.42]
+setAiWaitTime(0);
 } else {
 setIsGenerating(false);
 onEndGame({ correct: score, wrong: wrongCount });
@@ -13211,7 +13209,7 @@ setTimeout(() => triggerAutoSave(), 150);
 console.error("Next Round Critical Error:", err);
 setIsGenerating(false);
 }
-};
+}
 // ==================================================================================
 // NÂNG CẤP ĐỘNG CƠ ÂM THANH TUẦN TỰ (SEQUENTIAL AUDIO ENGINE)
 // ==================================================================================
@@ -13226,7 +13224,8 @@ setListenPlayCount(prev => prev + 1);
 }
 audioSequenceAbortRef.current = true;
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
-const playFn = async () => {
+// [VÁ LỖI BABEL] Chuyển đổi sang Standard Async Function
+async function playFn() {
 if (!isGameActiveRef.current) return;
 audioSequenceAbortRef.current = false;
 setHasStartedListening(true);
@@ -13267,7 +13266,7 @@ else resolve();
 if (isGameActiveRef.current && !audioSequenceAbortRef.current) {
 setIsAudioPlaying(false);
 }
-};
+}
 if (delay > 0) {
 audioTimeoutRef.current = setTimeout(playFn, delay);
 } else {
@@ -13291,7 +13290,6 @@ const textToPlay = (isSentenceMode && currentQuestionData?.question?.displaySent
 const proceedToNext = (defaultDelayMs) => {
 if (isGameActiveRef.current) {
 let delaySec = Math.ceil(defaultDelayMs / 1000);
-// [BẢN VÁ V1.42] XÓA BỎ HOÀN TOÀN sự kìm hãm của aiWaitTime lên delaySec để triệt tiêu cảm giác "Đơ màn hình 3-4s".
 if (delaySec < 1) delaySec = 1;
 setResultTimer(delaySec);
 }
@@ -13322,7 +13320,7 @@ if (autoReadAnswer && onPlay) {
 let finished = false;
 const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proceedToNext(1500); } }, 8000);
 onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1500); } });
-} else proceedToNext(2000); // Đợi 2s để người dùng kịp nhìn đáp án
+} else proceedToNext(2000);
 } else {
 if (!clickedWrongIndices.has(index)) {
 const newWrong = new Set(clickedWrongIndices).add(index);
@@ -13347,7 +13345,7 @@ onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTi
 setTimeout(() => triggerAutoSave(), 150);
 };
 const handleSkip = () => {
-if (isChecking || isGenerating) return; // [BẢN VÁ V1.42] Gỡ bỏ cờ khóa aiWaitTime > 0
+if (isChecking || isGenerating) return;
 cleanupTimers();
 setWrongCount(w => w + 1); setStreak(0);
 if (showToast) safeShowToast("Bỏ qua (+1 sai)", "warning");
