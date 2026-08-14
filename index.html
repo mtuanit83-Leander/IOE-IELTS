@@ -12558,12 +12558,13 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.41
-// Last Updated: 2026-08-14 15:30
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.43
+// Last Updated: 2026-08-14 17:05
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.41: [HOLD STATE FIX] Khắc phục triệt để lỗi nhảy câu ngay lập tức và âm thanh bị ngắt bằng cách gán setResultTimer(-1) để khóa useEffect, tạo thời gian neo 2 giây cho người dùng xem đáp án.
-// Cập nhật V1.40: [HOTFIX] Triển khai vắc-xin Array.isArray() cho biến `level` để tương thích kiến trúc Multi-select. Ép kiểu về String trước khi gửi xuống Động cơ Tầng 2 (ExamEngine/Fallback) để chống crash toàn tập (TypeError: split is not a function).
-// Cập nhật V1.39: [SAFETY FALLBACK] Triển khai Giai đoạn 2 của cơ chế bảo vệ tiếng mẹ đẻ...
+// Cập nhật V1.43: [AUDIO CLEANUP] Dọn dẹp hoàn toàn các mã rác quản lý âm thanh (AudioContext Cũ, speechSynthesis.cancel) để nhường quyền kiểm soát tuyệt đối cho Tầng 6 (Khiên sưởi ấm 10Hz), khắc phục lỗi treo Khiên gây hao pin.
+// Cập nhật V1.42: [ANTI-FREEZE UX] Vô hiệu hóa hoàn toàn cản trở của aiWaitTime (UI Cooldown) lên đồng hồ resultTimer. Giải quyết dứt điểm hiện tượng "Game đơ 3-4s" sau khi âm thanh bị ngắt. Trả lại nhịp độ chuyển câu mượt mà.
+// Cập nhật V1.41: [HOLD STATE FIX] Khắc phục triệt để lỗi nhảy câu ngay lập tức bằng cách gán setResultTimer(-1) để khóa useEffect.
+// Cập nhật V1.40: [HOTFIX] Triển khai vắc-xin Array.isArray() cho biến `level`.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -12853,6 +12854,7 @@ const newFbs = fbItems.filter(f => !existingTerms.has(f.term));
 validCards = [...validCards, ...newFbs];
 }
 }
+}
 deckRef.current = window.Utils.shuffleArray(validCards);
 }
 card = { ...deckRef.current.shift() };
@@ -12912,7 +12914,6 @@ localStorage.setItem('fc_total_tokens', currentTotal + 150);
 }
 } catch (aiError) { console.warn("AI Quiz Preload Fallback:", aiError.message); }
 }
-// [BẢN VÁ V1.39] Kiểm soát Bóp méo Offline (Offline Distractor Guard)
 if (distractors.length === 0 && hardMode) {
 if (!isReverse) {
 console.warn("[AI Guard] Fallback: Hạ cấp xuống độ khó Dễ để bảo vệ toàn vẹn chính tả tiếng Việt.");
@@ -12964,9 +12965,6 @@ return { question: card, options: finalOptions, isAiGenerated };
 // ==================================================================================
 const handleStartGame = async () => {
 if (sourceMode === 'card' && (!cards || cards.length < 2)) return;
-if (window.fc_audioCtx && window.fc_audioCtx.state === 'suspended') {
-window.fc_audioCtx.resume();
-}
 setIsGenerating(true);
 setListenPlayCount(0);
 isInitializingRef.current = true;
@@ -13023,12 +13021,8 @@ if (isGameActiveRef.current && firstData) {
 setCurrentQuestionData(applyAntiStreak(firstData));
 setIsGenerating(false);
 isInitializingRef.current = false;
-let currentCooldown = 0;
-if (sourceMode === 'ai_pure' || isAiMode) {
-currentCooldown = 9;
-try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
-}
-setAiWaitTime(currentCooldown);
+// [BẢN VÁ V1.42] Tắt hoàn toàn aiWaitTime (UI Cooldown). Giao phó cho Loading Screen để tránh gây đơ màn hình
+setAiWaitTime(0);
 if (gameMode === 'listen') triggerAudio(firstData, 600);
 setTimeout(() => triggerAutoSave(), 150);
 } else if (isGameActiveRef.current) {
@@ -13049,7 +13043,8 @@ setStreak(savedState.streak || 0);
 setWrongCount(savedState.stats?.wrong || savedState.wrongCount || 0);
 setTimeLeft(savedState.timeLeft || timeLimit);
 if (savedState.quizState?.listenPlayCount !== undefined) setListenPlayCount(savedState.quizState.listenPlayCount);
-if (savedState.quizState?.aiWaitTime !== undefined) setAiWaitTime(savedState.quizState.aiWaitTime);
+// [BẢN VÁ V1.42] Không phục hồi aiWaitTime cũ, dập nó về 0 luôn
+setAiWaitTime(0);
 if (savedState.deck) {
 deckRef.current = [...savedState.deck];
 }
@@ -13076,12 +13071,7 @@ qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (savedState.gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-let currentCooldown = 0;
-if (sourceMode === 'ai_pure' || isAiMode) {
-currentCooldown = 9;
-try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
-}
-setAiWaitTime(currentCooldown);
+setAiWaitTime(0); // [BẢN VÁ V1.42]
 } else {
 safeShowToast("Lỗi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -13096,7 +13086,7 @@ let qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (savedState.gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(savedState.quizState?.aiWaitTime || 9);
+setAiWaitTime(0); // [BẢN VÁ V1.42]
 } else {
 setIsGenerating(false);
 onEndGame({ correct: savedState.stats?.correct || 0, wrong: savedState.stats?.wrong || 0 });
@@ -13112,7 +13102,6 @@ handleStartGame();
 return () => {
 isGameActiveRef.current = false;
 cleanupTimers();
-window.speechSynthesis.cancel();
 if (coordinatorRef.current) coordinatorRef.current.destroy();
 };
 }, []);
@@ -13121,7 +13110,6 @@ if (coordinatorRef.current) coordinatorRef.current.destroy();
 // ==================================================================================
 const cleanupTimers = () => {
 audioSequenceAbortRef.current = true;
-window.speechSynthesis.cancel();
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 if (timerRef.current) clearTimeout(timerRef.current);
 if (autoNextTimeoutRef.current) clearTimeout(autoNextTimeoutRef.current);
@@ -13154,7 +13142,7 @@ needsNext = true;
 if (showToast) safeShowToast("Thoát ngang bị tính 1 lỗi sai!", "warning");
 }
 const sessionData = JSON.parse(JSON.stringify({
-quizState: { currentCard: currentData.currentQuestionData?.question || null, options: currentData.currentQuestionData?.options || [], userAnswer: null, isCorrect: null, listenPlayCount: currentData.listenPlayCount, aiWaitTime: currentData.aiWaitTime },
+quizState: { currentCard: currentData.currentQuestionData?.question || null, options: currentData.currentQuestionData?.options || [], userAnswer: null, isCorrect: null, listenPlayCount: currentData.listenPlayCount, aiWaitTime: 0 },
 stats: { correct: currentData.score, wrong: finalWrongCount },
 difficulty: hardMode ? 'hard' : 'easy',
 deck: currentData.deck,
@@ -13178,12 +13166,7 @@ if (coordinatorRef.current && coordinatorRef.current.length() > 0) {
 const qData = coordinatorRef.current.pop();
 setCurrentQuestionData(applyAntiStreak(qData));
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-let currentCooldown = 0;
-if (sourceMode === 'ai_pure' || isAiMode) {
-currentCooldown = 9;
-try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
-}
-setAiWaitTime(currentCooldown);
+setAiWaitTime(0); // [BẢN VÁ V1.42]
 setTimeout(() => triggerAutoSave(), 150);
 } else {
 setIsGenerating(true);
@@ -13199,12 +13182,7 @@ qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-let currentCooldown = 0;
-if (sourceMode === 'ai_pure' || isAiMode) {
-currentCooldown = 9;
-try { const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config')); if (aiCfg && aiCfg.uiCooldown) currentCooldown = aiCfg.uiCooldown; } catch(e) {}
-}
-setAiWaitTime(currentCooldown);
+setAiWaitTime(0); // [BẢN VÁ V1.42]
 } else {
 safeShowToast("Lỗi tải dữ liệu. Buộc kết thúc.", "error");
 setIsGenerating(false);
@@ -13220,7 +13198,7 @@ let qData = getEmergencyQuizFallback();
 if (qData) {
 setCurrentQuestionData(applyAntiStreak(qData)); setIsGenerating(false);
 if (gameMode === 'listen' && !timerMode) triggerAudio(qData, 600);
-setAiWaitTime(9);
+setAiWaitTime(0); // [BẢN VÁ V1.42]
 } else {
 setIsGenerating(false);
 onEndGame({ correct: score, wrong: wrongCount });
@@ -13247,7 +13225,6 @@ return;
 setListenPlayCount(prev => prev + 1);
 }
 audioSequenceAbortRef.current = true;
-window.speechSynthesis.cancel();
 if (audioTimeoutRef.current) clearTimeout(audioTimeoutRef.current);
 const playFn = async () => {
 if (!isGameActiveRef.current) return;
@@ -13314,15 +13291,13 @@ const textToPlay = (isSentenceMode && currentQuestionData?.question?.displaySent
 const proceedToNext = (defaultDelayMs) => {
 if (isGameActiveRef.current) {
 let delaySec = Math.ceil(defaultDelayMs / 1000);
-if (aiWaitTime > delaySec) {
-delaySec = aiWaitTime;
-}
+// [BẢN VÁ V1.42] XÓA BỎ HOÀN TOÀN sự kìm hãm của aiWaitTime lên delaySec để triệt tiêu cảm giác "Đơ màn hình 3-4s".
 if (delaySec < 1) delaySec = 1;
 setResultTimer(delaySec);
 }
 };
 if (isTimeout) {
-setResultTimer(-1); // [BẢN VÁ V1.41] KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
+setResultTimer(-1); // KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
 localPushToRetryBag(currentQuestionData.question);
 setIsChecking(true); setFeedbackType('timeout'); setStreak(0); setWrongCount(w => w + 1);
 logMistake(currentQuestionData.question);
@@ -13330,7 +13305,7 @@ proceedToNext(2000); setTimeout(() => triggerAutoSave(), 150);
 return;
 }
 if (isForceReveal) {
-setResultTimer(-1); // [BẢN VÁ V1.41] KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
+setResultTimer(-1); // KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
 localPushToRetryBag(currentQuestionData.question);
 setIsChecking(true); setSelectedOptionIndex(999); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
 logMistake(currentQuestionData.question);
@@ -13338,16 +13313,16 @@ proceedToNext(2500); setTimeout(() => triggerAutoSave(), 150);
 return;
 }
 if (isCorrect) {
-setResultTimer(-1); // [BẢN VÁ V1.41] KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
+setResultTimer(-1); // KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
 if (clickedWrongIndices.size === 0) {
 localRemoveFromRetryBag(currentQuestionData.question.term);
 }
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('correct'); setScore(s => s + 1); setStreak(s => s + 1);
 if (autoReadAnswer && onPlay) {
 let finished = false;
-const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proceedToNext(1000); } }, 8000);
-onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1000); } });
-} else proceedToNext(2000); // [BẢN VÁ V1.41] Tăng delay từ 1500 lên 2000ms để người dùng xem đáp án trước khi qua câu
+const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proceedToNext(1500); } }, 8000);
+onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1500); } });
+} else proceedToNext(2000); // Đợi 2s để người dùng kịp nhìn đáp án
 } else {
 if (!clickedWrongIndices.has(index)) {
 const newWrong = new Set(clickedWrongIndices).add(index);
@@ -13359,20 +13334,20 @@ setTimeout(() => setShowChanceToast(false), 2000);
 return;
 }
 }
-setResultTimer(-1); // [BẢN VÁ V1.41] KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
+setResultTimer(-1); // KHÓA TIMER, HOLD STATE NGĂN CHẶN NHẢY CÂU
 localPushToRetryBag(currentQuestionData.question);
 setIsChecking(true); setSelectedOptionIndex(index); setFeedbackType('wrong'); setStreak(0); setWrongCount(w => w + 1);
 logMistake(currentQuestionData.question);
 if (autoReadAnswer && onPlay) {
 let finished = false;
-const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proceedToNext(1000); } }, 8000);
-onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1000); } });
+const safetyFallback = setTimeout(() => { if(!finished) { finished = true; proceedToNext(1500); } }, 8000);
+onPlay(textToPlay, null, null, () => { if (!finished) { finished = true; clearTimeout(safetyFallback); proceedToNext(1500); } });
 } else proceedToNext(2500);
 }
 setTimeout(() => triggerAutoSave(), 150);
 };
 const handleSkip = () => {
-if (isChecking || isGenerating || aiWaitTime > 0) return;
+if (isChecking || isGenerating) return; // [BẢN VÁ V1.42] Gỡ bỏ cờ khóa aiWaitTime > 0
 cleanupTimers();
 setWrongCount(w => w + 1); setStreak(0);
 if (showToast) safeShowToast("Bỏ qua (+1 sai)", "warning");
@@ -24979,11 +24954,11 @@ secureCopy
 window.Block6_3_useDataIO = useDataIO;
 window.Block15_useDataLogic = useDataIO; // Fallback
 window.useDataLogic = useDataIO;
-// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.08
-// Last Updated: 2026-08-14 16:00
+// Block6.4: TẦNG 6: LOGIC ỨNG DỤNG (Main Controller) - Version 1.09
+// Last Updated: 2026-08-14 16:40
 // Nhiệm vụ: "Switchboard" điều phối toàn cục. Hợp nhất I/O (6.3), Progress (6.5), AI Curator (6.6), Mock Test Logic (6.7) và Exam Pool Logic (6.8).
-// Cập nhật V1.08: [AUDIO WAKE LOCK FIX] Nâng cấp cơ chế âm mồi Bluetooth. Tăng thời lượng sóng 10Hz từ 0.15s lên 15s (không fade-out) để làm "Khiên bảo vệ" (Audio Shield) chống iOS thu hồi quyền phát media gây cụt âm. Bổ sung lệnh dọn dẹp pause() để tránh rò rỉ tài nguyên.
-// Cập nhật V1.07: [HOTFIX BLUETOOTH] Bãi bỏ AudioContext. Viết lại hàm playTing thành thuật toán In-memory Blob WAV gán vào thẻ HTML5 <audio> để bẻ khóa định tuyến âm thanh Bluetooth/CarPlay trên iOS Safari.
+// Cập nhật V1.09: [CONTINUOUS WARM SHIELD] Nâng cấp Khiên bảo vệ âm thanh. Biến âm mồi thành vòng lặp vô hạn (loop = true). Áp dụng kỹ thuật Debounce 3.5s khi kết thúc đọc để giữ kênh Bluetooth mở liên tục khi người dùng học nhanh. Luôn gọi safeOnEnd() trong onerror để triệt tiêu hoàn toàn lỗi "Đơ 3-4s".
+// Cập nhật V1.08: [AUDIO WAKE LOCK FIX] Nâng cấp cơ chế âm mồi Bluetooth lên 15s.
 // ==================================================================================
 const useAppLogic = (core) => {
 // 1. LẤY CORE STATE
@@ -25041,13 +25016,13 @@ default: style.fontFamily = 'ui-sans-serif, system-ui, sans-serif';
 }
 return style;
 };
-// [V1.08 AUDIO WAKE LOCK FIX] Khởi tạo âm thanh Ting bằng HTML5 Audio và Blob WAV In-memory
-// Tăng thời lượng lên 15 giây. Bỏ fade-out để giữ âm lượng ổn định.
+// [V1.09 AUDIO WAKE LOCK FIX] Khởi tạo âm thanh Ting bằng HTML5 Audio và Blob WAV In-memory
+// Tăng thời lượng lên 15 giây, bật Loop để lặp vô hạn.
 const createTingAudio = () => {
 if (window.fc_tingAudio) return window.fc_tingAudio;
 try {
 const sampleRate = 44100;
-const duration = 15.0; // [BẢN VÁ V1.08] 15 giây Khiên bảo vệ liên tục
+const duration = 15.0; // 15 giây
 const numSamples = Math.floor(sampleRate * duration);
 const buffer = new ArrayBuffer(44 + numSamples * 2);
 const view = new DataView(buffer);
@@ -25073,7 +25048,7 @@ view.setUint32(40, numSamples * 2, true);
 // Tạo sóng Sine 10Hz với hiệu lượng không đổi (không fade-out)
 for (let i = 0; i < numSamples; i++) {
 const t = i / sampleRate;
-const amplitude = 32767 * 0.05; // [BẢN VÁ V1.08] Âm lượng đều đặn 5%
+const amplitude = 32767 * 0.05; // Âm lượng đều đặn 5%
 const sample = amplitude * Math.sin(2 * Math.PI * 10 * t);
 view.setInt16(44 + i * 2, sample, true);
 }
@@ -25082,6 +25057,7 @@ const audio = new Audio(URL.createObjectURL(blob));
 audio.setAttribute('playsinline', 'true');
 audio.setAttribute('webkit-playsinline', 'true');
 audio.preload = "auto";
+audio.loop = true; // [BẢN VÁ V1.09] Cho phép lặp vô tận tạo lớp Khiên bền vững
 window.fc_tingAudio = audio;
 return audio;
 } catch (e) {
@@ -25093,16 +25069,30 @@ const playTing = () => {
 try {
 const audio = createTingAudio();
 if (audio) {
+// [BẢN VÁ V1.09] Hủy đồng hồ hẹn giờ tắt khiên (nếu có)
+if (window.fc_tingAudioTimeout) {
+clearTimeout(window.fc_tingAudioTimeout);
+window.fc_tingAudioTimeout = null;
+}
+// Chỉ gọi play() nếu luồng đang ngủ. Nếu đang mở thì tái sử dụng!
+if (audio.paused) {
 audio.currentTime = 0;
-// Kích hoạt thẻ <audio> để "Chiếm kênh" Media trên iOS
 const playPromise = audio.play();
 if (playPromise !== undefined) {
 playPromise.catch(error => { /* Bỏ qua lỗi Auto-play */ });
 }
 }
+}
 } catch (e) {
 console.warn("Play Ting Error:", e);
 }
+};
+// Hàm đóng khiên an toàn bằng kỹ thuật Debounce 3.5 giây
+const releaseShieldDebounced = () => {
+if (window.fc_tingAudioTimeout) clearTimeout(window.fc_tingAudioTimeout);
+window.fc_tingAudioTimeout = setTimeout(() => {
+if (window.fc_tingAudio) window.fc_tingAudio.pause();
+}, 3500); // 3.5 giây là khoảng đệm an toàn để chờ người dùng bấm câu tiếp theo
 };
 // Hàm speak tối ưu cho nền tảng di động
 const speak = React.useCallback((text, rate = null, voice = null, onEnd = null) => {
@@ -25117,7 +25107,7 @@ safeOnEnd();
 return;
 }
 if (!window.speechSynthesis) { safeOnEnd(); return; }
-// Bật Khiên 15s trước để iOS mở đường Bluetooth, sau đó chạy TTS theo sau
+// [BẢN VÁ V1.09] Kích hoạt "Khiên Sưởi Ấm Liên Tục" trước khi đọc TTS
 playTing();
 window.speechSynthesis.cancel();
 if (window.speechSynthesis.paused) window.speechSynthesis.resume();
@@ -25143,20 +25133,22 @@ u.rate = rate || settings.rate || 0.9;
 u.pitch = settings.pitch || 1;
 u.onend = () => {
 window.fc_currentUtterance = null;
-if (window.fc_tingAudio) window.fc_tingAudio.pause(); // [BẢN VÁ V1.08] Chủ động thu hồi khiên để tiết kiệm pin
+releaseShieldDebounced(); // [BẢN VÁ V1.09] Hẹn giờ 3.5s thu hồi khiên
 safeOnEnd();
 };
 u.onerror = (e) => {
 window.fc_currentUtterance = null;
-if (window.fc_tingAudio) window.fc_tingAudio.pause(); // [BẢN VÁ V1.08] Chủ động thu hồi khiên
-if (e.error !== 'interrupted' && e.error !== 'canceled') safeOnEnd();
+releaseShieldDebounced(); // [BẢN VÁ V1.09] Hẹn giờ 3.5s thu hồi khiên
+// [BẢN VÁ V1.09] LUÔN LUÔN gọi safeOnEnd() kể cả khi bị interrupted để Game không bị đơ 3-4s
+safeOnEnd();
 };
 window.speechSynthesis.speak(u);
 };
 core.audioTimeoutRef.current = setTimeout(createAndSpeak, 300);
 }, [voices, settings, lang, core.isMuted]);
 const stopSpeaking = React.useCallback(() => {
-if (window.fc_tingAudio) window.fc_tingAudio.pause(); // [BẢN VÁ V1.08] Tắt khiên nếu người dùng nhảy qua câu nhanh
+if (window.fc_tingAudioTimeout) clearTimeout(window.fc_tingAudioTimeout);
+if (window.fc_tingAudio) window.fc_tingAudio.pause(); // [BẢN VÁ V1.09] Cắt ngay lập tức nếu user chủ động bấm dừng
 window.speechSynthesis.cancel();
 window.fc_currentUtterance = null;
 if (core.audioTimeoutRef.current) clearTimeout(core.audioTimeoutRef.current);
