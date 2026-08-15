@@ -630,13 +630,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 3.11
-// Last Updated: 2026-08-14 14:35
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.00
+// Last Updated: 2026-08-15
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V4.00: [MA TRẬN RPD & VÒNG LẶP KÉP] Đại phẫu thuật toán Đa Key. Ưu tiên "Key trước, Mô hình sau". Tích hợp cờ Tự động hạ cấp mô hình (Auto Cascade).
 // Cập nhật V3.11: [PREMIUM MODE] Bỏ qua giới hạn RPD cục bộ nếu bật cờ Key Trả Phí (fc_is_premium_key = true).
-// Cập nhật V3.10: [8 MODELS CASCADE] Đồng bộ mảng modelsPool dự phòng với 8 mô hình (tổng 1120 RPD) để đảm bảo động cơ Thác nước không bao giờ cạn đạn.
-// Cập nhật V3.00: [AI MODEL CASCADE & RPD TRACKER] Tích hợp cỗ máy xoay vòng mô hình (Thác nước) và bộ đếm Quota Client-side tự động reset lúc 15:00 giờ VN.
-// Cập nhật V2.50: [DEPRECATION CLEANUP] Xóa bỏ hoàn toàn tham số `temperature`.
+// Cập nhật V3.10: [8 MODELS CASCADE] Đồng bộ mảng modelsPool dự phòng với 8 mô hình để đảm bảo động cơ Thác nước không cạn đạn.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -694,7 +693,7 @@ const config = window.Utils.safeJsonParse('fc_ai_config', {});
 return (config.cooldown429 || 120) * 60 * 1000;
 };
 // ============================================================================
-// 0.C BỘ ĐẾM RPD (REQUESTS PER DAY) THÔNG MINH - RESET LÚC 15:00 VN TIME
+// 0.C BỘ ĐẾM RPD (REQUESTS PER DAY) THÔNG MINH - MA TRẬN 2 CHIỀU
 // ============================================================================
 window.Utils.RPDTracker = {
 _getQuotaDay: function() {
@@ -798,7 +797,7 @@ return { status: e.name === 'AbortError' ? 408 : 0, ok: false, error: e.message 
 }
 };
 // ============================================================================
-// 3. GỌI API GEMINI VẠN NĂNG (CASCADE ROUND-ROBIN)
+// 3. GỌI API GEMINI VẠN NĂNG (VÒNG LẶP KÉP: KEY TRƯỚC, MODEL SAU)
 // ============================================================================
 window.Utils.callGeminiApi = async (prompt, schema = null, apiKeyOverride = null) => {
 return window.Utils.withApiLock(async () => {
@@ -819,35 +818,13 @@ dynamicTimeoutMs = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 } catch(e) {}
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY CÒN SỐNG ---
-window.Utils.cleanExpiredCooldowns();
-const activeCooldowns = window.Utils.getPersistentCooldowns();
-let targetKey = null;
-let shortestWaitMs = Infinity;
 let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
 const poolSize = keyPool.length;
-let selectedIndex = -1;
-for (let i = 0; i < poolSize; i++) {
-const checkIndex = (pointer + i) % poolSize;
-const rawK = keyPool[checkIndex];
-if (!rawK || rawK.length < 10) continue;
-const cleanK = rawK.replace(/["'\s]/g, "");
-const cdData = activeCooldowns[cleanK];
-const cooldownUntil = cdData ? cdData.expireAt : 0;
-const waitMs = cooldownUntil - Date.now();
-if (waitMs <= 0) {
-targetKey = cleanK;
-selectedIndex = checkIndex;
-break;
-}
-if (waitMs < shortestWaitMs) {
-shortestWaitMs = waitMs;
-}
-}
-if (!targetKey) {
-throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/60000)} phút.`);
-}
-localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
+// --- CỜ CẤU HÌNH CASCADE ---
+// Mặc định Auto Cascade là bật
+const isAuto = localStorage.getItem('fc_is_auto_cascade') !== 'false';
+// Kiểm tra trạng thái Key Trả Phí (Bypass RPD)
+const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
 // --- CHUẨN BỊ MẢNG CASCADE MÔ HÌNH ---
 const primaryModelId = localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 const modelsPool = window.AI_MODELS ? [...window.AI_MODELS] : [
@@ -871,22 +848,43 @@ body.generationConfig = { responseMimeType: "application/json", responseSchema: 
 }
 let finalData = null;
 let usedModelId = null;
+let usedApiKey = null;
 let lastError = null;
-// [V3.11] Kiểm tra trạng thái Key Trả Phí (Bypass RPD)
-const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
-// --- VÒNG LẶP THÁC NƯỚC (CASCADE EXECUTION) ---
-for (const model of cascadeModels) {
-const currentRpd = window.Utils.RPDTracker.getUsage(targetKey, model.id);
-// Chỉ ngắt theo RPD Limit nếu không phải là Key Premium
+let shortestWaitMs = Infinity;
+window.Utils.cleanExpiredCooldowns();
+const activeCooldowns = window.Utils.getPersistentCooldowns();
+// ==========================================================================
+// THUẬT TOÁN VÒNG LẶP KÉP (OUTER: KEY -> INNER: MODEL)
+// ==========================================================================
+for (let i = 0; i < poolSize; i++) {
+const checkIndex = (pointer + i) % poolSize;
+const rawK = keyPool[checkIndex];
+if (!rawK || rawK.length < 10) continue;
+const cleanK = rawK.replace(/["'\s]/g, "");
+// 1. Kiểm tra án phạt của Key
+const cdData = activeCooldowns[cleanK];
+const cooldownUntil = cdData ? cdData.expireAt : 0;
+const waitMs = cooldownUntil - Date.now();
+if (waitMs > 0) {
+if (waitMs < shortestWaitMs) shortestWaitMs = waitMs;
+continue; // Key đang thụ án -> Bỏ qua, xét Key tiếp theo
+}
+// 2. Quyết định mảng Model dựa trên cờ Auto Cascade
+let modelsToTry = isAuto ? cascadeModels : [cascadeModels[0]];
+// INNER LOOP: Quét qua các mô hình được phép dùng cho Key này
+for (const model of modelsToTry) {
+const currentRpd = window.Utils.RPDTracker.getUsage(cleanK, model.id);
+// Ngắt theo RPD Limit (Tự động lùi model nếu Auto, hoặc bỏ qua Key nếu Manual)
 if (!isPremium && currentRpd >= model.rpdLimit) {
-console.warn(`[Cascade] Bỏ qua ${model.id} (Đã dùng ${currentRpd}/${model.rpdLimit} RPD).`);
-continue;
+console.warn(`[Cascade] Key ...${cleanK.slice(-4)} bỏ qua ${model.id} (Đã dùng ${currentRpd}/${model.rpdLimit} RPD).`);
+lastError = new Error(`[Cạn Quota] Mô hình ${model.id} của Key ...${cleanK.slice(-4)}`);
+continue; // Nhảy sang mô hình dự phòng (Nếu Manual thì vòng lặp này sẽ kết thúc luôn)
 }
 try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${targetKey}`, {
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${cleanK}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(body),
@@ -901,13 +899,14 @@ reject(new Error(`Hết thời gian chờ API (${Math.round(dynamicTimeoutMs/100
 }, dynamicTimeoutMs);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
+// Xử lý Lỗi Mạng Bề Mặt (HTTP Status)
 if (res.status === 429) {
 lastError = new Error(`429: Too Many Requests (${model.id})`);
-continue; // Nảy xuống mô hình dự phòng
+continue; // Server nghẽn hoặc hết Quota -> Lùi mô hình
 }
 if (res.status === 503) {
 lastError = new Error(`503: Service Unavailable (${model.id})`);
-continue; // Nảy xuống mô hình dự phòng
+continue; // Server nghẽn -> Lùi mô hình
 }
 if (res.status === 500) throw new Error("500: Internal Server Error");
 if (!res.ok && res.status !== 200 && res.status !== 400 && res.status !== 403) {
@@ -917,65 +916,76 @@ throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)
 }
 }
 const d = await res.json();
+// Phân tích Lỗi API JSON chuyên sâu
 if (d.error) {
-if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || (d.error.message && d.error.message.includes('quota'))) {
-lastError = new Error(`429: ${d.error.message}`);
+const msgLower = (d.error.message || "").toLowerCase();
+// Nhóm lỗi Quota / Quá tải (429)
+if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || msgLower.includes('quota')) {
+if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLower.includes('load balancer')) {
+// LỖI SPAM -> Phạt Key 5 phút và BỎ QUA TOÀN BỘ MÔ HÌNH CÒN LẠI CỦA KEY NÀY
+window.Utils.setKeyCooldown(cleanK, 5 * 60 * 1000);
+window.Utils.triggerGlobalPause(15000);
+lastError = new Error(`[Spam 429] Key ...${cleanK.slice(-4)} gọi quá nhanh. Phạt 5 phút.`);
+break; // Thoát vòng lặp Model -> Nhảy qua vòng lặp Key tiếp theo
+} else {
+// LỖI CẠN RPD -> Chỉ đổi mô hình (Cascade)
+lastError = new Error(`429: Cạn Quota mô hình ${model.id}`);
 continue;
 }
-if (d.error.code === 503 || d.error.code === 500 || (d.error.message && d.error.message.includes('overloaded'))) {
-lastError = new Error(`503: ${d.error.message}`);
-continue;
 }
-if (d.error.code === 403 || d.error.message.includes('API key') || d.error.message.includes('unregistered')) throw new Error(`403: ${d.error.message}`);
-if (d.error.code === 400) throw new Error(`400: ${d.error.message}`);
+if (d.error.code === 503 || d.error.code === 500 || msgLower.includes('overloaded')) {
+lastError = new Error(`503: Nghẽn mô hình ${model.id}`);
+continue; // Nghẽn mô hình -> Thử mô hình dự phòng
+}
+// Nhóm lỗi Chết Key (403, 400)
+if (d.error.code === 403 || msgLower.includes('api key') || msgLower.includes('unregistered')) {
+window.Utils.setKeyCooldown(cleanK, 24 * 60 * 60 * 1000); // Phạt 24h
+lastError = new Error(`403: Key ...${cleanK.slice(-4)} bị vô hiệu hóa.`);
+break; // Key hỏng -> Nhảy Key tiếp theo
+}
+if (d.error.code === 400) {
+lastError = new Error(`400: Lỗi cú pháp - ${d.error.message}`);
+break; // Lỗi cú pháp gửi -> Nhảy Key tiếp theo
+}
 throw new Error(d.error.message);
 }
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
-// THÀNH CÔNG -> Thoát Cascade
+// THÀNH CÔNG -> Chốt Model, Chốt Key & Thoát Toàn Bộ
 finalData = d;
 usedModelId = model.id;
-break;
+usedApiKey = cleanK;
+localStorage.setItem('fc_key_pointer', (checkIndex + 1) % poolSize);
+break; // Thoát vòng lặp Model
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('Hủy')) || (e.message && e.message.includes('thời gian chờ'))) {
-throw e; // Lỗi chủ động từ User -> Văng luôn
+throw e; // Lỗi chủ động Timeout/Abort từ phía Client -> Quăng Error văng ra ngoài
 }
-// Các lỗi mạng kỳ lạ khác -> ném luôn tránh kẹt
-throw e;
+lastError = e;
+// Các lỗi không xác định -> Continue thử model khác
 }
 }
-// XỬ LÝ LỖI SAU KHI QUÉT TOÀN BỘ CASCADE
+if (finalData) break; // Thành công -> Thoát vòng lặp Key
+}
+// ==========================================================================
+// TỔNG KẾT SAU VÒNG LẶP KÉP
+// ==========================================================================
 if (!finalData) {
-const maskedKey = targetKey ? "..." + targetKey.slice(-5) : "Unknown";
-if (lastError) {
-const msgLower = lastError.message.toLowerCase();
-if (msgLower.includes('429')) {
-if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLower.includes('load balancer')) {
-window.Utils.setKeyCooldown(targetKey, 5 * 60 * 1000);
-window.Utils.triggerGlobalPause(15000);
-throw new Error(`[Spam 429] Key ${maskedKey} gọi quá nhanh. Phạt 5 phút.`);
-} else {
-const configCooldown = window.Utils.getCooldown429Ms();
-window.Utils.setKeyCooldown(targetKey, configCooldown);
-throw new Error(`[Cạn Quota] Key ${maskedKey} hết hạn mức trên toàn bộ Mô hình. Đóng băng ${Math.round(configCooldown/60000)} phút.`);
+if (shortestWaitMs !== Infinity && shortestWaitMs > 0) {
+throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
-} else if (msgLower.includes('503') || msgLower.includes('500')) {
-window.Utils.setKeyCooldown(targetKey, 60000);
-window.Utils.triggerGlobalPause(15000);
-throw new Error(`[Server Quá Tải] Các mô hình đều nghẽn. Phạt Key ${maskedKey} 1 phút.`);
+if (lastError) throw lastError;
+throw new Error("Không có Key & Mô hình AI nào khả dụng (Cạn Quota RPD toàn tập).");
 }
-throw lastError;
-}
-throw new Error("Không có mô hình AI nào khả dụng (Cạn Quota RPD toàn tập).");
-}
-// XỬ LÝ THÀNH CÔNG VÀ LƯU QUOTA
-window.Utils.RPDTracker.incrementUsage(targetKey, usedModelId);
+// XỬ LÝ THÀNH CÔNG VÀ LƯU QUOTA THEO TỌA ĐỘ MA TRẬN [KEY][MODEL]
+window.Utils.RPDTracker.incrementUsage(usedApiKey, usedModelId);
 const resultText = finalData.candidates[0].content.parts[0].text;
 const tokenMetadata = finalData.usageMetadata || null;
 if (keyPool.length > 1) {
-window.Utils.setKeyCooldown(targetKey, 5000);
+window.Utils.setKeyCooldown(usedApiKey, 5000); // Đảo Key chống Spam
 }
-if (targetKey !== localStorage.getItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key')) {
-localStorage.setItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key', targetKey);
+// Đồng bộ Key đang dùng hiển thị lên Radar UI
+if (usedApiKey !== localStorage.getItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key')) {
+localStorage.setItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key', usedApiKey);
 }
 await new Promise(r => setTimeout(r, 3000));
 return { text: resultText, tokenMetadata };
@@ -1163,35 +1173,11 @@ payload.systemInstruction = { parts: [{ text: basePrompt }] };
 }
 const abortSignal = window.__currentGameAbortController ? window.__currentGameAbortController.signal : null;
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
-// --- TÌM KEY CÒN SỐNG ---
-window.Utils.cleanExpiredCooldowns();
-const activeCooldowns = window.Utils.getPersistentCooldowns();
-let targetKey = null;
-let shortestWaitMs = Infinity;
 let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
 const poolSize = keyPool.length;
-let selectedIndex = -1;
-for (let i = 0; i < poolSize; i++) {
-const checkIndex = (pointer + i) % poolSize;
-const rawK = keyPool[checkIndex];
-if (!rawK || rawK.length < 10) continue;
-const cleanK = rawK.replace(/["'\s]/g, "");
-const cdData = activeCooldowns[cleanK];
-const cooldownUntil = cdData ? cdData.expireAt : 0;
-const waitMs = cooldownUntil - Date.now();
-if (waitMs <= 0) {
-targetKey = cleanK;
-selectedIndex = checkIndex;
-break;
-}
-if (waitMs < shortestWaitMs) {
-shortestWaitMs = waitMs;
-}
-}
-if (!targetKey) {
-throw new Error(`[API_COOLDOWN] SmartFill: Toàn bộ kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/60000)} phút.`);
-}
-localStorage.setItem('fc_key_pointer', (selectedIndex + 1) % poolSize);
+// --- CỜ CẤU HÌNH CASCADE ---
+const isAuto = localStorage.getItem('fc_is_auto_cascade') !== 'false';
+const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
 // --- CHUẨN BỊ MẢNG CASCADE MÔ HÌNH ---
 const primaryModelId = localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 const modelsPool = window.AI_MODELS ? [...window.AI_MODELS] : [
@@ -1210,21 +1196,39 @@ if (primaryObj) cascadeModels.push(primaryObj);
 modelsPool.forEach(m => { if (m.id !== primaryModelId) cascadeModels.push(m); });
 let finalData = null;
 let usedModelId = null;
+let usedApiKey = null;
 let lastError = null;
-// [V3.11] Kiểm tra trạng thái Key Trả Phí (Bypass RPD)
-const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
-// --- VÒNG LẶP THÁC NƯỚC (CASCADE EXECUTION) ---
-for (const model of cascadeModels) {
-const currentRpd = window.Utils.RPDTracker.getUsage(targetKey, model.id);
-// Chỉ ngắt theo RPD Limit nếu không phải là Key Premium
+let shortestWaitMs = Infinity;
+window.Utils.cleanExpiredCooldowns();
+const activeCooldowns = window.Utils.getPersistentCooldowns();
+// ==========================================================================
+// THUẬT TOÁN VÒNG LẶP KÉP (OUTER: KEY -> INNER: MODEL)
+// ==========================================================================
+for (let i = 0; i < poolSize; i++) {
+const checkIndex = (pointer + i) % poolSize;
+const rawK = keyPool[checkIndex];
+if (!rawK || rawK.length < 10) continue;
+const cleanK = rawK.replace(/["'\s]/g, "");
+const cdData = activeCooldowns[cleanK];
+const cooldownUntil = cdData ? cdData.expireAt : 0;
+const waitMs = cooldownUntil - Date.now();
+if (waitMs > 0) {
+if (waitMs < shortestWaitMs) shortestWaitMs = waitMs;
+continue;
+}
+let modelsToTry = isAuto ? cascadeModels : [cascadeModels[0]];
+// INNER LOOP
+for (const model of modelsToTry) {
+const currentRpd = window.Utils.RPDTracker.getUsage(cleanK, model.id);
 if (!isPremium && currentRpd >= model.rpdLimit) {
+lastError = new Error(`[Cạn Quota] Mô hình ${model.id} của Key ...${cleanK.slice(-4)}`);
 continue;
 }
 try {
 const controller = new AbortController();
 const onAbort = () => controller.abort();
 if (abortSignal) abortSignal.addEventListener('abort', onAbort);
-const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${targetKey}`, {
+const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${cleanK}`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify(payload),
@@ -1240,14 +1244,9 @@ reject(new Error("Hết thời gian chờ 15s (Bị treo ở tầng Network - Zo
 }, 15000);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
-if (res.status === 429) {
-lastError = new Error(`429: Too Many Requests (${model.id})`);
-continue;
-}
-if (res.status === 503) {
-lastError = new Error(`503: Service Unavailable (${model.id})`);
-continue;
-}
+// Xử lý Lỗi Mạng Bề Mặt
+if (res.status === 429) { lastError = new Error(`429: Too Many Requests (${model.id})`); continue; }
+if (res.status === 503) { lastError = new Error(`503: Service Unavailable (${model.id})`); continue; }
 if (res.status === 500) throw new Error("500: Internal Server Error");
 if (!res.ok && res.status !== 200 && res.status !== 400 && res.status !== 403) {
 const contentType = res.headers.get("content-type");
@@ -1256,60 +1255,67 @@ throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)
 }
 }
 const data = await res.json();
+// Phân tích Lỗi API JSON chuyên sâu
 if (data.error) {
-if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || (data.error.message && data.error.message.includes('quota'))) {
-lastError = new Error(`429: ${data.error.message}`);
+const msgLower = (data.error.message || "").toLowerCase();
+if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || msgLower.includes('quota')) {
+if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLower.includes('load balancer')) {
+window.Utils.setKeyCooldown(cleanK, 5 * 60 * 1000);
+window.Utils.triggerGlobalPause(15000);
+lastError = new Error(`[Spam 429] Key ...${cleanK.slice(-4)} gọi quá nhanh.`);
+break; // Thoát vòng Model, nhảy Key
+} else {
+lastError = new Error(`429: Cạn Quota mô hình ${model.id}`);
+continue; // Nhảy mô hình
+}
+}
+if (data.error.code === 503 || data.error.code === 500 || msgLower.includes('overloaded')) {
+lastError = new Error(`503: Nghẽn mô hình ${model.id}`);
 continue;
 }
-if (data.error.code === 503 || data.error.code === 500 || (data.error.message && data.error.message.includes('overloaded'))) {
-lastError = new Error(`503: ${data.error.message}`);
-continue;
+if (data.error.code === 403 || msgLower.includes('api key') || msgLower.includes('unregistered')) {
+window.Utils.setKeyCooldown(cleanK, 24 * 60 * 60 * 1000);
+lastError = new Error(`403: Key ...${cleanK.slice(-4)} bị vô hiệu hóa.`);
+break;
 }
-if (data.error.code === 403 || data.error.message.includes('API key') || data.error.message.includes('unregistered')) throw new Error(`403: ${data.error.message}`);
-if (data.error.code === 400) throw new Error(`400: ${data.error.message}`);
+if (data.error.code === 400) {
+lastError = new Error(`400: Lỗi cú pháp - ${data.error.message}`);
+break;
+}
 throw new Error(data.error.message);
 }
+// THÀNH CÔNG
 finalData = data;
 usedModelId = model.id;
-break;
+usedApiKey = cleanK;
+localStorage.setItem('fc_key_pointer', (checkIndex + 1) % poolSize);
+break; // Thoát vòng lặp Model
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy')) || (e.message && e.message.includes('Hết thời gian chờ'))) {
-throw e;
+throw e; // Văng ra ngoài
 }
-throw e;
+lastError = e;
 }
 }
-// XỬ LÝ LỖI SAU KHI QUÉT TOÀN BỘ CASCADE
+if (finalData) break; // Thành công -> Thoát vòng lặp Key
+}
+// ==========================================================================
+// TỔNG KẾT SAU VÒNG LẶP KÉP
+// ==========================================================================
 if (!finalData) {
-const maskedKey = targetKey ? "..." + targetKey.slice(-5) : "Unknown";
-if (lastError) {
-const msgLower = lastError.message.toLowerCase();
-if (msgLower.includes('429')) {
-if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLower.includes('load balancer')) {
-window.Utils.setKeyCooldown(targetKey, 5 * 60 * 1000);
-window.Utils.triggerGlobalPause(15000);
-throw new Error(`[Spam 429] Key ${maskedKey} gọi quá nhanh. Phạt 5 phút.`);
-} else {
-const configCooldown = window.Utils.getCooldown429Ms();
-window.Utils.setKeyCooldown(targetKey, configCooldown);
-throw new Error(`[Cạn Quota] Key ${maskedKey} hết hạn mức trên tất cả Mô hình dự phòng. Đóng băng ${Math.round(configCooldown/60000)} phút.`);
+if (shortestWaitMs !== Infinity && shortestWaitMs > 0) {
+throw new Error(`[API_COOLDOWN] SmartFill: Toàn bộ kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
-} else if (msgLower.includes('503') || msgLower.includes('500')) {
-window.Utils.setKeyCooldown(targetKey, 60000);
-window.Utils.triggerGlobalPause(15000);
-throw new Error(`[Server Quá Tải] Các mô hình đều nghẽn. Phạt Key ${maskedKey} 1 phút.`);
+if (lastError) throw lastError;
+throw new Error("Không có Key & Mô hình AI nào khả dụng (Cạn Quota RPD toàn tập).");
 }
-throw lastError;
-}
-throw new Error("Không có mô hình AI nào khả dụng (Cạn Quota RPD toàn tập).");
-}
-// XỬ LÝ THÀNH CÔNG VÀ LƯU QUOTA
-window.Utils.RPDTracker.incrementUsage(targetKey, usedModelId);
+// XỬ LÝ THÀNH CÔNG VÀ LƯU QUOTA THEO TỌA ĐỘ MA TRẬN [KEY][MODEL]
+window.Utils.RPDTracker.incrementUsage(usedApiKey, usedModelId);
 if (keyPool.length > 1) {
-window.Utils.setKeyCooldown(targetKey, 5000);
+window.Utils.setKeyCooldown(usedApiKey, 5000);
 }
-if (targetKey !== localStorage.getItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key')) {
-localStorage.setItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key', targetKey);
+if (usedApiKey !== localStorage.getItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key')) {
+localStorage.setItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key', usedApiKey);
 }
 const text = finalData.candidates?.[0]?.content?.parts?.[0]?.text;
 if (!text) throw new Error("AI không trả về kết quả");
@@ -8395,14 +8401,13 @@ title="Kéo để đổi kích thước"
 };
 // EXPORT RA WINDOW
 window.AiChatModal = AiChatModal;
-// Block 4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 1.16
-// Last Updated: 2026-08-14 14:30
+// Block 4.6: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Sync & Import Modals) - Version 2.00
+// Last Updated: 2026-08-15 12:00
 // Nhiệm vụ: Chuyên trách giao tiếp với bên ngoài, nạp dữ liệu và cấu hình hệ thống.
 // Gồm: ApiKeyModal, LinkManagerModal, ManualInputModal, AiConfigModal
+// Cập nhật V2.00: [RPD MATRIX UI] Dời bộ đếm RPD vào từng Key cụ thể. Bổ sung công tắc Auto Cascade. Xóa bỏ thanh tiến trình RPD dùng chung.
 // Cập nhật V1.16: [PREMIUM MODE] Bổ sung công tắc "Key Trả Phí" (isPremium). Vô hiệu hoá thanh giới hạn RPD trên UI, hiển thị Vô cực (∞).
 // Cập nhật V1.15: [8 MODELS CASCADE] Đồng bộ mảng models dự phòng với 8 mô hình trong Giao diện Radar (Dropdown & RPD Tracker).
-// Cập nhật V1.14: [AI MODEL CASCADE] Tích hợp Giao diện Quản lý Đa Mô hình (Model Selector) và hiển thị thanh trạng thái RPD Tracker.
-// Cập nhật V1.13: [DECOMMISSIONING] Tháo dỡ hoàn toàn giao diện Ngụy trang lưu lượng (Obfuscation Mode).
 // ==================================================================================
 const ApiKeyModal = ({ isOpen, onClose, apiKey, setApiKey, aiModel, setAiModel, t }) => {
 const [keyPool, setKeyPool] = React.useState([]);
@@ -8415,6 +8420,8 @@ const [localCooldown, setLocalCooldown] = React.useState(120);
 const [localAiModel, setLocalAiModel] = React.useState('gemini-3.5-flash-lite');
 // [V1.16] Local State cho Premium Mode
 const [isPremium, setIsPremium] = React.useState(false);
+// [V2.00] Local State cho Auto Cascade
+const [isAutoCascade, setIsAutoCascade] = React.useState(true);
 const abortTestRef = React.useRef(false);
 React.useEffect(() => {
 if (isOpen) {
@@ -8436,8 +8443,9 @@ setLocalCooldown(config.cooldown429 || 120);
 // Khởi tạo giá trị Model từ State hoặc Storage
 const currentAiModel = aiModel || localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 setLocalAiModel(currentAiModel);
-// [V1.16] Khởi tạo trạng thái Premium Mode
+// [V1.16 & V2.00] Khởi tạo trạng thái Premium & Auto Cascade
 setIsPremium(localStorage.getItem('fc_is_premium_key') === 'true');
+setIsAutoCascade(localStorage.getItem('fc_is_auto_cascade') !== 'false');
 }
 return () => {
 abortTestRef.current = true;
@@ -8492,6 +8500,16 @@ localStorage.setItem('fc_is_premium_key', newVal.toString());
 if (window.globalShowToast) {
 if (newVal) window.globalShowToast("Đã KÍCH HOẠT chế độ Key Trả Phí!", "success");
 else window.globalShowToast("Đã TẮT chế độ Key Trả Phí!", "info");
+}
+};
+// [V2.00] Toggle Auto Cascade Mode
+const handleToggleAutoCascade = () => {
+const newVal = !isAutoCascade;
+setIsAutoCascade(newVal);
+localStorage.setItem('fc_is_auto_cascade', newVal.toString());
+if (window.globalShowToast) {
+if (newVal) window.globalShowToast("Đã BẬT Tự động hạ cấp mô hình (Cascade)!", "success");
+else window.globalShowToast("Đã TẮT Tự động hạ cấp (Khóa cứng mô hình)!", "warning");
 }
 };
 // [QUÉT RADAR KHO ĐẠN] Thuật toán thăm dò xung kích có ngắt mạch
@@ -8584,7 +8602,7 @@ placeholder={t('apiKeyPlace')}
 </button>
 </div>
 </div>
-{/* [V1.14] Bổ sung cấu hình Mô hình Ưu tiên và Tracker RPD */}
+{/* [V1.14 & V2.00] Cấu hình Mô hình Ưu tiên và Switch Toggles */}
 <div className="space-y-2 bg-blue-50 p-3 rounded-xl border border-blue-100 shadow-sm">
 <div className="flex justify-between items-center mb-1">
 <label className="text-[11px] font-bold text-blue-800 uppercase tracking-widest flex items-center gap-1">
@@ -8618,8 +8636,17 @@ className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold shadow hover:bg
 Áp dụng
 </button>
 </div>
-{/* [V1.16] Công tắc Premium Mode */}
-<div className="flex items-center justify-between mt-3 pt-2 border-t border-blue-200/50">
+{/* [V2.00] Toggles Auto Cascade & Premium */}
+<div className="flex flex-col gap-2 mt-3 pt-3 border-t border-blue-200/50">
+<div className="flex items-center justify-between">
+<label className="text-[11px] font-bold text-blue-800 flex items-center gap-1 cursor-pointer select-none" onClick={handleToggleAutoCascade}>
+<span className="text-sm">🌊</span> Tự động hạ cấp mô hình (Auto Cascade)
+</label>
+<div className={`w-8 h-4 rounded-full flex items-center p-0.5 cursor-pointer transition-colors ${isAutoCascade ? 'bg-blue-500' : 'bg-gray-300'}`} onClick={handleToggleAutoCascade}>
+<div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${isAutoCascade ? 'translate-x-4' : ''}`}></div>
+</div>
+</div>
+<div className="flex items-center justify-between">
 <label className="text-[11px] font-bold text-yellow-600 flex items-center gap-1 cursor-pointer select-none" onClick={handleTogglePremium}>
 <span className="text-sm">🌟</span> Bỏ qua giới hạn RPD (Cho Key Trả phí)
 </label>
@@ -8627,51 +8654,7 @@ className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold shadow hover:bg
 <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${isPremium ? 'translate-x-4' : ''}`}></div>
 </div>
 </div>
-{/* RPD Progress Bar UI */}
-{(() => {
-const currentModels = window.AI_MODELS || [
-{ id: 'gemini-3.5-flash-lite', rpdLimit: 500 },
-{ id: 'gemini-3.1-flash-lite', rpdLimit: 500 },
-{ id: 'gemini-2.5-flash-lite', rpdLimit: 20 },
-{ id: 'gemini-3.0-flash', rpdLimit: 20 },
-{ id: 'gemini-3.5-flash', rpdLimit: 20 },
-{ id: 'gemini-3.6-flash', rpdLimit: 20 },
-{ id: 'gemini-3.7-flash', rpdLimit: 20 },
-{ id: 'gemini-2.5-flash', rpdLimit: 20 }
-];
-const selectedModelObj = currentModels.find(m => m.id === localAiModel) || { rpdLimit: 0 };
-const maxRpd = selectedModelObj.rpdLimit;
-const currentUsage = (window.Utils && window.Utils.RPDTracker && apiKey)
-? window.Utils.RPDTracker.getUsage(apiKey.replace(/["'\s]/g, ""), localAiModel)
-: 0;
-if (isPremium) {
-return (
-<div className="mt-3 space-y-1 bg-gradient-to-r from-yellow-50 to-amber-50 p-2 rounded-lg border border-yellow-200">
-<div className="flex justify-between text-[10px] font-bold text-yellow-700 items-center">
-<span>Hạn mức RPD hôm nay (Premium)</span>
-<span className="text-lg leading-none font-black text-yellow-600">∞</span>
 </div>
-<div className="w-full bg-yellow-100 rounded-full h-1.5 overflow-hidden">
-<div className="h-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 w-full"></div>
-</div>
-</div>
-);
-}
-const percent = maxRpd > 0 ? Math.min(100, (currentUsage / maxRpd) * 100) : 0;
-const isWarning = percent >= 80;
-const isDanger = percent >= 100;
-return (
-<div className="mt-3 space-y-1 bg-white p-2 rounded-lg border border-blue-50">
-<div className="flex justify-between text-[10px] font-bold text-blue-700">
-<span>Hạn mức RPD hôm nay (Múi giờ PT)</span>
-<span>{currentUsage} / {maxRpd}</span>
-</div>
-<div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
-<div className={`h-1.5 rounded-full transition-all duration-500 ${isDanger ? 'bg-red-500' : isWarning ? 'bg-orange-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div>
-</div>
-</div>
-);
-})()}
 </div>
 {/* [V1.11] Khối cài đặt Thời gian phạt 429 */}
 <div className="space-y-2 bg-orange-50 p-3 rounded-xl border border-orange-100 shadow-sm">
@@ -8713,6 +8696,22 @@ Kho đạn đang trống. Vui lòng thêm Key!
 const isPrimary = apiKey === k;
 const displayKey = k.length > 15 ? `${k.substring(0, 8)}...${k.substring(k.length - 4)}` : k;
 const status = testResults[k];
+const cleanK = k.replace(/["'\s]/g, "");
+// [V2.00] Fetch Matrix RPD cho từng Key cụ thể
+const currentModels = window.AI_MODELS || [
+{ id: 'gemini-3.5-flash-lite', rpdLimit: 500 },
+{ id: 'gemini-3.1-flash-lite', rpdLimit: 500 },
+{ id: 'gemini-2.5-flash-lite', rpdLimit: 20 },
+{ id: 'gemini-3.0-flash', rpdLimit: 20 },
+{ id: 'gemini-3.5-flash', rpdLimit: 20 },
+{ id: 'gemini-3.6-flash', rpdLimit: 20 },
+{ id: 'gemini-3.7-flash', rpdLimit: 20 },
+{ id: 'gemini-2.5-flash', rpdLimit: 20 }
+];
+const selectedModelObj = currentModels.find(m => m.id === localAiModel) || { rpdLimit: 0 };
+const maxRpd = selectedModelObj.rpdLimit;
+const currentUsage = (window.Utils && window.Utils.RPDTracker) ? window.Utils.RPDTracker.getUsage(cleanK, localAiModel) : 0;
+const isDanger = currentUsage >= maxRpd;
 return (
 <div key={index} className={`flex items-center justify-between p-3 rounded-xl border transition-all shadow-sm ${isPrimary ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100'}`}>
 <div className="flex items-center gap-2">
@@ -8726,9 +8725,19 @@ return (
 <div className="mt-0.5">{getStatusBadge(status, k)}</div>
 </div>
 </div>
+{/* [V2.00] Giao diện RPD Matrix bên cạnh thùng rác */}
+<div className="flex items-center gap-3">
+<div className="text-right">
+<div className="text-[8px] font-bold text-gray-400 uppercase leading-none mb-0.5">Đã dùng</div>
+<div className={`text-[11px] font-mono font-black leading-none ${isPremium ? 'text-yellow-500' : (isDanger ? 'text-red-500' : 'text-blue-600')}`} title={`Hạn mức theo mô hình: ${localAiModel}`}>
+{isPremium ? '∞' : `${currentUsage}/${maxRpd}`}
+</div>
+</div>
+<div className="w-px h-8 bg-gray-200"></div>
 <button onClick={() => handleRemoveKey(k)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa Key">
 <window.Icons.Trash2 size={16} />
 </button>
+</div>
 </div>
 );
 })}
