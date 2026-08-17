@@ -12567,10 +12567,11 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.44
-// Last Updated: 2026-08-14 17:30
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.45
+// Last Updated: 2026-08-17 10:20
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.44: [BABEL PARSER FIX] Chuyển đổi toàn bộ các hàm bất đồng bộ (Arrow Async) sang cú pháp Hàm truyền thống (Standard Async Function) để khắc phục lỗi mất ngữ cảnh "Unexpected reserved word 'await'" của trình biên dịch Babel Standalone trên file lớn.
+// Cập nhật V1.45: [UI COOLDOWN] Phân luồng thời gian chờ chuyển câu. Chế độ AI sử dụng trực tiếp tham số uiCooldown từ Bảng Điều Khiển Lõi AI, chế độ Offline giữ nguyên tốc độ nhanh (2s).
+// Cập nhật V1.44: [BABEL PARSER FIX] Chuyển đổi toàn bộ các hàm bất đồng bộ (Arrow Async) sang cú pháp Hàm truyền thống (Standard Async Function).
 // Cập nhật V1.43: [AUDIO CLEANUP] Dọn dẹp hoàn toàn các mã rác quản lý âm thanh.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
@@ -13299,6 +13300,15 @@ const textToPlay = (isSentenceMode && currentQuestionData?.question?.displaySent
 const proceedToNext = (defaultDelayMs) => {
 if (isGameActiveRef.current) {
 let delaySec = Math.ceil(defaultDelayMs / 1000);
+// [BẢN VÁ UI COOLDOWN] Phân luồng logic đếm ngược dựa trên chế độ chơi
+if (isAiMode) {
+try {
+const aiCfg = window.Utils ? window.Utils.safeJsonParse('fc_ai_config', {}) : JSON.parse(localStorage.getItem('fc_ai_config') || '{}');
+delaySec = aiCfg.uiCooldown !== undefined ? parseInt(aiCfg.uiCooldown, 10) : 9;
+} catch(e) {
+delaySec = 9;
+}
+}
 if (delaySec < 1) delaySec = 1;
 setResultTimer(delaySec);
 }
