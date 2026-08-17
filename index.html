@@ -12567,12 +12567,12 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.45
-// Last Updated: 2026-08-17 10:20
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.46
+// Last Updated: 2026-08-17 16:30
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
-// Cập nhật V1.45: [UI COOLDOWN] Phân luồng thời gian chờ chuyển câu. Chế độ AI sử dụng trực tiếp tham số uiCooldown từ Bảng Điều Khiển Lõi AI, chế độ Offline giữ nguyên tốc độ nhanh (2s).
+// Cập nhật V1.46: [BUG FIX] Chặn đứng lỗi AutoSave Cleanup ghi đè (Race Condition) làm mất bộ đếm câu sai khi người dùng bấm Lưu & Thoát ngang.
+// Cập nhật V1.45: [UI COOLDOWN] Phân luồng thời gian chờ chuyển câu. Chế độ AI sử dụng trực tiếp tham số uiCooldown từ Bảng Điều Khiển Lõi AI, chế độ Offline giữ nguyên tốc độ siêu tốc (1s).
 // Cập nhật V1.44: [BABEL PARSER FIX] Chuyển đổi toàn bộ các hàm bất đồng bộ (Arrow Async) sang cú pháp Hàm truyền thống (Standard Async Function).
-// Cập nhật V1.43: [AUDIO CLEANUP] Dọn dẹp hoàn toàn các mã rác quản lý âm thanh.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -13136,6 +13136,7 @@ handleNext();
 }, [feedbackType, resultTimer, isPaused, isResultPaused, isGenerating]);
 const handleSaveAndBack = () => {
 cleanupTimers();
+isGameActiveRef.current = false; // [VÁ LỖI V1.46] Khóa cầu dao AutoSave lúc Unmount để chống ghi đè State cũ
 const currentData = stateRef.current;
 let finalWrongCount = currentData.wrongCount;
 let finalStreak = currentData.streak;
@@ -13146,6 +13147,9 @@ logMistake(currentData.currentQuestionData.question);
 finalWrongCount += 1;
 finalStreak = 0;
 needsNext = true;
+// [VÁ LỖI V1.46] Đồng bộ State nội bộ ngay lập tức để render đúng số liệu nếu UI bị trễ
+setWrongCount(finalWrongCount);
+setStreak(0);
 if (showToast) safeShowToast("Thoát ngang bị tính 1 lỗi sai!", "warning");
 }
 const sessionData = JSON.parse(JSON.stringify({
@@ -13385,8 +13389,10 @@ AiModeSwitch={AiModeSwitch} isAiMode={isAiMode} setAiMode={() => {}} isLoading={
 isGenerating={isGenerating} showChanceToast={showChanceToast}
 feedbackType={feedbackType} timerMode={timerMode} timeLeft={timeLeft} totalTime={timeLimit}
 isRoundStarted={isRoundStarted} onStartRound={() => { setIsRoundStarted(true); if (gameMode === 'listen') triggerAudio(); }}
-isPaused={isPaused} onPause={() => setIsPaused(!isPaused)} onBack={handleSaveAndBack}
-onEndGame={() => onEndGame({ correct: score, wrong: wrongCount })} settings={settings} askMode={askMode} showPronun={showPronun} listenMode={listenMode} hardMode={hardMode} listenPlayCount={listenPlayCount} sourceMode={sourceMode}
+isPaused={isPaused} onPause={() => setIsPaused(!isPaused)}
+onBack={handleSaveAndBack}
+onEndGame={() => { isGameActiveRef.current = false; onEndGame({ correct: score, wrong: wrongCount }); }}
+settings={settings} askMode={askMode} showPronun={showPronun} listenMode={listenMode} hardMode={hardMode} listenPlayCount={listenPlayCount} sourceMode={sourceMode}
 resultTimer={resultTimer} isResultPaused={isResultPaused} toggleResultPause={() => setIsResultPaused(p => !p)}
 queueLength={queueLength} config={configRef.current} aiWaitTime={aiWaitTime}
 onNext={() => handleNext()}
