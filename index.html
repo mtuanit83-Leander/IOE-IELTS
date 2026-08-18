@@ -27014,12 +27014,12 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.12
-// Last Updated: 2026-08-18 11:45
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.13
+// Last Updated: 2026-08-18 11:55
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật V1.12: [FLUID ALIGNMENT] Đồng bộ tuyệt đối lồng kính chứa (Container) của MainContent và ControlBar. Chuyển đổi lực đẩy từ pixel cứng sang viewport width (vw) chống tràn viền và vỡ Layout.
+// Cập nhật V1.13: [HARD ALIGNMENT] Sửa thuật toán đẩy lề. Đảo ngược logic Margin để ép giao diện sát mép màn hình tối đa (2vw-4vw), tạo không gian đa nhiệm cực đại.
+// Cập nhật V1.12: [FLUID ALIGNMENT] Đồng bộ tuyệt đối lồng kính chứa (Container) của MainContent và ControlBar.
 // Cập nhật V1.11: [LAYOUT ALIGN] Tích hợp Giao diện tùy chỉnh lề Trái/Giữa/Phải cho PC và iPad để tối ưu đa nhiệm với AI Chat.
-// Cập nhật V1.10: [HOTFIX] Bổ sung Cờ Bảo Vệ (Deprecation Guard) ép trình duyệt xoá cờ `vi`, tự động reload sang `en`. Gọt sạch logic màu sắc của `vi`.
 // ==================================================================================
 const App = () => {
 // [CỜ BẢO VỆ THANH TRỪNG NGÔN NGỮ] Bắt buộc chạy đầu tiên để chặn lỗi Màn hình trắng
@@ -27191,22 +27191,22 @@ React.createElement('p', { className: "text-blue-600 font-bold animate-pulse tra
 // ============================================================================
 // [VÁ LỖ HỔNG VIỆT HOÁ] Gọt sạch logic fallback màu xanh lá của tiếng Việt
 const appMainColor = coreState.lang === 'zh' ? 'red' : 'sky';
-// [BẢN VÁ V1.12] Khởi tạo Biến Class Layout Căn lề Động % Fluid & Đồng bộ lồng kính
+// [BẢN VÁ V1.13] Khởi tạo Biến Class Layout Căn lề Động - ÉP SÁT BIÊN ĐỘ TỐI ĐA
 let alignClass = 'mx-auto';
 let mainParentClass = "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col overflow-y-auto custom-scrollbar pb-6";
 let bottomWrapperClass = "w-full max-w-4xl px-4 mb-3 transition-all duration-500 ease-in-out ";
 if (coreState.viewMode === 'learn' && coreState.layoutAlign) {
-// Lực đẩy co giãn theo Viewport (Tăng dần theo màn hình để chừa chỗ AI Chat)
-const pushLeft = 'md:ml-[5vw] lg:ml-[8vw] xl:ml-[12vw]';
-const pushRight = 'md:mr-[5vw] lg:mr-[8vw] xl:mr-[12vw]';
+// Thuật toán Ép biên: Để ép sang Trái, margin-right phải là auto để hút hết khoảng trống,
+// và margin-left chỉ giữ 1 chút padding nhỏ (2vw - 4vw) để không sát rịt vào mép.
 if (coreState.layoutAlign === 'left') {
-alignClass = `mx-auto ${pushLeft} md:mr-auto`;
-// Phá vỡ lồng kính max-w-7xl, cho phép tràn viền để đồng bộ hệ quy chiếu với BottomArea
-mainParentClass = "flex-1 w-full px-4 py-4 flex flex-col overflow-y-auto custom-scrollbar pb-6 transition-all duration-500";
+alignClass = 'md:ml-[2vw] lg:ml-[4vw] md:mr-auto';
+// Phá vỡ lồng kính max-w-7xl
+mainParentClass = "flex-1 w-full px-2 md:px-0 py-4 flex flex-col overflow-y-auto custom-scrollbar pb-6 transition-all duration-500";
 }
 else if (coreState.layoutAlign === 'right') {
-alignClass = `mx-auto ${pushRight} md:ml-auto`;
-mainParentClass = "flex-1 w-full px-4 py-4 flex flex-col overflow-y-auto custom-scrollbar pb-6 transition-all duration-500";
+alignClass = 'md:mr-[2vw] lg:mr-[4vw] md:ml-auto';
+// Phá vỡ lồng kính max-w-7xl
+mainParentClass = "flex-1 w-full px-2 md:px-0 py-4 flex flex-col overflow-y-auto custom-scrollbar pb-6 transition-all duration-500";
 }
 }
 bottomWrapperClass += alignClass;
@@ -27255,7 +27255,7 @@ examLogic: logic.state?.examLogic,
 onOpenAiConfig: logic.actions?.handleOpenAiConfig
 });
 } else {
-// [BẢN VÁ V1.12] Bọc nội dung Học trong Khối Dynamic Wrapper
+// Bọc nội dung Học trong Khối Dynamic Wrapper
 mainContent = React.createElement('div', { className: `w-full max-w-4xl flex flex-col h-full transition-all duration-500 ease-in-out ${alignClass}` },
 renderComponent('AppHeader', {
 lang: coreState.lang,
