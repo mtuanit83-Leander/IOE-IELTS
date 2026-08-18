@@ -630,12 +630,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.00
-// Last Updated: 2026-08-15
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.01
+// Last Updated: 2026-08-18 15:30
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V4.01: [PROMPT OPTIMIZATION] Nới lỏng giới hạn độ dài cho trường Analysis, bổ sung định dạng gạch đầu dòng (Progressive Disclosure) tối ưu cho UI ẩn/hiện.
 // Cập nhật V4.00: [MA TRẬN RPD & VÒNG LẶP KÉP] Đại phẫu thuật toán Đa Key. Ưu tiên "Key trước, Mô hình sau". Tích hợp cờ Tự động hạ cấp mô hình (Auto Cascade).
-// Cập nhật V3.11: [PREMIUM MODE] Bỏ qua giới hạn RPD cục bộ nếu bật cờ Key Trả Phí (fc_is_premium_key = true).
-// Cập nhật V3.10: [8 MODELS CASCADE] Đồng bộ mảng modelsPool dự phòng với 8 mô hình để đảm bảo động cơ Thác nước không cạn đạn.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1073,24 +1072,27 @@ dynamicInstruction = lang === 'zh'
 ? " Đối với pronunciation: BẮT BUỘC xuất Pinyin. " + (requiredFields.includes('sinoViet') ? "Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : "")
 : " Đối với pronunciation: BẮT BUỘC xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
 }
+// [PROMPT OPTIMIZATION V4.01] - Cấu trúc Prompt phân nhánh cho Progressive Disclosure
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Hãy BỔ SUNG thông tin CÒN THIẾU hoặc Phân tích chuyên sâu cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ gốc: ${lang}).\n`;
 userQuery += `[ĐỊNH HƯỚNG TRẢ LỜI BẮT BUỘC]:\n`;
 if (requiredFields.includes('analysis')) {
-if (requiredFields.length === 1) {
-userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: Bạn là chuyên gia ngôn ngữ. Hãy phân tích cực kỳ ngắn gọn (1-2 câu) về từ loại, ngữ pháp hoặc cách dùng của từ/câu này. Trả lời đi thẳng vào bản chất.\n`;
-} else if (isSentence) {
-userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai giáo viên ngôn ngữ. Hãy mổ xẻ cấu trúc câu, chỉ ra các điểm ngữ pháp trọng tâm (Ví dụ: Thì, Phrasal verbs, Giới từ, Cấu trúc...). TUYỆT ĐỐI KHÔNG giải thích ý nghĩa ngữ cảnh chung chung.\n`;
+if (isSentence) {
+userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai giáo viên ngữ pháp. Hãy mổ xẻ ĐIỂM NGỮ PHÁP TRỌNG TÂM của câu (Thì, cấu trúc, cụm từ cố định...). Giải thích mạch lạc công thức và cách dùng.\n`;
 } else {
-userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai chuyên gia từ vựng. Hãy phân tích ngắn gọn sắc thái ý nghĩa hoặc cách sử dụng đặc trưng của từ vựng này.\n`;
+userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: BẮT BUỘC đóng vai chuyên gia từ vựng. Hãy chỉ ra Từ loại, Phân tích gốc từ/sắc thái nghĩa, và liệt kê 1-2 cấu trúc/giới từ đi kèm phổ biến.\n`;
 }
-userQuery += `2. NGÔN NGỮ: Mọi lời giải thích, phân tích (đặc biệt là trường analysis) BẮT BUỘC phải viết bằng TIẾNG VIỆT dễ hiểu.\n`;
+userQuery += `2. NGÔN NGỮ & TRÌNH BÀY: BẮT BUỘC viết bằng TIẾNG VIỆT. ĐẶC BIỆT: BẮT BUỘC trình bày bằng các gạch đầu dòng mạch lạc, dễ đọc. TUYỆT ĐỐI KHÔNG viết thành một khối văn bản đặc chữ.\n`;
 } else {
 userQuery += `1. VAI TRÒ & TIÊU ĐIỂM: Đóng vai trò là một máy trích xuất dữ liệu tự động.\n`;
 userQuery += `2. NGÔN NGỮ: BẮT BUỘC phải dịch và xử lý bằng TIẾNG VIỆT dễ hiểu.\n`;
 }
+if (requiredFields.includes('analysis')) {
+userQuery += `3. ĐỘ DÀI & PHONG CÁCH: Trình bày chi tiết nhưng súc tích, đi thẳng vào bản chất cốt lõi. Tuyệt đối không lan man, sinh rác.\n`;
+} else {
 userQuery += `3. ĐỘ DÀI & PHONG CÁCH: Phải cực kỳ NGẮN GỌN, SÚC TÍCH, đi thẳng vào bản chất cốt lõi (tối đa 2-3 câu). Tuyệt đối không lan man dài dòng.\n`;
+}
 userQuery += `4. ĐỊNH DẠNG: Chỉ xuất CHÍNH XÁC các trường có trong JSON Schema (${requiredFields.join(', ')}). Không sinh dữ liệu rác.\n`;
 userQuery += `${dynamicInstruction}`;
 } else {
@@ -6440,10 +6442,10 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.08
-// Last Updated: 2026-05-16 22:25
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.09
+// Last Updated: 2026-08-18 15:00
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
-// Cập nhật: [VÁ LỖI DỊCH CHUYỂN KHUNG HÌNH] Chính thức tiêm vắc-xin scrollbar-gutter: stable vào CSS toàn cục để triệt tiêu hiện tượng layout shift khi thẻ 3D phình to lúc lật. Tuân thủ Điều 3.
+// Cập nhật V1.09: [UX/UI] Nâng cấp cơ chế Tiết lộ Lũy tiến (Progressive Disclosure) cho trường Analysis. Bổ sung nút Ẩn/Hiện giải thích chi tiết, tối ưu không gian hiển thị mặt sau thẻ.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', en: 'sky' };
@@ -6523,11 +6525,19 @@ const [typingInput, setTypingInput] = React.useState('');
 const [typingStatus, setTypingStatus] = React.useState('idle');
 const typingInputRef = React.useRef(null);
 const [jumpInput, setJumpInput] = React.useState('');
+// [V1.09] State ẩn/hiện trường Analysis
+const [showAnalysis, setShowAnalysis] = React.useState(false);
 React.useEffect(() => {
 setTypingInput('');
 setTypingStatus('idle');
 setJumpInput('');
+setShowAnalysis(false); // Reset state analysis khi đổi thẻ
 }, [currentCardIndex]);
+React.useEffect(() => {
+if (!isFlipped) {
+setShowAnalysis(false); // Tự động ẩn analysis khi lật về mặt trước
+}
+}, [isFlipped]);
 React.useEffect(() => {
 const handleGlobalKeyDown = (e) => {
 if (e.key === 'Delete') {
@@ -6816,25 +6826,41 @@ style={{ ...getCardStyle(true), fontFamily: 'inherit' }}
 <div className="text-gray-800 text-center my-1" style={{ fontSize: '1em', marginTop: '8px', fontWeight: settings?.fontWeight || 'bold', fontFamily: isDefFirst ? getFontFamily() : 'inherit' }}>
 {isDefFirst ? currentCard?.term : currentCard?.definition}
 </div>
+{/* [V1.09] Hệ thống Tiết lộ Lũy tiến (Progressive Disclosure) cho trường Analysis */}
 {currentCard?.analysis && (
-<div className="text-gray-600 font-semibold bg-white/60 px-3 py-1 rounded-full border border-gray-100 mb-1 text-center" style={{ fontSize: '0.75em' }}>
-{currentCard.analysis}
+<div className="w-full flex flex-col items-center mt-2 mb-1 animate-in fade-in">
+<button
+onClick={(e) => { e.stopPropagation(); setShowAnalysis(!showAnalysis); }}
+className={`px-3 py-1.5 rounded-full border shadow-sm transition-colors flex items-center gap-1 font-bold ${showAnalysis ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100'}`}
+style={{ fontSize: '0.75em' }}
+>
+<window.Icons.Sparkles size={12} /> {showAnalysis ? "Ẩn giải thích" : (isSentence ? "Xem phân tích ngữ pháp" : "Xem phân tích chi tiết")}
+</button>
+{showAnalysis && (
+<div
+className="w-full text-left bg-white p-3 rounded-xl border border-purple-100 shadow-inner mt-2 text-gray-700 leading-relaxed overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2"
+style={{ fontSize: '0.85em', maxHeight: '150px' }}
+onClick={(e) => e.stopPropagation()}
+>
+<div className="whitespace-pre-wrap">{currentCard.analysis}</div>
+</div>
+)}
 </div>
 )}
 {currentCard?.sinoViet && (
-<div className="text-gray-500 italic bg-white/50 px-2 py-1 rounded text-center" style={{ fontSize: '0.85em' }}>
+<div className="text-gray-500 italic bg-white/50 px-2 py-1 rounded text-center mt-1" style={{ fontSize: '0.85em' }}>
 <span className="font-bold uppercase opacity-70 mr-1" style={{ fontSize: '0.9em' }}>{sinoVietLabel}:</span>
 {currentCard?.sinoViet}
 </div>
 )}
-{currentCard?.example && (<div className="text-gray-600 text-center italic w-full border-t border-gray-200 pt-2 whitespace-pre-wrap" style={{ fontSize: '0.85em' }}>{currentCard?.example}</div>)}
+{currentCard?.example && (<div className="text-gray-600 text-center italic w-full border-t border-gray-200 pt-2 whitespace-pre-wrap mt-2" style={{ fontSize: '0.85em' }}>{currentCard?.example}</div>)}
 {!currentCard?.analysis && (
 <button
 onClick={(e) => { e.stopPropagation(); onExplainGrammar(); }}
-className="mt-2 px-3 py-1 bg-blue-100 text-blue-700 font-bold rounded-full shadow-sm hover:bg-blue-200 transition-colors flex items-center gap-1 shrink-0"
+className="mt-2 px-3 py-1.5 bg-purple-50 text-purple-600 font-bold border border-purple-200 rounded-full shadow-sm hover:bg-purple-100 transition-colors flex items-center gap-1 shrink-0"
 style={{ fontSize: '0.75em' }}
 >
-<window.Icons.Sparkles size={12} /> {isSentence ? "Phân tích ngữ pháp" : "Phân tích từ loại"}
+<window.Icons.Sparkles size={12} /> {isSentence ? "Tạo phân tích ngữ pháp" : "Tạo phân tích chi tiết"}
 </button>
 )}
 </div>
@@ -6892,9 +6918,7 @@ const BottomNav = ({ onNavigate, onApiKey, onOpenAiChat, t, mainColor, currentMo
 <button onClick={() => onNavigate('settings')} className="flex flex-col items-center gap-0.5 p-1.5 rounded-xl transition-all text-gray-400 hover:text-gray-600 active:scale-95"><window.Icons.Settings size={20} /><span className="text-[10px] font-bold">{t('navSettings')}</span></button>
 </div>
 );
-// 1. MÀN HÌNH CHỜ TOÀN CỤC (GLOBAL LOADING SCREEN) - [NEW]
 const GlobalLoadingScreen = ({ duration = 0, onComplete, onCancel, queueLength = 0, text = "Hệ thống đang đúc dữ liệu...", subText = "Vui lòng đợi trong giây lát", mainColor = "blue", levelStr = "", engine = null }) => {
-// [VÁ LỖI LỆCH PHA ĐẾM NGƯỢC] Lớp phòng thủ v2
 const getSafeDuration = () => {
 try {
 const cfg = JSON.parse(localStorage.getItem('fc_ai_config'));
@@ -6906,7 +6930,6 @@ return 22;
 const [timeLeft, setTimeLeft] = React.useState(getSafeDuration);
 const [localQueueLength, setLocalQueueLength] = React.useState(queueLength);
 const Icons = window.Icons || {};
-// Tự động Polling số lượng đạn nếu nhận được Động cơ (engine)
 React.useEffect(() => {
 if (engine && typeof engine.length === 'function') {
 const id = setInterval(() => setLocalQueueLength(engine.length()), 500);
@@ -6949,7 +6972,6 @@ Hủy bỏ
 </div>
 );
 };
-// EXPORT GLOBAL
 window.AppHeader = AppHeader;
 window.FlashcardDisplay = FlashcardDisplay;
 window.ControlBar = ControlBar;
