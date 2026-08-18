@@ -27014,9 +27014,10 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.11
-// Last Updated: 2026-08-18 11:30
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.12
+// Last Updated: 2026-08-18 11:45
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
+// Cập nhật V1.12: [FLUID ALIGNMENT] Đồng bộ tuyệt đối lồng kính chứa (Container) của MainContent và ControlBar. Chuyển đổi lực đẩy từ pixel cứng sang viewport width (vw) chống tràn viền và vỡ Layout.
 // Cập nhật V1.11: [LAYOUT ALIGN] Tích hợp Giao diện tùy chỉnh lề Trái/Giữa/Phải cho PC và iPad để tối ưu đa nhiệm với AI Chat.
 // Cập nhật V1.10: [HOTFIX] Bổ sung Cờ Bảo Vệ (Deprecation Guard) ép trình duyệt xoá cờ `vi`, tự động reload sang `en`. Gọt sạch logic màu sắc của `vi`.
 // ==================================================================================
@@ -27190,12 +27191,25 @@ React.createElement('p', { className: "text-blue-600 font-bold animate-pulse tra
 // ============================================================================
 // [VÁ LỖ HỔNG VIỆT HOÁ] Gọt sạch logic fallback màu xanh lá của tiếng Việt
 const appMainColor = coreState.lang === 'zh' ? 'red' : 'sky';
-// [BẢN VÁ V1.11] Khởi tạo Biến Class Layout Căn lề Động
+// [BẢN VÁ V1.12] Khởi tạo Biến Class Layout Căn lề Động % Fluid & Đồng bộ lồng kính
 let alignClass = 'mx-auto';
+let mainParentClass = "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col overflow-y-auto custom-scrollbar pb-6";
+let bottomWrapperClass = "w-full max-w-4xl px-4 mb-3 transition-all duration-500 ease-in-out ";
 if (coreState.viewMode === 'learn' && coreState.layoutAlign) {
-if (coreState.layoutAlign === 'left') alignClass = 'mx-auto md:ml-4 md:mr-auto';
-else if (coreState.layoutAlign === 'right') alignClass = 'mx-auto md:mr-4 md:ml-auto';
+// Lực đẩy co giãn theo Viewport (Tăng dần theo màn hình để chừa chỗ AI Chat)
+const pushLeft = 'md:ml-[5vw] lg:ml-[8vw] xl:ml-[12vw]';
+const pushRight = 'md:mr-[5vw] lg:mr-[8vw] xl:mr-[12vw]';
+if (coreState.layoutAlign === 'left') {
+alignClass = `mx-auto ${pushLeft} md:mr-auto`;
+// Phá vỡ lồng kính max-w-7xl, cho phép tràn viền để đồng bộ hệ quy chiếu với BottomArea
+mainParentClass = "flex-1 w-full px-4 py-4 flex flex-col overflow-y-auto custom-scrollbar pb-6 transition-all duration-500";
 }
+else if (coreState.layoutAlign === 'right') {
+alignClass = `mx-auto ${pushRight} md:ml-auto`;
+mainParentClass = "flex-1 w-full px-4 py-4 flex flex-col overflow-y-auto custom-scrollbar pb-6 transition-all duration-500";
+}
+}
+bottomWrapperClass += alignClass;
 const renderComponent = (compName, props) => {
 const Comp = window[compName];
 if (!Comp) return null;
@@ -27241,7 +27255,7 @@ examLogic: logic.state?.examLogic,
 onOpenAiConfig: logic.actions?.handleOpenAiConfig
 });
 } else {
-// [BẢN VÁ V1.11] Bọc nội dung Học trong Khối Dynamic Wrapper
+// [BẢN VÁ V1.12] Bọc nội dung Học trong Khối Dynamic Wrapper
 mainContent = React.createElement('div', { className: `w-full max-w-4xl flex flex-col h-full transition-all duration-500 ease-in-out ${alignClass}` },
 renderComponent('AppHeader', {
 lang: coreState.lang,
@@ -27325,7 +27339,7 @@ React.createElement('line', {x1: 10, y1: 6, x2: 20, y2: 6}), React.createElement
 ) : null;
 // --- 4. Xây dựng Bảng điều khiển Đáy ---
 const bottomArea = !coreState.isGamePlaying ? React.createElement('div', { className: "w-full flex flex-col shrink-0 bg-transparent z-50 relative" },
-coreState.viewMode === 'learn' ? React.createElement('div', { className: `w-full max-w-4xl px-2 mb-3 transition-all duration-500 ease-in-out ${alignClass}` },
+coreState.viewMode === 'learn' ? React.createElement('div', { className: bottomWrapperClass },
 renderComponent('ControlBar', {
 isShuffle: coreState.isShuffle,
 setIsShuffle: coreState.setIsShuffle,
@@ -27361,7 +27375,7 @@ currentMode: coreState.viewMode
 // --- 5. Trả về Main Layout ---
 return React.createElement('div', { className: `w-full h-[100dvh] flex flex-col relative overflow-hidden bg-${appMainColor}-50` },
 layoutWidget,
-React.createElement('div', { className: "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col overflow-y-auto custom-scrollbar pb-6" },
+React.createElement('div', { className: mainParentClass },
 mainContent
 ),
 bottomArea,
