@@ -23437,15 +23437,14 @@ window.Block5_24_useReadingLogic = useReadingLogic;
 window.useReadingLogic = useReadingLogic;
 window.Block5_24_ReadingGame = ReadingGame;
 window.ReadingGame = ReadingGame;
-// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 2.3 (Boot Hydration & Model State Fix)
-// Last Updated: 2026-08-14 06:00
+// Block6.1: TẦNG 6: LOGIC ỨNG DỤNG (Core State) - Version 2.4 (Responsive Layout Alignment)
+// Last Updated: 2026-08-18 11:20
 // Nhiệm vụ: Quản lý trạng thái cốt lõi (Core State) của toàn bộ ứng dụng (Data, UI toggles, User configs).
 // Quy tắc: Đây là gốc rễ của State. Không chứa UI, chỉ chứa React Hooks. TUÂN THỦ HIẾN PHÁP ĐIỀU 3.
-// Cập nhật V2.3:
-// 1. [BOOT HYDRATION FIX] Khắc phục lỗi "Bóng ma State" bằng cách ép kiểu mảng cho currentLevel ngay khi khởi tạo, quét dự phòng dữ liệu từ fc_settings cũ.
-// 2. [AI MODEL CASCADE] Bổ sung State aiModel để chuẩn bị cho cơ chế xoay vòng Mô hình dự phòng.
-// Cập nhật V2.2: [STATE RETAIN] Nhổ bỏ isAiLoading khỏi mảng dependency của Động cơ Vòi nước. Khắc phục triệt để lỗi thẻ bị lùi về vị trí số 0 (index=0) sau khi tính năng AI Phân tích ngữ pháp hoặc Làm giàu thẻ hoàn tất.
-// Cập nhật V2.1: [BULLETPROOF DATA] Bổ sung Regex dọn dẹp chuỗi lỗi trong parseArrayStorage. Tối ưu Động cơ "Vòi nước" chống sập khi mảng data rỗng.
+// Cập nhật V2.4: [LAYOUT ALIGN] Bổ sung State layoutAlign và cơ chế đồng bộ localStorage để quản lý vị trí Không gian học (Trái/Giữa/Phải) cho PC và iPad.
+// Cập nhật V2.3: [BOOT HYDRATION FIX] Khắc phục lỗi "Bóng ma State". Bổ sung State aiModel.
+// Cập nhật V2.2: [STATE RETAIN] Nhổ bỏ isAiLoading khỏi mảng dependency của Động cơ Vòi nước.
+// Cập nhật V2.1: [BULLETPROOF DATA] Bổ sung Regex dọn dẹp chuỗi lỗi trong parseArrayStorage.
 // ==================================================================================
 const loadFont = (id, url) => {
 let link = document.getElementById(id);
@@ -23540,6 +23539,10 @@ const [totalTokens, setTotalTokens] = useState(() => parseInt(localStorage.getIt
 const [aiConfig, setAiConfig] = useState(() => window.Utils?.safeJsonParse('fc_ai_config', DEFAULT_AI_CONFIG) || DEFAULT_AI_CONFIG);
 // [V2.3] Bổ sung State quản lý Mô hình AI
 const [aiModel, setAiModel] = useState(() => localStorage.getItem('fc_ai_model') || 'gemini-3.5-flash-lite');
+// [V2.4] Bổ sung State quản lý vị trí Không gian học (Responsive Layout Alignment)
+const [layoutAlign, setLayoutAlign] = useState(() => {
+return localStorage.getItem('fc_layout_align') || 'center';
+});
 // UI Toggles
 const [showSettings, setShowSettings] = useState(false);
 const [showApiKeyModal, setShowApiKeyModal] = useState(false);
@@ -23755,6 +23758,10 @@ window.Utils?.safeLocalStorageSet('fc_ai_config', aiConfig);
 useEffect(() => {
 localStorage.setItem('fc_ai_model', aiModel);
 }, [aiModel]);
+// [V2.4] LAYOUT ALIGN PERSISTENCE
+useEffect(() => {
+localStorage.setItem('fc_layout_align', layoutAlign);
+}, [layoutAlign]);
 // LƯU TRỮ TRÊN INDEXEDDB (ASYNC)
 useEffect(() => {
 if (isDbReady && window.FcDB) window.FcDB.set('fc_ai_harvest_pool', aiHarvestPool);
@@ -23794,7 +23801,7 @@ return {
 // State
 viewMode, lang, uiLang, cards, notebook, mastered, masteredCount: mastered.length, isStudyingNotebook,
 incorrectList, studySourceName, apiKey, totalTokens, aiHarvestPool, globalRetryBag, systemLogs,
-isDbReady, aiConfig, aiModel,
+isDbReady, aiConfig, aiModel, layoutAlign,
 // Multi-dimensional State
 dataMode, setDataMode,
 currentLevel, setCurrentLevel,
@@ -23808,7 +23815,7 @@ currentCardIndex, isFlipped, isAutoPlaying, isShuffle, isAutoMode, isFlipLocked,
 isMuted, isGamePlaying, settings, voices, DEFAULT_SETTINGS, isContentHidden, isBatterySaverMode, gameSessions,
 // Setters
 setViewMode, setLang, setUiLang, setCards, setNotebook, setMastered, setIsStudyingNotebook,
-setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag, setSystemLogs, setAiConfig, setAiModel,
+setIncorrectList, setStudySourceName, setApiKey, setTotalTokens, setAiHarvestPool, setGlobalRetryBag, setSystemLogs, setAiConfig, setAiModel, setLayoutAlign,
 setShowSettings, setShowApiKeyModal, setShowNotebook, setShowManual, setShowLinkManager, setShowWordSelect, setShowMastered, setShowIncorrectModal,
 setShowAiChat, setShowHelp, setShowSaveLoadModal, setShowHanziSelector, setShowHanziWriter, setCurrentHanziChar, setShowExamPoolManager, setShowAiConfigModal,
 setWordSelectTarget, setToast, setIsAiLoading, setIsAiModeLearn, setIsAiModeGame, setResetPending,
@@ -27007,10 +27014,11 @@ handleAutoHarvestToPool
 };
 };
 window.useExamPoolLogic = window.Block6_8_useExamPoolLogic;
-// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.10
-// Last Updated: 2026-07-04 13:25
+// Block7.1: TẦNG 7: LẮP RÁP & RENDER (App Component) - Version 1.11
+// Last Updated: 2026-08-18 11:30
 // Nhiệm vụ: Gom tất cả các Block lại thành một ứng dụng hoàn chỉnh (Main Entry Point).
-// Cập nhật: [HOTFIX V1.10] Bổ sung Cờ Bảo Vệ (Deprecation Guard) ép trình duyệt xoá cờ `vi`, tự động reload sang `en`. Gọt sạch logic màu sắc của `vi`.
+// Cập nhật V1.11: [LAYOUT ALIGN] Tích hợp Giao diện tùy chỉnh lề Trái/Giữa/Phải cho PC và iPad để tối ưu đa nhiệm với AI Chat.
+// Cập nhật V1.10: [HOTFIX] Bổ sung Cờ Bảo Vệ (Deprecation Guard) ép trình duyệt xoá cờ `vi`, tự động reload sang `en`. Gọt sạch logic màu sắc của `vi`.
 // ==================================================================================
 const App = () => {
 // [CỜ BẢO VỆ THANH TRỪNG NGÔN NGỮ] Bắt buộc chạy đầu tiên để chặn lỗi Màn hình trắng
@@ -27178,10 +27186,16 @@ React.createElement('p', { className: "text-blue-600 font-bold animate-pulse tra
 );
 }
 // ============================================================================
-// 2. TÍNH TOÁN RENDER & UI
+// 2. TÍNH TOÁN RENDER & UI & BỐ CỤC KHÔNG GIAN
 // ============================================================================
 // [VÁ LỖ HỔNG VIỆT HOÁ] Gọt sạch logic fallback màu xanh lá của tiếng Việt
 const appMainColor = coreState.lang === 'zh' ? 'red' : 'sky';
+// [BẢN VÁ V1.11] Khởi tạo Biến Class Layout Căn lề Động
+let alignClass = 'mx-auto';
+if (coreState.viewMode === 'learn' && coreState.layoutAlign) {
+if (coreState.layoutAlign === 'left') alignClass = 'mx-auto md:ml-4 md:mr-auto';
+else if (coreState.layoutAlign === 'right') alignClass = 'mx-auto md:mr-4 md:ml-auto';
+}
 const renderComponent = (compName, props) => {
 const Comp = window[compName];
 if (!Comp) return null;
@@ -27227,7 +27241,8 @@ examLogic: logic.state?.examLogic,
 onOpenAiConfig: logic.actions?.handleOpenAiConfig
 });
 } else {
-mainContent = React.createElement(React.Fragment, null,
+// [BẢN VÁ V1.11] Bọc nội dung Học trong Khối Dynamic Wrapper
+mainContent = React.createElement('div', { className: `w-full max-w-4xl flex flex-col h-full transition-all duration-500 ease-in-out ${alignClass}` },
 renderComponent('AppHeader', {
 lang: coreState.lang,
 setLang: coreState.setLang,
@@ -27285,9 +27300,32 @@ onJumpToCard: logic.actions?.handleJumpToCard
 )
 );
 }
+// --- 3.5. Xây dựng Widget Tùy chỉnh Layout Căn Lề ---
+const layoutWidget = (coreState.viewMode === 'learn' && coreState.setLayoutAlign) ? React.createElement('div', {
+className: "fixed top-[15%] right-4 z-[40] hidden md:flex flex-col gap-1 bg-white/90 backdrop-blur shadow-lg rounded-xl p-1.5 border border-gray-200 animate-in fade-in slide-in-from-right-4"
+},
+// Left Align
+React.createElement('button', {
+onClick: () => coreState.setLayoutAlign('left'), title: 'Đẩy sang Trái (Mở rộng Không gian làm việc)',
+className: `p-2 rounded-lg transition-colors duration-200 ${coreState.layoutAlign === 'left' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`
+}, React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" },
+React.createElement('line', {x1: 4, y1: 6, x2: 14, y2: 6}), React.createElement('line', {x1: 4, y1: 12, x2: 20, y2: 12}), React.createElement('line', {x1: 4, y1: 18, x2: 14, y2: 18}))),
+// Center Align
+React.createElement('button', {
+onClick: () => coreState.setLayoutAlign('center'), title: 'Căn Giữa (Mặc định)',
+className: `p-2 rounded-lg transition-colors duration-200 ${coreState.layoutAlign === 'center' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`
+}, React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" },
+React.createElement('line', {x1: 4, y1: 6, x2: 20, y2: 6}), React.createElement('line', {x1: 8, y1: 12, x2: 16, y2: 12}), React.createElement('line', {x1: 4, y1: 18, x2: 20, y2: 18}))),
+// Right Align
+React.createElement('button', {
+onClick: () => coreState.setLayoutAlign('right'), title: 'Đẩy sang Phải',
+className: `p-2 rounded-lg transition-colors duration-200 ${coreState.layoutAlign === 'right' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`
+}, React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" },
+React.createElement('line', {x1: 10, y1: 6, x2: 20, y2: 6}), React.createElement('line', {x1: 4, y1: 12, x2: 20, y2: 12}), React.createElement('line', {x1: 10, y1: 18, x2: 20, y2: 18})))
+) : null;
 // --- 4. Xây dựng Bảng điều khiển Đáy ---
 const bottomArea = !coreState.isGamePlaying ? React.createElement('div', { className: "w-full flex flex-col shrink-0 bg-transparent z-50 relative" },
-coreState.viewMode === 'learn' ? React.createElement('div', { className: "w-full max-w-3xl mx-auto px-2 mb-3" },
+coreState.viewMode === 'learn' ? React.createElement('div', { className: `w-full max-w-4xl px-2 mb-3 transition-all duration-500 ease-in-out ${alignClass}` },
 renderComponent('ControlBar', {
 isShuffle: coreState.isShuffle,
 setIsShuffle: coreState.setIsShuffle,
@@ -27322,6 +27360,7 @@ currentMode: coreState.viewMode
 ) : null;
 // --- 5. Trả về Main Layout ---
 return React.createElement('div', { className: `w-full h-[100dvh] flex flex-col relative overflow-hidden bg-${appMainColor}-50` },
+layoutWidget,
 React.createElement('div', { className: "flex-1 w-full max-w-7xl mx-auto p-4 flex flex-col overflow-y-auto custom-scrollbar pb-6" },
 mainContent
 ),
