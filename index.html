@@ -12080,9 +12080,10 @@ suddenDeath={suddenDeath}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.31
-// Last Updated: 2026-08-19 16:45
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.32
+// Last Updated: 2026-08-19 16:50
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.32: [ADAPTIVE TRIM HOTFIX] Ràng buộc hiển thị subText (phần bị cắt tỉa) với biến isChecking để bít hoàn toàn lỗ hổng meta-gaming. Phần chữ thừa chỉ hiện ra sau khi chọn đáp án.
 // Cập nhật V1.31: [ADAPTIVE TRIM] Tích hợp Radar quét "Mất cân bằng hình thể" (Imbalance Detector) và Cắt tỉa động cho các đáp án chứa dấu phân cách (, / ;) để chống meta-gaming.
 // Cập nhật V1.30: [DUAL-LANGUAGE MAPPING] Bổ sung UI hiển thị bản dịch (meaning) bên dưới các đáp án khi lật thẻ (isChecking === true).
 // Cập nhật V1.29: [HOTFIX] Khắc phục triệt để lỗi TypeError .replace is not a function do biến config.level trả về mảng (Multi-select) bằng kỹ thuật Render Phòng thủ Array.isArray() tại GlobalLoadingScreen.
@@ -12576,7 +12577,7 @@ const icon = (isChecking && opt.isCorrect) ? <Icons.CheckCircle size={20} classN
 ((isChecking && i === selectedOptionIndex && !opt.isCorrect) || clickedWrongIndices.has(i)) ? <Icons.X size={20} className={clickedWrongIndices.has(i) ? "text-red-300" : "text-red-700"} /> : null;
 // [BẢN VÁ V1.17] Ẩn chữ đáp án khi ở chế độ Nghe Đảo ngược (chỉ hiện "Đáp án A, B, C, D")
 const optionDisplayText = (isReverseListen && !isChecking) ? `Đáp án ${labels[i]}` : (opt.text || "");
-// [ADAPTIVE TRIM V1.31] Lưỡi kéo cắt tỉa chia tách văn bản
+// [ADAPTIVE TRIM V1.32] Lưỡi kéo cắt tỉa chia tách văn bản
 let mainText = optionDisplayText;
 let subText = "";
 if (isImbalanced && !isReverseListen && optionDisplayText) {
@@ -12594,8 +12595,9 @@ return (
 <span className={`break-words ${clickedWrongIndices.has(i) ? 'line-through' : ''} ${isReverse ? 'text-gray-800' : ''} ${isReverseListen && !isChecking ? 'italic text-gray-500' : ''}`} style={{ fontWeight: settings?.fontWeight || 'normal', fontSize: settings?.backFontSize ? `${settings.backFontSize}rem` : '1.125rem', fontFamily: isReverse && !isReverseListen ? window.Utils.getFontFamily(settings) : 'inherit' }}>
 {mainText}
 </span>
-{subText && (
-<span className={`text-[11px] mt-0.5 font-medium opacity-70 ${clickedWrongIndices.has(i) ? 'line-through' : ''}`}>
+{/* Bổ sung cờ isChecking để khóa hiển thị phần cắt tỉa */}
+{subText && isChecking && (
+<span className={`text-[11px] mt-0.5 font-medium opacity-70 animate-in fade-in slide-in-from-top-1 ${clickedWrongIndices.has(i) ? 'line-through' : ''}`}>
 {subText}
 </span>
 )}
