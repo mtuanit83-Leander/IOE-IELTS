@@ -1938,12 +1938,13 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.93
-// Last Updated: 2026-08-19 16:15
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.94
+// Last Updated: 2026-08-19 16:30
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.93: [DYNAMIC PROMPT ROUTING] Áp dụng chiến thuật Rút ngẫu nhiên Micro-prompt (Bẫy hình thể, đồng âm, đảo ký tự, logic...) để ép AI tạo nhiễu chuyên sâu cho từ vựng, chống Over-conditioning.
-// Cập nhật V1.92: [SINGLE SOURCE OF TRUTH] Đại tu hàm ai_generateOptions. Xóa bỏ luồng dịch ngược. Ép AI luôn sử dụng Ngoại ngữ làm Gốc để sinh bẫy, sau đó Adapter sẽ lật lại Output tùy theo chế độ Đảo ngược (isReverse) hay Thường.
-// Cập nhật V1.91: [DUAL-LANGUAGE MAPPING] Nâng cấp hàm ai_generateOptions. Ép AI trả về mảng Object chứa cả 'text' (đáp án nhiễu) và 'meaning' (bản dịch) cho riêng Chế độ Từ vựng.
+// Cập nhật V1.94: [STRUCTURAL CAMOUFLAGE] Ép AI thực hiện "Ngụy trang hình thể" bằng cách tự động bắt chước cấu trúc dấu phân cách (/, ,) của bản dịch chuẩn để chống meta-gaming về độ dài.
+// Cập nhật V1.93: [DYNAMIC PROMPT ROUTING] Áp dụng chiến thuật Rút ngẫu nhiên Micro-prompt.
+// Cập nhật V1.92: [SINGLE SOURCE OF TRUTH] Đại tu hàm ai_generateOptions. Ép AI dùng Ngoại ngữ làm gốc.
+// Cập nhật V1.91: [DUAL-LANGUAGE MAPPING] Nâng cấp hàm ai_generateOptions trả về Object {text, meaning}.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -2058,7 +2059,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.93 DYNAMIC PROMPT ROUTING
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.94 DYNAMIC PROMPT ROUTING & STRUCTURAL CAMOUFLAGE
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2082,6 +2083,14 @@ prompt += `- Bản dịch chuẩn (Tiếng Việt): "${definition}"\n\n`;
 prompt += `Nhiệm vụ: Dựa CỐT LÕI vào Mục tiêu gốc (${foreignLangName}), hãy tạo ra ${count} BẪY NGOẠI NGỮ (Distractors) bằng ${foreignLangName}. Sau đó, dịch các bẫy này sang Tiếng Việt.\n\n`;
 prompt += `[YÊU CẦU NGHIÊM NGẶT VỀ MẶT NGỮ NGHĨA]:\n`;
 prompt += `Các bẫy ngoại ngữ này PHẢI MANG Ý NGHĨA SAI LỆCH hoặc KHÁC BIỆT so với bản gốc. Để khi dịch sang Tiếng Việt, tạo ra ${count} bản dịch có ngữ nghĩa khác nhau rõ ràng (Tuyệt đối không được dịch trùng với Bản dịch chuẩn).\n\n`;
+// [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
+const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
+if (type !== 'sentence' && hasSeparator) {
+prompt += `[CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ (BẮT BUỘC)]:\n`;
+prompt += `- BẢN DỊCH CHUẨN đang có cấu trúc liệt kê chứa dấu phân cách (phẩy, gạch chéo...).\n`;
+prompt += `- Để chống học viên đoán mò dựa vào độ dài, bản dịch Tiếng Việt của CẢ ${count} BẪY cũng PHẢI CỐ TÌNH BẮT CHƯỚC CẤU TRÚC NÀY.\n`;
+prompt += `- Ví dụ: Nếu gốc là "Đặc điểm, tính chất", bẫy của bạn dịch ra phải có dạng đa nghĩa như "Khuyết điểm, điểm yếu" hoặc "Bình thường, phổ biến".\n\n`;
+}
 if (type === 'sentence') {
 prompt += `[CHIẾN LƯỢC TẠO BẪY CÂU VĂN]:\n`;
 prompt += `- Mẹo thiết kế (Đột biến cấu trúc): Hãy giữ nguyên 70-80% từ vựng của câu gốc để gây lú lẫn.\n`;
@@ -12071,9 +12080,10 @@ suddenDeath={suddenDeath}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.30
-// Last Updated: 2026-08-19 15:30
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.31
+// Last Updated: 2026-08-19 16:45
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.31: [ADAPTIVE TRIM] Tích hợp Radar quét "Mất cân bằng hình thể" (Imbalance Detector) và Cắt tỉa động cho các đáp án chứa dấu phân cách (, / ;) để chống meta-gaming.
 // Cập nhật V1.30: [DUAL-LANGUAGE MAPPING] Bổ sung UI hiển thị bản dịch (meaning) bên dưới các đáp án khi lật thẻ (isChecking === true).
 // Cập nhật V1.29: [HOTFIX] Khắc phục triệt để lỗi TypeError .replace is not a function do biến config.level trả về mảng (Multi-select) bằng kỹ thuật Render Phòng thủ Array.isArray() tại GlobalLoadingScreen.
 // Cập nhật V1.28: [FORCED AI GUARD] Bắt buộc bật và khóa chức năng "Thử thách AI" khi chọn Chế độ Khó + Không Đảo ngược (Hỏi ngoại ngữ - Chọn tiếng mẹ đẻ) để triệt tiêu lỗi tạo nhiễu sai chính tả nội bộ.
@@ -12387,6 +12397,14 @@ const questionText = isReverse
 const showPronunciation = !isReverse && showPronun && currentQuestionData?.question?.pronunciation;
 const isLimitedListen = gameMode === 'listen' && hardMode && !timerMode;
 const isListenExhausted = isLimitedListen && listenPlayCount >= 2;
+// [ADAPTIVE TRIM V1.31] Thuật toán nhận diện "Meta-gaming"
+let delimCount = 0;
+const optionsList = currentQuestionData?.options || [];
+optionsList.forEach(opt => {
+if (opt && opt.text && /[,/;]/.test(opt.text)) delimCount++;
+});
+// Bật cờ Cắt tỉa nếu xảy ra mất cân bằng hình thể (Chỉ áp dụng cho Chế độ Từ vựng)
+const isImbalanced = !isSentenceMode && delimCount > 0 && delimCount < optionsList.length;
 return (
 <div className="w-full h-full bg-gray-50 rounded-2xl shadow-xl flex flex-col border-2 border-gray-200 animate-in overflow-hidden relative">
 {/* POPUP XÁC NHẬN THOÁT GAME */}
@@ -12557,15 +12575,30 @@ const isLastAndOdd = isOddOptions && (i === totalOptions - 1);
 const icon = (isChecking && opt.isCorrect) ? <Icons.CheckCircle size={20} className="text-green-700" /> :
 ((isChecking && i === selectedOptionIndex && !opt.isCorrect) || clickedWrongIndices.has(i)) ? <Icons.X size={20} className={clickedWrongIndices.has(i) ? "text-red-300" : "text-red-700"} /> : null;
 // [BẢN VÁ V1.17] Ẩn chữ đáp án khi ở chế độ Nghe Đảo ngược (chỉ hiện "Đáp án A, B, C, D")
-const optionDisplayText = (isReverseListen && !isChecking) ? `Đáp án ${labels[i]}` : opt.text;
+const optionDisplayText = (isReverseListen && !isChecking) ? `Đáp án ${labels[i]}` : (opt.text || "");
+// [ADAPTIVE TRIM V1.31] Lưỡi kéo cắt tỉa chia tách văn bản
+let mainText = optionDisplayText;
+let subText = "";
+if (isImbalanced && !isReverseListen && optionDisplayText) {
+const match = optionDisplayText.match(/([,/;])/);
+if (match) {
+mainText = optionDisplayText.substring(0, match.index).trim();
+subText = optionDisplayText.substring(match.index).trim();
+}
+}
 return (
 <button key={i} onClick={() => handleAnswer(i, opt.isCorrect)} disabled={isChecking || clickedWrongIndices.has(i) || isListenLocked} className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left flex items-center justify-between ${btnClass} ${isLastAndOdd ? 'sm:col-span-2' : ''}`}>
 <div className="flex items-center w-full">
 <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3 flex-none shadow-inner ${getLabelClass(opt, i)}`}>{labels[i]}</span>
 <div className="flex flex-col flex-1">
 <span className={`break-words ${clickedWrongIndices.has(i) ? 'line-through' : ''} ${isReverse ? 'text-gray-800' : ''} ${isReverseListen && !isChecking ? 'italic text-gray-500' : ''}`} style={{ fontWeight: settings?.fontWeight || 'normal', fontSize: settings?.backFontSize ? `${settings.backFontSize}rem` : '1.125rem', fontFamily: isReverse && !isReverseListen ? window.Utils.getFontFamily(settings) : 'inherit' }}>
-{optionDisplayText}
+{mainText}
 </span>
+{subText && (
+<span className={`text-[11px] mt-0.5 font-medium opacity-70 ${clickedWrongIndices.has(i) ? 'line-through' : ''}`}>
+{subText}
+</span>
+)}
 {isChecking && opt.meaning && (
 <span className="text-sm text-gray-500 italic mt-0.5 animate-in fade-in slide-in-from-top-1 font-medium">
 {opt.meaning}
