@@ -1938,12 +1938,12 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.92
-// Last Updated: 2026-08-19 15:45
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.93
+// Last Updated: 2026-08-19 16:15
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.92: [SINGLE SOURCE OF TRUTH] Đại tu hàm ai_generateOptions. Xóa bỏ luồng dịch ngược. Ép AI luôn sử dụng Ngoại ngữ làm Gốc để sinh bẫy, sau đó Adapter sẽ lật lại Output tùy theo chế độ Đảo ngược (isReverse) hay Thường. Chấm dứt vĩnh viễn lỗi văn phong Tiếng Việt không tự nhiên.
+// Cập nhật V1.93: [DYNAMIC PROMPT ROUTING] Áp dụng chiến thuật Rút ngẫu nhiên Micro-prompt (Bẫy hình thể, đồng âm, đảo ký tự, logic...) để ép AI tạo nhiễu chuyên sâu cho từ vựng, chống Over-conditioning.
+// Cập nhật V1.92: [SINGLE SOURCE OF TRUTH] Đại tu hàm ai_generateOptions. Xóa bỏ luồng dịch ngược. Ép AI luôn sử dụng Ngoại ngữ làm Gốc để sinh bẫy, sau đó Adapter sẽ lật lại Output tùy theo chế độ Đảo ngược (isReverse) hay Thường.
 // Cập nhật V1.91: [DUAL-LANGUAGE MAPPING] Nâng cấp hàm ai_generateOptions. Ép AI trả về mảng Object chứa cả 'text' (đáp án nhiễu) và 'meaning' (bản dịch) cho riêng Chế độ Từ vựng.
-// Cập nhật V1.90: [MULTI-DIMENSIONAL PROMPT] Nâng cấp lõi đục lỗ ai_mask thành Động cơ 3 Ma trận (Collocation, Grammar, Paraphrase). Gỡ bỏ hoàn toàn Prompt cũ tĩnh. Ép AI đóng vai giám khảo ra đề chuẩn IELTS/TOEIC/HSK, triệt tiêu việc đục lỗ ngẫu nhiên vô nghĩa.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -2017,7 +2017,7 @@ microPrompt = "\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy đóng vai c
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierDistortionRule) {
 const targetLang = lang === 'zh' ? 'Chinese' : (lang === 'en' ? 'English' : 'Vietnamese');
-const dataMode = type === 'sentence' ? 'sentence' : 'vocab';
+const dataMode = type === 'sentence' ? 'sentence' : 'sentence'; // Spot Mistake auto sentence
 const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2', level_3_junior_advanced: 'en_level_3', level_4_discovery_basic: 'en_level_4', level_5_discovery_advanced: 'en_level_5', level_6_pre_ielts: 'en_level_6', level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8', level_9_expert: 'en_level_9' };
 let mappedKey = oldToNewMap[level] || level;
 if (!mappedKey.includes('level_')) mappedKey = lang === 'zh' ? 'zh_level_4' : 'en_level_4';
@@ -2058,7 +2058,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.92 SINGLE SOURCE OF TRUTH
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.93 DYNAMIC PROMPT ROUTING
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2092,15 +2092,28 @@ prompt += `- Ví dụ: Gốc: "我昨天去看了电影" -> Bẫy: "我明天去
 prompt += `- Ví dụ: Gốc: "She is reading a book" -> Bẫy: "She bought a book yesterday" -> Dịch: "Cô ấy đã mua một quyển sách hôm qua".\n`;
 }
 } else {
-prompt += `[CHIẾN LƯỢC TẠO BẪY TỪ VỰNG]:\n`;
+// CHIẾN LƯỢC TẠO BẪY TỪ VỰNG - ĐỊNH TUYẾN ĐỘNG (DYNAMIC MICRO-PROMPTING)
+let selectedTrap = "";
 if (foreignLang === 'zh') {
-prompt += `- Ưu tiên: Bẫy đồng âm (Pinyin giống nhau nhưng khác chữ Hán), bẫy sai bộ thủ, mặt chữ Hán gần giống, hoặc từ trái nghĩa/cùng chủ đề.\n`;
-prompt += `- Ví dụ: Gốc: "买" (mua) -> Bẫy: "卖" -> Dịch: "bán".\n`;
+const zhTraps = [
+`Bẫy Hình thể (Sai bộ thủ/Hao hao mặt chữ): Đánh vào lỗi nhận diện thị giác. Ví dụ: Gốc "渴" (Khát) -> Bẫy "喝" -> Dịch "Uống".`,
+`Bẫy Đồng âm/Gần âm (Pinyin): Đọc giống hoặc gần giống nhau nhưng viết khác. Ví dụ: Gốc "报" (Báo cáo) -> Bẫy "抱" -> Dịch "Ôm".`,
+`Bẫy Đảo ngược Ký tự: Các từ ghép dễ bị đọc lướt đảo lộn. Ví dụ: Gốc "故事" (Câu chuyện) -> Bẫy "事故" -> Dịch "Sự cố / Tai nạn".`,
+`Bẫy Logic (Trái nghĩa/Đồng nghĩa giả): Sai lệch hoàn toàn về nghĩa cốt lõi. Ví dụ: Gốc "安全" (An toàn) -> Bẫy "危险" -> Dịch "Nguy hiểm".`
+];
+selectedTrap = zhTraps[Math.floor(Math.random() * zhTraps.length)];
 } else {
-prompt += `- Ưu tiên: Bẫy False friends (Từ dễ nhầm lẫn mặt chữ), sai tiền tố/hậu tố, hoặc từ vựng cùng trường nghĩa (cùng chủ đề) nhưng sắc thái khác nhau.\n`;
-prompt += `- Ví dụ: Gốc: "accept" (chấp nhận) -> Bẫy: "except" -> Dịch: "ngoại trừ".\n`;
+const enTraps = [
+`Bẫy Mặt chữ (Lookalikes / False Friends): Các từ chỉ sai khác 1-2 ký tự, dễ nhìn nhầm. Ví dụ: Gốc "desert" (Sa mạc) -> Bẫy "dessert" -> Dịch "Món tráng miệng".`,
+`Bẫy Đồng âm (Homophones): Đọc giống hệt nhau nhưng khác nghĩa. Ví dụ: Gốc "knight" (Hiệp sĩ) -> Bẫy "night" -> Dịch "Ban đêm".`,
+`Bẫy Hình thái từ (Sai Tiền tố/Hậu tố): Cùng gốc từ nhưng sai hậu tố dẫn đến sai từ loại/nghĩa. Ví dụ: Gốc "historic" (Có tính lịch sử) -> Bẫy "historical" -> Dịch "Thuộc về lịch sử".`,
+`Bẫy Logic (Trái nghĩa / Cùng trường từ vựng): Đánh vào suy luận ngữ nghĩa sai. Ví dụ: Gốc "anxious" (Lo âu) -> Bẫy "eager" -> Dịch "Háo hức".`
+];
+selectedTrap = enTraps[Math.floor(Math.random() * enTraps.length)];
 }
-prompt += `- Bản dịch Tiếng Việt phải ngắn gọn, tự nhiên và phản ánh đúng nghĩa của bẫy.\n`;
+prompt += `[CHIẾN LƯỢC TẠO BẪY TỪ VỰNG BẮT BUỘC]:\n`;
+prompt += `- Bạn PHẢI áp dụng DUY NHẤT chiến thuật sau để tạo cả ${count} bẫy: "${selectedTrap}"\n`;
+prompt += `- Tuyệt đối tuân thủ chiến thuật này. Bản dịch Tiếng Việt của bẫy phải ngắn gọn, tự nhiên và đúng nghĩa.\n`;
 }
 let microPrompt = "";
 if (cardOrText && typeof cardOrText === 'object') {
@@ -2134,7 +2147,7 @@ required: ["foreignText", "vietnameseText"]
 const schema = {
 type: "OBJECT",
 properties: {
-reasoning: { type: "STRING", description: "Phân tích ngữ pháp và logic thật ngắn gọn (tối đa 15 từ) để tối ưu thời gian phản hồi trước khi tạo đáp án nhiễu." },
+reasoning: { type: "STRING", description: "Phân tích logic tạo bẫy thật ngắn gọn (tối đa 15 từ) để tối ưu thời gian phản hồi." },
 distractors: { type: "ARRAY", items: itemsSchema }
 },
 required: ["reasoning", "distractors"]
