@@ -1938,9 +1938,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.90
-// Last Updated: 2026-07-05 11:35
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.91
+// Last Updated: 2026-08-19 14:35
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.91: [DUAL-LANGUAGE MAPPING] Nâng cấp hàm ai_generateOptions. Ép AI trả về mảng Object chứa cả 'text' (đáp án nhiễu) và 'meaning' (bản dịch) cho riêng Chế độ Từ vựng.
 // Cập nhật V1.90: [MULTI-DIMENSIONAL PROMPT] Nâng cấp lõi đục lỗ ai_mask thành Động cơ 3 Ma trận (Collocation, Grammar, Paraphrase). Gỡ bỏ hoàn toàn Prompt cũ tĩnh. Ép AI đóng vai giám khảo ra đề chuẩn IELTS/TOEIC/HSK, triệt tiêu việc đục lỗ ngẫu nhiên vô nghĩa.
 // Cập nhật V1.89: [SENTENCE DUAL-MUTATION STRATEGY] Xóa bỏ lệnh Hard Prompt cấu trúc cứng nhắc. Tách biệt hoàn toàn chiến lược sinh bẫy câu văn.
 // ==================================================================================
@@ -2089,8 +2090,9 @@ if (type === 'sentence') {
 prompt += `Một số ý tưởng:\n- Nghĩa đúng: "Cô ấy đang đọc sách trong thư viện" -> Nhiễu: ["Cô ấy đã mua sách ở thư viện", "Cô ấy đang viết sách trong thư viện", "Anh ấy đang đọc sách trong thư viện"]\n`;
 prompt += `Mẹo thiết kế (Đột biến tối thiểu): Để tạo bẫy hoàn hảo, hãy giữ nguyên 80% cấu trúc và độ dài của bản dịch chuẩn. Chỉ thay đổi 1 hoặc 2 tiểu tiết (như đổi hành động, thay từ trái nghĩa, hoặc sai lệch mốc thời gian/chủ thể) để lừa học viên. Tuyệt đối không viết một câu hoàn toàn mới khác biệt.\n`;
 } else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: ["quả lê", "quả cam", "quả dưa"]\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: [{"text": "quả lê", "meaning": "pear"}, {"text": "quả cam", "meaning": "orange"}]\n`;
 prompt += `Mẹo thiết kế: Hãy tạo các đáp án nhiễu có độ dài và nhịp điệu tương đồng với đáp án chuẩn để tránh bị đoán mò.\n`;
+prompt += `[ĐỊNH DẠNG BẮT BUỘC]: Trả về mảng Object, mỗi Object chứa trường 'text' (đáp án nhiễu bằng Tiếng Việt) và 'meaning' (Bản dịch của đáp án nhiễu đó sang ngoại ngữ gốc).\n`;
 }
 } else {
 prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
@@ -2102,8 +2104,9 @@ if (type === 'sentence') {
 prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "我昨天去看了电影" -> Nhiễu: ["我明天去看了电影" (Sai thì), "我去了看电影昨天" (Sai trật tự từ)]\n`;
 prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ). Bốn đáp án nhìn lướt qua phải trông gần giống hệt nhau để buộc học viên phải soi kỹ từng chữ.\n`;
 } else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: ["卖", "读", "看"]\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: [{"text": "卖", "meaning": "bán"}, {"text": "读", "meaning": "đọc"}, {"text": "看", "meaning": "nhìn"}]\n`;
 prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn. Tránh tình trạng đáp án chuẩn là một cụm từ dài nhưng đáp án nhiễu lại quá ngắn.\n`;
+prompt += `[ĐỊNH DẠNG BẮT BUỘC]: Trả về mảng Object, mỗi Object chứa trường 'text' (đáp án nhiễu bằng ${langStr}) và 'meaning' (Bản dịch của đáp án nhiễu đó sang Tiếng Việt).\n`;
 }
 } else {
 prompt += `Bạn có thể tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
@@ -2111,8 +2114,9 @@ if (type === 'sentence') {
 prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "She is reading a book" -> Nhiễu: ["She read a book yesterday" (Sai thì), "She reading a book" (Thiếu to-be)]\n`;
 prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ).\n`;
 } else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: ["except", "expect", "aspect"]\n`;
+prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: [{"text": "except", "meaning": "ngoại trừ"}, {"text": "expect", "meaning": "mong đợi"}]\n`;
 prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn.\n`;
+prompt += `[ĐỊNH DẠNG BẮT BUỘC]: Trả về mảng Object, mỗi Object chứa trường 'text' (đáp án nhiễu bằng ${langStr}) và 'meaning' (Bản dịch của đáp án nhiễu đó sang Tiếng Việt).\n`;
 }
 }
 }
@@ -2132,11 +2136,19 @@ if (distractorLang !== 'vi') {
 prompt += window.GameAiEngine._getLevelContext(level);
 }
 prompt += `\nHãy trả về ${count} đáp án nhiễu (không bao gồm đáp án đúng).`;
+const itemsSchema = type === 'sentence' ? { type: "STRING" } : {
+type: "OBJECT",
+properties: {
+text: { type: "STRING" },
+meaning: { type: "STRING" }
+},
+required: ["text", "meaning"]
+};
 const schema = {
 type: "OBJECT",
 properties: {
 reasoning: { type: "STRING", description: "Phân tích ngữ pháp và logic thật ngắn gọn (tối đa 15 từ) để tối ưu thời gian phản hồi trước khi tạo đáp án nhiễu." },
-distractors: { type: "ARRAY", items: { type: "STRING" } }
+distractors: { type: "ARRAY", items: itemsSchema }
 },
 required: ["reasoning", "distractors"]
 };
@@ -12042,13 +12054,12 @@ suddenDeath={suddenDeath}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.29
-// Last Updated: 2026-07-20 10:05
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.30
+// Last Updated: 2026-08-19 15:30
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.30: [DUAL-LANGUAGE MAPPING] Bổ sung UI hiển thị bản dịch (meaning) bên dưới các đáp án khi lật thẻ (isChecking === true).
 // Cập nhật V1.29: [HOTFIX] Khắc phục triệt để lỗi TypeError .replace is not a function do biến config.level trả về mảng (Multi-select) bằng kỹ thuật Render Phòng thủ Array.isArray() tại GlobalLoadingScreen.
 // Cập nhật V1.28: [FORCED AI GUARD] Bắt buộc bật và khóa chức năng "Thử thách AI" khi chọn Chế độ Khó + Không Đảo ngược (Hỏi ngoại ngữ - Chọn tiếng mẹ đẻ) để triệt tiêu lỗi tạo nhiễu sai chính tả nội bộ.
-// Cập nhật V1.27: [ANTI-LEAK UI] Vá lỗ hổng lộ đáp án qua nút Bookmark trong Listening Mode. Gắn trạng thái khóa `isBookmarkLocked` cho cả 2 nút Bookmark, đồng bộ chu kỳ hiển thị với state `isChecking` để bảo vệ tính toàn vẹn của câu hỏi.
-// Cập nhật V1.26: [UI DECLUTTER] Ẩn hoàn toàn section Ngữ pháp khi ở chế độ "Thẻ của tôi" để giảm nhiễu thị giác, do AI đã hoàn toàn xử lý ngầm (Auto-Diagnostic / Original Grammar Gene). Khối Ngữ pháp nay chỉ xuất hiện độc quyền cho chế độ "AI Tự sinh".
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 // Nhận trực tiếp lang, dataMode và currentLevel từ Tầng 5.7
@@ -12534,9 +12545,16 @@ return (
 <button key={i} onClick={() => handleAnswer(i, opt.isCorrect)} disabled={isChecking || clickedWrongIndices.has(i) || isListenLocked} className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left flex items-center justify-between ${btnClass} ${isLastAndOdd ? 'sm:col-span-2' : ''}`}>
 <div className="flex items-center w-full">
 <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3 flex-none shadow-inner ${getLabelClass(opt, i)}`}>{labels[i]}</span>
-<span className={`break-words flex-1 ${clickedWrongIndices.has(i) ? 'line-through' : ''} ${isReverse ? 'text-gray-800' : ''} ${isReverseListen && !isChecking ? 'italic text-gray-500' : ''}`} style={{ fontWeight: settings?.fontWeight || 'normal', fontSize: settings?.backFontSize ? `${settings.backFontSize}rem` : '1.125rem', fontFamily: isReverse && !isReverseListen ? window.Utils.getFontFamily(settings) : 'inherit' }}>
+<div className="flex flex-col flex-1">
+<span className={`break-words ${clickedWrongIndices.has(i) ? 'line-through' : ''} ${isReverse ? 'text-gray-800' : ''} ${isReverseListen && !isChecking ? 'italic text-gray-500' : ''}`} style={{ fontWeight: settings?.fontWeight || 'normal', fontSize: settings?.backFontSize ? `${settings.backFontSize}rem` : '1.125rem', fontFamily: isReverse && !isReverseListen ? window.Utils.getFontFamily(settings) : 'inherit' }}>
 {optionDisplayText}
 </span>
+{isChecking && opt.meaning && (
+<span className="text-sm text-gray-500 italic mt-0.5 animate-in fade-in slide-in-from-top-1 font-medium">
+{opt.meaning}
+</span>
+)}
+</div>
 </div>
 {/* [BẢN VÁ V1.17] Nút Loa cục bộ cho chế độ Nghe Đảo ngược */}
 {isReverseListen && (
@@ -12589,9 +12607,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.46
-// Last Updated: 2026-08-17 16:30
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.47
+// Last Updated: 2026-08-19 15:00
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
+// Cập nhật V1.47: [DUAL-LANGUAGE MAPPING] Nâng cấp luồng fetchTask để xử lý dữ liệu đáp án chứa cả bản dịch (meaning) từ Tầng 2, đồng thời trích xuất tự động bản dịch cho Đáp án đúng và đáp án lấy từ Pool Offline.
 // Cập nhật V1.46: [BUG FIX] Chặn đứng lỗi AutoSave Cleanup ghi đè (Race Condition) làm mất bộ đếm câu sai khi người dùng bấm Lưu & Thoát ngang.
 // Cập nhật V1.45: [UI COOLDOWN] Phân luồng thời gian chờ chuyển câu. Chế độ AI sử dụng trực tiếp tham số uiCooldown từ Bảng Điều Khiển Lõi AI, chế độ Offline giữ nguyên tốc độ siêu tốc (1s).
 // Cập nhật V1.44: [BABEL PARSER FIX] Chuyển đổi toàn bộ các hàm bất đồng bộ (Arrow Async) sang cú pháp Hàm truyền thống (Standard Async Function).
@@ -12820,7 +12839,7 @@ let card = null;
 const currentApiKey = localStorage.getItem(window.STORAGE_KEYS.API_KEY);
 let activeGrammarId = null;
 const currentDataMode = configRef.current?.dataMode || dataMode;
-const currentLevelStr = getSafeLevelString(); // ĐÃ VÁ
+const currentLevelStr = getSafeLevelString();
 const currentAskMode = configRef.current?.askMode || askMode;
 const canUseGrammar = currentAskMode === 'def' && sourceMode === 'ai_pure';
 if (canUseGrammar && configRef.current && configRef.current.grammarFocus) {
@@ -12847,7 +12866,7 @@ try {
 const meta = {
 id: `quiz_${Date.now()}`,
 type: 'quiz',
-level: getSafeLevelString(), // ĐÃ VÁ
+level: getSafeLevelString(),
 topic: configRef.current?.topic || '',
 dataMode: configRef.current?.dataMode || dataMode || 'vocab',
 difficulty: hardMode ? 'hard' : 'easy',
@@ -12877,7 +12896,7 @@ let validCards = (cardsRef.current || []).filter(c => c.term && c.term.trim() !=
 if (validCards.length < 4 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1'); // ĐÃ VÁ
+const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
@@ -12919,11 +12938,15 @@ let isAiGenerated = card.isAiGenerated || false;
 const numOptions = 4;
 const isReverse = askMode === 'def';
 const isSentenceMode = configRef.current?.dataMode === 'sentence';
+const type = isSentenceMode ? 'sentence' : 'word';
+// [VÁ LỖI V1.47] Khởi tạo Đáp án Đúng kèm Bản dịch
 const correctOptText = isReverse
 ? (isSentenceMode ? (card.displaySentence || card.term) : card.term)
 : card.definition;
-const correctOpt = { text: correctOptText, isCorrect: true };
-const type = isSentenceMode ? 'sentence' : 'word';
+const correctOptMeaning = isReverse
+? card.definition
+: (isSentenceMode ? (card.displaySentence || card.term) : card.term);
+const correctOpt = { text: correctOptText, meaning: correctOptMeaning, isCorrect: true };
 try {
 if (hardMode && isAiMode && currentApiKey && window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine.ai_generateOptions) {
 try {
@@ -12933,11 +12956,17 @@ try {
 const aiCfg = JSON.parse(localStorage.getItem('fc_ai_config'));
 if (aiCfg && aiCfg.loadingTime) dynamicTimeout = parseInt(aiCfg.loadingTime, 10) * 1000 + 5000;
 } catch(e) {}
-const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(card, distractorLang, type, currentApiKey, numOptions - 1, getSafeLevelString(), configRef.current?.topic, isReverse); // ĐÃ VÁ
+const aiCallPromise = window.GameAlgoEngine.OptionsEngine.ai_generateOptions(card, distractorLang, type, currentApiKey, numOptions - 1, getSafeLevelString(), configRef.current?.topic, isReverse);
 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("AI Timeout")), dynamicTimeout));
 const dists = await Promise.race([aiCallPromise, timeoutPromise]);
 if (dists && dists.length > 0) {
-distractors = dists.map(d => ({ text: d, isCorrect: false }));
+// [VÁ LỖI V1.47] Trích xuất cấu trúc Object {text, meaning} nếu có
+distractors = dists.map(d => {
+if (typeof d === 'object' && d !== null && d.text) {
+return { text: d.text, meaning: d.meaning, isCorrect: false };
+}
+return { text: typeof d === 'string' ? d : String(d), isCorrect: false };
+});
 isAiGenerated = true;
 const currentTotal = parseInt(localStorage.getItem('fc_total_tokens') || '0', 10);
 localStorage.setItem('fc_total_tokens', currentTotal + 150);
@@ -12964,7 +12993,7 @@ let pool = cleanDeckForPool.filter(c => c.term !== card.term && !historyQueueRef
 if (pool.length < numOptions - 1 && window.FallbackDataEngine) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1'); // ĐÃ VÁ
+const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 15);
 if (fbItems) {
 const existingTerms = new Set(pool.map(p => p.term));
@@ -12974,12 +13003,20 @@ pool = [...pool, ...newFbs];
 }
 const needed = (numOptions - 1) - distractors.length;
 let randomOthers = window.Utils.shuffleArray(pool).slice(0, needed);
-distractors.push(...randomOthers.map(c => ({
-text: isReverse
+// [VÁ LỖI V1.47] Trích xuất tự động meaning cho các thẻ bốc từ Pool Sổ tay
+distractors.push(...randomOthers.map(c => {
+const optText = isReverse
 ? (isSentenceMode ? (c.displaySentence || c.term) : c.term)
-: c.definition,
+: c.definition;
+const optMeaning = isReverse
+? c.definition
+: (isSentenceMode ? (c.displaySentence || c.term) : c.term);
+return {
+text: optText,
+meaning: optMeaning,
 isCorrect: false
-})));
+};
+}));
 }
 while (distractors.length < numOptions - 1) {
 distractors.push({ text: correctOptText + " " + (distractors.length + 1), isCorrect: false });
@@ -13009,7 +13046,7 @@ safeShowToast("Bộ thẻ không đủ 4 thẻ hợp lệ. Kích hoạt dữ li�
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
 const mode = configRef.current?.dataMode === 'sentence' ? 'sentence' : 'vocab';
-const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1'); // ĐÃ VÁ
+const safeLevel = getSafeLevelString(safeLang === 'zh' ? 'zh_level_1' : 'en_level_1');
 const fbItems = window.FallbackDataEngine.getFallbackData(safeLang, mode, safeLevel, 20);
 if (fbItems && fbItems.length > 0) {
 const existingTerms = new Set(validCards.map(c => c.term));
