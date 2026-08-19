@@ -1938,11 +1938,12 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.95
-// Last Updated: 2026-08-19 16:57
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.96
+// Last Updated: 2026-08-19 17:15
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.95: [ANTI-HALLUCINATION] Bổ sung "Kỷ luật thép 2.0" (Luật Từ điển, Độc bản, Loại trừ gốc) vào hàm ai_generateOptions để chống lỗi chế từ (Frankenstein), lặp từ và trùng từ gốc.
-// Cập nhật V1.94: [STRUCTURAL CAMOUFLAGE] Ép AI thực hiện "Ngụy trang hình thể" bằng cách tự động bắt chước cấu trúc dấu phân cách (/, ,) của bản dịch chuẩn.
+// Cập nhật V1.96: [CHAIN-OF-THOUGHT] Nâng cấp JSON Schema, ép AI phải điền trường `reasoning` (suy luận và cam kết từ điển) trước khi xuất mảng distractors. Sửa lại Micro-prompt "Bẫy hình thể tiếng Trung" để triệt tiêu lỗi ghép chữ vô nghĩa (Frankenstein).
+// Cập nhật V1.95: [ANTI-HALLUCINATION] Bổ sung "Kỷ luật thép 2.0" (Luật Từ điển, Độc bản, Loại trừ gốc).
+// Cập nhật V1.94: [STRUCTURAL CAMOUFLAGE] Ép AI thực hiện "Ngụy trang hình thể".
 // Cập nhật V1.93: [DYNAMIC PROMPT ROUTING] Áp dụng chiến thuật Rút ngẫu nhiên Micro-prompt.
 // Cập nhật V1.92: [SINGLE SOURCE OF TRUTH] Đại tu hàm ai_generateOptions. Ép AI dùng Ngoại ngữ làm gốc.
 // Cập nhật V1.91: [DUAL-LANGUAGE MAPPING] Nâng cấp hàm ai_generateOptions trả về Object {text, meaning}.
@@ -2060,7 +2061,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.95 KỶ LUẬT THÉP 2.0
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.96 CHAIN OF THOUGHT
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2111,7 +2112,8 @@ prompt += `- Ví dụ: Gốc: "She is reading a book" -> Bẫy: "She bought a bo
 let selectedTrap = "";
 if (foreignLang === 'zh') {
 const zhTraps = [
-`Bẫy Hình thể (Sai bộ thủ/Hao hao mặt chữ): Đánh vào lỗi nhận diện thị giác. Ví dụ: Gốc "渴" (Khát) -> Bẫy "喝" -> Dịch "Uống".`,
+// [V1.96] Tinh chỉnh chặn việc ghép chữ vô nghĩa
+`Bẫy Hình thể (Sai bộ thủ/Hao hao mặt chữ): Tìm các từ CÓ THẬT TRONG TỪ ĐIỂN mang hình dáng hao hao giống từ gốc để đánh lừa thị giác. Ví dụ: Gốc "渴" (Khát) -> Bẫy "喝" -> Dịch "Uống".`,
 `Bẫy Đồng âm/Gần âm (Pinyin): Đọc giống hoặc gần giống nhau nhưng viết khác. Ví dụ: Gốc "报" (Báo cáo) -> Bẫy "抱" -> Dịch "Ôm".`,
 `Bẫy Đảo ngược Ký tự: Các từ ghép dễ bị đọc lướt đảo lộn. Ví dụ: Gốc "故事" (Câu chuyện) -> Bẫy "事故" -> Dịch "Sự cố / Tai nạn".`,
 `Bẫy Logic (Trái nghĩa/Đồng nghĩa giả): Sai lệch hoàn toàn về nghĩa cốt lõi. Ví dụ: Gốc "安全" (An toàn) -> Bẫy "危险" -> Dịch "Nguy hiểm".`
@@ -2130,6 +2132,10 @@ prompt += `[CHIẾN LƯỢC TẠO BẪY TỪ VỰNG BẮT BUỘC]:\n`;
 prompt += `- Bạn PHẢI áp dụng DUY NHẤT chiến thuật sau để tạo cả ${count} bẫy: "${selectedTrap}"\n`;
 prompt += `- Tuyệt đối tuân thủ chiến thuật này. Bản dịch Tiếng Việt của bẫy phải ngắn gọn, tự nhiên và đúng nghĩa.\n`;
 }
+// [V1.96] ÉP TƯ DUY (CHAIN OF THOUGHT)
+prompt += `\n[QUY TRÌNH TƯ DUY (CHAIN OF THOUGHT) BẮT BUỘC]:\n`;
+prompt += `- Trong JSON trả về, bạn BẮT BUỘC phải điền trường 'reasoning' TRƯỚC TIÊN.\n`;
+prompt += `- Tại trường 'reasoning', hãy nói ngắn gọn chiến thuật bạn đã chọn và cam kết 100% các từ bẫy đều có thật trong từ điển.\n`;
 let microPrompt = "";
 if (cardOrText && typeof cardOrText === 'object') {
 if (cardOrText.grammar_type) {
@@ -2150,7 +2156,7 @@ if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG TẠO NHIỄU TỪ HỆ THỐNG
 prompt += microPrompt;
 prompt += injectedRule;
 prompt += window.GameAiEngine._getLevelContext(level);
-// ÉP SCHEMA MỚI DÀNH CHO DUAL-LANGUAGE
+// ÉP SCHEMA MỚI DÀNH CHO DUAL-LANGUAGE KÈM CHAIN-OF-THOUGHT
 const itemsSchema = {
 type: "OBJECT",
 properties: {
@@ -2162,7 +2168,7 @@ required: ["foreignText", "vietnameseText"]
 const schema = {
 type: "OBJECT",
 properties: {
-reasoning: { type: "STRING", description: "Phân tích logic tạo bẫy thật ngắn gọn (tối đa 15 từ) để tối ưu thời gian phản hồi." },
+reasoning: { type: "STRING", description: "Bắt buộc điền trước tiên: Giải thích ngắn gọn chiến thuật đang dùng và khẳng định các từ bẫy đều có thật trong từ điển." },
 distractors: { type: "ARRAY", items: itemsSchema }
 },
 required: ["reasoning", "distractors"]
