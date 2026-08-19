@@ -1938,10 +1938,11 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.94
-// Last Updated: 2026-08-19 16:30
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.95
+// Last Updated: 2026-08-19 16:57
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V1.94: [STRUCTURAL CAMOUFLAGE] Ép AI thực hiện "Ngụy trang hình thể" bằng cách tự động bắt chước cấu trúc dấu phân cách (/, ,) của bản dịch chuẩn để chống meta-gaming về độ dài.
+// Cập nhật V1.95: [ANTI-HALLUCINATION] Bổ sung "Kỷ luật thép 2.0" (Luật Từ điển, Độc bản, Loại trừ gốc) vào hàm ai_generateOptions để chống lỗi chế từ (Frankenstein), lặp từ và trùng từ gốc.
+// Cập nhật V1.94: [STRUCTURAL CAMOUFLAGE] Ép AI thực hiện "Ngụy trang hình thể" bằng cách tự động bắt chước cấu trúc dấu phân cách (/, ,) của bản dịch chuẩn.
 // Cập nhật V1.93: [DYNAMIC PROMPT ROUTING] Áp dụng chiến thuật Rút ngẫu nhiên Micro-prompt.
 // Cập nhật V1.92: [SINGLE SOURCE OF TRUTH] Đại tu hàm ai_generateOptions. Ép AI dùng Ngoại ngữ làm gốc.
 // Cập nhật V1.91: [DUAL-LANGUAGE MAPPING] Nâng cấp hàm ai_generateOptions trả về Object {text, meaning}.
@@ -2059,7 +2060,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.94 DYNAMIC PROMPT ROUTING & STRUCTURAL CAMOUFLAGE
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.95 KỶ LUẬT THÉP 2.0
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2083,6 +2084,11 @@ prompt += `- Bản dịch chuẩn (Tiếng Việt): "${definition}"\n\n`;
 prompt += `Nhiệm vụ: Dựa CỐT LÕI vào Mục tiêu gốc (${foreignLangName}), hãy tạo ra ${count} BẪY NGOẠI NGỮ (Distractors) bằng ${foreignLangName}. Sau đó, dịch các bẫy này sang Tiếng Việt.\n\n`;
 prompt += `[YÊU CẦU NGHIÊM NGẶT VỀ MẶT NGỮ NGHĨA]:\n`;
 prompt += `Các bẫy ngoại ngữ này PHẢI MANG Ý NGHĨA SAI LỆCH hoặc KHÁC BIỆT so với bản gốc. Để khi dịch sang Tiếng Việt, tạo ra ${count} bản dịch có ngữ nghĩa khác nhau rõ ràng (Tuyệt đối không được dịch trùng với Bản dịch chuẩn).\n\n`;
+// [BẢN VÁ V1.95] KỶ LUẬT THÉP 2.0 (CHỐNG ẢO GIÁC & LÁCH LUẬT)
+prompt += `[KỶ LUẬT THÉP VỀ TÍNH TOÀN VẸN (BẮT BUỘC)]:\n`;
+prompt += `1. LUẬT TỪ ĐIỂN (Anti-Frankenstein): Tất cả các từ/câu bẫy (foreignText) BẮT BUỘC PHẢI LÀ TỪ/CÂU CÓ THẬT và được sử dụng thực tế. TUYỆT ĐỐI KHÔNG được tự ý lắp ghép chữ Hán/chữ cái/bộ thủ để tạo ra từ vô nghĩa. Bản dịch tiếng Việt phải là nghĩa thực tế của từ đó, không dịch gượng ép ghép chữ.\n`;
+prompt += `2. LUẬT ĐỘC BẢN (Anti-Duplication): ${count} bẫy ngoại ngữ (foreignText) BẮT BUỘC phải là các từ/cụm từ HOÀN TOÀN KHÁC NHAU.\n`;
+prompt += `3. LUẬT LOẠI TRỪ GỐC (Anti-Target Overlap): TUYỆT ĐỐI KHÔNG sử dụng lại từ gốc ("${term}") hoặc từ đồng nghĩa/viết tắt của từ gốc làm bẫy.\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
 if (type !== 'sentence' && hasSeparator) {
