@@ -1938,12 +1938,12 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.91
-// Last Updated: 2026-08-19 14:35
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.92
+// Last Updated: 2026-08-19 15:45
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.92: [SINGLE SOURCE OF TRUTH] Đại tu hàm ai_generateOptions. Xóa bỏ luồng dịch ngược. Ép AI luôn sử dụng Ngoại ngữ làm Gốc để sinh bẫy, sau đó Adapter sẽ lật lại Output tùy theo chế độ Đảo ngược (isReverse) hay Thường. Chấm dứt vĩnh viễn lỗi văn phong Tiếng Việt không tự nhiên.
 // Cập nhật V1.91: [DUAL-LANGUAGE MAPPING] Nâng cấp hàm ai_generateOptions. Ép AI trả về mảng Object chứa cả 'text' (đáp án nhiễu) và 'meaning' (bản dịch) cho riêng Chế độ Từ vựng.
 // Cập nhật V1.90: [MULTI-DIMENSIONAL PROMPT] Nâng cấp lõi đục lỗ ai_mask thành Động cơ 3 Ma trận (Collocation, Grammar, Paraphrase). Gỡ bỏ hoàn toàn Prompt cũ tĩnh. Ép AI đóng vai giám khảo ra đề chuẩn IELTS/TOEIC/HSK, triệt tiêu việc đục lỗ ngẫu nhiên vô nghĩa.
-// Cập nhật V1.89: [SENTENCE DUAL-MUTATION STRATEGY] Xóa bỏ lệnh Hard Prompt cấu trúc cứng nhắc. Tách biệt hoàn toàn chiến lược sinh bẫy câu văn.
 // ==================================================================================
 window.GameAiEngine = {
 // RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
@@ -2058,7 +2058,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options)
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.92 SINGLE SOURCE OF TRUTH
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2069,80 +2069,67 @@ definition = cardOrText;
 term = cardOrText.term;
 definition = cardOrText.definition;
 }
+// XÁC ĐỊNH NGÔN NGỮ GỐC (FOREIGN LANGUAGE) - Bỏ qua distractorLang nếu nó bị Tầng 6 truyền nhầm là 'vi'
+let foreignLang = 'en';
+if (level && level.includes('zh')) foreignLang = 'zh';
+else if (distractorLang === 'zh' || distractorLang === 'en') foreignLang = distractorLang;
+const foreignLangName = foreignLang === 'zh' ? 'Tiếng Trung' : 'Tiếng Anh';
+// LẮP RÁP PROMPT: CHỈ NEO VÀO NGÔN NGỮ GỐC
+let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm.\n`;
+prompt += `[NGUỒN SỰ THẬT DUY NHẤT (SINGLE SOURCE OF TRUTH)]:\n`;
+prompt += `- Mục tiêu gốc (${foreignLangName}): "${term}"\n`;
+prompt += `- Bản dịch chuẩn (Tiếng Việt): "${definition}"\n\n`;
+prompt += `Nhiệm vụ: Dựa CỐT LÕI vào Mục tiêu gốc (${foreignLangName}), hãy tạo ra ${count} BẪY NGOẠI NGỮ (Distractors) bằng ${foreignLangName}. Sau đó, dịch các bẫy này sang Tiếng Việt.\n\n`;
+prompt += `[YÊU CẦU NGHIÊM NGẶT VỀ MẶT NGỮ NGHĨA]:\n`;
+prompt += `Các bẫy ngoại ngữ này PHẢI MANG Ý NGHĨA SAI LỆCH hoặc KHÁC BIỆT so với bản gốc. Để khi dịch sang Tiếng Việt, tạo ra ${count} bản dịch có ngữ nghĩa khác nhau rõ ràng (Tuyệt đối không được dịch trùng với Bản dịch chuẩn).\n\n`;
+if (type === 'sentence') {
+prompt += `[CHIẾN LƯỢC TẠO BẪY CÂU VĂN]:\n`;
+prompt += `- Mẹo thiết kế (Đột biến cấu trúc): Hãy giữ nguyên 70-80% từ vựng của câu gốc để gây lú lẫn.\n`;
+prompt += `- Hãy thay đổi 1-2 tiểu tiết quan trọng (như đổi chủ thể, thay hành động, đổi từ trái nghĩa, hoặc sai lệch mốc thời gian/địa điểm).\n`;
+if (foreignLang === 'zh') {
+prompt += `- Ví dụ: Gốc: "我昨天去看了电影" -> Bẫy: "我明天去看了电影" (Sai thì) -> Dịch: "Ngày mai tôi đã đi xem phim".\n`;
+} else {
+prompt += `- Ví dụ: Gốc: "She is reading a book" -> Bẫy: "She bought a book yesterday" -> Dịch: "Cô ấy đã mua một quyển sách hôm qua".\n`;
+}
+} else {
+prompt += `[CHIẾN LƯỢC TẠO BẪY TỪ VỰNG]:\n`;
+if (foreignLang === 'zh') {
+prompt += `- Ưu tiên: Bẫy đồng âm (Pinyin giống nhau nhưng khác chữ Hán), bẫy sai bộ thủ, mặt chữ Hán gần giống, hoặc từ trái nghĩa/cùng chủ đề.\n`;
+prompt += `- Ví dụ: Gốc: "买" (mua) -> Bẫy: "卖" -> Dịch: "bán".\n`;
+} else {
+prompt += `- Ưu tiên: Bẫy False friends (Từ dễ nhầm lẫn mặt chữ), sai tiền tố/hậu tố, hoặc từ vựng cùng trường nghĩa (cùng chủ đề) nhưng sắc thái khác nhau.\n`;
+prompt += `- Ví dụ: Gốc: "accept" (chấp nhận) -> Bẫy: "except" -> Dịch: "ngoại trừ".\n`;
+}
+prompt += `- Bản dịch Tiếng Việt phải ngắn gọn, tự nhiên và phản ánh đúng nghĩa của bẫy.\n`;
+}
 let microPrompt = "";
-if (isReverse && typeof cardOrText === 'object' && cardOrText !== null) {
+if (cardOrText && typeof cardOrText === 'object') {
 if (cardOrText.grammar_type) {
 const mp = this._getFuzzyMicroPrompt(cardOrText, 'quiz');
-if (mp) {
-microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT (Tạo đáp án sai)]: ${mp}\n`;
-}
-} else {
-microPrompt = `\n[ĐỘNG CƠ TỰ CHẨN ĐOÁN NGỮ PHÁP]: Hãy đóng vai chuyên gia ngôn ngữ. Phân tích câu ngoại ngữ chuẩn này để tìm ra một cấu trúc ngữ pháp cốt lõi (Ví dụ: liên từ, giới từ, trật tự từ, bổ ngữ...). Hãy sinh ra các đáp án nhiễu bằng cách bẻ gãy hoặc dùng sai chính cấu trúc đó. TUYỆT ĐỐI KHÔNG tạo đáp án nhiễu bằng cách dịch sai từ vựng thông thường.\n`;
-}
-}
-let prompt = `Bạn là một chuyên gia ngôn ngữ học chuyên ra đề thi trắc nghiệm.\n`;
-let langStr = distractorLang === 'zh' ? 'Tiếng Trung' : (distractorLang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
-if (!isReverse) {
-prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng TIẾNG VIỆT cho mục tiêu sau.\n`;
-prompt += `Mục tiêu ngoại ngữ: "${term}"\nNghĩa đúng (đáp án chuẩn): "${definition}"\n`;
-prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề với đáp án đúng, đọc rất xuôi tai nhưng mang ý nghĩa sai lệch. Hãy lợi dụng sự hiểu lầm văn cảnh, hoặc nghĩa gần giống nhưng khác sắc thái.\n`;
-if (type === 'sentence') {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "Cô ấy đang đọc sách trong thư viện" -> Nhiễu: ["Cô ấy đã mua sách ở thư viện", "Cô ấy đang viết sách trong thư viện", "Anh ấy đang đọc sách trong thư viện"]\n`;
-prompt += `Mẹo thiết kế (Đột biến tối thiểu): Để tạo bẫy hoàn hảo, hãy giữ nguyên 80% cấu trúc và độ dài của bản dịch chuẩn. Chỉ thay đổi 1 hoặc 2 tiểu tiết (như đổi hành động, thay từ trái nghĩa, hoặc sai lệch mốc thời gian/chủ thể) để lừa học viên. Tuyệt đối không viết một câu hoàn toàn mới khác biệt.\n`;
-} else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "quả táo" -> Nhiễu: [{"text": "quả lê", "meaning": "pear"}, {"text": "quả cam", "meaning": "orange"}]\n`;
-prompt += `Mẹo thiết kế: Hãy tạo các đáp án nhiễu có độ dài và nhịp điệu tương đồng với đáp án chuẩn để tránh bị đoán mò.\n`;
-prompt += `[ĐỊNH DẠNG BẮT BUỘC]: Trả về mảng Object, mỗi Object chứa trường 'text' (đáp án nhiễu bằng Tiếng Việt) và 'meaning' (Bản dịch của đáp án nhiễu đó sang ngoại ngữ gốc).\n`;
-}
-} else {
-prompt += `Nhiệm vụ: Tạo ${count} đáp án sai (nhiễu) bằng ${langStr} cho mục tiêu sau.\n`;
-prompt += `Mục tiêu tiếng Việt: "${definition}"\nNghĩa đúng (đáp án chuẩn): "${term}"\n`;
-prompt += `Ưu tiên: ${count} đáp án sai nên cùng loại từ, cùng chủ đề, và có độ dài tương đối với đáp án đúng. `;
-if (distractorLang === 'zh') {
-prompt += `Bạn có thể tạo bẫy đồng âm (Pinyin giống nhau), sai bộ thủ, hoặc các từ có mặt chữ Hán gần giống nhưng khác nghĩa.\n`;
-if (type === 'sentence') {
-prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "我昨天去看了电影" -> Nhiễu: ["我明天去看了电影" (Sai thì), "我去了看电影昨天" (Sai trật tự từ)]\n`;
-prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ). Bốn đáp án nhìn lướt qua phải trông gần giống hệt nhau để buộc học viên phải soi kỹ từng chữ.\n`;
-} else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "买" (mua) -> Nhiễu: [{"text": "卖", "meaning": "bán"}, {"text": "读", "meaning": "đọc"}, {"text": "看", "meaning": "nhìn"}]\n`;
-prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn. Tránh tình trạng đáp án chuẩn là một cụm từ dài nhưng đáp án nhiễu lại quá ngắn.\n`;
-prompt += `[ĐỊNH DẠNG BẮT BUỘC]: Trả về mảng Object, mỗi Object chứa trường 'text' (đáp án nhiễu bằng ${langStr}) và 'meaning' (Bản dịch của đáp án nhiễu đó sang Tiếng Việt).\n`;
-}
-} else {
-prompt += `Bạn có thể tạo bẫy False friends (Từ dễ nhầm lẫn), sai tiền tố/hậu tố, hoặc cùng trường từ vựng chuyên ngành.\n`;
-if (type === 'sentence') {
-prompt += `Một số ý tưởng (Tạo lỗi ngữ pháp/cấu trúc):\n- Nghĩa chuẩn: "She is reading a book" -> Nhiễu: ["She read a book yesterday" (Sai thì), "She reading a book" (Thiếu to-be)]\n`;
-prompt += `Mẹo thiết kế (Đột biến cấu trúc): Để tạo bẫy ngoại ngữ hoàn hảo, hãy giữ nguyên 80-90% TỪ VỰNG của câu gốc. Đừng thay đổi toàn bộ nghĩa, mà hãy tạo ra các "LỖI SAI NGỮ PHÁP/CẤU TRÚC" vi tế (ví dụ: sai thì, chia sai động từ, thiếu/thừa giới từ, sai trật tự từ).\n`;
-} else {
-prompt += `Một số ý tưởng:\n- Nghĩa đúng: "accept" -> Nhiễu: [{"text": "except", "meaning": "ngoại trừ"}, {"text": "expect", "meaning": "mong đợi"}]\n`;
-prompt += `Mẹo thiết kế: Các đáp án nhiễu nên có độ dài tương đương với đáp án chuẩn.\n`;
-prompt += `[ĐỊNH DẠNG BẮT BUỘC]: Trả về mảng Object, mỗi Object chứa trường 'text' (đáp án nhiễu bằng ${langStr}) và 'meaning' (Bản dịch của đáp án nhiễu đó sang Tiếng Việt).\n`;
-}
+if (mp) microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: ${mp}\n`;
 }
 }
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierOptionsRule) {
-const targetLang = distractorLang === 'zh' ? 'Chinese' : (distractorLang === 'vi' ? 'Vietnamese' : 'English');
+const targetLang = foreignLang === 'zh' ? 'Chinese' : 'English';
 const dataMode = type === 'sentence' ? 'sentence' : 'vocab';
 const oldToNewMap = { level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2', level_3_junior_advanced: 'en_level_3', level_4_discovery_basic: 'en_level_4', level_5_discovery_advanced: 'en_level_5', level_6_pre_ielts: 'en_level_6', level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8', level_9_expert: 'en_level_9' };
 let mappedKey = oldToNewMap[level] || level;
-if (!mappedKey.includes('level_')) mappedKey = distractorLang === 'zh' ? 'zh_level_4' : 'en_level_4';
+if (!mappedKey.includes('level_')) mappedKey = foreignLang === 'zh' ? 'zh_level_4' : 'en_level_4';
 const ruleStr = window.IoeDataEngine.getMicroTierOptionsRule(targetLang, dataMode, mappedKey, topic);
-if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG TẠO NHIỄU]: " + ruleStr;
+if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG TẠO NHIỄU TỪ HỆ THỐNG]: " + ruleStr;
 }
 prompt += microPrompt;
 prompt += injectedRule;
-if (distractorLang !== 'vi') {
 prompt += window.GameAiEngine._getLevelContext(level);
-}
-prompt += `\nHãy trả về ${count} đáp án nhiễu (không bao gồm đáp án đúng).`;
-const itemsSchema = type === 'sentence' ? { type: "STRING" } : {
+// ÉP SCHEMA MỚI DÀNH CHO DUAL-LANGUAGE
+const itemsSchema = {
 type: "OBJECT",
 properties: {
-text: { type: "STRING" },
-meaning: { type: "STRING" }
+foreignText: { type: "STRING", description: `Bẫy nhiễu viết bằng ${foreignLangName}` },
+vietnameseText: { type: "STRING", description: "Bản dịch của bẫy nhiễu sang Tiếng Việt" }
 },
-required: ["text", "meaning"]
+required: ["foreignText", "vietnameseText"]
 };
 const schema = {
 type: "OBJECT",
@@ -2155,7 +2142,24 @@ required: ["reasoning", "distractors"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(res.text);
 const dists = parsed.distractors || [];
-return dists.slice(0, count);
+// ADAPTER PATTERN: Định tuyến đầu ra chuẩn hóa cho Tầng 6
+return dists.map(d => {
+if (!isReverse) {
+// Chế độ Thường (Hỏi Ngoại ngữ -> Chọn Tiếng Việt)
+// Text hiển thị lớn là Tiếng Việt, Meaning (dịch nghĩa ẩn) là Ngoại ngữ
+return {
+text: d.vietnameseText || "Lỗi dịch",
+meaning: d.foreignText || "Lỗi tạo bẫy"
+};
+} else {
+// Chế độ Đảo ngược (Hỏi Tiếng Việt -> Chọn Ngoại ngữ)
+// Text hiển thị lớn là Ngoại ngữ, Meaning (dịch nghĩa ẩn) là Tiếng Việt
+return {
+text: d.foreignText || "Lỗi tạo bẫy",
+meaning: d.vietnameseText || "Lỗi dịch"
+};
+}
+}).slice(0, count);
 },
 // 3. ĐỘNG CƠ SINH RÁC TRỰC TUYẾN (Scramble Noise)
 ai_getNoise: async function(correctText, lang, type, apiKey, count = 2, level = "", topic = "", card = null) {
