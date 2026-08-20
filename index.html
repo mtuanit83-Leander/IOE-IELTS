@@ -1938,9 +1938,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.02
-// Last Updated: 2026-08-20 14:40
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.03
+// Last Updated: 2026-08-20 14:45
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V2.03: [ANTI-LOOPHOLE VACCINE] Vá lỗ hổng AI cố tình bỏ dấu tiếng Việt (VD: Năm ngoái -> Nam ngoai) để lách luật Độc bản. Bổ sung gợi ý đổi chủ đề cho bẫy Chung Gốc.
 // Cập nhật V2.02: [CONTEXT-AWARE ROUTING] Tích hợp thuật toán định tuyến bẫy tiếng Trung theo độ dài từ khóa. Bổ sung bẫy "Chung gốc" (Shared Morpheme) và cấm bẫy Đồng âm nếu từ khóa >= 2 ký tự.
 // Cập nhật V2.01: [VOCABULARY UNCHAINED & HSK 3.0] Cập nhật hàm _getLevelContext. Mở trần từ vựng (cho phép dùng từ N+1, N+2) khi tạo bẫy để tránh hiện tượng AI bí từ dẫn đến lặp từ gốc hoặc rò rỉ Tiếng Anh. Nâng cấp chuẩn HSK 3.0.
 // Cập nhật V2.00: [HYBRID TRAP ROUTING] Tích hợp chiến lược Random + Fallback Funnel.
@@ -2073,7 +2074,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.02 CONTEXT-AWARE ROUTING
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.03 ANTI-LOOPHOLE VACCINE
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2095,12 +2096,12 @@ prompt += `[SỰ THẬT DUY NHẤT]:\n`;
 prompt += `- Gốc (${foreignLangName}): "${term}"\n`;
 prompt += `- Nghĩa (Việt): "${definition}"\n\n`;
 prompt += `Nhiệm vụ: Tạo ${count} BẪY NGOẠI NGỮ bằng ${foreignLangName} dựa trên từ gốc. Sau đó dịch sang Tiếng Việt.\n\n`;
-// KỶ LUẬT THÉP V2.01 (CẤM NHẢ NGOẠI NGỮ KHÁC & ÉP DÙNG TỪ ĐIỂN THẬT DÙ BÍ TỪ)
+// KỶ LUẬT THÉP V2.03 (CẤM LÁCH LUẬT BỎ DẤU & CHỐNG RÒ RỈ)
 prompt += `[KỶ LUẬT THÉP BẮT BUỘC]:\n`;
 prompt += `1. CHỐNG RÒ RỈ: Trường 'foreignText' BẮT BUỘC CHỈ CHỨA ${foreignLangName}. TUYỆT ĐỐI CẤM chứa Tiếng Anh, Tiếng Việt hay bất kỳ ngôn ngữ nào khác.\n`;
-prompt += `2. ĐỘC BẢN 2 CHIỀU:\n`;
+prompt += `2. ĐỘC BẢN 2 CHIỀU & CHỐNG LÁCH LUẬT:\n`;
 prompt += `   - Cả 3 'foreignText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC TỪ GỐC ("${term}").\n`;
-prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}").\n`;
+prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}"). TUYỆT ĐỐI KHÔNG dùng từ đồng nghĩa, hoặc cố tình viết sai chính tả/bỏ dấu Tiếng Việt để lách luật. Nghĩa tiếng Việt của bẫy phải KHÁC BIỆT HOÀN TOÀN về mặt bản chất sự vật/sự việc so với từ gốc.\n`;
 prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. TUYỆT ĐỐI KHÔNG dùng lại từ gốc ("${term}"). Nếu bí từ, hãy dùng từ ở cấp độ khó hơn, CẤM lặp lại từ gốc!\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
@@ -2111,7 +2112,7 @@ if (type === 'sentence') {
 prompt += `[TẠO BẪY CÂU VĂN]:\n`;
 prompt += `- Giữ nguyên 70-80% từ vựng của câu gốc. Thay đổi 1-2 tiểu tiết quan trọng (đổi chủ thể, hành động, trái nghĩa, thời gian).\n`;
 } else {
-// [V2.02] CHIẾN LƯỢC TẠO BẪY ĐỊNH TUYẾN THEO ĐỘ DÀI KÝ TỰ (CONTEXT-AWARE ROUTING)
+// [V2.03] CHIẾN LƯỢC TẠO BẪY ĐỊNH TUYẾN THEO ĐỘ DÀI KÝ TỰ & TƯ DUY CHUNG GỐC
 prompt += `[CHIẾN LƯỢC TẠO BẪY (HYBRID FUNNEL)]:\n`;
 let primaryTrap = "";
 let fallbackTraps = "";
@@ -2122,14 +2123,14 @@ if (termLen === 1) {
 // Hỗ trợ cả 4 loại bẫy cho từ đơn
 traps = [
 { name: "Đồng âm/Gần âm (Pinyin)", desc: "Đọc giống hoặc gần giống nhưng viết khác, nghĩa khác (VD: '报' -> '抱')" },
-{ name: "Từ ghép chung gốc/Bán đồng hình", desc: "Có chứa chung 1 chữ Hán với từ gốc (VD: '快' -> '块')" },
+{ name: "Từ ghép chung gốc/Bán đồng hình", desc: "Có chứa chung 1 chữ Hán hoặc bộ thủ với từ gốc (VD: '快' -> '块')" },
 { name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với từ gốc (VD: '大' -> '小')" },
 { name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc nhưng sai đối tượng (VD: '狗' -> '猫')" }
 ];
 } else {
 // Cấm Đồng âm nếu từ >= 2 chữ
 traps = [
-{ name: "Từ ghép chung gốc/Bán đồng hình (Shared Morpheme)", desc: "Tìm một từ ghép khác có chứa CHUNG 1 CHỮ HÁN với từ gốc (VD: '开心' -> '关心', '图书馆' -> '博物馆')" },
+{ name: "Từ ghép chung gốc/Bán đồng hình (Shared Morpheme)", desc: "Tìm một từ ghép khác có chứa CHUNG 1 CHỮ HÁN với từ gốc. (Chiến thuật này rất hiệu quả để thoát khỏi sự gò bó của chủ đề gốc. Ví dụ gốc là Thời gian, hãy mượn chữ Hán để tạo bẫy về Hành động. VD: '去年' năm ngoái -> '失去' mất đi, '开心' vui vẻ -> '关心' quan tâm)" },
 { name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với từ gốc (VD: '安全' -> '危险')" },
 { name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc nhưng sai đối tượng (VD: '苹果' -> '香蕉')" }
 ];
