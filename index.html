@@ -1938,9 +1938,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.97
-// Last Updated: 2026-08-19 17:30
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.98
+// Last Updated: 2026-08-20 11:15
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.98: [STRICT ANTI-BLEEDING] Bổ sung bộ luật 3 bước (Độc bản 2 chiều, cấm tiếng Anh/Việt rò rỉ vào foreignText) cho hàm generateOptions.
 // Cập nhật V1.97: [SPEED OPTIMIZATION] Xóa bỏ "Bẫy Hình thể/Bộ thủ" gây quá tải Token-Vision cho LLM. Thêm "Bẫy Cùng trường từ vựng". Siết chặt Schema ép vietnameseText tuyệt đối không chứa ngoại ngữ.
 // Cập nhật V1.96: [CHAIN-OF-THOUGHT] Nâng cấp JSON Schema, ép AI điền `reasoning` trước khi xuất distractors.
 // Cập nhật V1.95: [ANTI-HALLUCINATION] Bổ sung "Kỷ luật thép 2.0" (Luật Từ điển, Độc bản, Loại trừ gốc).
@@ -2061,7 +2062,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.97 TỐI ƯU TỐC ĐỘ & CHỐNG CHẢY MÁU NGÔN NGỮ
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.98 TỐI ƯU TỐC ĐỘ & CHỐNG CHẢY MÁU NGÔN NGỮ
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2076,18 +2077,20 @@ definition = cardOrText.definition;
 let foreignLang = 'en';
 if (level && level.includes('zh')) foreignLang = 'zh';
 else if (distractorLang === 'zh' || distractorLang === 'en') foreignLang = distractorLang;
-const foreignLangName = foreignLang === 'zh' ? 'Tiếng Trung' : 'Tiếng Anh';
+const foreignLangName = foreignLang === 'zh' ? 'TIẾNG TRUNG' : 'TIẾNG ANH';
 // LẮP RÁP PROMPT: CHỈ NEO VÀO NGÔN NGỮ GỐC
 let prompt = `Bạn là chuyên gia ngôn ngữ học chuyên ra đề trắc nghiệm.\n`;
 prompt += `[SỰ THẬT DUY NHẤT]:\n`;
 prompt += `- Gốc (${foreignLangName}): "${term}"\n`;
 prompt += `- Nghĩa (Việt): "${definition}"\n\n`;
 prompt += `Nhiệm vụ: Tạo ${count} BẪY NGOẠI NGỮ bằng ${foreignLangName} dựa trên từ gốc. Sau đó dịch sang Tiếng Việt.\n\n`;
-// KỶ LUẬT THÉP 2.0 (CHỐNG ẢO GIÁC & LÁCH LUẬT)
+// KỶ LUẬT THÉP V1.98 (CHỐNG ẢO GIÁC, ĐỘC BẢN & LÁCH LUẬT)
 prompt += `[KỶ LUẬT THÉP BẮT BUỘC]:\n`;
-prompt += `1. TỪ ĐIỂN: Bẫy ngoại ngữ PHẢI LÀ TỪ CÓ THẬT. Không ghép chữ vô nghĩa.\n`;
-prompt += `2. ĐỘC BẢN: ${count} bẫy PHẢI HOÀN TOÀN KHÁC NHAU.\n`;
-prompt += `3. LOẠI TRỪ: TUYỆT ĐỐI KHÔNG dùng lại từ gốc ("${term}") hoặc từ đồng nghĩa của nó.\n\n`;
+prompt += `1. CHỐNG RÒ RỈ: Trường 'foreignText' BẮT BUỘC CHỈ CHỨA ${foreignLangName}. Tuyệt đối KHÔNG chứa Tiếng Việt, Tiếng Anh hay bất kỳ ngoại ngữ nào khác.\n`;
+prompt += `2. ĐỘC BẢN 2 CHIỀU:\n`;
+prompt += `   - Cả 3 'foreignText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC TỪ GỐC ("${term}").\n`;
+prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}").\n`;
+prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. Tuyệt đối không dùng lại từ gốc hoặc từ đồng nghĩa có bản dịch giống hệt từ gốc.\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
 if (type !== 'sentence' && hasSeparator) {
@@ -2129,11 +2132,11 @@ if (mp) microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: ${mp}\n`;
 }
 prompt += microPrompt;
 prompt += window.GameAiEngine._getLevelContext(level);
-// [V1.97] ÉP SCHEMA MỚI: CHỐNG LỘN NGÔN NGỮ (ANTI-BLEEDING)
+// [V1.98] ÉP SCHEMA MỚI: CHỐNG LỘN NGÔN NGỮ (ANTI-BLEEDING)
 const itemsSchema = {
 type: "OBJECT",
 properties: {
-foreignText: { type: "STRING", description: `Bẫy viết bằng ${foreignLangName} (KHÔNG CHỨA TIẾNG VIỆT)` },
+foreignText: { type: "STRING", description: `Bẫy viết bằng ${foreignLangName} (KHÔNG CHỨA TIẾNG VIỆT HAY NGOẠI NGỮ KHÁC)` },
 vietnameseText: { type: "STRING", description: "Bản dịch tiếng Việt (TUYỆT ĐỐI KHÔNG CHỨA CHỮ HÁN/PINYIN HAY NGOẠI NGỮ KHÁC)" }
 },
 required: ["foreignText", "vietnameseText"]
