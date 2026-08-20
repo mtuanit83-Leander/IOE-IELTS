@@ -1938,9 +1938,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.98
-// Last Updated: 2026-08-20 11:15
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 1.99
+// Last Updated: 2026-08-20 11:40
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V1.99: [FLEXIBLE TRAP ROUTING] Hủy bỏ bốc thăm ngẫu nhiên 1 loại bẫy. Cho phép AI tự định tuyến chiến thuật bẫy (Ưu tiên Đồng âm/Mặt chữ -> Fallback sang Chủ đề/Trái nghĩa) để triệt tiêu hội chứng "Chế từ rác" (Frankenstein Words) do bị ép buộc logic.
 // Cập nhật V1.98: [STRICT ANTI-BLEEDING] Bổ sung bộ luật 3 bước (Độc bản 2 chiều, cấm tiếng Anh/Việt rò rỉ vào foreignText) cho hàm generateOptions.
 // Cập nhật V1.97: [SPEED OPTIMIZATION] Xóa bỏ "Bẫy Hình thể/Bộ thủ" gây quá tải Token-Vision cho LLM. Thêm "Bẫy Cùng trường từ vựng". Siết chặt Schema ép vietnameseText tuyệt đối không chứa ngoại ngữ.
 // Cập nhật V1.96: [CHAIN-OF-THOUGHT] Nâng cấp JSON Schema, ép AI điền `reasoning` trước khi xuất distractors.
@@ -2062,7 +2063,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.98 TỐI ƯU TỐC ĐỘ & CHỐNG CHẢY MÁU NGÔN NGỮ
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V1.99 FLEXIBLE TRAP ROUTING
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2090,7 +2091,7 @@ prompt += `1. CHỐNG RÒ RỈ: Trường 'foreignText' BẮT BUỘC CHỈ CHỨ
 prompt += `2. ĐỘC BẢN 2 CHIỀU:\n`;
 prompt += `   - Cả 3 'foreignText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC TỪ GỐC ("${term}").\n`;
 prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}").\n`;
-prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. Tuyệt đối không dùng lại từ gốc hoặc từ đồng nghĩa có bản dịch giống hệt từ gốc.\n\n`;
+prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. Tuyệt đối không tự chế từ, tự ghép chữ vô nghĩa hoặc dùng lại từ gốc.\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
 if (type !== 'sentence' && hasSeparator) {
@@ -2100,29 +2101,30 @@ if (type === 'sentence') {
 prompt += `[TẠO BẪY CÂU VĂN]:\n`;
 prompt += `- Giữ nguyên 70-80% từ vựng của câu gốc. Thay đổi 1-2 tiểu tiết quan trọng (đổi chủ thể, hành động, trái nghĩa, thời gian).\n`;
 } else {
-// CHIẾN LƯỢC TẠO BẪY TỪ VỰNG - ĐÃ XÓA BẪY BỘ THỦ VÌ QUÁ TẢI TOKEN
-let selectedTrap = "";
+// [V1.99] CHIẾN LƯỢC TẠO BẪY TỪ VỰNG - ĐỊNH TUYẾN LINH HOẠT (FLEXIBLE TRAP ROUTING)
+prompt += `[CHIẾN LƯỢC TẠO BẪY (FLEXIBLE ROUTING)]:\n`;
 if (foreignLang === 'zh') {
-const zhTraps = [
-`Bẫy Đồng âm/Gần âm (Pinyin): Đọc giống hoặc gần giống nhau nhưng viết khác và nghĩa khác hoàn toàn. Ví dụ: Gốc "报" (Báo cáo) -> Bẫy "抱" -> Dịch "Ôm".`,
-`Bẫy Logic (Trái nghĩa/Tương phản): Sai lệch hoàn toàn về nghĩa cốt lõi. Ví dụ: Gốc "安全" (An toàn) -> Bẫy "危险" -> Dịch "Nguy hiểm".`,
-`Bẫy Chủ đề (Cùng trường từ vựng): Cùng loại sự vật/sự việc nhưng sai đối tượng. Ví dụ: Gốc "苹果" (Quả táo) -> Bẫy "香蕉" -> Dịch "Quả chuối".`
-];
-selectedTrap = zhTraps[Math.floor(Math.random() * zhTraps.length)];
+prompt += `Danh sách các loại bẫy hợp lệ:\n`;
+prompt += `- Bẫy Đồng âm/Gần âm (Pinyin): Đọc giống/gần giống nhưng viết khác, nghĩa khác (VD: "报" -> "抱").\n`;
+prompt += `- Bẫy Trái nghĩa/Tương phản: Nghĩa đối lập hoàn toàn (VD: "安全" -> "危险").\n`;
+prompt += `- Bẫy Chủ đề (Cùng trường từ vựng): Cùng loại sự vật/sự việc nhưng sai đối tượng (VD: "苹果" -> "香蕉").\n\n`;
+prompt += `CHỈ THỊ XẾP HẠNG ƯU TIÊN (PRIORITY):\n`;
+prompt += `> BƯỚC 1: BẮT BUỘC ƯU TIÊN sử dụng "Bẫy Đồng âm/Gần âm/Mặt chữ" trước tiên để tạo sự nhầm lẫn cao nhất.\n`;
+prompt += `> BƯỚC 2: CHỈ KHI NÀO từ gốc quá đặc thù, KHÔNG có từ đồng âm CÓ THẬT trong từ điển, bạn mới được phép chuyển sang "Bẫy Trái nghĩa" hoặc "Bẫy Chủ đề" làm phương án cứu cánh.\n`;
+prompt += `> BƯỚC 3: Bạn có thể kết hợp linh hoạt nhiều loại bẫy khác nhau cho 3 đáp án nhiễu để đảm bảo 100% các từ sinh ra đều là TỪ CÓ THẬT.\n`;
 } else {
-const enTraps = [
-`Bẫy Mặt chữ (Lookalikes): Các từ sai khác 1-2 ký tự, dễ nhìn nhầm. Ví dụ: "desert" -> Bẫy "dessert".`,
-`Bẫy Đồng âm (Homophones): Đọc giống nhau nhưng khác nghĩa. Ví dụ: "knight" -> Bẫy "night".`,
-`Bẫy Hình thái từ (Sai Tiền tố/Hậu tố): Cùng gốc từ nhưng sai loại/nghĩa. Ví dụ: "historic" -> Bẫy "historical".`,
-`Bẫy Logic (Trái nghĩa/Cùng chủ đề): Đánh vào suy luận ngữ nghĩa sai. Ví dụ: "anxious" -> Bẫy "eager".`
-];
-selectedTrap = enTraps[Math.floor(Math.random() * enTraps.length)];
+prompt += `Danh sách các loại bẫy hợp lệ:\n`;
+prompt += `- Bẫy Mặt chữ/Đồng âm (Lookalikes/Homophones): Sai khác 1-2 ký tự hoặc phát âm giống nhưng viết khác (VD: "desert" -> "dessert").\n`;
+prompt += `- Bẫy Hình thái từ: Cùng gốc từ nhưng sai tiền tố/hậu tố/từ loại (VD: "historic" -> "historical").\n`;
+prompt += `- Bẫy Logic: Trái nghĩa hoặc cùng nhóm chủ đề (VD: "anxious" -> "eager").\n\n`;
+prompt += `CHỈ THỊ XẾP HẠNG ƯU TIÊN (PRIORITY):\n`;
+prompt += `> BƯỚC 1: BẮT BUỘC ƯU TIÊN sử dụng "Bẫy Mặt chữ/Đồng âm" trước tiên để tạo sự nhầm lẫn.\n`;
+prompt += `> BƯỚC 2: CHỈ KHI NÀO không tìm được từ vựng hợp lý, bạn mới được phép linh hoạt chuyển sang "Bẫy Hình thái" hoặc "Bẫy Logic".\n`;
+prompt += `> BƯỚC 3: Có thể kết hợp các loại bẫy khác nhau. MIỄN LÀ 100% từ sinh ra phải là từ CÓ THẬT trong từ điển.\n`;
 }
-prompt += `[CHIẾN LƯỢC TẠO BẪY BẮT BUỘC]:\n`;
-prompt += `- Bạn PHẢI áp dụng DUY NHẤT chiến thuật sau để tạo cả ${count} bẫy: "${selectedTrap}"\n`;
 }
 // [V1.97] ÉP TƯ DUY RÚT GỌN (TĂNG TỐC ĐỘ API)
-prompt += `\n[QUY TRÌNH TƯ DUY]: Trong JSON, điền trường 'reasoning' TRƯỚC TIÊN (Chỉ ghi 1 câu ngắn gọn giải thích luật tạo bẫy để tránh quá tải).\n`;
+prompt += `\n[QUY TRÌNH TƯ DUY]: Trong JSON, điền trường 'reasoning' TRƯỚC TIÊN (Chỉ ghi 1 câu ngắn gọn giải thích logic định tuyến bẫy để tránh quá tải Token).\n`;
 let microPrompt = "";
 if (cardOrText && typeof cardOrText === 'object') {
 if (cardOrText.grammar_type) {
