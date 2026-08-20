@@ -1938,15 +1938,14 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.03
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.04
 // Last Updated: 2026-08-20 14:45
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V2.04: [DATA ISOLATION] Gỡ bỏ toàn bộ ví dụ minh họa bằng từ vựng thực tế (Hardcoded Examples) trong cấu trúc Prompt tạo bẫy. Sử dụng mô tả logic trừu tượng để triệt tiêu hội chứng "Xung đột Chỉ thị - Dữ liệu" (Prompt Overfitting) gây ra lỗi lặp từ gốc khi đầu vào trùng khớp với ví dụ.
 // Cập nhật V2.03: [ANTI-LOOPHOLE VACCINE] Vá lỗ hổng AI cố tình bỏ dấu tiếng Việt (VD: Năm ngoái -> Nam ngoai) để lách luật Độc bản. Bổ sung gợi ý đổi chủ đề cho bẫy Chung Gốc.
 // Cập nhật V2.02: [CONTEXT-AWARE ROUTING] Tích hợp thuật toán định tuyến bẫy tiếng Trung theo độ dài từ khóa. Bổ sung bẫy "Chung gốc" (Shared Morpheme) và cấm bẫy Đồng âm nếu từ khóa >= 2 ký tự.
 // Cập nhật V2.01: [VOCABULARY UNCHAINED & HSK 3.0] Cập nhật hàm _getLevelContext. Mở trần từ vựng (cho phép dùng từ N+1, N+2) khi tạo bẫy để tránh hiện tượng AI bí từ dẫn đến lặp từ gốc hoặc rò rỉ Tiếng Anh. Nâng cấp chuẩn HSK 3.0.
 // Cập nhật V2.00: [HYBRID TRAP ROUTING] Tích hợp chiến lược Random + Fallback Funnel.
-// Cập nhật V1.99: [FLEXIBLE TRAP ROUTING] Cho phép AI tự định tuyến chiến thuật bẫy.
-// Cập nhật V1.98: [STRICT ANTI-BLEEDING] Bổ sung bộ luật 3 bước (Độc bản 2 chiều, cấm ngoại ngữ rò rỉ).
 // ==================================================================================
 window.GameAiEngine = {
 // [V2.01] RADAR NHẬN DIỆN TRÌNH ĐỘ - Hỗ trợ Mở trần Từ vựng & HSK 3.0
@@ -2051,13 +2050,14 @@ properties: { wrongWord: { type: "STRING" }, explanation: { type: "STRING" } },
 required: ["wrongWord", "explanation"]
 };
 } else {
+// [V2.04] Trừu tượng hóa ví dụ
 let examples = "";
 if (lang === 'zh') {
-examples = `Một số ý tưởng:\n- [Thay thế 1 chữ] Câu đúng: "他在学习", Câu sai: "她在学习"\n- [Thay thế trái nghĩa] Câu đúng: "天气很好", Câu sai: "天气很坏"\n- [Thay thế từ ngữ pháp] Câu đúng: "跑得快", Câu sai: "跑地快"\n- [Thay thế CỤM TỪ - Nhiều chữ] Câu đúng: "我很兴奋", Câu sai: "我感到悲伤"\n- [Thay thế Thành ngữ] Câu đúng: "人山人海", Câu sai: "人山人水"\n- [Thêm 1 chữ] Câu đúng: "很好", Câu sai: "很好的"\n- [Thêm nhiều chữ] Câu đúng: "我们吃饭", Câu sai: "我们马上吃饭"`;
+examples = `Một số ý tưởng bẻ gãy cấu trúc:\n- [Thay thế 1 chữ] Dùng đại từ sai giới tính, sai thì.\n- [Thay thế trái nghĩa] Đổi tính từ thành nghĩa đối lập.\n- [Thay thế từ ngữ pháp] Dùng sai các trợ từ kết cấu (như de), lượng từ.\n- [Thay thế CỤM TỪ - Nhiều chữ] Thay thế một biểu cảm bằng một trạng thái hoàn toàn khác.\n- [Thêm/Bớt chữ] Thêm từ thừa thãi làm hỏng logic câu.`;
 } else if (lang === 'en') {
-examples = `Một số ý tưởng:\n- [Thay thế 1 từ] Câu đúng: "I go to school", Câu sai: "I goes to school"\n- [Thay thế trái nghĩa] Câu đúng: "It is very hot today", Câu sai: "It is very cold today"\n- [Thay thế CỤM TỪ] Câu đúng: "I am looking forward to it", Câu sai: "I am looking backward to it"\n- [Thay thế CỤM TỪ] Câu đúng: "It is raining cats and dogs", Câu sai: "It is raining dogs and cats"\n- [Thêm từ] Câu đúng: "I like apples", Câu sai: "I like the apples"`;
+examples = `Một số ý tưởng bẻ gãy cấu trúc:\n- [Thay thế 1 từ] Dùng sai thì của động từ, sai đại từ.\n- [Thay thế trái nghĩa] Đổi tính từ thành nghĩa đối lập.\n- [Thay thế CỤM TỪ] Đảo lộn trật tự các từ trong một thành ngữ hoặc cụm cố định.\n- [Thêm từ] Thêm mạo từ hoặc giới từ thừa thãi vào câu.`;
 } else {
-examples = `Một số ý tưởng:\n- [Thay thế từ] Câu đúng: "Tôi đi học", Câu sai: "Tôi đi làm"\n- [Thay thế trái nghĩa] Câu đúng: "Hôm nay trời rất nóng", Câu sai: "Hôm nay trời rất lạnh"\n- [Thay thế CỤM TỪ] Câu đúng: "Chó cắn áo rách", Câu sai: "Chó cắn quần rách"\n- [Thêm từ] Câu đúng: "Tôi thích ăn táo", Câu sai: "Tôi thích ăn quả táo"`;
+examples = `Một số ý tưởng bẻ gãy cấu trúc:\n- [Thay thế từ] Dùng sai động từ hoạt động.\n- [Thay thế trái nghĩa] Đổi tính từ thành nghĩa đối lập.\n- [Thêm từ] Thêm các từ thừa làm câu trở nên ngô nghê.`;
 }
 prompt = `Ngữ cảnh: "${text}". Ngôn ngữ: ${langStr}.\n`;
 prompt += `Nhiệm vụ: Đóng vai một giáo viên, hãy tạo ra một lỗi sai tinh vi (về ngữ pháp hoặc ngữ cảnh) trong câu này. Lỗi sai này có thể là 1 từ duy nhất, hoặc một cụm từ. Hãy tự do thay thế một cụm từ đúng bằng một cụm từ sai logic/ngữ pháp để thử thách người học.\n`;
@@ -2074,7 +2074,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.03 ANTI-LOOPHOLE VACCINE
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.04 DATA ISOLATION
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2106,13 +2106,13 @@ prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT 
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
 if (type !== 'sentence' && hasSeparator) {
-prompt += `[NGỤY TRANG HÌNH THỂ]: Bản dịch chuẩn có dấu phân cách (, /). Bản dịch tiếng Việt của CẢ ${count} bẫy CŨNG PHẢI bắt chước cấu trúc liệt kê này (VD: "Đặc điểm, tính chất" -> Bẫy: "Khuyết điểm, điểm yếu").\n\n`;
+prompt += `[NGỤY TRANG HÌNH THỂ]: Bản dịch chuẩn có dấu phân cách (, /). Bản dịch tiếng Việt của CẢ ${count} bẫy CŨNG PHẢI bắt chước cấu trúc liệt kê này (VD: Nếu gốc là 2 tính từ, bẫy cũng phải là liệt kê 2 tính từ khác).\n\n`;
 }
 if (type === 'sentence') {
 prompt += `[TẠO BẪY CÂU VĂN]:\n`;
 prompt += `- Giữ nguyên 70-80% từ vựng của câu gốc. Thay đổi 1-2 tiểu tiết quan trọng (đổi chủ thể, hành động, trái nghĩa, thời gian).\n`;
 } else {
-// [V2.03] CHIẾN LƯỢC TẠO BẪY ĐỊNH TUYẾN THEO ĐỘ DÀI KÝ TỰ & TƯ DUY CHUNG GỐC
+// [V2.04] CÁCH LY DỮ LIỆU - Gỡ bỏ toàn bộ ví dụ cụ thể
 prompt += `[CHIẾN LƯỢC TẠO BẪY (HYBRID FUNNEL)]:\n`;
 let primaryTrap = "";
 let fallbackTraps = "";
@@ -2120,19 +2120,17 @@ if (foreignLang === 'zh') {
 let traps = [];
 const termLen = term.trim().length;
 if (termLen === 1) {
-// Hỗ trợ cả 4 loại bẫy cho từ đơn
 traps = [
-{ name: "Đồng âm/Gần âm (Pinyin)", desc: "Đọc giống hoặc gần giống nhưng viết khác, nghĩa khác (VD: '报' -> '抱')" },
-{ name: "Từ ghép chung gốc/Bán đồng hình", desc: "Có chứa chung 1 chữ Hán hoặc bộ thủ với từ gốc (VD: '快' -> '块')" },
-{ name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với từ gốc (VD: '大' -> '小')" },
-{ name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc nhưng sai đối tượng (VD: '狗' -> '猫')" }
+{ name: "Đồng âm/Gần âm (Pinyin)", desc: "Đọc giống hoặc gần giống nhưng viết khác, nghĩa hoàn toàn khác." },
+{ name: "Từ ghép chung gốc/Bán đồng hình", desc: "Có chứa chung 1 nét hoặc bộ thủ với từ gốc nhưng khác ý nghĩa." },
+{ name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với từ vựng gốc." },
+{ name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc nhưng sai đối tượng cụ thể." }
 ];
 } else {
-// Cấm Đồng âm nếu từ >= 2 chữ
 traps = [
-{ name: "Từ ghép chung gốc/Bán đồng hình (Shared Morpheme)", desc: "Tìm một từ ghép khác có chứa CHUNG 1 CHỮ HÁN với từ gốc. (Chiến thuật này rất hiệu quả để thoát khỏi sự gò bó của chủ đề gốc. Ví dụ gốc là Thời gian, hãy mượn chữ Hán để tạo bẫy về Hành động. VD: '去年' năm ngoái -> '失去' mất đi, '开心' vui vẻ -> '关心' quan tâm)" },
-{ name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với từ gốc (VD: '安全' -> '危险')" },
-{ name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc nhưng sai đối tượng (VD: '苹果' -> '香蕉')" }
+{ name: "Từ ghép chung gốc/Bán đồng hình (Shared Morpheme)", desc: "Tìm một từ ghép khác có chứa CHUNG 1 CHỮ HÁN với từ gốc. (Chiến thuật này rất hiệu quả để thoát khỏi sự gò bó của chủ đề gốc. Ví dụ: Nếu từ gốc là danh từ chỉ Thời gian, hãy mượn 1 chữ Hán để tạo bẫy là một Hành động mang ý nghĩa hoàn toàn khác biệt)." },
+{ name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với bản chất của từ gốc." },
+{ name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc/động từ nhưng sai đối tượng." }
 ];
 }
 const selectedIdx = Math.floor(Math.random() * traps.length);
@@ -2145,9 +2143,9 @@ prompt += `> BƯỚC 2 - LỐI THOÁT HIỂM AN TOÀN: CHỈ KHI NÀO từ gốc
 prompt += `> BƯỚC 3 - QUYẾT ĐỊNH: Bạn có thể kết hợp linh hoạt, MIỄN LÀ 100% các từ sinh ra đều là TỪ CÓ THẬT TRONG TỪ ĐIỂN, tuyệt đối không tự chế từ vô nghĩa.\n`;
 } else {
 const traps = [
-{ name: "Mặt chữ/Đồng âm (Lookalikes)", desc: "Sai khác 1-2 ký tự hoặc phát âm giống nhưng viết khác (VD: 'desert' -> 'dessert')" },
-{ name: "Hình thái từ (Morphology)", desc: "Cùng gốc từ nhưng sai tiền tố/hậu tố/từ loại (VD: 'historic' -> 'historical')" },
-{ name: "Logic (Trái nghĩa/Cùng chủ đề)", desc: "Trái nghĩa hoàn toàn hoặc cùng nhóm chủ đề liên quan (VD: 'anxious' -> 'eager')" }
+{ name: "Mặt chữ/Đồng âm (Lookalikes)", desc: "Sai khác 1-2 ký tự hoặc phát âm giống nhưng viết hoàn toàn khác." },
+{ name: "Hình thái từ (Morphology)", desc: "Cùng gốc từ nhưng sai tiền tố/hậu tố/từ loại." },
+{ name: "Logic (Trái nghĩa/Cùng chủ đề)", desc: "Trái nghĩa hoàn toàn hoặc cùng nhóm chủ đề liên quan." }
 ];
 const selectedIdx = Math.floor(Math.random() * traps.length);
 primaryTrap = traps[selectedIdx];
@@ -2231,13 +2229,6 @@ const langStr = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh'
 prompt = `Ngữ cảnh câu: "${correctText}". Ngôn ngữ: ${langStr}.\n`;
 prompt += `Nhiệm vụ: Đóng vai một giáo viên chuyên môn, hãy tạo ra ${count} từ vựng làm nhiễu (Distractors) để người học sắp xếp câu.\n`;
 prompt += `Chiến lược: Ưu tiên chọn các từ CÙNG TỪ LOẠI (Danh từ, Động từ...) với các từ trong câu nhưng mang ngữ cảnh sai lệch, sao cho khi người học cố tình ghép vào câu sẽ tạo ra lỗi ngữ pháp hoặc vô nghĩa.\n\n`;
-if (lang === 'zh') {
-prompt += `Một số ý tưởng:\n- Câu gốc "我们吃饭" -> Từ nhiễu: ["马", "跑"]\n- Câu gốc "天气很好" -> Từ nhiễu: ["坏", "去"]\n`;
-} else if (lang === 'en') {
-prompt += `Một số ý tưởng:\n- Câu gốc "I go to school" -> Từ nhiễu: ["went", "cars"]\n- Câu gốc "She is beautiful" -> Từ nhiễu: ["are", "ugly"]\n`;
-} else {
-prompt += `Một số ý tưởng:\n- Câu gốc "Tôi đi học" -> Từ nhiễu: ["đã", "chạy"]\n`;
-}
 }
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierNoiseRule) {
@@ -2299,17 +2290,6 @@ prompt += `- Gợi ý (hint): TUYỆT ĐỐI KHÔNG DỊCH SANG TIẾNG VIỆT. 
 prompt += `\n[QUY TẮC ĐỤC LỖ CHUNG]:\n`;
 prompt += `- Phải thay thế từ bị đục trong câu bằng chuỗi "[__________]" (chính xác 10 dấu gạch dưới).\n`;
 prompt += `- Phải giữ nguyên dấu câu xung quanh (chấm, phẩy).\n`;
-let examples = "\n[VÍ DỤ MINH HỌA - ĐẦU RA YÊU CẦU]:\n";
-if (lang === 'zh') {
-examples += `- Strategy 1 (Collocation): Câu "她做出了决定。" -> displaySentence: "她[__________]出了决定。", targetWord: "做", distractors: ["拿", "给", "打"], hint: "tạo ra (đi với 决定)"\n`;
-examples += `- Strategy 2 (Grammar): Câu "我对艺术感兴趣。" -> displaySentence: "我[__________]艺术感兴趣。", targetWord: "对", distractors: ["在", "和", "给"], hint: "Giới từ đi với 感兴趣"\n`;
-examples += `- Strategy 3 (Paraphrase): Câu "价格快速下降。" -> displaySentence: "价格快速[__________]。", targetWord: "下降", distractors: ["发展", "成功", "上升"], hint: "减少 / 跌落 (Paraphrase)"\n`;
-} else if (lang === 'en') {
-examples += `- Strategy 1 (Collocation): Câu "She made a mistake." -> displaySentence: "She [__________] a mistake.", targetWord: "made", distractors: ["did", "took", "had"], hint: "làm, tạo ra"\n`;
-examples += `- Strategy 2 (Grammar): Câu "He is interested in art." -> displaySentence: "He is interested [__________] art.", targetWord: "in", distractors: ["on", "at", "of"], hint: "Giới từ đi với interested"\n`;
-examples += `- Strategy 3 (Paraphrase): Câu "There was a fast decline in price." -> displaySentence: "There was a fast [__________] in price.", targetWord: "decline", distractors: ["development", "success", "increase"], hint: "decrease / drop (Paraphrase)"\n`;
-}
-prompt += examples;
 let injectedRule = "";
 if (window.IoeDataEngine && window.IoeDataEngine.getMicroTierClozeRule) {
 const dataMode = 'sentence';
