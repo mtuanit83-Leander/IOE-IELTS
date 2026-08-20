@@ -1938,9 +1938,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.04
-// Last Updated: 2026-08-20 14:45
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.05
+// Last Updated: 2026-08-20 15:17
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V2.05: [AFFIRMATIVE ENFORCEMENT] Khắc phục nghịch lý phủ định (Pink Elephant Paradox) gây mất dấu Tiếng Việt bằng cách gỡ bỏ từ khóa phủ định và siết chặt lệnh Khẳng định tuyệt đối vào mô tả JSON Schema.
 // Cập nhật V2.04: [DATA ISOLATION] Gỡ bỏ toàn bộ ví dụ minh họa bằng từ vựng thực tế (Hardcoded Examples) trong cấu trúc Prompt tạo bẫy. Sử dụng mô tả logic trừu tượng để triệt tiêu hội chứng "Xung đột Chỉ thị - Dữ liệu" (Prompt Overfitting) gây ra lỗi lặp từ gốc khi đầu vào trùng khớp với ví dụ.
 // Cập nhật V2.03: [ANTI-LOOPHOLE VACCINE] Vá lỗ hổng AI cố tình bỏ dấu tiếng Việt (VD: Năm ngoái -> Nam ngoai) để lách luật Độc bản. Bổ sung gợi ý đổi chủ đề cho bẫy Chung Gốc.
 // Cập nhật V2.02: [CONTEXT-AWARE ROUTING] Tích hợp thuật toán định tuyến bẫy tiếng Trung theo độ dài từ khóa. Bổ sung bẫy "Chung gốc" (Shared Morpheme) và cấm bẫy Đồng âm nếu từ khóa >= 2 ký tự.
@@ -2074,7 +2075,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.04 DATA ISOLATION
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.05 AFFIRMATIVE ENFORCEMENT
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2096,12 +2097,13 @@ prompt += `[SỰ THẬT DUY NHẤT]:\n`;
 prompt += `- Gốc (${foreignLangName}): "${term}"\n`;
 prompt += `- Nghĩa (Việt): "${definition}"\n\n`;
 prompt += `Nhiệm vụ: Tạo ${count} BẪY NGOẠI NGỮ bằng ${foreignLangName} dựa trên từ gốc. Sau đó dịch sang Tiếng Việt.\n\n`;
-// KỶ LUẬT THÉP V2.03 (CẤM LÁCH LUẬT BỎ DẤU & CHỐNG RÒ RỈ)
+// KỶ LUẬT THÉP V2.05 (CẤM LÁCH LUẬT BỎ DẤU & CHỐNG RÒ RỈ)
 prompt += `[KỶ LUẬT THÉP BẮT BUỘC]:\n`;
 prompt += `1. CHỐNG RÒ RỈ: Trường 'foreignText' BẮT BUỘC CHỈ CHỨA ${foreignLangName}. TUYỆT ĐỐI CẤM chứa Tiếng Anh, Tiếng Việt hay bất kỳ ngôn ngữ nào khác.\n`;
 prompt += `2. ĐỘC BẢN 2 CHIỀU & CHỐNG LÁCH LUẬT:\n`;
 prompt += `   - Cả 3 'foreignText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC TỪ GỐC ("${term}").\n`;
-prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}"). TUYỆT ĐỐI KHÔNG dùng từ đồng nghĩa, hoặc cố tình viết sai chính tả/bỏ dấu Tiếng Việt để lách luật. Nghĩa tiếng Việt của bẫy phải KHÁC BIỆT HOÀN TOÀN về mặt bản chất sự vật/sự việc so với từ gốc.\n`;
+// [V2.05] Khắc phục Nghịch lý Phủ định bằng cách xóa cụm từ "hoặc cố tình viết sai chính tả/bỏ dấu Tiếng Việt"
+prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}"). TUYỆT ĐỐI KHÔNG dùng từ đồng nghĩa để lách luật. Nghĩa tiếng Việt của bẫy phải KHÁC BIỆT HOÀN TOÀN về mặt bản chất sự vật/sự việc so với từ gốc.\n`;
 prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. TUYỆT ĐỐI KHÔNG dùng lại từ gốc ("${term}"). Nếu bí từ, hãy dùng từ ở cấp độ khó hơn, CẤM lặp lại từ gốc!\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
@@ -2169,12 +2171,12 @@ if (mp) microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: ${mp}\n`;
 prompt += microPrompt;
 // [V2.01] Kích hoạt chế độ cởi trói từ vựng (isForDistractor = true)
 prompt += window.GameAiEngine._getLevelContext(level, true);
-// [V2.01] SIẾT SCHEMA CHỐNG RÒ RỈ TIẾNG ANH
+// [V2.05] SIẾT SCHEMA CHỐNG NGHỊCH LÝ PHỦ ĐỊNH - Lệnh Khẳng định tuyệt đối cho Tiếng Việt
 const itemsSchema = {
 type: "OBJECT",
 properties: {
 foreignText: { type: "STRING", description: `Bẫy viết bằng ${foreignLangName}. CẤM TIẾNG ANH. CẤM TIẾNG VIỆT.` },
-vietnameseText: { type: "STRING", description: "Bản dịch tiếng Việt (TUYỆT ĐỐI KHÔNG CHỨA CHỮ HÁN/PINYIN HAY NGOẠI NGỮ KHÁC)" }
+vietnameseText: { type: "STRING", description: "Bản dịch tiếng Việt (BẮT BUỘC VIẾT ĐÚNG CHÍNH TẢ, ĐẦY ĐỦ DẤU TIẾNG VIỆT, KHÔNG CHỨA CHỮ HÁN/PINYIN HAY NGOẠI NGỮ KHÁC)" }
 },
 required: ["foreignText", "vietnameseText"]
 };
