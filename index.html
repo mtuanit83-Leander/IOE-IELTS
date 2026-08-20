@@ -1938,9 +1938,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.01
-// Last Updated: 2026-08-20 14:15
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.02
+// Last Updated: 2026-08-20 14:40
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V2.02: [CONTEXT-AWARE ROUTING] Tích hợp thuật toán định tuyến bẫy tiếng Trung theo độ dài từ khóa. Bổ sung bẫy "Chung gốc" (Shared Morpheme) và cấm bẫy Đồng âm nếu từ khóa >= 2 ký tự.
 // Cập nhật V2.01: [VOCABULARY UNCHAINED & HSK 3.0] Cập nhật hàm _getLevelContext. Mở trần từ vựng (cho phép dùng từ N+1, N+2) khi tạo bẫy để tránh hiện tượng AI bí từ dẫn đến lặp từ gốc hoặc rò rỉ Tiếng Anh. Nâng cấp chuẩn HSK 3.0.
 // Cập nhật V2.00: [HYBRID TRAP ROUTING] Tích hợp chiến lược Random + Fallback Funnel.
 // Cập nhật V1.99: [FLEXIBLE TRAP ROUTING] Cho phép AI tự định tuyến chiến thuật bẫy.
@@ -2072,7 +2073,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.01 MỞ TRẦN TỪ VỰNG
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.02 CONTEXT-AWARE ROUTING
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2110,16 +2111,29 @@ if (type === 'sentence') {
 prompt += `[TẠO BẪY CÂU VĂN]:\n`;
 prompt += `- Giữ nguyên 70-80% từ vựng của câu gốc. Thay đổi 1-2 tiểu tiết quan trọng (đổi chủ thể, hành động, trái nghĩa, thời gian).\n`;
 } else {
-// [V2.00] CHIẾN LƯỢC TẠO BẪY HYBRID (RANDOM PRIORITY + FALLBACK FUNNEL)
+// [V2.02] CHIẾN LƯỢC TẠO BẪY ĐỊNH TUYẾN THEO ĐỘ DÀI KÝ TỰ (CONTEXT-AWARE ROUTING)
 prompt += `[CHIẾN LƯỢC TẠO BẪY (HYBRID FUNNEL)]:\n`;
 let primaryTrap = "";
 let fallbackTraps = "";
 if (foreignLang === 'zh') {
-const traps = [
+let traps = [];
+const termLen = term.trim().length;
+if (termLen === 1) {
+// Hỗ trợ cả 4 loại bẫy cho từ đơn
+traps = [
 { name: "Đồng âm/Gần âm (Pinyin)", desc: "Đọc giống hoặc gần giống nhưng viết khác, nghĩa khác (VD: '报' -> '抱')" },
+{ name: "Từ ghép chung gốc/Bán đồng hình", desc: "Có chứa chung 1 chữ Hán với từ gốc (VD: '快' -> '块')" },
+{ name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với từ gốc (VD: '大' -> '小')" },
+{ name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc nhưng sai đối tượng (VD: '狗' -> '猫')" }
+];
+} else {
+// Cấm Đồng âm nếu từ >= 2 chữ
+traps = [
+{ name: "Từ ghép chung gốc/Bán đồng hình (Shared Morpheme)", desc: "Tìm một từ ghép khác có chứa CHUNG 1 CHỮ HÁN với từ gốc (VD: '开心' -> '关心', '图书馆' -> '博物馆')" },
 { name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với từ gốc (VD: '安全' -> '危险')" },
 { name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc nhưng sai đối tượng (VD: '苹果' -> '香蕉')" }
 ];
+}
 const selectedIdx = Math.floor(Math.random() * traps.length);
 primaryTrap = traps[selectedIdx];
 const fallbacks = traps.filter((_, idx) => idx !== selectedIdx);
