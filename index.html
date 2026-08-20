@@ -12132,9 +12132,10 @@ suddenDeath={suddenDeath}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.32
-// Last Updated: 2026-08-19 16:50
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.33
+// Last Updated: 2026-08-20 23:30
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.33: [POST-ANSWER AUDIO] Loại bỏ loa chính thừa thãi, bổ sung loa tương tác vào cả 4 đáp án sau khi người dùng trả lời (isChecking) để luyện nghe ngoại ngữ.
 // Cập nhật V1.32: [ADAPTIVE TRIM HOTFIX] Ràng buộc hiển thị subText (phần bị cắt tỉa) với biến isChecking để bít hoàn toàn lỗ hổng meta-gaming. Phần chữ thừa chỉ hiện ra sau khi chọn đáp án.
 // Cập nhật V1.31: [ADAPTIVE TRIM] Tích hợp Radar quét "Mất cân bằng hình thể" (Imbalance Detector) và Cắt tỉa động cho các đáp án chứa dấu phân cách (, / ;) để chống meta-gaming.
 // Cập nhật V1.30: [DUAL-LANGUAGE MAPPING] Bổ sung UI hiển thị bản dịch (meaning) bên dưới các đáp án khi lật thẻ (isChecking === true).
@@ -12251,7 +12252,7 @@ return (
 )}
 </div>
 <div className="w-full space-y-4 flex-1 overflow-y-auto custom-scrollbar p-1 pb-4">
-{/* Bảng chọn Nguồn dữ liệu */}
+{/* Bảng chọn Nguồn câu hỏi */}
 <div className="mb-2">
 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Nguồn câu hỏi</label>
 <div className="grid grid-cols-2 gap-3">
@@ -12423,7 +12424,6 @@ const isReverseListen = gameMode === 'listen' && isReverse;
 // Khóa Bookmark nếu chưa trả lời (isChecking = false) VÀ đang ở chế độ rủi ro lộ đáp án (Hỏi Nghĩa hoặc Luyện Nghe)
 const isBookmarkLocked = !isChecking && (askMode === 'def' || gameMode === 'listen');
 const getOptionClass = (opt, i) => {
-// [BẢN VÁ V1.17] Bỏ khóa Option ở chế độ Nghe Đảo ngược để người dùng bấm nút Loa nhỏ
 const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
 if (isListenLocked) return "bg-gray-50 border-gray-200 text-gray-400 opacity-80 cursor-not-allowed select-none";
 if (isChecking) {
@@ -12613,17 +12613,12 @@ Không nghe được? (Chấp nhận sai để xem chữ)
 </div>
 )}
 </div>
-{gameMode === 'read' && (
-<button onClick={(e) => { e.stopPropagation(); if (onPlay && questionText) onPlay(questionText); }} className={`absolute bottom-3 right-3 text-${mainColor}-400 hover:text-${mainColor}-600 hover:bg-${mainColor}-50 p-2 rounded-full transition-colors`} title="Nghe lại">
-<Icons.Volume2 size={24} />
-</button>
-)}
+{/* [V1.33 POST-ANSWER AUDIO] Đã XÓA HẲN loa chính ở đây để chuyển trọng tâm xuống đáp án */}
 </div>
 <div className={`flex flex-col gap-3 w-full mt-2 transition-all duration-300 ${contentBlurClass}`}>
 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 w-full`}>
 {currentQuestionData?.options?.map((opt, i) => {
 const btnClass = getOptionClass(opt, i);
-const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
 const isLastAndOdd = isOddOptions && (i === totalOptions - 1);
 const icon = (isChecking && opt.isCorrect) ? <Icons.CheckCircle size={20} className="text-green-700" /> :
 ((isChecking && i === selectedOptionIndex && !opt.isCorrect) || clickedWrongIndices.has(i)) ? <Icons.X size={20} className={clickedWrongIndices.has(i) ? "text-red-300" : "text-red-700"} /> : null;
@@ -12639,6 +12634,15 @@ mainText = optionDisplayText.substring(0, match.index).trim();
 subText = optionDisplayText.substring(match.index).trim();
 }
 }
+// [POST-ANSWER AUDIO V1.33] Tính toán hiển thị loa tại đáp án
+const showOptionSpeaker = (isReverseListen && !isChecking) || isChecking;
+let speakerColorClass = `text-${mainColor}-500 bg-${mainColor}-50 hover:bg-${mainColor}-100 border-${mainColor}-200`;
+if (isChecking) {
+if (opt.isCorrect) speakerColorClass = 'text-green-700 bg-green-200 hover:bg-green-300 border-green-300';
+else if (i === selectedOptionIndex && !opt.isCorrect) speakerColorClass = 'text-red-700 bg-red-200 hover:bg-red-300 border-red-300';
+else speakerColorClass = 'text-gray-500 bg-gray-100 hover:bg-gray-200 border-gray-200 opacity-80';
+}
+const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
 return (
 <button key={i} onClick={() => handleAnswer(i, opt.isCorrect)} disabled={isChecking || clickedWrongIndices.has(i) || isListenLocked} className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left flex items-center justify-between ${btnClass} ${isLastAndOdd ? 'sm:col-span-2' : ''}`}>
 <div className="flex items-center w-full">
@@ -12660,12 +12664,17 @@ return (
 )}
 </div>
 </div>
-{/* [BẢN VÁ V1.17] Nút Loa cục bộ cho chế độ Nghe Đảo ngược */}
-{isReverseListen && (
+{/* [POST-ANSWER AUDIO V1.33] Hiển thị loa ở 4 đáp án sau khi trả lời, hoặc ở chế độ Nghe Đảo ngược */}
+{showOptionSpeaker && (
 <div
-onClick={(e) => { e.stopPropagation(); if (onPlay && !isChecking) onPlay(opt.text); }}
-className={`ml-2 p-2 rounded-full flex-none transition-colors ${isChecking ? 'text-gray-300' : `text-${mainColor}-500 bg-${mainColor}-50 hover:bg-${mainColor}-100 active:scale-95`}`}
-title="Nghe đáp án này"
+onClick={(e) => {
+e.stopPropagation();
+// Nếu đảo ngược -> opt.text là ngoại ngữ. Nếu không -> opt.meaning là ngoại ngữ.
+const textToSpeak = isReverse ? opt.text : opt.meaning;
+if (onPlay && textToSpeak) onPlay(textToSpeak);
+}}
+className={`ml-2 p-2 rounded-full flex-none transition-transform active:scale-90 border shadow-sm ${speakerColorClass}`}
+title="Nghe phát âm"
 >
 <Icons.Volume2 size={20} />
 </div>
