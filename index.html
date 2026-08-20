@@ -1938,9 +1938,10 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.06
-// Last Updated: 2026-08-20 15:45
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.07
+// Last Updated: 2026-08-20 16:00
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V2.07: [TRANSLATION SEPARATION] Phân tách rõ ràng luồng tư duy Tạo bẫy và Dịch bẫy để vá lỗi "Double Negative Paradox" khiến AI cứng đầu sao chép từ gốc (VD: 去年 - Năm ngoái). Bổ sung siêu ràng buộc vào JSON Schema và lối thoát dùng từ đồng nghĩa (Fuzzy Synonym).
 // Cập nhật V2.06: [ZERO-DAY PATCH & HYBRID PROMPT] Áp dụng Hybrid Prompting (Tiếng Anh cho ràng buộc logic) để vá lỗ hổng Rò rỉ Ngữ nghĩa (Semantic Bleeding) và Lách luật chuỗi (String Bypass bỏ dấu tiếng Việt). Nâng cấp Flexible Trap Routing bằng Phễu Lối thoát hiểm an toàn.
 // Cập nhật V2.05: [AFFIRMATIVE ENFORCEMENT] Khắc phục nghịch lý phủ định (Pink Elephant Paradox) gây mất dấu Tiếng Việt bằng cách gỡ bỏ từ khóa phủ định và siết chặt lệnh Khẳng định tuyệt đối vào mô tả JSON Schema.
 // Cập nhật V2.04: [DATA ISOLATION] Gỡ bỏ toàn bộ ví dụ minh họa bằng từ vựng thực tế (Hardcoded Examples) trong cấu trúc Prompt tạo bẫy. Sử dụng mô tả logic trừu tượng để triệt tiêu hội chứng "Xung đột Chỉ thị - Dữ liệu" (Prompt Overfitting) gây ra lỗi lặp từ gốc khi đầu vào trùng khớp với ví dụ.
@@ -2074,7 +2075,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.06 HYBRID PROMPT & ZERO-DAY PATCH
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.07 TRANSLATION SEPARATION
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2096,13 +2097,16 @@ let prompt = `Bạn là chuyên gia ngôn ngữ học chuyên ra đề trắc ng
 prompt += `[SỰ THẬT DUY NHẤT]:\n`;
 prompt += `- Gốc (${foreignLangName}): "${term}"\n`;
 prompt += `- Nghĩa (Việt): "${definition}"\n\n`;
-prompt += `Nhiệm vụ: Tạo ${count} BẪY NGOẠI NGỮ bằng ${foreignLangName} dựa trên từ gốc. Sau đó dịch sang Tiếng Việt.\n\n`;
-// KỶ LUẬT THÉP V2.06 (HYBRID PROMPTING: LUẬT LOGIC ÉP BẰNG TIẾNG ANH IN HOA)
+// [V2.07] TÁCH BẠCH CHỈ THỊ DỊCH THUẬT VÀ TẠO BẪY
+prompt += `[NHIỆM VỤ THEO TRÌNH TỰ]:\n`;
+prompt += `BƯỚC 1: Tạo ra ${count} BẪY (foreignText) bằng ${foreignLangName} dựa trên từ gốc.\n`;
+prompt += `BƯỚC 2: DỊCH CHÍNH XÁC NGHĨA CỦA ${count} TỪ BẪY ĐÓ sang Tiếng Việt (vietnameseText). TUYỆT ĐỐI KHÔNG dịch lại từ gốc.\n\n`;
+// KỶ LUẬT THÉP V2.07 (HYBRID PROMPTING: LUẬT LOGIC ÉP BẰNG TIẾNG ANH IN HOA)
 prompt += `[STRICT CONSTRAINTS & RULES - YOU MUST OBEY]:\n`;
 prompt += `1. NO SEMANTIC BLEEDING: The 'foreignText' MUST ONLY contain REAL words in ${foreignLangEngName}. ABSOLUTELY NO ENGLISH WORDS ALLOWED in the trap (e.g., DO NOT translate Chinese morphemes directly into English words like 'network' or 'friend').\n`;
 prompt += `2. TWO-WAY UNIQUENESS & NO STRING MANIPULATION BYPASS:\n`;
 prompt += `   - All 3 'foreignText' MUST BE COMPLETELY UNIQUE and DIFFERENT from the original word ("${term}").\n`;
-prompt += `   - All 3 'vietnameseText' MUST BE COMPLETELY UNIQUE in core meaning. STRICTLY PROHIBITED to bypass this rule by removing Vietnamese diacritics, removing accents, or using typos (e.g., changing 'Năm ngoái' to 'Nam ngoai' is FORBIDDEN). DO NOT use simple synonyms.\n`;
+prompt += `   - All 3 'vietnameseText' MUST BE COMPLETELY UNIQUE in core meaning. STRICTLY PROHIBITED to bypass this rule by removing Vietnamese diacritics, removing accents, or using typos (e.g., changing 'Năm ngoái' to 'Nam ngoai' is FORBIDDEN). If the translation accidentally matches the original word, YOU MUST use a fuzzy synonym or rephrase it to ensure uniqueness.\n`;
 prompt += `3. REAL DICTIONARY WORDS ONLY: You MUST use REAL, EXISTING words in ${foreignLangEngName}. DO NOT invent fake words or combinations.\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
@@ -2170,12 +2174,12 @@ if (mp) microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: ${mp}\n`;
 prompt += microPrompt;
 // [V2.01] Kích hoạt chế độ cởi trói từ vựng (isForDistractor = true)
 prompt += window.GameAiEngine._getLevelContext(level, true);
-// [V2.06] SIẾT SCHEMA BẰNG TIẾNG ANH (HYBRID PROMPTING)
+// [V2.07] SIẾT SCHEMA BẰNG TIẾNG ANH (HYBRID PROMPTING) VÀ LỆNH KHẲNG ĐỊNH
 const itemsSchema = {
 type: "OBJECT",
 properties: {
 foreignText: { type: "STRING", description: `Trap written in ${foreignLangEngName}. STRICTLY NO ENGLISH ALLOWED.` },
-vietnameseText: { type: "STRING", description: "Vietnamese translation. MUST HAVE CORRECT ACCENTS/DIACRITICS. NO STRING MANIPULATION ALLOWED." }
+vietnameseText: { type: "STRING", description: "Vietnamese translation OF THIS TRAP. MUST BE COMPLETELY DIFFERENT from the original word's meaning. STRICTLY PROHIBITED to copy the original meaning. MUST HAVE CORRECT ACCENTS/DIACRITICS." }
 },
 required: ["foreignText", "vietnameseText"]
 };
