@@ -1938,15 +1938,14 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.05
-// Last Updated: 2026-08-20 15:17
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.06
+// Last Updated: 2026-08-20 15:45
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V2.06: [ZERO-DAY PATCH & HYBRID PROMPT] Áp dụng Hybrid Prompting (Tiếng Anh cho ràng buộc logic) để vá lỗ hổng Rò rỉ Ngữ nghĩa (Semantic Bleeding) và Lách luật chuỗi (String Bypass bỏ dấu tiếng Việt). Nâng cấp Flexible Trap Routing bằng Phễu Lối thoát hiểm an toàn.
 // Cập nhật V2.05: [AFFIRMATIVE ENFORCEMENT] Khắc phục nghịch lý phủ định (Pink Elephant Paradox) gây mất dấu Tiếng Việt bằng cách gỡ bỏ từ khóa phủ định và siết chặt lệnh Khẳng định tuyệt đối vào mô tả JSON Schema.
 // Cập nhật V2.04: [DATA ISOLATION] Gỡ bỏ toàn bộ ví dụ minh họa bằng từ vựng thực tế (Hardcoded Examples) trong cấu trúc Prompt tạo bẫy. Sử dụng mô tả logic trừu tượng để triệt tiêu hội chứng "Xung đột Chỉ thị - Dữ liệu" (Prompt Overfitting) gây ra lỗi lặp từ gốc khi đầu vào trùng khớp với ví dụ.
 // Cập nhật V2.03: [ANTI-LOOPHOLE VACCINE] Vá lỗ hổng AI cố tình bỏ dấu tiếng Việt (VD: Năm ngoái -> Nam ngoai) để lách luật Độc bản. Bổ sung gợi ý đổi chủ đề cho bẫy Chung Gốc.
 // Cập nhật V2.02: [CONTEXT-AWARE ROUTING] Tích hợp thuật toán định tuyến bẫy tiếng Trung theo độ dài từ khóa. Bổ sung bẫy "Chung gốc" (Shared Morpheme) và cấm bẫy Đồng âm nếu từ khóa >= 2 ký tự.
-// Cập nhật V2.01: [VOCABULARY UNCHAINED & HSK 3.0] Cập nhật hàm _getLevelContext. Mở trần từ vựng (cho phép dùng từ N+1, N+2) khi tạo bẫy để tránh hiện tượng AI bí từ dẫn đến lặp từ gốc hoặc rò rỉ Tiếng Anh. Nâng cấp chuẩn HSK 3.0.
-// Cập nhật V2.00: [HYBRID TRAP ROUTING] Tích hợp chiến lược Random + Fallback Funnel.
 // ==================================================================================
 window.GameAiEngine = {
 // [V2.01] RADAR NHẬN DIỆN TRÌNH ĐỘ - Hỗ trợ Mở trần Từ vựng & HSK 3.0
@@ -2075,7 +2074,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.05 AFFIRMATIVE ENFORCEMENT
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.06 HYBRID PROMPT & ZERO-DAY PATCH
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2091,31 +2090,31 @@ let foreignLang = 'en';
 if (level && level.includes('zh')) foreignLang = 'zh';
 else if (distractorLang === 'zh' || distractorLang === 'en') foreignLang = distractorLang;
 const foreignLangName = foreignLang === 'zh' ? 'TIẾNG TRUNG' : 'TIẾNG ANH';
-// LẮP RÁP PROMPT: CHỈ NEO VÀO NGÔN NGỮ GỐC
+const foreignLangEngName = foreignLang === 'zh' ? 'CHINESE' : 'ENGLISH';
+// LẮP RÁP PROMPT: NGỮ CẢNH TIẾNG VIỆT
 let prompt = `Bạn là chuyên gia ngôn ngữ học chuyên ra đề trắc nghiệm.\n`;
 prompt += `[SỰ THẬT DUY NHẤT]:\n`;
 prompt += `- Gốc (${foreignLangName}): "${term}"\n`;
 prompt += `- Nghĩa (Việt): "${definition}"\n\n`;
 prompt += `Nhiệm vụ: Tạo ${count} BẪY NGOẠI NGỮ bằng ${foreignLangName} dựa trên từ gốc. Sau đó dịch sang Tiếng Việt.\n\n`;
-// KỶ LUẬT THÉP V2.05 (CẤM LÁCH LUẬT BỎ DẤU & CHỐNG RÒ RỈ)
-prompt += `[KỶ LUẬT THÉP BẮT BUỘC]:\n`;
-prompt += `1. CHỐNG RÒ RỈ: Trường 'foreignText' BẮT BUỘC CHỈ CHỨA ${foreignLangName}. TUYỆT ĐỐI CẤM chứa Tiếng Anh, Tiếng Việt hay bất kỳ ngôn ngữ nào khác.\n`;
-prompt += `2. ĐỘC BẢN 2 CHIỀU & CHỐNG LÁCH LUẬT:\n`;
-prompt += `   - Cả 3 'foreignText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC TỪ GỐC ("${term}").\n`;
-// [V2.05] Khắc phục Nghịch lý Phủ định bằng cách xóa cụm từ "hoặc cố tình viết sai chính tả/bỏ dấu Tiếng Việt"
-prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}"). TUYỆT ĐỐI KHÔNG dùng từ đồng nghĩa để lách luật. Nghĩa tiếng Việt của bẫy phải KHÁC BIỆT HOÀN TOÀN về mặt bản chất sự vật/sự việc so với từ gốc.\n`;
-prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. TUYỆT ĐỐI KHÔNG dùng lại từ gốc ("${term}"). Nếu bí từ, hãy dùng từ ở cấp độ khó hơn, CẤM lặp lại từ gốc!\n\n`;
+// KỶ LUẬT THÉP V2.06 (HYBRID PROMPTING: LUẬT LOGIC ÉP BẰNG TIẾNG ANH IN HOA)
+prompt += `[STRICT CONSTRAINTS & RULES - YOU MUST OBEY]:\n`;
+prompt += `1. NO SEMANTIC BLEEDING: The 'foreignText' MUST ONLY contain REAL words in ${foreignLangEngName}. ABSOLUTELY NO ENGLISH WORDS ALLOWED in the trap (e.g., DO NOT translate Chinese morphemes directly into English words like 'network' or 'friend').\n`;
+prompt += `2. TWO-WAY UNIQUENESS & NO STRING MANIPULATION BYPASS:\n`;
+prompt += `   - All 3 'foreignText' MUST BE COMPLETELY UNIQUE and DIFFERENT from the original word ("${term}").\n`;
+prompt += `   - All 3 'vietnameseText' MUST BE COMPLETELY UNIQUE in core meaning. STRICTLY PROHIBITED to bypass this rule by removing Vietnamese diacritics, removing accents, or using typos (e.g., changing 'Năm ngoái' to 'Nam ngoai' is FORBIDDEN). DO NOT use simple synonyms.\n`;
+prompt += `3. REAL DICTIONARY WORDS ONLY: You MUST use REAL, EXISTING words in ${foreignLangEngName}. DO NOT invent fake words or combinations.\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
 if (type !== 'sentence' && hasSeparator) {
-prompt += `[NGỤY TRANG HÌNH THỂ]: Bản dịch chuẩn có dấu phân cách (, /). Bản dịch tiếng Việt của CẢ ${count} bẫy CŨNG PHẢI bắt chước cấu trúc liệt kê này (VD: Nếu gốc là 2 tính từ, bẫy cũng phải là liệt kê 2 tính từ khác).\n\n`;
+prompt += `[STRUCTURAL MIMICRY]: The original translation has separators (, /). The Vietnamese translation of ALL ${count} traps MUST mimic this exact listing structure.\n\n`;
 }
 if (type === 'sentence') {
 prompt += `[TẠO BẪY CÂU VĂN]:\n`;
 prompt += `- Giữ nguyên 70-80% từ vựng của câu gốc. Thay đổi 1-2 tiểu tiết quan trọng (đổi chủ thể, hành động, trái nghĩa, thời gian).\n`;
 } else {
-// [V2.04] CÁCH LY DỮ LIỆU - Gỡ bỏ toàn bộ ví dụ cụ thể
-prompt += `[CHIẾN LƯỢC TẠO BẪY (HYBRID FUNNEL)]:\n`;
+// [V2.06] ĐỊNH TUYẾN LINH HOẠT - Ưu tiên nhưng không ép buộc tuyệt đối để tránh AI lười biếng sinh rác
+prompt += `[CHIẾN LƯỢC TẠO BẪY (FLEXIBLE ROUTING FUNNEL)]:\n`;
 let primaryTrap = "";
 let fallbackTraps = "";
 if (foreignLang === 'zh') {
@@ -2141,8 +2140,8 @@ const fallbacks = traps.filter((_, idx) => idx !== selectedIdx);
 fallbackTraps = fallbacks.map(t => `- ${t.name}: ${t.desc}`).join('\n');
 prompt += `CHỈ THỊ XẾP HẠNG ƯU TIÊN (PRIORITY FUNNEL):\n`;
 prompt += `> BƯỚC 1 - ƯU TIÊN TỐI THƯỢNG: BẮT BUỘC cố gắng tạo bẫy thuộc loại [${primaryTrap.name}] (${primaryTrap.desc}) trước tiên để thử thách người học.\n`;
-prompt += `> BƯỚC 2 - LỐI THOÁT HIỂM AN TOÀN: CHỈ KHI NÀO từ gốc quá đặc thù, KHÔNG THỂ áp dụng loại bẫy ưu tiên trên (buộc phải chế từ để qua mặt), bạn MỚI ĐƯỢC PHÉP chuyển sang dùng các loại bẫy dự phòng sau để cứu cánh:\n${fallbackTraps}\n`;
-prompt += `> BƯỚC 3 - QUYẾT ĐỊNH: Bạn có thể kết hợp linh hoạt, MIỄN LÀ 100% các từ sinh ra đều là TỪ CÓ THẬT TRONG TỪ ĐIỂN, tuyệt đối không tự chế từ vô nghĩa.\n`;
+prompt += `> BƯỚC 2 - LỐI THOÁT HIỂM AN TOÀN: CHỈ KHI NÀO từ gốc quá đặc thù, KHÔNG THỂ áp dụng loại bẫy ưu tiên trên, bạn MỚI ĐƯỢC PHÉP chuyển sang dùng linh hoạt các loại bẫy dự phòng sau để cứu cánh (Tránh bí từ dẫn đến sinh rác):\n${fallbackTraps}\n`;
+prompt += `> BƯỚC 3 - QUYẾT ĐỊNH: Bạn có thể kết hợp linh hoạt, MIỄN LÀ 100% các từ sinh ra đều là TỪ CÓ THẬT TRONG TỪ ĐIỂN.\n`;
 } else {
 const traps = [
 { name: "Mặt chữ/Đồng âm (Lookalikes)", desc: "Sai khác 1-2 ký tự hoặc phát âm giống nhưng viết hoàn toàn khác." },
@@ -2155,8 +2154,8 @@ const fallbacks = traps.filter((_, idx) => idx !== selectedIdx);
 fallbackTraps = fallbacks.map(t => `- ${t.name}: ${t.desc}`).join('\n');
 prompt += `CHỈ THỊ XẾP HẠNG ƯU TIÊN (PRIORITY FUNNEL):\n`;
 prompt += `> BƯỚC 1 - ƯU TIÊN TỐI THƯỢNG: BẮT BUỘC cố gắng tạo bẫy thuộc loại [${primaryTrap.name}] (${primaryTrap.desc}) trước tiên.\n`;
-prompt += `> BƯỚC 2 - LỐI THOÁT HIỂM AN TOÀN: CHỈ KHI NÀO từ gốc KHÔNG THỂ áp dụng loại bẫy trên một cách tự nhiên, bạn MỚI ĐƯỢC PHÉP chuyển sang dùng các loại bẫy dự phòng sau:\n${fallbackTraps}\n`;
-prompt += `> BƯỚC 3 - QUYẾT ĐỊNH: Bạn có thể kết hợp linh hoạt, MIỄN LÀ 100% các từ sinh ra đều là TỪ CÓ THẬT TRONG TỪ ĐIỂN, tuyệt đối không bịa đặt từ ngữ.\n`;
+prompt += `> BƯỚC 2 - LỐI THOÁT HIỂM AN TOÀN: CHỈ KHI NÀO từ gốc KHÔNG THỂ áp dụng loại bẫy trên một cách tự nhiên, bạn MỚI ĐƯỢC PHÉP chuyển sang dùng linh hoạt các loại bẫy dự phòng sau (Tránh bí từ):\n${fallbackTraps}\n`;
+prompt += `> BƯỚC 3 - QUYẾT ĐỊNH: Bạn có thể kết hợp linh hoạt, MIỄN LÀ 100% các từ sinh ra đều là TỪ CÓ THẬT TRONG TỪ ĐIỂN.\n`;
 }
 }
 // [V1.97] ÉP TƯ DUY RÚT GỌN (TĂNG TỐC ĐỘ API)
@@ -2171,12 +2170,12 @@ if (mp) microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: ${mp}\n`;
 prompt += microPrompt;
 // [V2.01] Kích hoạt chế độ cởi trói từ vựng (isForDistractor = true)
 prompt += window.GameAiEngine._getLevelContext(level, true);
-// [V2.05] SIẾT SCHEMA CHỐNG NGHỊCH LÝ PHỦ ĐỊNH - Lệnh Khẳng định tuyệt đối cho Tiếng Việt
+// [V2.06] SIẾT SCHEMA BẰNG TIẾNG ANH (HYBRID PROMPTING)
 const itemsSchema = {
 type: "OBJECT",
 properties: {
-foreignText: { type: "STRING", description: `Bẫy viết bằng ${foreignLangName}. CẤM TIẾNG ANH. CẤM TIẾNG VIỆT.` },
-vietnameseText: { type: "STRING", description: "Bản dịch tiếng Việt (BẮT BUỘC VIẾT ĐÚNG CHÍNH TẢ, ĐẦY ĐỦ DẤU TIẾNG VIỆT, KHÔNG CHỨA CHỮ HÁN/PINYIN HAY NGOẠI NGỮ KHÁC)" }
+foreignText: { type: "STRING", description: `Trap written in ${foreignLangEngName}. STRICTLY NO ENGLISH ALLOWED.` },
+vietnameseText: { type: "STRING", description: "Vietnamese translation. MUST HAVE CORRECT ACCENTS/DIACRITICS. NO STRING MANIPULATION ALLOWED." }
 },
 required: ["foreignText", "vietnameseText"]
 };
