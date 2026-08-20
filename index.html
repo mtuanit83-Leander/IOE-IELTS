@@ -12132,15 +12132,15 @@ suddenDeath={suddenDeath}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.33
-// Last Updated: 2026-08-20 23:30
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.34
+// Last Updated: 2026-08-20 23:48
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.34: [DOM SURGERY] Thay thế thẻ <button> bọc đáp án bằng <div role="button"> để sửa lỗi thuộc tính 'disabled' chặn đứng mọi sự kiện click lên nút loa bên trong khi người dùng tạm dừng kết quả.
 // Cập nhật V1.33: [POST-ANSWER AUDIO] Loại bỏ loa chính thừa thãi, bổ sung loa tương tác vào cả 4 đáp án sau khi người dùng trả lời (isChecking) để luyện nghe ngoại ngữ.
 // Cập nhật V1.32: [ADAPTIVE TRIM HOTFIX] Ràng buộc hiển thị subText (phần bị cắt tỉa) với biến isChecking để bít hoàn toàn lỗ hổng meta-gaming. Phần chữ thừa chỉ hiện ra sau khi chọn đáp án.
 // Cập nhật V1.31: [ADAPTIVE TRIM] Tích hợp Radar quét "Mất cân bằng hình thể" (Imbalance Detector) và Cắt tỉa động cho các đáp án chứa dấu phân cách (, / ;) để chống meta-gaming.
 // Cập nhật V1.30: [DUAL-LANGUAGE MAPPING] Bổ sung UI hiển thị bản dịch (meaning) bên dưới các đáp án khi lật thẻ (isChecking === true).
 // Cập nhật V1.29: [HOTFIX] Khắc phục triệt để lỗi TypeError .replace is not a function do biến config.level trả về mảng (Multi-select) bằng kỹ thuật Render Phòng thủ Array.isArray() tại GlobalLoadingScreen.
-// Cập nhật V1.28: [FORCED AI GUARD] Bắt buộc bật và khóa chức năng "Thử thách AI" khi chọn Chế độ Khó + Không Đảo ngược (Hỏi ngoại ngữ - Chọn tiếng mẹ đẻ) để triệt tiêu lỗi tạo nhiễu sai chính tả nội bộ.
 // ==================================================================================
 // 1. MÀN HÌNH CÀI ĐẶT (QUIZ SETUP)
 // Nhận trực tiếp lang, dataMode và currentLevel từ Tầng 5.7
@@ -12423,16 +12423,17 @@ const isReverseListen = gameMode === 'listen' && isReverse;
 // [BẢN VÁ V1.27] CHỐT CHẶN BẢO MẬT BOOKMARK
 // Khóa Bookmark nếu chưa trả lời (isChecking = false) VÀ đang ở chế độ rủi ro lộ đáp án (Hỏi Nghĩa hoặc Luyện Nghe)
 const isBookmarkLocked = !isChecking && (askMode === 'def' || gameMode === 'listen');
+// [V1.34 DOM SURGERY] Cập nhật con trỏ chuột cho thẻ div bọc ngoài
 const getOptionClass = (opt, i) => {
 const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
 if (isListenLocked) return "bg-gray-50 border-gray-200 text-gray-400 opacity-80 cursor-not-allowed select-none";
 if (isChecking) {
-if (opt.isCorrect) return "bg-green-100 border-green-500 text-green-900 shadow-md transform scale-[1.02] font-bold";
-if (i === selectedOptionIndex && !opt.isCorrect) return "bg-red-100 border-red-500 text-red-900 font-bold";
-return "bg-gray-50 border-gray-100 text-gray-300 opacity-60";
+if (opt.isCorrect) return "bg-green-100 border-green-500 text-green-900 shadow-md transform scale-[1.02] font-bold cursor-default";
+if (i === selectedOptionIndex && !opt.isCorrect) return "bg-red-100 border-red-500 text-red-900 font-bold cursor-default";
+return "bg-gray-50 border-gray-100 text-gray-300 opacity-60 cursor-default";
 }
 if (clickedWrongIndices.has(i)) return "bg-red-50 border-red-200 text-red-300 opacity-80 cursor-not-allowed";
-return "bg-white border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:shadow-md active:scale-95";
+return "bg-white border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:shadow-md active:scale-95 cursor-pointer";
 };
 const getLabelClass = (opt, i) => {
 if (isChecking && opt.isCorrect) return 'bg-green-200 text-green-800';
@@ -12642,9 +12643,21 @@ if (opt.isCorrect) speakerColorClass = 'text-green-700 bg-green-200 hover:bg-gre
 else if (i === selectedOptionIndex && !opt.isCorrect) speakerColorClass = 'text-red-700 bg-red-200 hover:bg-red-300 border-red-300';
 else speakerColorClass = 'text-gray-500 bg-gray-100 hover:bg-gray-200 border-gray-200 opacity-80';
 }
+// [V1.34 DOM SURGERY] Tính toán trạng thái khóa logic của thẻ bấm
 const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
+const isDisabled = isChecking || clickedWrongIndices.has(i) || isListenLocked;
 return (
-<button key={i} onClick={() => handleAnswer(i, opt.isCorrect)} disabled={isChecking || clickedWrongIndices.has(i) || isListenLocked} className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left flex items-center justify-between ${btnClass} ${isLastAndOdd ? 'sm:col-span-2' : ''}`}>
+<div
+key={i}
+role="button"
+onClick={() => {
+// Chuyển logic 'disabled' từ thuộc tính HTML sang kiểm tra luồng nội bộ
+if (!isDisabled) {
+handleAnswer(i, opt.isCorrect);
+}
+}}
+className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left flex items-center justify-between outline-none focus:ring-2 focus:ring-${mainColor}-300 ${btnClass} ${isLastAndOdd ? 'sm:col-span-2' : ''}`}
+>
 <div className="flex items-center w-full">
 <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-3 flex-none shadow-inner ${getLabelClass(opt, i)}`}>{labels[i]}</span>
 <div className="flex flex-col flex-1">
@@ -12668,19 +12681,20 @@ return (
 {showOptionSpeaker && (
 <div
 onClick={(e) => {
+// Chặn sự kiện nổi bọt để không vô tình kích hoạt click của thẻ div cha (nếu thẻ cha chưa bị khóa)
 e.stopPropagation();
 // Nếu đảo ngược -> opt.text là ngoại ngữ. Nếu không -> opt.meaning là ngoại ngữ.
 const textToSpeak = isReverse ? opt.text : opt.meaning;
 if (onPlay && textToSpeak) onPlay(textToSpeak);
 }}
-className={`ml-2 p-2 rounded-full flex-none transition-transform active:scale-90 border shadow-sm ${speakerColorClass}`}
+className={`ml-2 p-2 rounded-full flex-none transition-transform active:scale-90 border shadow-sm cursor-pointer ${speakerColorClass}`}
 title="Nghe phát âm"
 >
 <Icons.Volume2 size={20} />
 </div>
 )}
 {icon && <div className="ml-2 flex-none">{icon}</div>}
-</button>
+</div>
 );
 })}
 </div>
