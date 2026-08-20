@@ -1938,20 +1938,17 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.00
-// Last Updated: 2026-08-20 13:26
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.01
+// Last Updated: 2026-08-20 14:15
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V2.00: [HYBRID TRAP ROUTING] Tích hợp chiến lược Random + Fallback Funnel. Dùng Math.random() bốc thăm bẫy ưu tiên tối thượng, nhưng vẫn chừa sẵn các bẫy khác làm "Lối thoát hiểm" để đảm bảo 100% từ sinh ra có thật trong từ điển, triệt tiêu hội chứng AI lười biếng.
-// Cập nhật V1.99: [FLEXIBLE TRAP ROUTING] Cho phép AI tự định tuyến chiến thuật bẫy để triệt tiêu hội chứng "Chế từ rác".
-// Cập nhật V1.98: [STRICT ANTI-BLEEDING] Bổ sung bộ luật 3 bước (Độc bản 2 chiều, cấm ngoại ngữ rò rỉ) cho hàm generateOptions.
-// Cập nhật V1.97: [SPEED OPTIMIZATION] Thêm "Bẫy Cùng trường từ vựng". Siết chặt Schema ép vietnameseText tuyệt đối không chứa ngoại ngữ.
-// Cập nhật V1.96: [CHAIN-OF-THOUGHT] Nâng cấp JSON Schema, ép AI điền `reasoning` trước khi xuất distractors.
-// Cập nhật V1.95: [ANTI-HALLUCINATION] Bổ sung "Kỷ luật thép 2.0" (Luật Từ điển, Độc bản, Loại trừ gốc).
-// Cập nhật V1.94: [STRUCTURAL CAMOUFLAGE] Ép AI thực hiện "Ngụy trang hình thể".
+// Cập nhật V2.01: [VOCABULARY UNCHAINED & HSK 3.0] Cập nhật hàm _getLevelContext. Mở trần từ vựng (cho phép dùng từ N+1, N+2) khi tạo bẫy để tránh hiện tượng AI bí từ dẫn đến lặp từ gốc hoặc rò rỉ Tiếng Anh. Nâng cấp chuẩn HSK 3.0.
+// Cập nhật V2.00: [HYBRID TRAP ROUTING] Tích hợp chiến lược Random + Fallback Funnel.
+// Cập nhật V1.99: [FLEXIBLE TRAP ROUTING] Cho phép AI tự định tuyến chiến thuật bẫy.
+// Cập nhật V1.98: [STRICT ANTI-BLEEDING] Bổ sung bộ luật 3 bước (Độc bản 2 chiều, cấm ngoại ngữ rò rỉ).
 // ==================================================================================
 window.GameAiEngine = {
-// RADAR NHẬN DIỆN TRÌNH ĐỘ - Hướng dẫn AI tuân thủ Khung năng lực
-_getLevelContext: function(level) {
+// [V2.01] RADAR NHẬN DIỆN TRÌNH ĐỘ - Hỗ trợ Mở trần Từ vựng & HSK 3.0
+_getLevelContext: function(level, isForDistractor = false) {
 if (!level) return "";
 const oldToNewMap = {
 level_1_kiddie: 'en_level_1', level_2_junior_basic: 'en_level_2',
@@ -1961,9 +1958,22 @@ level_7_breakthrough: 'en_level_7', level_8_academic: 'en_level_8',
 level_9_expert: 'en_level_9'
 };
 let mappedKey = oldToNewMap[level] || level;
-let contextDesc = window.IoeDataEngine && window.IoeDataEngine.GRADE_CONTEXTS ? window.IoeDataEngine.GRADE_CONTEXTS[mappedKey] : "";
-if (!contextDesc) return "";
-return "\n[ĐỊNH HƯỚNG TRÌNH ĐỘ]: Người học đang ở cấp độ [" + mappedKey + "]. Ngữ cảnh: " + contextDesc + ". Hãy ưu tiên sử dụng từ vựng và cấu trúc ngữ pháp phù hợp với cấp độ này để mang lại trải nghiệm học tự nhiên nhất.";
+let lang = mappedKey.includes('zh') || mappedKey.includes('hsk') ? 'zh' : 'en';
+// Ghi đè ngữ cảnh hệ thống, ép chuẩn HSK 3.0 cho Tiếng Trung
+let contextDesc = "";
+if (lang === 'zh') {
+contextDesc = "Chuẩn HSK 3.0 mới";
+} else {
+contextDesc = window.IoeDataEngine && window.IoeDataEngine.GRADE_CONTEXTS ? (window.IoeDataEngine.GRADE_CONTEXTS[mappedKey] || "CEFR Standard") : "CEFR Standard";
+}
+let instruction = `\n[ĐỊNH HƯỚNG TRÌNH ĐỘ]: Người học đang ở cấp độ [${mappedKey}]. Ngữ cảnh: ${contextDesc}.`;
+// Cởi trói cho AI khi tạo bẫy
+if (isForDistractor) {
+instruction += ` ĐỂ TẠO BẪY ĐA DẠNG, BẠN ĐƯỢC PHÉP SỬ DỤNG TỪ VỰNG TỰ DO (Khuyến khích dùng từ ở cấp độ cao hơn 1-2 bậc để bẫy thí sinh). TUYỆT ĐỐI KHÔNG ĐƯỢC lặp lại từ gốc chỉ vì bí từ vựng!`;
+} else {
+instruction += ` Hãy ưu tiên sử dụng từ vựng và cấu trúc ngữ pháp phù hợp với cấp độ này để mang lại trải nghiệm học tự nhiên nhất.`;
+}
+return instruction;
 },
 // [LÕI ĐỊNH TUYẾN MỜ V1.8] Tự động chắp vá Micro-prompts xuyên cấp độ nhưng khóa cứng ngôn ngữ
 _getFuzzyMicroPrompt: function(card, gameType) {
@@ -2007,7 +2017,7 @@ return extractPrompt(defaultFallback);
 ai_distort: async function(text, lang, type, apiKey, level = "", topic = "", card = null) {
 let prompt = "";
 let schema = {};
-const levelContext = window.GameAiEngine._getLevelContext(level);
+const levelContext = window.GameAiEngine._getLevelContext(level, false);
 const langStr = lang === 'zh' ? 'Tiếng Trung' : (lang === 'en' ? 'Tiếng Anh' : 'Tiếng Việt');
 let microPrompt = "";
 if (card) {
@@ -2062,7 +2072,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.00 HYBRID RANDOM FUNNEL
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.01 MỞ TRẦN TỪ VỰNG
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2084,13 +2094,13 @@ prompt += `[SỰ THẬT DUY NHẤT]:\n`;
 prompt += `- Gốc (${foreignLangName}): "${term}"\n`;
 prompt += `- Nghĩa (Việt): "${definition}"\n\n`;
 prompt += `Nhiệm vụ: Tạo ${count} BẪY NGOẠI NGỮ bằng ${foreignLangName} dựa trên từ gốc. Sau đó dịch sang Tiếng Việt.\n\n`;
-// KỶ LUẬT THÉP V1.98 (CHỐNG ẢO GIÁC, ĐỘC BẢN & LÁCH LUẬT)
+// KỶ LUẬT THÉP V2.01 (CẤM NHẢ NGOẠI NGỮ KHÁC & ÉP DÙNG TỪ ĐIỂN THẬT DÙ BÍ TỪ)
 prompt += `[KỶ LUẬT THÉP BẮT BUỘC]:\n`;
-prompt += `1. CHỐNG RÒ RỈ: Trường 'foreignText' BẮT BUỘC CHỈ CHỨA ${foreignLangName}. Tuyệt đối KHÔNG chứa Tiếng Việt, Tiếng Anh hay bất kỳ ngoại ngữ nào khác.\n`;
+prompt += `1. CHỐNG RÒ RỈ: Trường 'foreignText' BẮT BUỘC CHỈ CHỨA ${foreignLangName}. TUYỆT ĐỐI CẤM chứa Tiếng Anh, Tiếng Việt hay bất kỳ ngôn ngữ nào khác.\n`;
 prompt += `2. ĐỘC BẢN 2 CHIỀU:\n`;
 prompt += `   - Cả 3 'foreignText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC TỪ GỐC ("${term}").\n`;
 prompt += `   - Cả 3 'vietnameseText' PHẢI HOÀN TOÀN KHÁC NHAU và KHÁC BẢN DỊCH CHUẨN ("${definition}").\n`;
-prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. Tuyệt đối không tự chế từ, tự ghép chữ vô nghĩa hoặc dùng lại từ gốc.\n\n`;
+prompt += `3. TỪ ĐIỂN THẬT: Bắt buộc chọn 3 từ vựng CÓ THẬT hoàn toàn riêng biệt. TUYỆT ĐỐI KHÔNG dùng lại từ gốc ("${term}"). Nếu bí từ, hãy dùng từ ở cấp độ khó hơn, CẤM lặp lại từ gốc!\n\n`;
 // [CHIẾN LƯỢC NGỤY TRANG HÌNH THỂ] - Đọc cấu trúc bản dịch để ép khuôn AI
 const hasSeparator = definition.includes(',') || definition.includes('/') || definition.includes(';');
 if (type !== 'sentence' && hasSeparator) {
@@ -2144,12 +2154,13 @@ if (mp) microPrompt = `\n[MỤC TIÊU NGỮ PHÁP ĐẶC BIỆT]: ${mp}\n`;
 }
 }
 prompt += microPrompt;
-prompt += window.GameAiEngine._getLevelContext(level);
-// [V1.98] ÉP SCHEMA MỚI: CHỐNG LỘN NGÔN NGỮ (ANTI-BLEEDING)
+// [V2.01] Kích hoạt chế độ cởi trói từ vựng (isForDistractor = true)
+prompt += window.GameAiEngine._getLevelContext(level, true);
+// [V2.01] SIẾT SCHEMA CHỐNG RÒ RỈ TIẾNG ANH
 const itemsSchema = {
 type: "OBJECT",
 properties: {
-foreignText: { type: "STRING", description: `Bẫy viết bằng ${foreignLangName} (KHÔNG CHỨA TIẾNG VIỆT HAY NGOẠI NGỮ KHÁC)` },
+foreignText: { type: "STRING", description: `Bẫy viết bằng ${foreignLangName}. CẤM TIẾNG ANH. CẤM TIẾNG VIỆT.` },
 vietnameseText: { type: "STRING", description: "Bản dịch tiếng Việt (TUYỆT ĐỐI KHÔNG CHỨA CHỮ HÁN/PINYIN HAY NGOẠI NGỮ KHÁC)" }
 },
 required: ["foreignText", "vietnameseText"]
@@ -2225,7 +2236,7 @@ if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG SINH RÁC]: " + ruleStr;
 }
 prompt += microPrompt;
 prompt += injectedRule;
-prompt += window.GameAiEngine._getLevelContext(level);
+prompt += window.GameAiEngine._getLevelContext(level, false);
 const schema = { type: "OBJECT", properties: { noise: { type: "ARRAY", items: { type: "STRING" } } }, required: ["noise"] };
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(res.text);
@@ -2295,7 +2306,7 @@ if (ruleStr) injectedRule = "\n[ĐỊNH HƯỚNG BỔ SUNG TỪ HỆ THỐNG]: "
 }
 prompt += microPrompt;
 prompt += injectedRule;
-prompt += window.GameAiEngine._getLevelContext(level);
+prompt += window.GameAiEngine._getLevelContext(level, false);
 const schema = {
 type: "OBJECT",
 properties: {
