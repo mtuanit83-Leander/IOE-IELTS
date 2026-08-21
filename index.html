@@ -12132,9 +12132,10 @@ suddenDeath={suddenDeath}
 // [QUAN TRỌNG] EXPORT GLOBAL
 window.ScrambleGame = ScrambleGame;
 window.Block5_4_ScrambleGame = ScrambleGame;
-// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.34
-// Last Updated: 2026-08-20 23:48
+// Block 5.5: TẦNG 5: TRÒ CHƠI HÓA (Quiz UI) - Version 1.35
+// Last Updated: 2026-08-21 10:46
 // Nhiệm vụ: Hiển thị giao diện cho trò chơi Trắc nghiệm (Multiple Choice).
+// Cập nhật V1.35: [SCAVENGING BOOKMARK] Bổ sung nút Bookmark vào cả 4 đáp án sau khi người dùng trả lời xong (isChecking), hỗ trợ thu hoạch các đáp án nhiễu vào sổ tay.
 // Cập nhật V1.34: [DOM SURGERY] Thay thế thẻ <button> bọc đáp án bằng <div role="button"> để sửa lỗi thuộc tính 'disabled' chặn đứng mọi sự kiện click lên nút loa bên trong khi người dùng tạm dừng kết quả.
 // Cập nhật V1.33: [POST-ANSWER AUDIO] Loại bỏ loa chính thừa thãi, bổ sung loa tương tác vào cả 4 đáp án sau khi người dùng trả lời (isChecking) để luyện nghe ngoại ngữ.
 // Cập nhật V1.32: [ADAPTIVE TRIM HOTFIX] Ràng buộc hiển thị subText (phần bị cắt tỉa) với biến isChecking để bít hoàn toàn lỗ hổng meta-gaming. Phần chữ thừa chỉ hiện ra sau khi chọn đáp án.
@@ -12377,7 +12378,7 @@ onStartRound, onEndGame, onPause, onBack, feedbackType, isPaused,
 correctCount, wrongCount, onSkip, settings, askMode, showPronun, listenMode,
 hardMode, listenPlayCount, sourceMode, config,
 aiWaitTime, resultTimer, isResultPaused, toggleResultPause, onNext,
-aiAmmoCount = 0
+aiAmmoCount = 0, notebook = [] // [V1.35] Nhận mảng Notebook từ Tầng 6
 }) => {
 const Icons = window.Icons;
 const [showConfirmEnd, setShowConfirmEnd] = React.useState(false);
@@ -12614,7 +12615,7 @@ Không nghe được? (Chấp nhận sai để xem chữ)
 </div>
 )}
 </div>
-{/* [V1.33 POST-ANSWER AUDIO] Đã XÓA HẲN loa chính ở đây để chuyển trọng tâm xuống đáp án */}
+{/* [POST-ANSWER AUDIO V1.33] Đã XÓA HẲN loa chính ở đây để chuyển trọng tâm xuống đáp án */}
 </div>
 <div className={`flex flex-col gap-3 w-full mt-2 transition-all duration-300 ${contentBlurClass}`}>
 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 w-full`}>
@@ -12643,6 +12644,10 @@ if (opt.isCorrect) speakerColorClass = 'text-green-700 bg-green-200 hover:bg-gre
 else if (i === selectedOptionIndex && !opt.isCorrect) speakerColorClass = 'text-red-700 bg-red-200 hover:bg-red-300 border-red-300';
 else speakerColorClass = 'text-gray-500 bg-gray-100 hover:bg-gray-200 border-gray-200 opacity-80';
 }
+// [SCAVENGING BOOKMARK V1.35] Tính toán dữ liệu lưu Sổ tay (Đảo ngược logic lấy từ/nghĩa)
+const foreignWord = isReverse ? opt.text : opt.meaning;
+const vietnameseMeaning = isReverse ? opt.meaning : opt.text;
+const isOptInNotebook = notebook?.some(n => n.term === foreignWord);
 // [V1.34 DOM SURGERY] Tính toán trạng thái khóa logic của thẻ bấm
 const isListenLocked = gameMode === 'listen' && !hasStartedListening && !isReverseListen;
 const isDisabled = isChecking || clickedWrongIndices.has(i) || isListenLocked;
@@ -12677,7 +12682,8 @@ className={`w-full p-4 border-2 rounded-xl shadow-sm transition-all text-left fl
 )}
 </div>
 </div>
-{/* [POST-ANSWER AUDIO V1.33] Hiển thị loa ở 4 đáp án sau khi trả lời, hoặc ở chế độ Nghe Đảo ngược */}
+<div className="flex items-center shrink-0 gap-1.5 ml-2">
+{/* [POST-ANSWER AUDIO V1.33] Hiển thị loa ở 4 đáp án sau khi trả lời */}
 {showOptionSpeaker && (
 <div
 onClick={(e) => {
@@ -12687,13 +12693,27 @@ e.stopPropagation();
 const textToSpeak = isReverse ? opt.text : opt.meaning;
 if (onPlay && textToSpeak) onPlay(textToSpeak);
 }}
-className={`ml-2 p-2 rounded-full flex-none transition-transform active:scale-90 border shadow-sm cursor-pointer ${speakerColorClass}`}
+className={`p-2 rounded-full flex-none transition-transform active:scale-90 border shadow-sm cursor-pointer ${speakerColorClass}`}
 title="Nghe phát âm"
 >
 <Icons.Volume2 size={20} />
 </div>
 )}
-{icon && <div className="ml-2 flex-none">{icon}</div>}
+{/* [SCAVENGING BOOKMARK V1.35] Nút thu thập từ vựng ở 4 đáp án */}
+{isChecking && foreignWord && (
+<div
+onClick={(e) => {
+e.stopPropagation();
+if (onBookmark) onBookmark({ isSmartTarget: true, display: foreignWord, save: foreignWord, analysis: vietnameseMeaning });
+}}
+className={`p-2 rounded-full flex-none transition-transform active:scale-90 border shadow-sm cursor-pointer ${isOptInNotebook ? 'text-yellow-600 bg-yellow-100 hover:bg-yellow-200 border-yellow-300' : 'text-gray-400 bg-gray-50 hover:bg-gray-100 border-gray-200 hover:text-yellow-500'}`}
+title={isOptInNotebook ? "Đã lưu trong Sổ tay" : "Lưu vào Sổ tay"}
+>
+<Icons.Bookmark size={20} fill={isOptInNotebook ? "currentColor" : "none"} />
+</div>
+)}
+{icon && <div className="flex-none">{icon}</div>}
+</div>
 </div>
 );
 })}
@@ -12734,9 +12754,10 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.47
-// Last Updated: 2026-08-19 15:00
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.48
+// Last Updated: 2026-08-21 11:00
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
+// Cập nhật V1.48: [SCAVENGING BOOKMARK] Truyền mảng `notebook` từ Tầng 6 xuống tận `GamePlayScreen` (Tầng UI) để phục vụ tính năng đối chiếu và lưu các đáp án nhiễu vào Sổ tay.
 // Cập nhật V1.47: [DUAL-LANGUAGE MAPPING] Nâng cấp luồng fetchTask để xử lý dữ liệu đáp án chứa cả bản dịch (meaning) từ Tầng 2, đồng thời trích xuất tự động bản dịch cho Đáp án đúng và đáp án lấy từ Pool Offline.
 // Cập nhật V1.46: [BUG FIX] Chặn đứng lỗi AutoSave Cleanup ghi đè (Race Condition) làm mất bộ đếm câu sai khi người dùng bấm Lưu & Thoát ngang.
 // Cập nhật V1.45: [UI COOLDOWN] Phân luồng thời gian chờ chuyển câu. Chế độ AI sử dụng trực tiếp tham số uiCooldown từ Bảng Điều Khiển Lõi AI, chế độ Offline giữ nguyên tốc độ siêu tốc (1s).
@@ -13583,6 +13604,7 @@ resultTimer={resultTimer} isResultPaused={isResultPaused} toggleResultPause={() 
 queueLength={queueLength} config={configRef.current} aiWaitTime={aiWaitTime}
 onNext={() => handleNext()}
 aiAmmoCount={aiAmmoCount}
+notebook={notebook}
 />
 );
 };
