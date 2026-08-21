@@ -1951,13 +1951,12 @@ const randomSeed = Math.random().toString(36).substring(2, 10).toUpperCase();
 prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lòng giữ cho nội dung luôn phong phú, đa dạng và thú vị.\n`;
 return prompt;
 };
-// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.10
-// Last Updated: 2026-08-20 22:37
+// Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.11
+// Last Updated: 2026-08-21 13:18
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
+// Cập nhật V2.11: [CHARACTER FIREWALL & STRING EQUALITY] Bổ sung "Bức tường lửa Ký tự" cấm tuyệt đối tiếng Anh/Pinyin khi xuất Tiếng Trung. Định nghĩa lại bẫy "Chung gốc" bằng công thức AB-AC và ép AI chạy phép thử String Equality Check trước khi xuất để diệt tận gốc lỗi trùng lặp (điển hình như lỗi "去年").
 // Cập nhật V2.10: [ANTI-UNICODE ESCAPING] Bổ sung lệnh cấm ngặt nghèo định dạng mã hóa \uXXXX, ép LLM trả về ký tự thô (Raw UTF-8) để chống lỗi hiển thị JSON và giảm tải Token.
-// Cập nhật V2.09: [ANTI-EXHAUSTION & DIRECT BLACKLIST] Giải quyết triệt để hội chứng cạn kiệt ý tưởng bằng cách cho phép AI "Trộn bẫy" (VD: 2 bẫy đồng âm + 1 bẫy trái nghĩa) nếu bí từ. Đồng thời, tiêm trực tiếp từ gốc và nghĩa gốc vào mô tả JSON Schema để tạo chốt chặn cấm sao chép vật lý cuối cùng.
-// Cập nhật V2.08: [DYNAMIC MIMICRY & HYBRID SCHEMA] Vá triệt để tác dụng phụ AI tự sinh dấu gạch chéo bằng cách tiêm động chính xác loại dấu phân cách có trong từ gốc. Phủ chuẩn Hybrid Prompting lên toàn bộ JSON Schema.
-// Cập nhật V2.07: [TRANSLATION SEPARATION] Phân tách rõ ràng luồng tư duy Tạo bẫy và Dịch bẫy để vá lỗi "Double Negative Paradox" khiến AI cứng đầu sao chép từ gốc.
+// Cập nhật V2.09: [ANTI-EXHAUSTION & DIRECT BLACKLIST] Giải quyết triệt để hội chứng cạn kiệt ý tưởng bằng cách cho phép AI "Trộn bẫy". Tiêm trực tiếp từ gốc và nghĩa gốc vào mô tả JSON Schema.
 // ==================================================================================
 window.GameAiEngine = {
 // [V2.01] RADAR NHẬN DIỆN TRÌNH ĐỘ - Hỗ trợ Mở trần Từ vựng & HSK 3.0
@@ -2096,7 +2095,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.10 ANTI-UNICODE ESCAPING
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.11 KỶ LUẬT THÉP
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2122,14 +2121,16 @@ prompt += `- Nghĩa (Việt): "${definition}"\n\n`;
 prompt += `[NHIỆM VỤ THEO TRÌNH TỰ]:\n`;
 prompt += `BƯỚC 1: Tạo ra ${count} BẪY (foreignText) bằng ${foreignLangName} dựa trên từ gốc.\n`;
 prompt += `BƯỚC 2: DỊCH CHÍNH XÁC NGHĨA CỦA ${count} TỪ BẪY ĐÓ sang Tiếng Việt (vietnameseText). TUYỆT ĐỐI KHÔNG dịch lại từ gốc.\n\n`;
-// KỶ LUẬT THÉP V2.10 (HYBRID PROMPTING: LUẬT LOGIC ÉP BẰNG TIẾNG ANH IN HOA + ANTI-UNICODE)
+// KỶ LUẬT THÉP V2.11 (HYBRID PROMPTING: FIREWALL + STRING EQUALITY CHECK)
 prompt += `[STRICT CONSTRAINTS & RULES - YOU MUST OBEY]:\n`;
 prompt += `1. NO SEMANTIC BLEEDING: The 'foreignText' MUST ONLY contain REAL words in ${foreignLangEngName}. ABSOLUTELY NO ENGLISH WORDS ALLOWED in the trap (e.g., DO NOT translate Chinese morphemes directly into English words like 'network' or 'friend').\n`;
 prompt += `2. TWO-WAY UNIQUENESS & NO STRING MANIPULATION BYPASS:\n`;
 prompt += `   - All ${count} 'foreignText' MUST BE COMPLETELY UNIQUE and DIFFERENT from the original word ("${term}").\n`;
 prompt += `   - All ${count} 'vietnameseText' MUST BE COMPLETELY UNIQUE in core meaning. STRICTLY PROHIBITED to bypass this rule by removing Vietnamese diacritics, removing accents, or using typos (e.g., changing 'Năm ngoái' to 'Nam ngoai' is FORBIDDEN). If the translation accidentally matches the original word, YOU MUST use a fuzzy synonym or rephrase it to ensure uniqueness.\n`;
 prompt += `3. REAL DICTIONARY WORDS ONLY: You MUST use REAL, EXISTING words in ${foreignLangEngName}. DO NOT invent fake words or combinations.\n`;
-prompt += `4. ABSOLUTELY NO UNICODE ESCAPING: You MUST return raw UTF-8 characters directly. STRICTLY PROHIBITED to use \\uXXXX format (e.g., return 半 instead of \\u534a).\n\n`;
+prompt += `4. ABSOLUTELY NO UNICODE ESCAPING: You MUST return raw UTF-8 characters directly. STRICTLY PROHIBITED to use \\uXXXX format.\n`;
+prompt += `5. CHARACTER SET FIREWALL: If the target language is CHINESE, ALL 'foreignText' MUST consist EXCLUSIVELY of Chinese characters (Hanzi / 汉字). STRICTLY PROHIBITED to output Pinyin, English letters (a-z, A-Z), or spaces.\n`;
+prompt += `6. STRING EQUALITY CHECK: Before outputting, execute an internal String Equality Check: If 'foreignText' == original word ("${term}"), YOU MUST REGENERATE another word.\n\n`;
 // [V2.08 DYNAMIC MIMICRY] - Quét và tiêm chính xác dấu phân cách
 if (type !== 'sentence' && definition) {
 let detectedSeparators = [];
@@ -2145,7 +2146,7 @@ if (type === 'sentence') {
 prompt += `[TẠO BẪY CÂU VĂN]:\n`;
 prompt += `- Giữ nguyên 70-80% từ vựng của câu gốc. Thay đổi 1-2 tiểu tiết quan trọng (đổi chủ thể, hành động, trái nghĩa, thời gian).\n`;
 } else {
-// [V2.09] ĐỊNH TUYẾN LINH HOẠT TỐI ĐA (ANTI-EXHAUSTION MIXED TRAPS)
+// [V2.09 & V2.11] CÔNG THỨC AB-AC & ĐỊNH TUYẾN LINH HOẠT TỐI ĐA
 prompt += `[CHIẾN LƯỢC TẠO BẪY (FLEXIBLE TRAP ROUTING)]:\n`;
 let primaryTrap = "";
 let fallbackTraps = "";
@@ -2161,7 +2162,7 @@ traps = [
 ];
 } else {
 traps = [
-{ name: "Từ ghép chung gốc/Bán đồng hình (Shared Morpheme)", desc: "Tìm một từ ghép khác có chứa CHUNG 1 CHỮ HÁN với từ gốc. (Chiến thuật này rất hiệu quả để thoát khỏi sự gò bó của chủ đề gốc)." },
+{ name: "Từ ghép chung gốc/Bán đồng hình (Shared Morpheme)", desc: "Tìm từ ghép khác có chung 1 chữ Hán với từ gốc, NHƯNG chữ Hán còn lại BẮT BUỘC PHẢI KHÁC. (Ví dụ: Từ gốc là AB, bẫy phải là AC hoặc CB. TUYỆT ĐỐI KHÔNG ĐƯỢC TRẢ VỀ LẠI AB)." },
 { name: "Trái nghĩa/Tương phản", desc: "Nghĩa đối lập hoàn toàn với bản chất của từ gốc." },
 { name: "Cùng Chủ đề/Trường từ vựng", desc: "Cùng loại sự vật/sự việc/động từ nhưng sai đối tượng." }
 ];
