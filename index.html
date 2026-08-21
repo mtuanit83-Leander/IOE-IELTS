@@ -1952,11 +1952,11 @@ prompt += `\n[MÃ HẠT GIỐNG - SEED: ${randomSeed}] SỰ SÁNG TẠO: Vui lò
 return prompt;
 };
 // Block 2.3A: TẦNG 2: BỘ NÃO AI (Game Ai Engine) - Version 2.13
-// Last Updated: 2026-08-21 16:30
+// Last Updated: 2026-08-21 22:00
 // Nhiệm vụ: Chuyên trách giao tiếp API, chứa Prompt, đóng vai Persona và sinh dữ liệu nhiễu bằng AI.
-// Cập nhật V2.13: [HYBRID FALLBACK & REGEX GATEKEEPER] Tích hợp Trạm gác Regex hậu kỳ chém bỏ Pinyin/IPA. Kết nối chéo sang Cỗ máy Tổng kho (offline_generateOptions) để bù đắp liền mạch các đáp án bị chém. Tăng nặng răn đe trong Prompt.
-// Cập nhật V2.12: [PROMPT STRIPPING] Gọt giũa toàn bộ Prompt, loại bỏ văn phong "đóng vai/persona" rườm rà. Chuyển sang "Chỉ thị Máy móc" (Direct Constraint Engineering).
-// Cập nhật V2.11: [CHARACTER FIREWALL & STRING EQUALITY] Bổ sung "Bức tường lửa Ký tự". Định nghĩa lại bẫy "Chung gốc" bằng công thức AB-AC.
+// Cập nhật V2.13: [2D UNIQUENESS & LEAKAGE GATEKEEPER] Tích hợp Trạm gác Hậu kỳ chém bỏ đáp án trùng lặp 2 chiều (Text & Meaning) và thanh trừng triệt để rò rỉ Pinyin/IPA bằng Regex ngay trước khi trả mảng về.
+// Cập nhật V2.12: [PROMPT STRIPPING] Gọt giũa toàn bộ Prompt, loại bỏ văn phong "đóng vai/persona" rườm rà. Chuyển sang "Chỉ thị Máy móc" (Direct Constraint Engineering) để tiết kiệm Token, giảm ảo giác và ép AI tập trung vào kỷ luật thép.
+// Cập nhật V2.11: [CHARACTER FIREWALL & STRING EQUALITY] Bổ sung "Bức tường lửa Ký tự" cấm tuyệt đối tiếng Anh/Pinyin khi xuất Tiếng Trung. Định nghĩa lại bẫy "Chung gốc" bằng công thức AB-AC và ép AI chạy phép thử String Equality Check trước khi xuất để diệt tận gốc lỗi trùng lặp.
 // ==================================================================================
 window.GameAiEngine = {
 // [V2.01] RADAR NHẬN DIỆN TRÌNH ĐỘ - Hỗ trợ Mở trần Từ vựng & HSK 3.0
@@ -2090,7 +2090,7 @@ required: ["wrongSentence", "wrongWord", "correction", "explanation"]
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 },
-// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.13 REGEX GATEKEEPER & PROMPT ESCALATION
+// 2. ĐỘNG CƠ TẠO ĐÁP ÁN NHIỄU (Quiz Options) - V2.13 KỶ LUẬT THÉP & BỘ LỌC ĐỘC BẢN 2 CHIỀU
 ai_generateOptions: async function(cardOrText, distractorLang, type, apiKey, count = 3, level = "", topic = "", isReverse = false) {
 let term = "";
 let definition = "";
@@ -2106,7 +2106,7 @@ if (level && level.includes('zh')) foreignLang = 'zh';
 else if (distractorLang === 'zh' || distractorLang === 'en') foreignLang = distractorLang;
 const foreignLangName = foreignLang === 'zh' ? 'TIẾNG TRUNG' : 'TIẾNG ANH';
 const foreignLangEngName = foreignLang === 'zh' ? 'CHINESE' : 'ENGLISH';
-// [V2.13] LẮP RÁP PROMPT: CHỈ THỊ MÁY MÓC TĂNG NẶNG (PROMPT ESCALATION)
+// [V2.12] LẮP RÁP PROMPT: CHỈ THỊ MÁY MÓC (DIRECT COMMANDS)
 let prompt = `[SYSTEM]: QUIZ GENERATOR ENGINE.\n`;
 prompt += `[SOURCE]:\n`;
 prompt += `- Original (${foreignLangName}): "${term}"\n`;
@@ -2114,19 +2114,18 @@ prompt += `- Meaning (Vietnamese): "${definition}"\n\n`;
 prompt += `[TASK]:\n`;
 prompt += `STEP 1: Generate ${count} traps ('foreignText') in ${foreignLangName} based on Original.\n`;
 prompt += `STEP 2: Translate the exact meaning of those ${count} traps into Vietnamese ('vietnameseText'). DO NOT re-translate the original word.\n\n`;
-// KỶ LUẬT THÉP (FIREWALL + ESCALATION)
-prompt += `[STRICT CONSTRAINTS - MUST OBEY OR SYSTEM WILL FAIL]:\n`;
+// KỶ LUẬT THÉP (FIREWALL + EQUALITY CHECK) - TĂNG NẶNG HÌNH PHẠT
+prompt += `[STRICT CONSTRAINTS - MUST OBEY]:\n`;
 prompt += `1. NO SEMANTIC BLEEDING: 'foreignText' MUST ONLY contain REAL ${foreignLangEngName} words. NO ENGLISH translation of morphemes.\n`;
-prompt += `2. UNIQUENESS: All ${count} 'foreignText' MUST NOT EQUAL "${term}". All ${count} 'vietnameseText' MUST NOT EQUAL "${definition}". No typo bypassing.\n`;
+prompt += `2. 2D UNIQUENESS: All ${count} 'foreignText' MUST NOT EQUAL "${term}". All ${count} 'vietnameseText' MUST NOT EQUAL "${definition}". No typo bypassing.\n`;
 prompt += `3. DICTIONARY WORDS ONLY: Must use REAL, EXISTING ${foreignLangEngName} words.\n`;
 prompt += `4. ENCODING: Return raw UTF-8 characters. NO \\uXXXX escaping.\n`;
-// Tăng nặng cấm Pinyin và IPA
 if (foreignLang === 'zh') {
-prompt += `5. OUTPUT REQUIREMENT: 'foreignText' MUST BE 100% AUTHENTIC CHINESE CHARACTERS (Hanzi). STRICTLY PROHIBITED to output Pinyin or Romanized spellings. Any output containing a-z letters or spaces will cause system failure.\n`;
+prompt += `5. CHARACTER FIREWALL: OUTPUT REQUIREMENT: 'foreignText' MUST BE 100% AUTHENTIC CHINESE CHARACTERS (Hanzi). STRICTLY PROHIBITED to output Pinyin or Romanized spellings. Any output containing a-z letters will cause system failure.\n`;
 } else {
-prompt += `5. OUTPUT REQUIREMENT: 'foreignText' MUST BE STANDARD ENGLISH WORDS. STRICTLY PROHIBITED to output phonetic transcriptions (IPA) or pronunciation guides (like /.../ or [...]).\n`;
+prompt += `5. CHARACTER FIREWALL: OUTPUT REQUIREMENT: 'foreignText' MUST BE STANDARD ENGLISH WORDS. STRICTLY PROHIBITED to output phonetic transcriptions (IPA) or pronunciation guides (like /.../ or [...]).\n`;
 }
-prompt += `6. ASSERTION: ASSERT(foreignText !== "${term}"). IF MATCH, REGENERATE.\n\n`;
+prompt += `6. ASSERTION: ASSERT(foreignText !== "${term}" && vietnameseText !== "${definition}"). IF MATCH, REGENERATE.\n\n`;
 // [V2.08] DYNAMIC MIMICRY
 if (type !== 'sentence' && definition) {
 let detectedSeparators = [];
@@ -2195,7 +2194,7 @@ prompt += window.GameAiEngine._getLevelContext(level, true);
 const itemsSchema = {
 type: "OBJECT",
 properties: {
-foreignText: { type: "STRING", description: `Trap in ${foreignLangEngName}. MUST NOT BE "${term}". STRICTLY NO ENGLISH ALLOWED.` },
+foreignText: { type: "STRING", description: `Trap in ${foreignLangEngName}. MUST NOT BE "${term}". STRICTLY NO ENGLISH. STRICTLY NO UNICODE ESCAPING.` },
 vietnameseText: { type: "STRING", description: `Vietnamese translation. MUST NOT BE "${definition}". MUST HAVE ACCENTS.` }
 },
 required: ["foreignText", "vietnameseText"]
@@ -2208,99 +2207,51 @@ distractors: { type: "ARRAY", items: itemsSchema }
 },
 required: ["reasoning", "distractors"]
 };
-let mappedDistractors = [];
-try {
 const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 const parsed = window.Utils.parseAiJson(res.text);
 const dists = parsed.distractors || [];
-mappedDistractors = dists.map(d => {
+// ============================================================================
+// [V2.13] TRẠM GÁC HẬU KỲ VÀ BỘ LỌC ĐỘC BẢN 2 CHIỀU (POST-PROCESSING GATEKEEPER)
+// ============================================================================
+const validDistractors = [];
+const textSet = new Set([term.toLowerCase().trim()]);
+const meaningSet = new Set([definition.toLowerCase().trim()]);
+// Regex cấm đoán
+const regexZh = /[a-zA-Z]/; // Cấm ký tự Latin (Pinyin, English)
+const regexEn = /[\[\]\/\\əæθʃʒðŋɑɔʊʌɛ]/; // Cấm phiên âm IPA/ngoặc
+for (const d of dists) {
+let fText = (d.foreignText || "").trim();
+let vText = (d.vietnameseText || "").trim();
+if (!fText || !vText) continue;
+// 1. Kiểm tra rò rỉ ngôn ngữ (Language Leakage Check)
+if (foreignLang === 'zh' && regexZh.test(fText)) {
+console.warn("[Gatekeeper] Phát hiện rò rỉ Pinyin/Tiếng Anh. Chém bỏ bẫy:", fText);
+continue;
+}
+if (foreignLang === 'en' && regexEn.test(fText)) {
+console.warn("[Gatekeeper] Phát hiện rò rỉ phiên âm IPA. Chém bỏ bẫy:", fText);
+continue;
+}
+// 2. Kiểm tra Độc bản 2 chiều (2D Uniqueness Check)
+const fTextLower = fText.toLowerCase();
+const vTextLower = vText.toLowerCase();
+if (textSet.has(fTextLower) || meaningSet.has(vTextLower)) {
+console.warn("[Gatekeeper] Phát hiện trùng lặp Cột mốc/Nội bộ. Chém bỏ bẫy:", fText, "|", vText);
+continue; // Trùng từ ngoại ngữ HOẶC trùng tiếng Việt -> Loại bỏ ngay
+}
+// Vượt qua trạm gác -> Lưu vào danh sách an toàn và Cập nhật từ điển Set()
+textSet.add(fTextLower);
+meaningSet.add(vTextLower);
+validDistractors.push(d);
+}
+// 3. Mapping và Cắt mảng (Sự khuyết thiếu sẽ được Tầng 5 / Block 2.3B tự động bù đắp bằng Offline Pooling)
+return validDistractors.map(d => {
 if (!isReverse) {
 return { text: d.vietnameseText || "Lỗi dịch", meaning: d.foreignText || "Lỗi tạo bẫy" };
 } else {
 return { text: d.foreignText || "Lỗi tạo bẫy", meaning: d.vietnameseText || "Lỗi dịch" };
 }
-});
-} catch (e) {
-console.warn("[GameAiEngine] Lỗi gọi AI Quiz Options, trả về mảng rỗng để kích hoạt Fallback.", e);
-mappedDistractors = [];
-}
-// [V2.13] BƯỚC 1: TRẠM GÁC REGEX (REGEX GATEKEEPER) - CHÉM BỎ PINYIN/IPA
-let cleanDistractors = [];
-// Nếu là chế độ đọc (isReverse=false), text = tiếng Việt, meaning = ngoại ngữ.
-// Nếu là chế độ đảo (isReverse=true), text = ngoại ngữ, meaning = tiếng Việt.
-const getForeignField = (d) => isReverse ? d.text : d.meaning;
-if (type !== 'sentence') { // Bỏ qua bộ lọc cứng cho câu (vì câu có thể chứa khoảng trắng hoặc chữ latin hợp lệ)
-cleanDistractors = mappedDistractors.filter(d => {
-const foreignStr = getForeignField(d);
-if (!foreignStr || foreignStr === "Lỗi tạo bẫy") return false;
-if (foreignLang === 'zh') {
-// Tiếng Trung: Khóa tuyệt đối ký tự Latinh (a-z, A-Z), khoảng trắng.
-// Cho phép: Chữ Hán, dấu câu (，。！？、).
-const regexZh = /[a-zA-Z\s]/;
-if (regexZh.test(foreignStr)) {
-console.warn(`[Regex Gatekeeper] Đã chém đáp án rò rỉ Pinyin/Latinh: "${foreignStr}"`);
-return false;
-}
-} else {
-// Tiếng Anh: Khóa ký hiệu IPA, ngoặc vuông, gạch chéo
-const regexEn = /[\[\]\/\\əæθʃʒðŋɑɔʊʌɛ]/i;
-if (regexEn.test(foreignStr)) {
-console.warn(`[Regex Gatekeeper] Đã chém đáp án rò rỉ phiên âm (IPA): "${foreignStr}"`);
-return false;
-}
-}
-return true;
-});
-} else {
-cleanDistractors = mappedDistractors;
-}
-// [V2.13] BƯỚC 2: BÙ ĐẮP LIÊN HOÀN (SEAMLESS OFFLINE PADDING)
-// Nếu Trạm Gác chém rớt đáp án, hoặc API lỗi trả về thiếu, gọi Tổng kho để bù đắp.
-if (cleanDistractors.length < count) {
-if (window.GameOfflineEngine && window.GameOfflineEngine.offline_generateOptions) {
-console.log(`[GameAiEngine] Bù đắp Offline ${count - cleanDistractors.length} đáp án...`);
-// Lấy thẻ gốc ra (nếu là obj) để hỗ trợ Offline Engine định vị Tổng kho
-let originalCardObj = {};
-if (typeof cardOrText === 'object') {
-originalCardObj = cardOrText;
-} else {
-originalCardObj = { term: term, definition: definition };
-}
-// Gọi Offline Engine bù đắp (Chỉ lấy mảng String text)
-let needed = count - cleanDistractors.length;
-const offlineDists = window.GameOfflineEngine.offline_generateOptions(
-term, // Lấy ngoại ngữ làm gốc
-[originalCardObj], // Deck tạm chứa gốc
-foreignLang,
-type,
-needed,
-false, // Luôn ép false để Offline Engine trả về bẫy ngoại ngữ (nếu isReverse thì Tầng 5 sẽ xử lý sau)
-FALSE
-);
-// Gắn lại vào mảng
-offlineDists.forEach(fallbackText => {
-// Tái cấu trúc Fallback thành Object {text, meaning} để khớp định dạng
-// Vì Offline Engine chỉ trả Text ngoại ngữ, phần dịch sẽ phải tra cứu hoặc để trống
-let optMeaning = "";
-// Nỗ lực tra cứu lại bản dịch từ Tổng kho
-const lookupCard = (targetText) => {
-try {
-const safeLang = (foreignLang === 'en' || foreignLang === 'zh') ? foreignLang : 'en';
-const masterPool = window.Utils ? window.Utils.safeJsonParse('fc_data_' + safeLang, []) : [];
-return masterPool.find(c => c.term === targetText);
-} catch(e){ return null; }
-};
-const foundCard = lookupCard(fallbackText);
-if (foundCard) optMeaning = foundCard.definition;
-if (!isReverse) {
-cleanDistractors.push({ text: optMeaning || "Dữ liệu dự phòng", meaning: fallbackText });
-} else {
-cleanDistractors.push({ text: fallbackText, meaning: optMeaning || "Dữ liệu dự phòng" });
-}
-});
-}
-}
-return cleanDistractors.slice(0, count);
+}).slice(0, count);
 },
 // 3. ĐỘNG CƠ SINH RÁC TRỰC TUYẾN (Scramble Noise)
 ai_getNoise: async function(correctText, lang, type, apiKey, count = 2, level = "", topic = "", card = null) {
@@ -2423,12 +2374,12 @@ const res = await window.Utils.callGeminiApi(prompt, schema, apiKey);
 return window.Utils.parseAiJson(res.text);
 }
 };
-// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.23
-// Last Updated: 2026-08-22 10:15
+// Block 2.3B: TẦNG 2: BỘ NÃO CỤC BỘ & TRẠM ĐỊNH TUYẾN (Game Offline Engine & Facade) - Version 1.24
+// Last Updated: 2026-08-22 15:30
 // Nhiệm vụ: Chuyên trách thuật toán Offline (không dùng mạng) và Định tuyến tương thích ngược cho 9 Games Tầng 5.
+// Cập nhật V1.24: [2D UNIQUENESS FILTER] Tích hợp Trạm gác Độc bản 2 chiều vào Engine Offline. Kiểm duyệt khắt khe cả 'text' và 'meaning', đảm bảo mọi bẫy bốc từ Tổng kho (Master Pool) đều khác biệt hoàn toàn với từ gốc và các bẫy khác.
 // Cập nhật V1.23: [UNIVERSAL OFFLINE ENGINE] Tích hợp Global Master Pool Scoring. Khai tử cơ chế bốc thẻ cục bộ (Deck-bound). Chuyển sang quét Tổng kho, kết hợp Ma trận Trọng số (Từ loại, Chủ đề, Cấp độ) để bù đắp các đáp án nhiễu (Padding) có chất lượng lừa lọc tương đương AI.
 // Cập nhật V1.22: [VI DEPRECATION] Nhổ tận gốc 100% logic, dữ liệu dự phòng, và thuật toán bóp méo hình thái của ngôn ngữ tiếng Việt ('vi'). Tối ưu hóa dung lượng Engine.
-// Cập nhật V1.21: [OFFLINE DISTORTION GUARD] Triển khai Giai đoạn 3: Bổ sung cổng gác Gatekeeper bảo vệ tính toàn vẹn của chính tả.
 // ==================================================================================
 window.GameOfflineEngine = {
 // Helper nội bộ
@@ -2615,12 +2566,18 @@ return { wrongSentence: text + "x", wrongWord: text + "x", correction: text, exp
 // 2. THUẬT TOÁN TẠO ĐÁP ÁN NHIỄU TỔNG KHO (Universal Master Pool Scoring)
 // ============================================================================
 offline_generateOptions: function(correctText, deck, lang, type, count = 3, isReverse = false, isHard = false) {
-const distractors = new Set();
 const cleanCorrectText = correctText ? correctText.trim() : "";
 if (!cleanCorrectText) return [];
 // TÌM THẺ GỐC (Đóng vai trò là Mỏ neo chấm điểm)
 let baseCard = isReverse ? deck.find(c => c.term === cleanCorrectText) : deck.find(c => c.definition === cleanCorrectText);
 baseCard = baseCard || {};
+// [V1.24] TRẠM GÁC ĐỘC BẢN 2 CHIỀU (2D Uniqueness Filter)
+const textSet = new Set();
+const meaningSet = new Set();
+// Thêm thẻ gốc vào danh sách đen để chặn sinh trùng
+if (baseCard.term) textSet.add(baseCard.term.toLowerCase().trim());
+if (baseCard.definition) meaningSet.add(baseCard.definition.toLowerCase().trim());
+const finalDistractors = [];
 const originTopic = baseCard.topic || "";
 const originPOS = (baseCard.partOfSpeech || "").toLowerCase().trim();
 const originLevel = baseCard.level || "";
@@ -2636,7 +2593,7 @@ if (c && c.term) {
 const cVal = getVal(c);
 // BỘ LỌC TẦNG 1: Loại bỏ trùng lặp và chuỗi trống
 if (cVal && cVal !== cleanCorrectText && c.term !== baseCard.term) {
-combinedMap.set(cVal, c); // Khóa Map bằng cVal để loại bỏ đáp án nhiễu trùng nhau
+combinedMap.set(cVal, c);
 }
 }
 });
@@ -2656,14 +2613,26 @@ return { card: c, score, val: getVal(c) };
 scoredSentences.sort((a, b) => b.score - a.score);
 const shuffled = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(scoredSentences.slice(0, 30)) : scoredSentences.slice(0, 30);
 for (let item of shuffled) {
-if (distractors.size >= count) break;
-distractors.add(item.val);
+if (finalDistractors.length >= count) break;
+const cTerm = (item.card.term || "").toLowerCase().trim();
+const cDef = (item.card.definition || "").toLowerCase().trim();
+// TRẠM GÁC 2 CHIỀU
+if (textSet.has(cTerm) || meaningSet.has(cDef)) continue;
+textSet.add(cTerm);
+meaningSet.add(cDef);
+finalDistractors.push(item.val);
 }
 } else {
 // Tiếng Ngoại Ngữ
 if (isHard && window.GameOfflineEngine.offline_distort) {
 const trap1 = window.GameOfflineEngine.offline_distort(cleanCorrectText, lang, type).wrongSentence;
-if (trap1 && trap1.trim() !== "" && trap1 !== cleanCorrectText) distractors.add(trap1.trim());
+if (trap1 && trap1.trim() !== "" && trap1 !== cleanCorrectText) {
+const trapLower = trap1.toLowerCase().trim();
+if (!textSet.has(trapLower)) {
+textSet.add(trapLower);
+finalDistractors.push(trap1.trim());
+}
+}
 }
 const isChinese = lang === 'zh';
 const words = isChinese ? Array.from(cleanCorrectText) : cleanCorrectText.split(' ').map(w => w.replace(/[.,?!;:'"]/g, ''));
@@ -2677,7 +2646,12 @@ if (poolFilter.length === 0) poolFilter = combinedPool.filter(c => !window.Utils
 if (poolFilter.length > 0) {
 const swapWord = poolFilter[Math.floor(Math.random() * poolFilter.length)].term.trim();
 if (swapWord) {
-distractors.add(isChinese ? cleanCorrectText.replace(kw, swapWord) : cleanCorrectText.replace(new RegExp(`\\b${kw}\\b`, 'i'), swapWord));
+const newSentence = isChinese ? cleanCorrectText.replace(kw, swapWord) : cleanCorrectText.replace(new RegExp(`\\b${kw}\\b`, 'i'), swapWord);
+const newSentenceLower = newSentence.toLowerCase().trim();
+if (!textSet.has(newSentenceLower)) {
+textSet.add(newSentenceLower);
+finalDistractors.push(newSentence);
+}
 }
 }
 }
@@ -2690,8 +2664,14 @@ return { card: c, score, val: getVal(c) };
 scoredSentences.sort((a, b) => b.score - a.score);
 const shuffled = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray(scoredSentences.slice(0, 30)) : scoredSentences.slice(0, 30);
 for (let item of shuffled) {
-if (distractors.size >= count) break;
-distractors.add(item.val);
+if (finalDistractors.length >= count) break;
+const cTerm = (item.card.term || "").toLowerCase().trim();
+const cDef = (item.card.definition || "").toLowerCase().trim();
+// TRẠM GÁC 2 CHIỀU
+if (textSet.has(cTerm) || meaningSet.has(cDef)) continue;
+textSet.add(cTerm);
+meaningSet.add(cDef);
+finalDistractors.push(item.val);
 }
 }
 } else {
@@ -2718,15 +2698,21 @@ const topCandidates = scoredPool.slice(0, 30);
 const shuffledCandidates = window.Utils && window.Utils.shuffleArray
 ? window.Utils.shuffleArray(topCandidates)
 : topCandidates;
-// BƯỚC 5: Trích xuất
+// BƯỚC 5: Trích xuất an toàn qua Trạm gác 2 Chiều
 for (let item of shuffledCandidates) {
-if (distractors.size >= count) break;
-if (item.val) distractors.add(item.val);
+if (finalDistractors.length >= count) break;
+if (!item.val) continue;
+const cTerm = (item.card.term || "").toLowerCase().trim();
+const cDef = (item.card.definition || "").toLowerCase().trim();
+// NGUYÊN TẮC ĐỘC BẢN: Chém bỏ nếu trùng Term hoặc trùng Meaning
+if (textSet.has(cTerm) || meaningSet.has(cDef)) continue;
+textSet.add(cTerm);
+meaningSet.add(cDef);
+finalDistractors.push(item.val);
 }
 }
-let arr = Array.from(distractors);
 // [BƯỚC 6: CHỐT CHẶN CỨU HỘ TĨNH - HARDCODED FALLBACK]
-if (arr.length < count) {
+if (finalDistractors.length < count) {
 let fallbackPool = [];
 if (window.FallbackDataEngine && window.FallbackDataEngine.getFallbackData) {
 const safeLang = (lang === 'en' || lang === 'zh') ? lang : 'en';
@@ -2744,16 +2730,22 @@ fallbackPool = ["Apple", "Banana", "Cat", "Dog", "Computer", "Table", "Teacher",
 }
 fallbackPool = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...fallbackPool]) : fallbackPool;
 for (let fw of fallbackPool) {
-if (arr.length >= count) break;
-if (fw !== cleanCorrectText && !arr.includes(fw)) { arr.push(fw); }
+if (finalDistractors.length >= count) break;
+const fwLower = fw.toLowerCase().trim();
+const targetSet = isReverse ? textSet : meaningSet;
+if (fwLower !== cleanCorrectText.toLowerCase().trim() && !targetSet.has(fwLower)) {
+targetSet.add(fwLower);
+finalDistractors.push(fw);
+}
 }
 let fallbackCounter = 1;
-while (arr.length < count) {
-arr.push(cleanCorrectText + " " + fallbackCounter);
+while (finalDistractors.length < count) {
+const generatedFallback = cleanCorrectText + " " + fallbackCounter;
+finalDistractors.push(generatedFallback);
 fallbackCounter++;
 }
 }
-return arr.slice(0, count);
+return finalDistractors.slice(0, count);
 },
 // ============================================================================
 // 3. THUẬT TOÁN BĂM RÁC TỔNG KHO (Universal Scramble Noise)
@@ -12871,13 +12863,12 @@ window.Block5_5_GameResult = GameResult;
 window.GameResult = GameResult;
 window.Block5_5_GamePlayScreen = GamePlayScreen;
 window.GamePlayScreen = GamePlayScreen;
-// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.49
-// Last Updated: 2026-08-22 10:45
+// Block 5.6: TẦNG 5: TRÒ CHƠI HÓA (Quiz Logic) - Version 1.50
+// Last Updated: 2026-08-22 18:30
 // Nhiệm vụ: Tách biệt Logic, quản lý dữ liệu, API, State và Timer của Game Trắc nghiệm.
+// Cập nhật V1.50: [INTEGRATION 2D GATEKEEPER] Tích hợp Trạm gác Độc bản 2 chiều cấp độ liên kết (Online + Offline). Đảm bảo các bẫy bù đắp từ Offline không bao giờ trùng lặp với cả Đáp án đúng lẫn các bẫy AI đã tạo trước đó. Thuật toán "Liên hoàn bù đắp" đã được bọc thép.
 // Cập nhật V1.49: [MASTER POOL INTEGRATION] Trừu tượng hóa hoàn toàn thuật toán sinh bẫy ngoại tuyến. Tích hợp trực tiếp `GameAlgoEngine.OptionsEngine.offline_generateOptions` thay thế cho logic xào bài thủ công, giải phóng nút thắt cổ chai cục bộ và tận dụng sức mạnh quét Tổng kho (Global Pool Scoring).
 // Cập nhật V1.48: [SCAVENGING BOOKMARK] Truyền mảng `notebook` từ Tầng 6 xuống tận `GamePlayScreen` (Tầng UI) để phục vụ tính năng đối chiếu và lưu các đáp án nhiễu vào Sổ tay.
-// Cập nhật V1.47: [DUAL-LANGUAGE MAPPING] Nâng cấp luồng fetchTask để xử lý dữ liệu đáp án chứa cả bản dịch (meaning) từ Tầng 2, đồng thời trích xuất tự động bản dịch cho Đáp án đúng và đáp án lấy từ Pool Offline.
-// Cập nhật V1.46: [BUG FIX] Chặn đứng lỗi AutoSave Cleanup ghi đè (Race Condition) làm mất bộ đếm câu sai khi người dùng bấm Lưu & Thoát ngang.
 // ==================================================================================
 const QuizGame = ({ cards, t, mainColor, lang, timerMode, listenMode, isAiMode, timeLimit, hardMode, onPlay, onBookmark, notebook, showToast, onLogWrong, onMissingKey, isLoading, AiModeSwitch, onBack, onEndGame, savedState, settings, onAutoSave, level, onSaveToHarvest, config, globalRetryBag, addToRetryBag, removeFromRetryBag, onUpdateCards }) => {
 // Wrapper an toàn bảo vệ hệ thống Toast Toàn cục
@@ -13238,18 +13229,40 @@ localStorage.setItem('fc_total_tokens', currentTotal + 150);
 } catch (aiError) { console.warn("AI Quiz Preload Fallback:", aiError.message); }
 }
 } catch(e) { console.warn("Fetch Options Error:", e); }
-// [V1.49] NÂNG CẤP ĐỘNG CƠ FALLBACK TỔNG KHO (MASTER POOL SCORING)
+// ==================================================================================
+// [V1.50] CHỐT CHẶN ĐỘC BẢN 2 CHIỀU CẤP ĐỘ TÍCH HỢP (Integration-Level 2D Gatekeeper)
+// ==================================================================================
+const textSet = new Set([correctOpt.text.toLowerCase().trim()]);
+const meaningSet = new Set([correctOpt.meaning.toLowerCase().trim()]);
+let validDistractors = [];
+for (let d of distractors) {
+const tLower = d.text ? d.text.toLowerCase().trim() : "";
+const mLower = d.meaning ? d.meaning.toLowerCase().trim() : "";
+// Nếu AI trả về bẫy trùng với đáp án đúng hoặc trùng với bẫy trước đó -> Chém bỏ ngay tại đây
+if (!tLower || textSet.has(tLower) || (mLower && meaningSet.has(mLower))) {
+console.warn("[Integration Gatekeeper] Đã chém bỏ bẫy trùng lặp từ AI:", d.text, "|", d.meaning);
+continue;
+}
+textSet.add(tLower);
+if (mLower) meaningSet.add(mLower);
+validDistractors.push(d);
+}
+distractors = validDistractors; // Cập nhật lại mảng bẫy sau khi đã thanh lọc
+// ==================================================================================
+// [V1.50] ĐỘNG CƠ FALLBACK TỔNG KHO VÀ BÙ ĐẮP LIÊN HOÀN (Continuous Padding)
+// ==================================================================================
 if (distractors.length < numOptions - 1) {
 const needed = (numOptions - 1) - distractors.length;
 // 1. Chạy thuật toán sinh bẫy Offline (Tự động chấm điểm trọng số)
 let offlineDists = [];
 if (window.GameAlgoEngine && window.GameAlgoEngine.OptionsEngine && window.GameAlgoEngine.OptionsEngine.offline_generateOptions) {
+// Xin bù dư +2 slot để đề phòng bẫy Offline bị trùng với bẫy AI đã có sẵn
 offlineDists = window.GameAlgoEngine.OptionsEngine.offline_generateOptions(
 correctOptText,
 cardsRef.current || [],
 lang,
 type,
-needed,
+needed + 2,
 isReverse,
 hardMode
 );
@@ -13280,8 +13293,9 @@ if (found) return found;
 }
 return null;
 };
-// 3. Đóng gói hoàn chỉnh {text, meaning}
-distractors.push(...offlineDists.map(distText => {
+// 3. Đóng gói hoàn chỉnh {text, meaning} và Đưa qua Chốt chặn 2 Chiều lần cuối
+for (let distText of offlineDists) {
+if (distractors.length >= numOptions - 1) break; // Đã đủ đạn thì dừng nạp
 const foundCard = lookupCard(distText);
 let optMeaning = "";
 if (foundCard) {
@@ -13289,13 +13303,21 @@ optMeaning = isReverse
 ? foundCard.definition
 : (isSentenceMode ? (foundCard.displaySentence || foundCard.term) : foundCard.term);
 }
-return {
+const tLower = distText.toLowerCase().trim();
+const mLower = optMeaning ? optMeaning.toLowerCase().trim() : "";
+// Gatekeeper 2 Chiều: Chặn trùng với cả Đáp án đúng lẫn các bẫy AI đã có trước đó
+if (!textSet.has(tLower) && (!mLower || !meaningSet.has(mLower))) {
+distractors.push({
 text: distText,
 meaning: optMeaning || "",
 isCorrect: false
-};
-}));
+});
+textSet.add(tLower);
+if (mLower) meaningSet.add(mLower);
 }
+}
+}
+// Chốt chặn cuối cùng nếu Tổng kho cũng cạn kiệt (Rất hiếm)
 while (distractors.length < numOptions - 1) {
 distractors.push({ text: correctOptText + " " + (distractors.length + 1), isCorrect: false });
 }
