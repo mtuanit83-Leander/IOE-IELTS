@@ -643,11 +643,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.04
-// Last Updated: 2026-08-24 23:00
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.05
+// Last Updated: 2026-08-24 23:23
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V4.05: [PEDAGOGICAL POS FILTER] Cải tạo luật trường partOfSpeech, ép AI chỉ liệt kê các từ loại phổ biến và phù hợp với cấp độ. Đặc biệt cấm nhầm lẫn giữa Hình vị và Từ độc lập trong tiếng Trung (chống Hội chứng Từ điển Toàn thư).
 // Cập nhật V4.04: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ: Loại bỏ yêu cầu gắn tag [Từ loại] ở đầu dòng, ép giữ nguyên thứ tự 1:1 với partOfSpeech. Bổ sung Bộ lọc Chất lượng Sư phạm cấm AI sinh câu cụt lủn, thiếu ngữ cảnh.
-// Cập nhật V4.03: [MULTI-POS & MULTI-EXAMPLE] Cải tạo luật Ràng buộc Chéo. Ép AI liệt kê tất cả từ loại hợp lý của từ vựng (cách nhau bằng dấu '|'). Buộc AI sinh số lượng câu ví dụ ánh xạ 1:1 với số lượng từ loại.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1006,7 +1006,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.04] Hỗ trợ Sinh Đa Từ loại & Đa Ví dụ với Bộ lọc Chất lượng Sư phạm (Anti-laziness)
+// [V4.05] Hỗ trợ Sinh Đa Từ loại & Đa Ví dụ với Bộ lọc Chất lượng Sư phạm và Cấp độ
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1151,12 +1151,14 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
 }
-// [V4.03] Multi-PoS Rule
+// [V4.05] Pedagogical POS Filter (Level-Appropriate & Anti-Morpheme)
 if (requiredFields.includes('partOfSpeech')) {
+let posDifficulty = translatedLevels.length > 0 ? ` BẮT BUỘC CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT, thường gặp nhất trong giao tiếp và thực sự PHÙ HỢP VỚI CẤP ĐỘ [${translatedLevels.join(', ')}]. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa hoặc cổ ngữ.` : ` BẮT BUỘC CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT trong giao tiếp thực tế. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa.`;
+let posMorphemeRule = lang === 'zh' ? ` LƯU Ý NGHIÊM NGẶT VỚI TIẾNG TRUNG: Không nhầm lẫn giữa "Từ độc lập" (Word) và "Hình vị" (Morpheme cấu tạo nên từ ghép). Nếu một chữ Hán hiếm khi đứng độc lập làm danh từ/động từ trong giao tiếp hiện đại, TUYỆT ĐỐI KHÔNG được liệt kê từ loại đó (VD: "能" đứng độc lập là Trợ động từ, tuyệt đối không gán mác Danh từ chỉ vì nó nằm trong "能力").` : ``;
 if (existingData && existingData.partOfSpeech) {
-fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC giữ từ loại này, và liệt kê thêm TẤT CẢ các từ loại khác (nếu có), cách nhau bằng dấu '|' (Ví dụ: ${existingData.partOfSpeech} | Động từ).\n`;
+fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC giữ từ loại này, và liệt kê thêm các từ loại khác (nếu có), cách nhau bằng dấu '|'.${posDifficulty}${posMorphemeRule}\n`;
 } else {
-fieldRules += `- Với trường 'partOfSpeech': BẮT BUỘC liệt kê TẤT CẢ các từ loại hợp lý của từ này, cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ | Tính từ).\n`;
+fieldRules += `- Với trường 'partOfSpeech': Liệt kê các từ loại hợp lý của từ này, cách nhau bằng dấu '|'.${posDifficulty}${posMorphemeRule}\n`;
 }
 }
 if (requiredFields.includes('image_keyword')) {
@@ -3868,12 +3870,12 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.39
-// Last Updated: 2026-08-24 23:05
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.40
+// Last Updated: 2026-08-24 23:35
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.40: [PEDAGOGICAL POS FILTER] Cải tạo luật trường partOfSpeech, ép AI chỉ liệt kê các từ loại phổ biến và phù hợp với cấp độ. Đặc biệt cấm nhầm lẫn giữa Hình vị và Từ độc lập trong tiếng Trung (chống Hội chứng Từ điển Toàn thư).
 // Cập nhật V1.39: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ trong _buildSystemPrompt và _getMasterSchema: Loại bỏ yêu cầu gắn tag [Từ loại], ép giữ nguyên thứ tự 1:1 và bổ sung Bộ lọc Chất lượng Sư phạm cấm sinh câu cụt lủn.
-// Cập nhật V1.38: [MULTI-POS & MULTI-EXAMPLE] Bơm luật Ràng buộc Chéo ép AI sinh Đa Từ Loại (ngăn cách bằng dấu '|') và Đa Ví Dụ (mỗi từ loại 1 câu ví dụ xuống dòng, ánh xạ 1:1). Cập nhật System Prompt và Schema cho forgeBaseCard.
-// Cập nhật V1.37: [CROSS-FIELD CONSTRAINTS] Bơm luật Ràng buộc Chéo chống "Lệch pha Từ loại".
+// Cập nhật V1.38: [MULTI-POS & MULTI-EXAMPLE] Bơm luật Ràng buộc Chéo ép AI sinh Đa Từ Loại (ngăn cách bằng dấu '|') và Đa Ví Dụ (mỗi từ loại 1 câu ví dụ xuống dòng, ánh xạ 1:1).
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -4012,9 +4014,12 @@ prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
 prompt += `QUY TẮC: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Ngoài ra, cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
-// [V1.39] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại, Đa Câu ví dụ, chống lười biếng và bỏ tag.
+// [V1.40] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại, Đa Câu ví dụ, chống lười biếng và lọc chất lượng sư phạm.
 if (dataMode === 'vocab') {
-prompt += `[CRITICAL RULE]: BẮT BUỘC xuất 'partOfSpeech' (Từ loại). Liệt kê TẤT CẢ các từ loại hợp lý của từ này, cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ | Tính từ).\n`;
+prompt += `[CRITICAL RULE]: BẮT BUỘC xuất 'partOfSpeech' (Từ loại). CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT, thường gặp nhất và thực sự PHÙ HỢP VỚI CẤP ĐỘ ${level}. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa hoặc cổ ngữ. Các từ loại cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ).\n`;
+if (lang === 'zh') {
+prompt += `  -> LƯU Ý NGHIÊM NGẶT VỚI TIẾNG TRUNG: Không nhầm lẫn giữa "Từ độc lập" (Word) và "Hình vị" (Morpheme cấu tạo nên từ ghép). Nếu một chữ Hán hiếm khi đứng độc lập làm danh từ/động từ trong giao tiếp hiện đại, TUYỆT ĐỐI KHÔNG được liệt kê từ loại đó (VD: "能" đứng độc lập là Trợ động từ, tuyệt đối không gán mác Danh từ chỉ vì nó nằm trong "能力").\n`;
+}
 prompt += `  -> Đếm số lượng từ loại đã liệt kê. BẮT BUỘC sinh CHÍNH XÁC số lượng câu ví dụ tương ứng vào trường 'example' (Ánh xạ 1:1) và GIỮ NGUYÊN THỨ TỰ tương ứng với danh sách từ loại.\n`;
 prompt += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Các câu ví dụ BẮT BUỘC phải là câu giao tiếp tự nhiên, có ngữ cảnh thực tế rõ ràng. TUYỆT ĐỐI KHÔNG sinh câu cụt lủn, vô hồn hoặc lười biếng.\n`;
 prompt += `  -> 'example' BẮT BUỘC dùng định dạng đa dòng (Xuống dòng bằng \\n): Câu ngoại ngữ | Bản dịch \\n Câu ngoại ngữ | Bản dịch. (TUYỆT ĐỐI KHÔNG in kèm tag từ loại vào đầu dòng).\n`;
@@ -4092,7 +4097,6 @@ const baseRequired = ["term", "definition", "image_keyword"];
 if (dataMode === 'sentence') {
 baseRequired.push("grammar_type");
 } else {
-// [V1.38] Bắt buộc Từ loại và Ví dụ cho chế độ Từ vựng để vá lỗi Desync
 baseRequired.push("partOfSpeech", "example");
 }
 return {
@@ -4102,8 +4106,8 @@ term: { type: "STRING" },
 definition: { type: "STRING" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } },
-// [V1.39] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example & Anti-laziness (No Tags)
-partOfSpeech: { type: "STRING", description: "Từ loại của từ. Liệt kê TẤT CẢ các từ loại hợp lý, cách nhau bằng dấu '|'." },
+// [V1.40] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example & Level-Appropriate
+partOfSpeech: { type: "STRING", description: "Từ loại của từ. CHỈ liệt kê các từ loại phổ biến và phù hợp cấp độ, cách nhau bằng dấu '|'." },
 example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech' AND KEEP THE EXACT ORDER. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
 ...commonProps
 },
@@ -4146,7 +4150,7 @@ timeoutId = setTimeout(() => r(new Error("AI Base Card Timeout")), dynamicTimeou
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
-// [V1.38] Bơm chéo các trường mới vào Thẻ thành phẩm để chuyển ra UI
+// [V1.40] Đẩy dữ liệu ra UI
 return {
 term: parsed.term,
 definition: parsed.definition,
