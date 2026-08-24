@@ -643,11 +643,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.03
-// Last Updated: 2026-08-24 22:30
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.04
+// Last Updated: 2026-08-24 23:00
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
-// Cập nhật V4.03: [MULTI-POS & MULTI-EXAMPLE] Cải tạo luật Ràng buộc Chéo. Ép AI liệt kê tất cả từ loại hợp lý của từ vựng (cách nhau bằng dấu '|'). Buộc AI sinh số lượng câu ví dụ ánh xạ 1:1 với số lượng từ loại, sử dụng định dạng đa dòng [Từ loại] Câu | Dịch.
-// Cập nhật V4.02: [CROSS-FIELD CONSTRAINTS] Bơm Ràng buộc Chéo chống "Lệch pha Từ loại". Ép vai trò ngữ pháp của từ trong câu ví dụ phải khớp tuyệt đối với trường partOfSpeech (Equality Context Check). Hỗ trợ nhận diện Từ loại do người dùng cấu hình sẵn.
+// Cập nhật V4.04: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ: Loại bỏ yêu cầu gắn tag [Từ loại] ở đầu dòng, ép giữ nguyên thứ tự 1:1 với partOfSpeech. Bổ sung Bộ lọc Chất lượng Sư phạm cấm AI sinh câu cụt lủn, thiếu ngữ cảnh.
+// Cập nhật V4.03: [MULTI-POS & MULTI-EXAMPLE] Cải tạo luật Ràng buộc Chéo. Ép AI liệt kê tất cả từ loại hợp lý của từ vựng (cách nhau bằng dấu '|'). Buộc AI sinh số lượng câu ví dụ ánh xạ 1:1 với số lượng từ loại.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1006,7 +1006,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.03] Hỗ trợ Sinh Đa Từ loại & Đa Ví dụ
+// [V4.04] Hỗ trợ Sinh Đa Từ loại & Đa Ví dụ với Bộ lọc Chất lượng Sư phạm (Anti-laziness)
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1048,8 +1048,8 @@ partOfSpeech: { type: "STRING" },
 topic: { type: "STRING" },
 analysis: { type: "STRING" },
 sinoViet: { type: "STRING" },
-// [V4.03] Ép cấu trúc sinh Đa Ví dụ trong Schema
-example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: [PoS] Foreign Sentence | Vietnamese Translation" },
+// [V4.04] Cập nhật Schema không yêu cầu tag từ loại ở đầu câu
+example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
 };
@@ -1162,20 +1162,21 @@ fieldRules += `- Với trường 'partOfSpeech': BẮT BUỘC liệt kê TẤT C
 if (requiredFields.includes('image_keyword')) {
 fieldRules += `- Với trường 'image_keyword': BẮT BUỘC xuất 1 từ khóa bằng TIẾNG ANH mô tả trực quan nhất để tìm ảnh minh họa. Tuyệt đối không dùng Tiếng Việt.\n`;
 }
-// [V4.03] Multi-Example Rule with 1:1 Mapping
+// [V4.04] Multi-Example Rule with 1:1 Mapping, Strict Order and Anti-laziness
 if (requiredFields.includes('example')) {
 let difficultyPrompt = "";
 if (translatedLevels.length > 0) {
 difficultyPrompt = ` (ĐỊNH HƯỚNG ĐỘ KHÓ: BẮT BUỘC sử dụng ngữ pháp và từ vựng phù hợp với trình độ người học: [${translatedLevels.join(', ')}]).`;
 }
-let posConstraint = ` [CRITICAL RULE]: Đếm số lượng từ loại đã xuất trong trường 'partOfSpeech'. Sinh ra CHÍNH XÁC số lượng câu ví dụ tương ứng (Ánh xạ 1:1). Mỗi câu ví dụ minh họa đúng vai trò ngữ pháp của 1 từ loại, và nằm trên 1 dòng riêng biệt.`;
+let posConstraint = ` [CRITICAL RULE]: Đếm số lượng từ loại đã xuất trong trường 'partOfSpeech'. Sinh ra CHÍNH XÁC số lượng câu ví dụ tương ứng (Ánh xạ 1:1) và GIỮ NGUYÊN THỨ TỰ. Mỗi câu ví dụ minh họa đúng vai trò ngữ pháp của 1 từ loại, và nằm trên 1 dòng riêng biệt.`;
 if (isSentence) {
 fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác câu mới mang cấu trúc tương tự.${difficultyPrompt}${posConstraint}\n`;
 } else {
 fieldRules += `- Với trường 'example': BẮT BUỘC tự sáng tác các câu có chứa từ vựng "${cleanTermForAi}".${difficultyPrompt}${posConstraint}\n`;
 }
-fieldRules += `  -> BẮT BUỘC DÙNG ĐỊNH DẠNG (Xuống dòng bằng \\n): [Từ loại 1] Câu ngoại ngữ | Bản dịch \\n [Từ loại 2] Câu ngoại ngữ | Bản dịch.\n`;
-fieldRules += `  -> TUYỆT ĐỐI KHÔNG chứa Pinyin, IPA, hay bất kỳ giải thích dư thừa nào ngoài dấu phân cách.\n`;
+fieldRules += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Câu ví dụ BẮT BUỘC phải là câu giao tiếp tự nhiên, có ngữ cảnh thực tế rõ ràng. TUYỆT ĐỐI KHÔNG sinh câu cụt lủn, vô hồn (robotic) hoặc lười biếng.\n`;
+fieldRules += `  -> BẮT BUỘC DÙNG ĐỊNH DẠNG (Xuống dòng bằng \\n): Câu ngoại ngữ | Bản dịch \\n Câu ngoại ngữ | Bản dịch.\n`;
+fieldRules += `  -> TUYỆT ĐỐI KHÔNG chứa Pinyin, IPA, KHÔNG tự ý chèn tag [Từ loại] vào đầu câu, KHÔNG giải thích dư thừa ngoài dấu phân cách.\n`;
 }
 if (requiredFields.includes('grammar_type')) {
 fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải thích dài dòng. ${validTagsStr}\n`;
@@ -3867,12 +3868,12 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.38
-// Last Updated: 2026-08-24 22:35
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.39
+// Last Updated: 2026-08-24 23:05
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.39: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ trong _buildSystemPrompt và _getMasterSchema: Loại bỏ yêu cầu gắn tag [Từ loại], ép giữ nguyên thứ tự 1:1 và bổ sung Bộ lọc Chất lượng Sư phạm cấm sinh câu cụt lủn.
 // Cập nhật V1.38: [MULTI-POS & MULTI-EXAMPLE] Bơm luật Ràng buộc Chéo ép AI sinh Đa Từ Loại (ngăn cách bằng dấu '|') và Đa Ví Dụ (mỗi từ loại 1 câu ví dụ xuống dòng, ánh xạ 1:1). Cập nhật System Prompt và Schema cho forgeBaseCard.
 // Cập nhật V1.37: [CROSS-FIELD CONSTRAINTS] Bơm luật Ràng buộc Chéo chống "Lệch pha Từ loại".
-// Cập nhật V1.36: [SCHEMA HALLUCINATION FIX] Tách bạch mảng 'required' của JSON Schema.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -4011,11 +4012,12 @@ prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
 prompt += `QUY TẮC: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Ngoài ra, cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
-// [V1.38] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại và Đa Câu ví dụ
+// [V1.39] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại, Đa Câu ví dụ, chống lười biếng và bỏ tag.
 if (dataMode === 'vocab') {
 prompt += `[CRITICAL RULE]: BẮT BUỘC xuất 'partOfSpeech' (Từ loại). Liệt kê TẤT CẢ các từ loại hợp lý của từ này, cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ | Tính từ).\n`;
-prompt += `  -> Đếm số lượng từ loại đã liệt kê. BẮT BUỘC sinh CHÍNH XÁC số lượng câu ví dụ tương ứng vào trường 'example' (Ánh xạ 1:1).\n`;
-prompt += `  -> 'example' BẮT BUỘC dùng định dạng đa dòng (Xuống dòng bằng \\n): [Từ loại 1] Câu ngoại ngữ | Bản dịch \\n [Từ loại 2] Câu ngoại ngữ | Bản dịch.\n`;
+prompt += `  -> Đếm số lượng từ loại đã liệt kê. BẮT BUỘC sinh CHÍNH XÁC số lượng câu ví dụ tương ứng vào trường 'example' (Ánh xạ 1:1) và GIỮ NGUYÊN THỨ TỰ tương ứng với danh sách từ loại.\n`;
+prompt += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Các câu ví dụ BẮT BUỘC phải là câu giao tiếp tự nhiên, có ngữ cảnh thực tế rõ ràng. TUYỆT ĐỐI KHÔNG sinh câu cụt lủn, vô hồn hoặc lười biếng.\n`;
+prompt += `  -> 'example' BẮT BUỘC dùng định dạng đa dòng (Xuống dòng bằng \\n): Câu ngoại ngữ | Bản dịch \\n Câu ngoại ngữ | Bản dịch. (TUYỆT ĐỐI KHÔNG in kèm tag từ loại vào đầu dòng).\n`;
 }
 }
 else if (forgeType === 'matrix') {
@@ -4100,9 +4102,9 @@ term: { type: "STRING" },
 definition: { type: "STRING" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } },
-// [V1.38] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example
+// [V1.39] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example & Anti-laziness (No Tags)
 partOfSpeech: { type: "STRING", description: "Từ loại của từ. Liệt kê TẤT CẢ các từ loại hợp lý, cách nhau bằng dấu '|'." },
-example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: [PoS] Foreign Sentence | Vietnamese Translation" },
+example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech' AND KEEP THE EXACT ORDER. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
 ...commonProps
 },
 required: [...baseRequired, ...commonRequired]
