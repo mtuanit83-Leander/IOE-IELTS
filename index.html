@@ -6666,11 +6666,12 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.10
-// Last Updated: 2026-08-24 18:00
+// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.11
+// Last Updated: 2026-08-24 21:45
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
-// Cập nhật V1.10: [MISSING POS DISPLAY] Bổ sung thẻ tag hiển thị Từ loại (partOfSpeech) ở mặt sau thẻ (ngay trước Phiên âm) cho chế độ Từ vựng, giúp hoàn thiện trải nghiệm UX học tập.
-// Cập nhật V1.09: [UX/UI] Nâng cấp cơ chế Tiết lộ Lũy tiến (Progressive Disclosure) cho trường Analysis. Bổ sung nút Ẩn/Hiện giải thích chi tiết, tối ưu không gian hiển thị mặt sau thẻ.
+// Cập nhật V1.11: [DICTIONARY STYLE REFINEMENT] Tinh chỉnh UX hiển thị Từ loại (partOfSpeech): Dời ra sau phiên âm, bỏ định dạng khối/badge, chuyển sang chữ thường in nghiêng (italic, lowercase) theo chuẩn từ điển. Ẩn hoàn toàn trong chế độ câu văn.
+// Cập nhật V1.10: [MISSING POS DISPLAY] Bổ sung thẻ tag hiển thị Từ loại (partOfSpeech) ở mặt sau thẻ cho chế độ Từ vựng.
+// Cập nhật V1.09: [UX/UI] Nâng cấp cơ chế Tiết lộ Lũy tiến (Progressive Disclosure) cho trường Analysis.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
 const colorMap = { zh: 'red', en: 'sky' };
@@ -7047,14 +7048,14 @@ Mới
 className="flex flex-col items-center gap-2 overflow-y-auto custom-scrollbar w-full flex-1 justify-start mt-6 min-h-[150px]"
 style={{ ...getCardStyle(true), fontFamily: 'inherit' }}
 >
-{/* [V1.10] TÍCH HỢP HIỂN THỊ TỪ LOẠI NGAY TRƯỚC PHIÊN ÂM */}
-<div className={`text-${mainColor}-600 font-medium flex items-center justify-center flex-wrap gap-2`} style={{ fontSize: '1.1em' }}>
+{/* [V1.11] TÍCH HỢP HIỂN THỊ TỪ LOẠI NGAY SAU PHIÊN ÂM (Dictionary Style) */}
+<div className={`text-${mainColor}-600 font-medium flex items-center justify-center flex-wrap gap-1.5`} style={{ fontSize: '1.1em' }}>
+<span>{currentCard?.pronunciation}</span>
 {currentCard?.partOfSpeech && !isSentence && (
-<span className={`text-[0.65em] font-bold px-2 py-0.5 bg-${mainColor}-100 border border-${mainColor}-200 text-${mainColor}-700 rounded-md shadow-sm uppercase tracking-wide`}>
+<span className="italic text-[0.75em] opacity-80 lowercase">
 {currentCard.partOfSpeech}
 </span>
 )}
-<span>{currentCard?.pronunciation}</span>
 </div>
 <div className="text-gray-800 text-center my-1" style={{ fontSize: '1em', marginTop: '8px', fontWeight: settings?.fontWeight || 'bold', fontFamily: isDefFirst ? getFontFamily() : 'inherit' }}>
 {isDefFirst ? currentCard?.term : currentCard?.definition}
