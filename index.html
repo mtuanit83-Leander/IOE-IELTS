@@ -643,11 +643,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.02
-// Last Updated: 2026-08-24 17:30
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.03
+// Last Updated: 2026-08-24 22:30
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V4.03: [MULTI-POS & MULTI-EXAMPLE] Cải tạo luật Ràng buộc Chéo. Ép AI liệt kê tất cả từ loại hợp lý của từ vựng (cách nhau bằng dấu '|'). Buộc AI sinh số lượng câu ví dụ ánh xạ 1:1 với số lượng từ loại, sử dụng định dạng đa dòng [Từ loại] Câu | Dịch.
 // Cập nhật V4.02: [CROSS-FIELD CONSTRAINTS] Bơm Ràng buộc Chéo chống "Lệch pha Từ loại". Ép vai trò ngữ pháp của từ trong câu ví dụ phải khớp tuyệt đối với trường partOfSpeech (Equality Context Check). Hỗ trợ nhận diện Từ loại do người dùng cấu hình sẵn.
-// Cập nhật V4.01: [PROMPT OPTIMIZATION] Nới lỏng giới hạn độ dài cho trường Analysis, bổ sung định dạng gạch đầu dòng (Progressive Disclosure) tối ưu cho UI ẩn/hiện.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1006,7 +1006,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.02] Bổ sung tham số thứ 7: existingData để nhận biết các trường người dùng đã nhập
+// [V4.03] Hỗ trợ Sinh Đa Từ loại & Đa Ví dụ
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1048,8 +1048,8 @@ partOfSpeech: { type: "STRING" },
 topic: { type: "STRING" },
 analysis: { type: "STRING" },
 sinoViet: { type: "STRING" },
-// [V4.02] Thêm mô tả Schema bắt buộc Context Check
-example: { type: "STRING", description: "Example sentence using the word. MUST syntactically match the 'partOfSpeech' field." },
+// [V4.03] Ép cấu trúc sinh Đa Ví dụ trong Schema
+example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: [PoS] Foreign Sentence | Vietnamese Translation" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
 };
@@ -1151,35 +1151,31 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
 }
+// [V4.03] Multi-PoS Rule
 if (requiredFields.includes('partOfSpeech')) {
 if (existingData && existingData.partOfSpeech) {
-// [V4.02] Ràng buộc Chéo nếu User đã nhập Từ loại
-fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC xuất lại chính xác từ loại này và sử dụng nó làm mỏ neo ngữ pháp.\n`;
+fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC giữ từ loại này, và liệt kê thêm TẤT CẢ các từ loại khác (nếu có), cách nhau bằng dấu '|' (Ví dụ: ${existingData.partOfSpeech} | Động từ).\n`;
 } else {
-fieldRules += `- Với trường 'partOfSpeech': BẮT BUỘC xuất từ loại bằng TIẾNG VIỆT thật ngắn gọn (Ví dụ: Danh từ, Động từ, Tính từ).\n`;
+fieldRules += `- Với trường 'partOfSpeech': BẮT BUỘC liệt kê TẤT CẢ các từ loại hợp lý của từ này, cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ | Tính từ).\n`;
 }
 }
 if (requiredFields.includes('image_keyword')) {
 fieldRules += `- Với trường 'image_keyword': BẮT BUỘC xuất 1 từ khóa bằng TIẾNG ANH mô tả trực quan nhất để tìm ảnh minh họa. Tuyệt đối không dùng Tiếng Việt.\n`;
 }
+// [V4.03] Multi-Example Rule with 1:1 Mapping
 if (requiredFields.includes('example')) {
 let difficultyPrompt = "";
 if (translatedLevels.length > 0) {
-difficultyPrompt = ` (ĐỊNH HƯỚNG ĐỘ KHÓ: BẮT BUỘC sử dụng ngữ pháp và từ vựng phù hợp với trình độ người học: [${translatedLevels.join(', ')}]. Hãy tự do sáng tạo độ dài câu sao cho tự nhiên nhất).`;
+difficultyPrompt = ` (ĐỊNH HƯỚNG ĐỘ KHÓ: BẮT BUỘC sử dụng ngữ pháp và từ vựng phù hợp với trình độ người học: [${translatedLevels.join(', ')}]).`;
 }
-// [V4.02] Luật thép Equality Context Check cho ví dụ
-let posConstraint = "";
-if (existingData && existingData.partOfSpeech) {
-posConstraint = ` [CRITICAL RULE]: The syntactic role of the word in the 'example' sentence MUST STRICTLY ALIGN with its part of speech: "${existingData.partOfSpeech}".`;
-} else {
-posConstraint = ` [CRITICAL RULE]: The syntactic role of the word in the 'example' sentence MUST STRICTLY ALIGN with the generated 'partOfSpeech' field (Equality Context Check).`;
-}
+let posConstraint = ` [CRITICAL RULE]: Đếm số lượng từ loại đã xuất trong trường 'partOfSpeech'. Sinh ra CHÍNH XÁC số lượng câu ví dụ tương ứng (Ánh xạ 1:1). Mỗi câu ví dụ minh họa đúng vai trò ngữ pháp của 1 từ loại, và nằm trên 1 dòng riêng biệt.`;
 if (isSentence) {
-fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác 1 CÂU MỚI mang cấu trúc ngữ pháp tương tự.${difficultyPrompt}${posConstraint}\n`;
+fieldRules += `- Với trường 'example': TUYỆT ĐỐI KHÔNG chép lại câu gốc. BẮT BUỘC tự sáng tác câu mới mang cấu trúc tương tự.${difficultyPrompt}${posConstraint}\n`;
 } else {
-fieldRules += `- Với trường 'example': BẮT BUỘC tự sáng tác 1 CÂU có chứa từ vựng "${cleanTermForAi}".${difficultyPrompt}${posConstraint}\n`;
+fieldRules += `- Với trường 'example': BẮT BUỘC tự sáng tác các câu có chứa từ vựng "${cleanTermForAi}".${difficultyPrompt}${posConstraint}\n`;
 }
-fieldRules += `  -> BẮT BUỘC DÙNG ĐỊNH DẠNG: Câu ngoại ngữ | Bản dịch tiếng Việt (Ví dụ: They are playing | Họ đang chơi). TUYỆT ĐỐI KHÔNG chứa Pinyin, giải thích hay bất kỳ ký tự dư thừa nào khác ngoài dấu phân cách.\n`;
+fieldRules += `  -> BẮT BUỘC DÙNG ĐỊNH DẠNG (Xuống dòng bằng \\n): [Từ loại 1] Câu ngoại ngữ | Bản dịch \\n [Từ loại 2] Câu ngoại ngữ | Bản dịch.\n`;
+fieldRules += `  -> TUYỆT ĐỐI KHÔNG chứa Pinyin, IPA, hay bất kỳ giải thích dư thừa nào ngoài dấu phân cách.\n`;
 }
 if (requiredFields.includes('grammar_type')) {
 fieldRules += `- Với trường 'grammar_type': TUYỆT ĐỐI KHÔNG giải thích dài dòng. ${validTagsStr}\n`;
@@ -3871,11 +3867,12 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.37
-// Last Updated: 2026-08-24 17:35
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.38
+// Last Updated: 2026-08-24 22:35
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.37: [CROSS-FIELD CONSTRAINTS] Bơm luật Ràng buộc Chéo chống "Lệch pha Từ loại". Cập nhật JSON Schema và System Prompt của lò đúc forgeBaseCard để ép buộc ngữ pháp trong câu ví dụ (example) phải ăn khớp tuyệt đối với từ loại (partOfSpeech).
-// Cập nhật V1.36: [SCHEMA HALLUCINATION FIX] Tách bạch mảng 'required' của JSON Schema. Trường 'grammar_type' nay CHỈ bắt buộc đối với Chế độ Câu văn (sentence).
+// Cập nhật V1.38: [MULTI-POS & MULTI-EXAMPLE] Bơm luật Ràng buộc Chéo ép AI sinh Đa Từ Loại (ngăn cách bằng dấu '|') và Đa Ví Dụ (mỗi từ loại 1 câu ví dụ xuống dòng, ánh xạ 1:1). Cập nhật System Prompt và Schema cho forgeBaseCard.
+// Cập nhật V1.37: [CROSS-FIELD CONSTRAINTS] Bơm luật Ràng buộc Chéo chống "Lệch pha Từ loại".
+// Cập nhật V1.36: [SCHEMA HALLUCINATION FIX] Tách bạch mảng 'required' của JSON Schema.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -4014,10 +4011,11 @@ prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
 prompt += `QUY TẮC: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Ngoài ra, cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
-// [V1.37] Bơm luật Ràng buộc Chéo ép đồng bộ Từ loại và Câu ví dụ
+// [V1.38] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại và Đa Câu ví dụ
 if (dataMode === 'vocab') {
-prompt += `[CRITICAL RULE]: BẮT BUỘC xuất 'partOfSpeech' (Từ loại). BẮT BUỘC sinh một câu ví dụ vào trường 'example'. Vai trò ngữ pháp của từ trong câu 'example' PHẢI KHỚP TUYỆT ĐỐI với 'partOfSpeech' đã khai báo (Equality Context Check).\n`;
-prompt += `  -> 'example' BẮT BUỘC dùng định dạng: Câu ngoại ngữ | Bản dịch tiếng Việt (VD: They are playing | Họ đang chơi).\n`;
+prompt += `[CRITICAL RULE]: BẮT BUỘC xuất 'partOfSpeech' (Từ loại). Liệt kê TẤT CẢ các từ loại hợp lý của từ này, cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ | Tính từ).\n`;
+prompt += `  -> Đếm số lượng từ loại đã liệt kê. BẮT BUỘC sinh CHÍNH XÁC số lượng câu ví dụ tương ứng vào trường 'example' (Ánh xạ 1:1).\n`;
+prompt += `  -> 'example' BẮT BUỘC dùng định dạng đa dòng (Xuống dòng bằng \\n): [Từ loại 1] Câu ngoại ngữ | Bản dịch \\n [Từ loại 2] Câu ngoại ngữ | Bản dịch.\n`;
 }
 }
 else if (forgeType === 'matrix') {
@@ -4092,7 +4090,7 @@ const baseRequired = ["term", "definition", "image_keyword"];
 if (dataMode === 'sentence') {
 baseRequired.push("grammar_type");
 } else {
-// [V1.37] Bắt buộc Từ loại và Ví dụ cho chế độ Từ vựng để vá lỗi Desync
+// [V1.38] Bắt buộc Từ loại và Ví dụ cho chế độ Từ vựng để vá lỗi Desync
 baseRequired.push("partOfSpeech", "example");
 }
 return {
@@ -4102,9 +4100,9 @@ term: { type: "STRING" },
 definition: { type: "STRING" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } },
-// [V1.37] Định nghĩa Schema ràng buộc ngữ cảnh
-partOfSpeech: { type: "STRING", description: "Từ loại của từ (VD: Danh từ, Động từ, Tính từ...)" },
-example: { type: "STRING", description: "Example sentence using the word. MUST syntactically match the 'partOfSpeech' field." },
+// [V1.38] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example
+partOfSpeech: { type: "STRING", description: "Từ loại của từ. Liệt kê TẤT CẢ các từ loại hợp lý, cách nhau bằng dấu '|'." },
+example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: [PoS] Foreign Sentence | Vietnamese Translation" },
 ...commonProps
 },
 required: [...baseRequired, ...commonRequired]
@@ -4146,7 +4144,7 @@ timeoutId = setTimeout(() => r(new Error("AI Base Card Timeout")), dynamicTimeou
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
-// [V1.37] Bơm chéo các trường mới vào Thẻ thành phẩm để chuyển ra UI
+// [V1.38] Bơm chéo các trường mới vào Thẻ thành phẩm để chuyển ra UI
 return {
 term: parsed.term,
 definition: parsed.definition,
@@ -6666,9 +6664,10 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.11
-// Last Updated: 2026-08-24 21:45
+// Block 3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.12
+// Last Updated: 2026-08-24 22:50
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
+// Cập nhật V1.12: [DICTIONARY STYLE UX] Bọc Từ loại (partOfSpeech) trong ngoặc đơn và nới rộng khoảng cách với phiên âm để UI thoáng hơn.
 // Cập nhật V1.11: [DICTIONARY STYLE REFINEMENT] Tinh chỉnh UX hiển thị Từ loại (partOfSpeech): Dời ra sau phiên âm, bỏ định dạng khối/badge, chuyển sang chữ thường in nghiêng (italic, lowercase) theo chuẩn từ điển. Ẩn hoàn toàn trong chế độ câu văn.
 // Cập nhật V1.10: [MISSING POS DISPLAY] Bổ sung thẻ tag hiển thị Từ loại (partOfSpeech) ở mặt sau thẻ cho chế độ Từ vựng.
 // Cập nhật V1.09: [UX/UI] Nâng cấp cơ chế Tiết lộ Lũy tiến (Progressive Disclosure) cho trường Analysis.
@@ -7048,12 +7047,12 @@ Mới
 className="flex flex-col items-center gap-2 overflow-y-auto custom-scrollbar w-full flex-1 justify-start mt-6 min-h-[150px]"
 style={{ ...getCardStyle(true), fontFamily: 'inherit' }}
 >
-{/* [V1.11] TÍCH HỢP HIỂN THỊ TỪ LOẠI NGAY SAU PHIÊN ÂM (Dictionary Style) */}
-<div className={`text-${mainColor}-600 font-medium flex items-center justify-center flex-wrap gap-1.5`} style={{ fontSize: '1.1em' }}>
+{/* [V1.12] TÍCH HỢP HIỂN THỊ TỪ LOẠI NGAY SAU PHIÊN ÂM (Dictionary Style + Parentheses) */}
+<div className={`text-${mainColor}-600 font-medium flex items-center justify-center flex-wrap gap-3`} style={{ fontSize: '1.1em' }}>
 <span>{currentCard?.pronunciation}</span>
 {currentCard?.partOfSpeech && !isSentence && (
 <span className="italic text-[0.75em] opacity-80 lowercase">
-{currentCard.partOfSpeech}
+({currentCard.partOfSpeech})
 </span>
 )}
 </div>
