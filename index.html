@@ -643,14 +643,14 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.13
-// Last Updated: 2026-08-25 16:55
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.14
+// Last Updated: 2026-08-25 17:08
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
-// Cập nhật V4.13: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Tái cấu trúc vòng đời Prompt: Chuyển toàn bộ các Vắc-xin Ngữ pháp (Động-Tân, Gộp cụm từ, Hình vị, Chảy máu ngữ nghĩa) lên TRƯỚC luật định dạng JSON để khóa nhận thức AI sớm. Thay thế luật sinh câu ví dụ bằng giọng văn sư phạm mềm mỏng để tăng chất lượng tự nhiên.
-// Cập nhật V4.12: [PHRASE COLLAPSE VACCINE] Bổ sung luật cấm AI gộp cụm từ thành từ đơn (Ví dụ: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không được gán phó từ) để bảo vệ tính chính xác ngôn ngữ học.
+// Cập nhật V4.14: [SELF-JUSTIFICATION FALLACY FIX] Khóa chặt câu ví dụ (Exact Match Constraint) chống AI tự ý biến tấu ký tự để hợp thức hóa từ loại sai (vd: đổi 还有 thành 还要). Tiêm luật ÉP 0% vào Tờ giấy nháp đối với các từ loại vi phạm luật cấm.
+// Cập nhật V4.13: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Tái cấu trúc vòng đời Prompt: Chuyển toàn bộ các Vắc-xin Ngữ pháp (Động-Tân, Gộp cụm từ, Hình vị, Chảy máu ngữ nghĩa) lên TRƯỚC luật định dạng JSON để khóa nhận thức AI sớm. Thay thế luật sinh câu ví dụ bằng giọng văn sư phạm mềm mỏng.
+// Cập nhật V4.12: [PHRASE COLLAPSE VACCINE] Bổ sung luật cấm AI gộp cụm từ thành từ đơn (Ví dụ: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không được gán phó từ).
 // Cập nhật V4.11: [STRUCTURAL FIX & PROMPT PRUNING] Ép khuôn thứ tự JSON Schema (buộc posAnalysis đứng đầu). Gọt giũa toàn bộ Prompt dư thừa, chuyển sang các câu lệnh súc tích.
-// Cập nhật V4.10: [GRAMMAR FALLACY VACCINE] Tiêm mũi "Vắc-xin Cụm Động-Tân" vào luật phân tích từ loại. Cấm tuyệt đối AI ngụy biện Danh từ đóng vai trò Tân ngữ (VD: 动作 trong 做动作) thành Động từ.
-// Cập nhật V4.09: [DYNAMIC POS THRESHOLDING] Áp dụng Ngưỡng Động (Progressive Disclosure) cho phân tích từ loại. Tự động nâng rào chắn lên >20% đối với Sơ/Trung cấp để chặn ảo giác tuân thủ, và hạ xuống >10% cho Cao cấp.
+// Cập nhật V4.10: [GRAMMAR FALLACY VACCINE] Tiêm mũi "Vắc-xin Cụm Động-Tân" vào luật phân tích từ loại. Cấm tuyệt đối AI ngụy biện Danh từ đóng vai trò Tân ngữ thành Động từ.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1009,7 +1009,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.13] Tái cấu trúc Vòng đời Prompt: Đưa các vắc-xin ngữ pháp (Pre-computation Constraints) lên trước luật JSON để khóa nhận thức AI sớm. Cập nhật giọng văn sư phạm mềm mỏng cho việc sinh câu ví dụ.
+// [V4.14] Tái cấu trúc Prompt: Tiêm "Luật ép 0%" vào posAnalysis và "Khóa ký tự" vào luật sinh câu ví dụ để trị hội chứng Tự chứng minh ảo giác (Self-Justification Hallucination).
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1103,7 +1103,7 @@ dynamicInstruction = lang === 'zh'
 ? " Đối với pronunciation: BẮT BUỘC xuất Pinyin. " + (requiredFields.includes('sinoViet') ? "Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : "")
 : " Đối với pronunciation: BẮT BUỘC xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
 }
-// [PROMPT OPTIMIZATION V4.13] - Cấu trúc Prompt phân nhánh cho Progressive Disclosure, Pre-computation Constraint
+// [PROMPT OPTIMIZATION V4.14] - Cấu trúc Prompt phân nhánh cho Progressive Disclosure, Pre-computation Constraint
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Bổ sung thông tin cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}).\n`;
@@ -1155,7 +1155,7 @@ validTagsStr = `Chỉ xuất mã nhãn hợp lệ.`;
 } else {
 validTagsStr = `Chỉ xuất mã nhãn hợp lệ.`;
 }
-// [V4.13] Chain of Thought & Vắc-xin gọt giũa (Dời luật lên trên, làm nhẹ rules)
+// [V4.14] Chain of Thought & Vắc-xin gọt giũa (Ép 0% + Khóa Ký Tự)
 let fieldRules = `\n[QUY TẮC CÁC TRƯỜNG]:\n`;
 if (requiredFields.includes('pronunciation') && isSentence) {
 fieldRules += `- 'pronunciation': Phiên âm (IPA/Pinyin) TOÀN BỘ CÂU VĂN.\n`;
@@ -1174,9 +1174,9 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- 'topic': Chọn CHÍNH XÁC 1 từ khóa từ: [${predefinedTopics.join(', ')}].\n`;
 }
-// [V4.13] Gọn nhẹ Tờ giấy nháp
+// [V4.14] Gọn nhẹ Tờ giấy nháp và Ép 0%
 if (requiredFields.includes('posAnalysis')) {
-fieldRules += `- 'posAnalysis' (TỜ GIẤY NHÁP): BẮT BUỘC tư duy theo chuỗi. Liệt kê mọi từ loại, đánh giá % tần suất sử dụng thực tế. (VD: Danh từ 95%, Động từ <${posThresholdStr} nên loại Động từ).\n`;
+fieldRules += `- 'posAnalysis' (TỜ GIẤY NHÁP): BẮT BUỘC tư duy theo chuỗi. Liệt kê mọi từ loại, đánh giá % tần suất sử dụng thực tế. [LUẬT ÉP 0%]: Nếu một từ loại vi phạm [CÁC LỖI NGỮ PHÁP NGHIÊM CẤM], BẮT BUỘC ép tỉ lệ của nó về 0%.\n`;
 }
 if (requiredFields.includes('partOfSpeech')) {
 let posDifficulty = translatedLevels.length > 0 ? ` Chỉ liệt kê từ loại phổ biến, phù hợp cấp độ [${translatedLevels.join(', ')}].` : ` Chỉ liệt kê từ loại phổ biến trong giao tiếp.`;
@@ -1190,14 +1190,14 @@ fieldRules += `- 'partOfSpeech': Xuất kết quả cuối cùng từ 'posAnalys
 if (requiredFields.includes('image_keyword')) {
 fieldRules += `- 'image_keyword': 1 từ khóa TIẾNG ANH mô tả trực quan nhất để tìm ảnh minh họa.\n`;
 }
-// [V4.13] Pedagogical Soft Prompt cho câu ví dụ
+// [V4.14] Pedagogical Soft Prompt và Exact Match Constraint cho câu ví dụ
 if (requiredFields.includes('example')) {
 let difficultyPrompt = translatedLevels.length > 0 ? ` Phù hợp trình độ: [${translatedLevels.join(', ')}].` : ``;
 let posConstraint = ` Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng.`;
 if (isSentence) {
 fieldRules += `- 'example': Sáng tác câu mới mang cấu trúc tương tự.${difficultyPrompt}${posConstraint}\n`;
 } else {
-fieldRules += `- 'example': Sáng tác các câu có chứa từ "${cleanTermForAi}".${difficultyPrompt}${posConstraint}\n`;
+fieldRules += `- 'example': Sáng tác các câu có chứa CHÍNH XÁC từ "${cleanTermForAi}". TUYỆT ĐỐI không tự ý thay đổi, cắt xén hay biến tấu ký tự của từ gốc.${difficultyPrompt}${posConstraint}\n`;
 }
 fieldRules += `  -> Dùng định dạng: Câu ngoại ngữ | Bản dịch.\n`;
 fieldRules += `  -> KHÔNG chứa Pinyin/IPA, KHÔNG chèn tag từ loại.\n`;
@@ -1381,7 +1381,7 @@ if (finalResult[key] === "" || finalResult[key] === null) {
 delete finalResult[key];
 }
 }
-// [V4.08, V4.09, V4.10, V4.11, V4.12, V4.13] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
+// [V4.08 - V4.14] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
 delete finalResult.posAnalysis;
 delete finalResult.image;
 if (finalResult.image_keyword && finalResult.image_keyword.trim() !== "") {
