@@ -643,14 +643,14 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.12
-// Last Updated: 2026-08-25 16:02
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.13
+// Last Updated: 2026-08-25 16:55
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V4.13: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Tái cấu trúc vòng đời Prompt: Chuyển toàn bộ các Vắc-xin Ngữ pháp (Động-Tân, Gộp cụm từ, Hình vị, Chảy máu ngữ nghĩa) lên TRƯỚC luật định dạng JSON để khóa nhận thức AI sớm. Thay thế luật sinh câu ví dụ bằng giọng văn sư phạm mềm mỏng để tăng chất lượng tự nhiên.
 // Cập nhật V4.12: [PHRASE COLLAPSE VACCINE] Bổ sung luật cấm AI gộp cụm từ thành từ đơn (Ví dụ: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không được gán phó từ) để bảo vệ tính chính xác ngôn ngữ học.
-// Cập nhật V4.11: [STRUCTURAL FIX & PROMPT PRUNING] Ép khuôn thứ tự JSON Schema (buộc posAnalysis đứng đầu). Gọt giũa toàn bộ Prompt dư thừa, chuyển sang các câu lệnh súc tích (Chain-of-thought giúp logic tự vững).
+// Cập nhật V4.11: [STRUCTURAL FIX & PROMPT PRUNING] Ép khuôn thứ tự JSON Schema (buộc posAnalysis đứng đầu). Gọt giũa toàn bộ Prompt dư thừa, chuyển sang các câu lệnh súc tích.
 // Cập nhật V4.10: [GRAMMAR FALLACY VACCINE] Tiêm mũi "Vắc-xin Cụm Động-Tân" vào luật phân tích từ loại. Cấm tuyệt đối AI ngụy biện Danh từ đóng vai trò Tân ngữ (VD: 动作 trong 做动作) thành Động từ.
 // Cập nhật V4.09: [DYNAMIC POS THRESHOLDING] Áp dụng Ngưỡng Động (Progressive Disclosure) cho phân tích từ loại. Tự động nâng rào chắn lên >20% đối với Sơ/Trung cấp để chặn ảo giác tuân thủ, và hạ xuống >10% cho Cao cấp.
-// Cập nhật V4.08: [CHAIN-OF-THOUGHT POS FILTER] Áp dụng kỹ thuật Chain-of-Thought (Tờ giấy nháp) thông qua trường `posAnalysis`.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1009,7 +1009,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.12] Hỗ trợ Đa Từ loại & Đa Ví dụ kết hợp Chain-of-Thought, Ngưỡng Động và Vắc-xin Cụm Động-Tân & Vắc-xin Lỗi Gộp Cụm Từ. Ép khuôn Structural JSON.
+// [V4.13] Tái cấu trúc Vòng đời Prompt: Đưa các vắc-xin ngữ pháp (Pre-computation Constraints) lên trước luật JSON để khóa nhận thức AI sớm. Cập nhật giọng văn sư phạm mềm mỏng cho việc sinh câu ví dụ.
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1058,7 +1058,6 @@ partOfSpeech: { type: "STRING" },
 topic: { type: "STRING" },
 analysis: { type: "STRING" },
 sinoViet: { type: "STRING" },
-// [V4.04] Cập nhật Schema không yêu cầu tag từ loại ở đầu câu
 example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
@@ -1104,7 +1103,7 @@ dynamicInstruction = lang === 'zh'
 ? " Đối với pronunciation: BẮT BUỘC xuất Pinyin. " + (requiredFields.includes('sinoViet') ? "Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : "")
 : " Đối với pronunciation: BẮT BUỘC xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
 }
-// [PROMPT OPTIMIZATION V4.11] - Cấu trúc Prompt phân nhánh cho Progressive Disclosure (Đã Gọt giũa)
+// [PROMPT OPTIMIZATION V4.13] - Cấu trúc Prompt phân nhánh cho Progressive Disclosure, Pre-computation Constraint
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Bổ sung thông tin cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}).\n`;
@@ -1121,6 +1120,17 @@ userQuery += `3. PHONG CÁCH: Chi tiết nhưng súc tích, đi thẳng vào b�
 userQuery += `1. TIÊU ĐIỂM: Máy trích xuất dữ liệu tự động.\n`;
 userQuery += `2. NGÔN NGỮ: Xử lý bằng Tiếng Việt dễ hiểu.\n`;
 userQuery += `3. PHONG CÁCH: Cực kỳ NGẮN GỌN (tối đa 2-3 câu), không lan man.\n`;
+}
+// [V4.13] NEW PRE-COMPUTATION CONSTRAINT - Đưa luật Ngữ pháp lên trước luật JSON
+if (requiredFields.includes('partOfSpeech') || requiredFields.includes('posAnalysis')) {
+userQuery += `\n[CÁC LỖI NGỮ PHÁP NGHIÊM CẤM]:\n`;
+userQuery += `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
+if (lang === 'zh') {
+userQuery += `- Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').\n`;
+userQuery += `- Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ).\n`;
+userQuery += `- Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán Phó từ).\n`;
+}
+userQuery += `\n`;
 }
 // [V4.11] Bơm lệnh bắt buộc xuất posAnalysis đầu tiên
 userQuery += `4. ĐỊNH DẠNG & THỨ TỰ BẮT BUỘC: TRỌNG TÂM: Phải xuất trường 'posAnalysis' ĐẦU TIÊN trong chuỗi JSON để làm nháp. Chỉ xuất CHÍNH XÁC các trường: ${requiredFields.join(', ')}.\n`;
@@ -1145,7 +1155,7 @@ validTagsStr = `Chỉ xuất mã nhãn hợp lệ.`;
 } else {
 validTagsStr = `Chỉ xuất mã nhãn hợp lệ.`;
 }
-// [V4.11, V4.12] GỌT GIŨA PROMPT - Lược bỏ các từ ngữ dọa dẫm, chuyển thành chỉ thị ngắn gọn
+// [V4.13] Chain of Thought & Vắc-xin gọt giũa (Dời luật lên trên, làm nhẹ rules)
 let fieldRules = `\n[QUY TẮC CÁC TRƯỜNG]:\n`;
 if (requiredFields.includes('pronunciation') && isSentence) {
 fieldRules += `- 'pronunciation': Phiên âm (IPA/Pinyin) TOÀN BỘ CÂU VĂN.\n`;
@@ -1164,27 +1174,23 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- 'topic': Chọn CHÍNH XÁC 1 từ khóa từ: [${predefinedTopics.join(', ')}].\n`;
 }
-// [V4.11, V4.12] Chain of Thought & Vắc-xin gọt giũa (Bổ sung Vắc-xin Lỗi gộp cụm từ)
+// [V4.13] Gọn nhẹ Tờ giấy nháp
 if (requiredFields.includes('posAnalysis')) {
-let fallacyWarning = lang === 'zh' ? ` Tiếng Trung: Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ). Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán Phó từ).` : ``;
-fieldRules += `- 'posAnalysis' (TỜ GIẤY NHÁP): BẮT BUỘC tư duy theo chuỗi. Liệt kê mọi từ loại, đánh giá % tần suất sử dụng thực tế. (VD: Danh từ 95%, Động từ <${posThresholdStr} nên loại Động từ).${fallacyWarning}\n`;
+fieldRules += `- 'posAnalysis' (TỜ GIẤY NHÁP): BẮT BUỘC tư duy theo chuỗi. Liệt kê mọi từ loại, đánh giá % tần suất sử dụng thực tế. (VD: Danh từ 95%, Động từ <${posThresholdStr} nên loại Động từ).\n`;
 }
-// [V4.11] Pedagogical POS Filter & Anti-Semantic Bleed gọt giũa
 if (requiredFields.includes('partOfSpeech')) {
 let posDifficulty = translatedLevels.length > 0 ? ` Chỉ liệt kê từ loại phổ biến, phù hợp cấp độ [${translatedLevels.join(', ')}].` : ` Chỉ liệt kê từ loại phổ biến trong giao tiếp.`;
 let posFormatRule = ` Dựa vào 'posAnalysis', CHỈ xuất các từ loại >${posThresholdStr}. Dịch tên từ loại sang Tiếng Việt.`;
-let posMorphemeRule = lang === 'zh' ? ` Tiếng Trung: Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').` : ``;
-let posSemanticBleedRule = ` Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.`;
 if (existingData && existingData.partOfSpeech) {
-fieldRules += `- 'partOfSpeech': User đã chỉ định là [${existingData.partOfSpeech}]. Giữ từ loại này, liệt kê thêm (nếu >${posThresholdStr}), cách nhau bằng '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
+fieldRules += `- 'partOfSpeech': User đã chỉ định là [${existingData.partOfSpeech}]. Giữ từ loại này, liệt kê thêm (nếu >${posThresholdStr}), cách nhau bằng '|'.${posDifficulty}${posFormatRule}\n`;
 } else {
-fieldRules += `- 'partOfSpeech': Xuất kết quả cuối cùng từ 'posAnalysis', cách nhau bằng '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
+fieldRules += `- 'partOfSpeech': Xuất kết quả cuối cùng từ 'posAnalysis', cách nhau bằng '|'.${posDifficulty}${posFormatRule}\n`;
 }
 }
 if (requiredFields.includes('image_keyword')) {
 fieldRules += `- 'image_keyword': 1 từ khóa TIẾNG ANH mô tả trực quan nhất để tìm ảnh minh họa.\n`;
 }
-// [V4.11] Multi-Example Rule gọt giũa
+// [V4.13] Pedagogical Soft Prompt cho câu ví dụ
 if (requiredFields.includes('example')) {
 let difficultyPrompt = translatedLevels.length > 0 ? ` Phù hợp trình độ: [${translatedLevels.join(', ')}].` : ``;
 let posConstraint = ` Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng.`;
@@ -1193,9 +1199,9 @@ fieldRules += `- 'example': Sáng tác câu mới mang cấu trúc tương tự.
 } else {
 fieldRules += `- 'example': Sáng tác các câu có chứa từ "${cleanTermForAi}".${difficultyPrompt}${posConstraint}\n`;
 }
-fieldRules += ` -> [CHẤT LƯỢNG SƯ PHẠM]: Câu ví dụ BẮT BUỘC phải là câu giao tiếp tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. TUYỆT ĐỐI KHÔNG sinh câu cụt lủn, vô hồn (robotic) hoặc lười biếng.\n`;
 fieldRules += `  -> Dùng định dạng: Câu ngoại ngữ | Bản dịch.\n`;
 fieldRules += `  -> KHÔNG chứa Pinyin/IPA, KHÔNG chèn tag từ loại.\n`;
+fieldRules += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Câu ví dụ cần tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn (robotic) hoặc lười biếng.\n`;
 }
 if (requiredFields.includes('grammar_type')) {
 fieldRules += `- 'grammar_type': ${validTagsStr}\n`;
@@ -1375,7 +1381,7 @@ if (finalResult[key] === "" || finalResult[key] === null) {
 delete finalResult[key];
 }
 }
-// [V4.08, V4.09, V4.10, V4.11, V4.12] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
+// [V4.08, V4.09, V4.10, V4.11, V4.12, V4.13] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
 delete finalResult.posAnalysis;
 delete finalResult.image;
 if (finalResult.image_keyword && finalResult.image_keyword.trim() !== "") {
@@ -3889,9 +3895,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.47
-// Last Updated: 2026-08-25 16:15
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.48
+// Last Updated: 2026-08-25 17:15
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.48: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Đồng bộ hóa kiến trúc Prompt từ Tầng 2.1C: Dời các Vắc-xin ngữ pháp lên trước luật định dạng JSON và áp dụng giọng văn sư phạm mềm mỏng cho câu ví dụ.
 // Cập nhật V1.47: [PHRASE COLLAPSE VACCINE] Đồng bộ hóa luật cấm gộp cụm từ thành từ đơn (Ví dụ: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán phó từ) vào AI Factory.
 // Cập nhật V1.46: [STRUCTURAL FIX & PROMPT PRUNING] Gọt giũa toàn bộ Prompt dư thừa, chuyển sang các câu lệnh súc tích (Chain-of-thought giúp logic tự vững). Ép AI phải xuất trường 'posAnalysis' đầu tiên trong JSON.
 // ==================================================================================
@@ -4038,21 +4045,23 @@ if (typeRule && dataMode === 'vocab') {
 prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
-prompt += `QUY TẮC: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Ngoài ra, cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
-// [V1.46, V1.47] STRUCTURAL FIX & PROMPT PRUNING & PHRASE VACCINE
+prompt += `QUY TẮC BỔ SUNG: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
+// [V1.48] PRE-COMPUTATION CONSTRAINT: Dời luật Ngữ pháp lên trước luật JSON và thêm Pedagogical Prompt
 if (dataMode === 'vocab') {
-prompt += `[QUY TẮC PHÂN TÍCH TỪ LOẠI & VÍ DỤ]:\n`;
+prompt += `\n[CÁC LỖI NGỮ PHÁP NGHIÊM CẤM]:\n`;
+prompt += `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
+if (lang === 'zh') {
+prompt += `- Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').\n`;
+prompt += `- Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ).\n`;
+prompt += `- Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán Phó từ).\n`;
+}
+prompt += `\n[QUY TẮC ĐỊNH DẠNG JSON (TỪ VỰNG)]:\n`;
 prompt += `  -> THỨ TỰ BẮT BUỘC: Phải xuất trường 'posAnalysis' ĐẦU TIÊN trong chuỗi JSON để làm nháp.\n`;
 prompt += `  -> 'posAnalysis' (TỜ GIẤY NHÁP): Tư duy theo chuỗi. Liệt kê mọi từ loại, đánh giá % tần suất sử dụng thực tế. (VD: Danh từ 95%, Động từ <5%. Do <${posThresholdStr} nên loại Động từ).\n`;
 prompt += `  -> 'partOfSpeech': Dựa vào 'posAnalysis', CHỈ xuất các từ loại >${posThresholdStr}, cách nhau bằng '|'. Dịch tên từ loại sang Tiếng Việt.\n`;
-prompt += `  -> Anti-Semantic Bleed: Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
-if (lang === 'zh') {
-prompt += `  -> Tiếng Trung: Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').\n`;
-prompt += `  -> Tiếng Trung: Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ).\n`;
-prompt += `  -> Tiếng Trung [PHRASE COLLAPSE VACCINE]: Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán Phó từ).\n`;
-}
 prompt += `  -> 'example': Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng.\n`;
 prompt += `  -> Định dạng 'example': Câu ngoại ngữ | Bản dịch. (KHÔNG chèn tag từ loại vào câu).\n`;
+prompt += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Câu ví dụ cần tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn (robotic) hoặc lười biếng.\n`;
 }
 }
 else if (forgeType === 'matrix') {
