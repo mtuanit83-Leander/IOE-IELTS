@@ -643,10 +643,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.06
-// Last Updated: 2026-08-25 11:00
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.07
+// Last Updated: 2026-08-25 11:15
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
-// Cập nhật V4.06: [ANTI-SEMANTIC BLEED] Bổ sung luật cấm AI vay mượn ngữ pháp của Tiếng Việt để gán mác từ loại cho ngoại ngữ gốc (Ngăn chặn lỗi gán Động từ cho Danh từ "动作").
+// Cập nhật V4.07: [LANGUAGE ENFORCEMENT & STRICT POS] Ép buộc xuất tên từ loại bằng Tiếng Việt và siết chặt định nghĩa "Từ loại hợp lệ", loại bỏ các từ loại thứ cấp/địa phương chiếm tỉ lệ quá nhỏ (ngăn chặn cố chấp gán "động từ" cho "动作" hoặc trả về tiếng Trung).
+// Cập nhật V4.06: [ANTI-SEMANTIC BLEED] Bổ sung luật cấm AI vay mượn ngữ pháp của Tiếng Việt để gán mác từ loại cho ngoại ngữ gốc.
 // Cập nhật V4.05: [PEDAGOGICAL POS FILTER] Cải tạo luật trường partOfSpeech, ép AI chỉ liệt kê các từ loại phổ biến và phù hợp với cấp độ. Đặc biệt cấm nhầm lẫn giữa Hình vị và Từ độc lập trong tiếng Trung (chống Hội chứng Từ điển Toàn thư).
 // Cập nhật V4.04: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ: Loại bỏ yêu cầu gắn tag [Từ loại] ở đầu dòng, ép giữ nguyên thứ tự 1:1 với partOfSpeech. Bổ sung Bộ lọc Chất lượng Sư phạm cấm AI sinh câu cụt lủn, thiếu ngữ cảnh.
 // ==================================================================================
@@ -1007,7 +1008,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.06] Hỗ trợ Đa Từ loại & Đa Ví dụ kết hợp Anti-Semantic Bleed Firewall
+// [V4.07] Hỗ trợ Đa Từ loại & Đa Ví dụ kết hợp Anti-Semantic Bleed Firewall & Strict POS Translation
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1152,15 +1153,16 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
 }
-// [V4.06] Pedagogical POS Filter & Anti-Semantic Bleed
+// [V4.07] Pedagogical POS Filter & Anti-Semantic Bleed & Language Enforcement
 if (requiredFields.includes('partOfSpeech')) {
 let posDifficulty = translatedLevels.length > 0 ? ` BẮT BUỘC CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT, thường gặp nhất trong giao tiếp và thực sự PHÙ HỢP VỚI CẤP ĐỘ [${translatedLevels.join(', ')}]. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa hoặc cổ ngữ.` : ` BẮT BUỘC CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT trong giao tiếp thực tế. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa.`;
+let posFormatRule = ` BẮT BUỘC DỊCH TÊN TỪ LOẠI SANG TIẾNG VIỆT (Ví dụ: danh từ, động từ, tính từ...). TUYỆT ĐỐI KHÔNG để nguyên tiếng nước ngoài. Nếu một từ có 90% khả năng là Danh từ và chỉ 10% dùng làm Động từ trong lóng/địa phương, BẮT BUỘC CHỈ LIỆT KÊ DANH TỪ. Không cố gắng nhồi nhét các từ loại thứ cấp khi không cần thiết.`;
 let posMorphemeRule = lang === 'zh' ? ` LƯU Ý NGHIÊM NGẶT VỚI TIẾNG TRUNG: Không nhầm lẫn giữa "Từ độc lập" (Word) và "Hình vị" (Morpheme cấu tạo nên từ ghép). Nếu một chữ Hán hiếm khi đứng độc lập làm danh từ/động từ trong giao tiếp hiện đại, TUYỆT ĐỐI KHÔNG được liệt kê từ loại đó (VD: "能" đứng độc lập là Trợ động từ, tuyệt đối không gán mác Danh từ chỉ vì nó nằm trong "能力").` : ``;
 let posSemanticBleedRule = ` [ANTI-SEMANTIC BLEED]: BẮT BUỘC phân loại từ loại theo ĐÚNG ngữ pháp của ngôn ngữ gốc. TUYỆT ĐỐI KHÔNG vay mượn thói quen ngữ pháp của bản dịch Tiếng Việt để gán mác (VD: Không gán mác 'Động từ' cho danh từ ngoại ngữ chỉ vì bản dịch tiếng Việt của nó có thể làm động từ).`;
 if (existingData && existingData.partOfSpeech) {
-fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC giữ từ loại này, và liệt kê thêm các từ loại khác (nếu có), cách nhau bằng dấu '|'.${posDifficulty}${posMorphemeRule}${posSemanticBleedRule}\n`;
+fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC giữ từ loại này, và liệt kê thêm các từ loại khác (nếu có), cách nhau bằng dấu '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
 } else {
-fieldRules += `- Với trường 'partOfSpeech': Liệt kê các từ loại hợp lý của từ này, cách nhau bằng dấu '|'.${posDifficulty}${posMorphemeRule}${posSemanticBleedRule}\n`;
+fieldRules += `- Với trường 'partOfSpeech': Liệt kê các từ loại hợp lý của từ này, cách nhau bằng dấu '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
 }
 }
 if (requiredFields.includes('image_keyword')) {
@@ -3872,9 +3874,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.41
-// Last Updated: 2026-08-25 11:00
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.42
+// Last Updated: 2026-08-25 11:25
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.42: [LANGUAGE ENFORCEMENT & STRICT POS] Bổ sung lệnh ép dịch tên từ loại sang tiếng Việt và cấm liệt kê các từ loại lóng/địa phương chiếm tỉ lệ quá nhỏ (90/10 rule) để loại bỏ ảo giác "Over-interpretation".
 // Cập nhật V1.41: [ANTI-SEMANTIC BLEED] Bổ sung luật cấm AI vay mượn ngữ pháp của Tiếng Việt để gán mác từ loại cho ngoại ngữ gốc (Ngăn chặn lỗi gán Động từ cho Danh từ "动作").
 // Cập nhật V1.40: [PEDAGOGICAL POS FILTER] Cải tạo luật trường partOfSpeech, ép AI chỉ liệt kê các từ loại phổ biến và phù hợp với cấp độ. Đặc biệt cấm nhầm lẫn giữa Hình vị và Từ độc lập trong tiếng Trung (chống Hội chứng Từ điển Toàn thư).
 // Cập nhật V1.39: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ trong _buildSystemPrompt và _getMasterSchema: Loại bỏ yêu cầu gắn tag [Từ loại], ép giữ nguyên thứ tự 1:1 và bổ sung Bộ lọc Chất lượng Sư phạm cấm sinh câu cụt lủn.
@@ -4017,9 +4020,10 @@ prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
 prompt += `QUY TẮC: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Ngoài ra, cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
-// [V1.41] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại, Đa Câu ví dụ, chống lười biếng và Anti-Semantic Bleed.
+// [V1.42] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại, Đa Câu ví dụ, chống lười biếng, Anti-Semantic Bleed, Language Enforcement & Strict POS.
 if (dataMode === 'vocab') {
 prompt += `[CRITICAL RULE]: BẮT BUỘC xuất 'partOfSpeech' (Từ loại). CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT, thường gặp nhất và thực sự PHÙ HỢP VỚI CẤP ĐỘ ${level}. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa hoặc cổ ngữ. Các từ loại cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ).\n`;
+prompt += `  -> BẮT BUỘC DỊCH TÊN TỪ LOẠI SANG TIẾNG VIỆT (Ví dụ: danh từ, động từ, tính từ...). TUYỆT ĐỐI KHÔNG để nguyên tiếng nước ngoài. Nếu một từ có 90% khả năng là Danh từ và chỉ 10% dùng làm Động từ trong lóng/địa phương, BẮT BUỘC CHỈ LIỆT KÊ DANH TỪ. Không cố gắng nhồi nhét các từ loại thứ cấp khi không cần thiết.\n`;
 if (lang === 'zh') {
 prompt += `  -> LƯU Ý NGHIÊM NGẶT VỚI TIẾNG TRUNG: Không nhầm lẫn giữa "Từ độc lập" (Word) và "Hình vị" (Morpheme cấu tạo nên từ ghép). Nếu một chữ Hán hiếm khi đứng độc lập làm danh từ/động từ trong giao tiếp hiện đại, TUYỆT ĐỐI KHÔNG được liệt kê từ loại đó (VD: "能" đứng độc lập là Trợ động từ, tuyệt đối không gán mác Danh từ chỉ vì nó nằm trong "能力").\n`;
 }
@@ -4110,8 +4114,8 @@ term: { type: "STRING" },
 definition: { type: "STRING" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } },
-// [V1.40] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example & Level-Appropriate
-partOfSpeech: { type: "STRING", description: "Từ loại của từ. CHỈ liệt kê các từ loại phổ biến và phù hợp cấp độ, cách nhau bằng dấu '|'." },
+// [V1.42] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example & Level-Appropriate & Language Enforcement
+partOfSpeech: { type: "STRING", description: "Từ loại của từ (BẰNG TIẾNG VIỆT). CHỈ liệt kê các từ loại phổ biến cốt lõi nhất và phù hợp cấp độ, cách nhau bằng dấu '|'." },
 example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech' AND KEEP THE EXACT ORDER. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
 ...commonProps
 },
@@ -4154,7 +4158,7 @@ timeoutId = setTimeout(() => r(new Error("AI Base Card Timeout")), dynamicTimeou
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
-// [V1.40] Đẩy dữ liệu ra UI
+// [V1.42] Đẩy dữ liệu ra UI
 return {
 term: parsed.term,
 definition: parsed.definition,
