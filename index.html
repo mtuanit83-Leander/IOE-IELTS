@@ -643,13 +643,13 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.07
-// Last Updated: 2026-08-25 11:15
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.08
+// Last Updated: 2026-08-25 11:35
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
-// Cập nhật V4.07: [LANGUAGE ENFORCEMENT & STRICT POS] Ép buộc xuất tên từ loại bằng Tiếng Việt và siết chặt định nghĩa "Từ loại hợp lệ", loại bỏ các từ loại thứ cấp/địa phương chiếm tỉ lệ quá nhỏ (ngăn chặn cố chấp gán "động từ" cho "动作" hoặc trả về tiếng Trung).
+// Cập nhật V4.08: [CHAIN-OF-THOUGHT POS FILTER] Áp dụng kỹ thuật Chain-of-Thought (Tờ giấy nháp) thông qua trường `posAnalysis`. Ép AI đánh giá tỉ lệ % sử dụng thực tế của các từ loại và KIÊN QUYẾT LOẠI BỎ những từ loại có tỉ lệ < 10% trước khi kết xuất vào trường `partOfSpeech`. Giải quyết dứt điểm lỗi ảo giác "over-interpretation" ở từ "动作".
+// Cập nhật V4.07: [LANGUAGE ENFORCEMENT & STRICT POS] Ép buộc xuất tên từ loại bằng Tiếng Việt và siết chặt định nghĩa "Từ loại hợp lệ", loại bỏ các từ loại thứ cấp/địa phương chiếm tỉ lệ quá nhỏ.
 // Cập nhật V4.06: [ANTI-SEMANTIC BLEED] Bổ sung luật cấm AI vay mượn ngữ pháp của Tiếng Việt để gán mác từ loại cho ngoại ngữ gốc.
 // Cập nhật V4.05: [PEDAGOGICAL POS FILTER] Cải tạo luật trường partOfSpeech, ép AI chỉ liệt kê các từ loại phổ biến và phù hợp với cấp độ. Đặc biệt cấm nhầm lẫn giữa Hình vị và Từ độc lập trong tiếng Trung (chống Hội chứng Từ điển Toàn thư).
-// Cập nhật V4.04: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ: Loại bỏ yêu cầu gắn tag [Từ loại] ở đầu dòng, ép giữ nguyên thứ tự 1:1 với partOfSpeech. Bổ sung Bộ lọc Chất lượng Sư phạm cấm AI sinh câu cụt lủn, thiếu ngữ cảnh.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1008,7 +1008,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.07] Hỗ trợ Đa Từ loại & Đa Ví dụ kết hợp Anti-Semantic Bleed Firewall & Strict POS Translation
+// [V4.08] Hỗ trợ Đa Từ loại & Đa Ví dụ kết hợp Chain-of-Thought (Tờ giấy nháp)
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1042,10 +1042,12 @@ translatedLevels = levelContext.map(lvl => levelDictionary[lvl] || lvl);
 } else {
 translatedLevels = [lang === 'zh' ? 'Tiếng Trung phổ thông, tự nhiên (Phù hợp mọi cấp độ)' : 'Tiếng Anh phổ thông, tự nhiên (Phù hợp mọi cấp độ)'];
 }
+// [V4.08] Tiêm trường posAnalysis làm Tờ giấy nháp (Chain of Thought)
 let propertiesToFetch = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
 definition: { type: "STRING" },
+posAnalysis: { type: "STRING" },
 partOfSpeech: { type: "STRING" },
 topic: { type: "STRING" },
 analysis: { type: "STRING" },
@@ -1055,7 +1057,7 @@ example: { type: "STRING", description: "Multiline string containing examples. M
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
 };
-let requiredFields = ["term", "pronunciation", "definition", "partOfSpeech", "topic", "analysis", "sinoViet", "example", "image_keyword", "grammar_type"];
+let requiredFields = ["term", "pronunciation", "definition", "posAnalysis", "partOfSpeech", "topic", "analysis", "sinoViet", "example", "image_keyword", "grammar_type"];
 if (lang !== 'zh') {
 delete propertiesToFetch.sinoViet;
 requiredFields = requiredFields.filter(f => f !== 'sinoViet');
@@ -1069,6 +1071,10 @@ if (targetFields && Array.isArray(targetFields) && targetFields.length > 0) {
 isTrimming = true;
 const mappedTargetFields = targetFields.map(f => f === 'image' ? 'image_keyword' : f);
 requiredFields = requiredFields.filter(f => mappedTargetFields.includes(f));
+// [V4.08] Ép buộc gọi posAnalysis (Tờ nháp) nếu hệ thống cần lấy partOfSpeech
+if (requiredFields.includes('partOfSpeech') && !requiredFields.includes('posAnalysis')) {
+requiredFields.push('posAnalysis');
+}
 if (requiredFields.length === 0) {
 requiredFields = ['term'];
 }
@@ -1153,16 +1159,20 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- Với trường 'topic': BẮT BUỘC CHỌN CHÍNH XÁC 1 TỪ KHÓA trong mảng sau: [${predefinedTopics.join(', ')}]. Tuyệt đối không tự tạo chủ đề mới.\n`;
 }
-// [V4.07] Pedagogical POS Filter & Anti-Semantic Bleed & Language Enforcement
+// [V4.08] Áp dụng Chain of Thought (Tờ giấy nháp)
+if (requiredFields.includes('posAnalysis')) {
+fieldRules += `- Với trường 'posAnalysis' (TỜ GIẤY NHÁP): BẮT BUỘC tư duy theo chuỗi (Chain-of-Thought). Hãy liệt kê mọi từ loại có thể có của từ này, sau đó đánh giá % tỉ lệ tần suất sử dụng thực tế. (Ví dụ: Từ X chủ yếu là Danh từ (95%), rất hiếm khi làm Động từ (<5%). Do <10% nên ta loại bỏ Động từ).\n`;
+}
+// [V4.07 -> 4.08] Pedagogical POS Filter & Anti-Semantic Bleed & Language Enforcement
 if (requiredFields.includes('partOfSpeech')) {
 let posDifficulty = translatedLevels.length > 0 ? ` BẮT BUỘC CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT, thường gặp nhất trong giao tiếp và thực sự PHÙ HỢP VỚI CẤP ĐỘ [${translatedLevels.join(', ')}]. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa hoặc cổ ngữ.` : ` BẮT BUỘC CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT trong giao tiếp thực tế. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa.`;
-let posFormatRule = ` BẮT BUỘC DỊCH TÊN TỪ LOẠI SANG TIẾNG VIỆT (Ví dụ: danh từ, động từ, tính từ...). TUYỆT ĐỐI KHÔNG để nguyên tiếng nước ngoài. Nếu một từ có 90% khả năng là Danh từ và chỉ 10% dùng làm Động từ trong lóng/địa phương, BẮT BUỘC CHỈ LIỆT KÊ DANH TỪ. Không cố gắng nhồi nhét các từ loại thứ cấp khi không cần thiết.`;
+let posFormatRule = ` Dựa vào kết quả của 'posAnalysis', BẮT BUỘC CHỈ xuất các từ loại có tỉ lệ >10%. BẮT BUỘC DỊCH TÊN TỪ LOẠI SANG TIẾNG VIỆT (Ví dụ: danh từ, động từ, tính từ...). TUYỆT ĐỐI KHÔNG để nguyên tiếng nước ngoài. Không cố gắng nhồi nhét các từ loại thứ cấp khi không cần thiết.`;
 let posMorphemeRule = lang === 'zh' ? ` LƯU Ý NGHIÊM NGẶT VỚI TIẾNG TRUNG: Không nhầm lẫn giữa "Từ độc lập" (Word) và "Hình vị" (Morpheme cấu tạo nên từ ghép). Nếu một chữ Hán hiếm khi đứng độc lập làm danh từ/động từ trong giao tiếp hiện đại, TUYỆT ĐỐI KHÔNG được liệt kê từ loại đó (VD: "能" đứng độc lập là Trợ động từ, tuyệt đối không gán mác Danh từ chỉ vì nó nằm trong "能力").` : ``;
 let posSemanticBleedRule = ` [ANTI-SEMANTIC BLEED]: BẮT BUỘC phân loại từ loại theo ĐÚNG ngữ pháp của ngôn ngữ gốc. TUYỆT ĐỐI KHÔNG vay mượn thói quen ngữ pháp của bản dịch Tiếng Việt để gán mác (VD: Không gán mác 'Động từ' cho danh từ ngoại ngữ chỉ vì bản dịch tiếng Việt của nó có thể làm động từ).`;
 if (existingData && existingData.partOfSpeech) {
-fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC giữ từ loại này, và liệt kê thêm các từ loại khác (nếu có), cách nhau bằng dấu '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
+fieldRules += `- Với trường 'partOfSpeech': User đã chỉ định từ này là [${existingData.partOfSpeech}]. BẮT BUỘC giữ từ loại này, và liệt kê thêm các từ loại khác (nếu có và >10%), cách nhau bằng dấu '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
 } else {
-fieldRules += `- Với trường 'partOfSpeech': Liệt kê các từ loại hợp lý của từ này, cách nhau bằng dấu '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
+fieldRules += `- Với trường 'partOfSpeech': Xuất kết quả cuối cùng từ 'posAnalysis', cách nhau bằng dấu '|'.${posDifficulty}${posFormatRule}${posMorphemeRule}${posSemanticBleedRule}\n`;
 }
 }
 if (requiredFields.includes('image_keyword')) {
@@ -1362,6 +1372,8 @@ if (finalResult[key] === "" || finalResult[key] === null) {
 delete finalResult[key];
 }
 }
+// [V4.08] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
+delete finalResult.posAnalysis;
 delete finalResult.image;
 if (finalResult.image_keyword && finalResult.image_keyword.trim() !== "") {
 finalResult.image = `https://tse4.mm.bing.net/th?q=${encodeURIComponent(finalResult.image_keyword.trim())}&w=300&h=300&c=7&rs=1&p=0`;
@@ -3874,14 +3886,13 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.42
-// Last Updated: 2026-08-25 11:25
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.43
+// Last Updated: 2026-08-25 11:31
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.42: [LANGUAGE ENFORCEMENT & STRICT POS] Bổ sung lệnh ép dịch tên từ loại sang tiếng Việt và cấm liệt kê các từ loại lóng/địa phương chiếm tỉ lệ quá nhỏ (90/10 rule) để loại bỏ ảo giác "Over-interpretation".
-// Cập nhật V1.41: [ANTI-SEMANTIC BLEED] Bổ sung luật cấm AI vay mượn ngữ pháp của Tiếng Việt để gán mác từ loại cho ngoại ngữ gốc (Ngăn chặn lỗi gán Động từ cho Danh từ "动作").
-// Cập nhật V1.40: [PEDAGOGICAL POS FILTER] Cải tạo luật trường partOfSpeech, ép AI chỉ liệt kê các từ loại phổ biến và phù hợp với cấp độ. Đặc biệt cấm nhầm lẫn giữa Hình vị và Từ độc lập trong tiếng Trung (chống Hội chứng Từ điển Toàn thư).
-// Cập nhật V1.39: [ANTI-LAZINESS & FORMAT REFINEMENT] Chỉnh sửa luật sinh Đa Ví Dụ trong _buildSystemPrompt và _getMasterSchema: Loại bỏ yêu cầu gắn tag [Từ loại], ép giữ nguyên thứ tự 1:1 và bổ sung Bộ lọc Chất lượng Sư phạm cấm sinh câu cụt lủn.
-// Cập nhật V1.38: [MULTI-POS & MULTI-EXAMPLE] Bơm luật Ràng buộc Chéo ép AI sinh Đa Từ Loại (ngăn cách bằng dấu '|') và Đa Ví Dụ (mỗi từ loại 1 câu ví dụ xuống dòng, ánh xạ 1:1).
+// Cập nhật V1.43: [CHAIN-OF-THOUGHT POS FILTER] Đồng bộ kỹ thuật Chain-of-Thought (Tờ giấy nháp) qua trường `posAnalysis`. Ép AI đánh giá tỉ lệ % sử dụng thực tế của các từ loại và KIÊN QUYẾT LOẠI BỎ những từ loại < 10% trước khi chốt kết quả vào `partOfSpeech`.
+// Cập nhật V1.42: [LANGUAGE ENFORCEMENT & STRICT POS] Bổ sung lệnh ép dịch tên từ loại sang tiếng Việt và cấm liệt kê các từ loại lóng/địa phương chiếm tỉ lệ quá nhỏ (90/10 rule).
+// Cập nhật V1.41: [ANTI-SEMANTIC BLEED] Bổ sung luật cấm AI vay mượn ngữ pháp của Tiếng Việt để gán mác từ loại cho ngoại ngữ gốc.
+// Cập nhật V1.40: [PEDAGOGICAL POS FILTER] Cải tạo luật trường partOfSpeech, ép AI chỉ liệt kê các từ loại phổ biến và phù hợp với cấp độ. Đặc biệt cấm nhầm lẫn giữa Hình vị và Từ độc lập trong tiếng Trung.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -4020,15 +4031,17 @@ prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
 prompt += `QUY TẮC: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Ngoài ra, cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
-// [V1.42] Bơm luật Ràng buộc Chéo ép đồng bộ Đa Từ loại, Đa Câu ví dụ, chống lười biếng, Anti-Semantic Bleed, Language Enforcement & Strict POS.
+// [V1.43] Tích hợp Chain of Thought cho POS, Chống lười biếng, Anti-Semantic Bleed, Language Enforcement & Strict POS.
 if (dataMode === 'vocab') {
-prompt += `[CRITICAL RULE]: BẮT BUỘC xuất 'partOfSpeech' (Từ loại). CHỈ liệt kê các từ loại PHỔ BIẾN NHẤT, thường gặp nhất và thực sự PHÙ HỢP VỚI CẤP ĐỘ ${level}. TUYỆT ĐỐI KHÔNG liệt kê các từ loại hiếm gặp, tối nghĩa hoặc cổ ngữ. Các từ loại cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ).\n`;
-prompt += `  -> BẮT BUỘC DỊCH TÊN TỪ LOẠI SANG TIẾNG VIỆT (Ví dụ: danh từ, động từ, tính từ...). TUYỆT ĐỐI KHÔNG để nguyên tiếng nước ngoài. Nếu một từ có 90% khả năng là Danh từ và chỉ 10% dùng làm Động từ trong lóng/địa phương, BẮT BUỘC CHỈ LIỆT KÊ DANH TỪ. Không cố gắng nhồi nhét các từ loại thứ cấp khi không cần thiết.\n`;
+prompt += `[CRITICAL RULE - CHAIN OF THOUGHT]: BẮT BUỘC áp dụng Tư duy theo chuỗi (Tờ giấy nháp) để xác định Từ loại:\n`;
+prompt += `  -> BƯỚC 1 ('posAnalysis'): BẮT BUỘC xuất trường này TRƯỚC. Hãy liệt kê mọi từ loại có thể có, sau đó đánh giá % tỉ lệ tần suất sử dụng thực tế. (Ví dụ: Chủ yếu là Danh từ (95%), rất hiếm khi làm Động từ (<5%). Do <10% nên ta loại bỏ Động từ).\n`;
+prompt += `  -> BƯỚC 2 ('partOfSpeech'): Dựa vào 'posAnalysis', BẮT BUỘC CHỈ xuất các từ loại có tỉ lệ >10% và thực sự PHÙ HỢP VỚI CẤP ĐỘ ${level}. TUYỆT ĐỐI KHÔNG liệt kê từ loại hiếm gặp. Các từ loại cách nhau bằng dấu '|' (Ví dụ: Danh từ | Động từ).\n`;
+prompt += `  -> BẮT BUỘC DỊCH TÊN TỪ LOẠI SANG TIẾNG VIỆT (Ví dụ: danh từ, động từ...). TUYỆT ĐỐI KHÔNG để nguyên tiếng nước ngoài.\n`;
 if (lang === 'zh') {
 prompt += `  -> LƯU Ý NGHIÊM NGẶT VỚI TIẾNG TRUNG: Không nhầm lẫn giữa "Từ độc lập" (Word) và "Hình vị" (Morpheme cấu tạo nên từ ghép). Nếu một chữ Hán hiếm khi đứng độc lập làm danh từ/động từ trong giao tiếp hiện đại, TUYỆT ĐỐI KHÔNG được liệt kê từ loại đó (VD: "能" đứng độc lập là Trợ động từ, tuyệt đối không gán mác Danh từ chỉ vì nó nằm trong "能力").\n`;
 }
 prompt += `  -> [ANTI-SEMANTIC BLEED]: BẮT BUỘC phân loại từ loại theo ĐÚNG ngữ pháp của ngôn ngữ gốc. TUYỆT ĐỐI KHÔNG vay mượn thói quen ngữ pháp của bản dịch Tiếng Việt để gán mác (VD: Không gán mác 'Động từ' cho danh từ ngoại ngữ chỉ vì bản dịch tiếng Việt của nó có thể làm động từ).\n`;
-prompt += `  -> Đếm số lượng từ loại đã liệt kê. BẮT BUỘC sinh CHÍNH XÁC số lượng câu ví dụ tương ứng vào trường 'example' (Ánh xạ 1:1) và GIỮ NGUYÊN THỨ TỰ tương ứng với danh sách từ loại.\n`;
+prompt += `  -> Đếm số lượng từ loại đã xuất trong 'partOfSpeech'. BẮT BUỘC sinh CHÍNH XÁC số lượng câu ví dụ tương ứng vào trường 'example' (Ánh xạ 1:1) và GIỮ NGUYÊN THỨ TỰ.\n`;
 prompt += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Các câu ví dụ BẮT BUỘC phải là câu giao tiếp tự nhiên, có ngữ cảnh thực tế rõ ràng. TUYỆT ĐỐI KHÔNG sinh câu cụt lủn, vô hồn hoặc lười biếng.\n`;
 prompt += `  -> 'example' BẮT BUỘC dùng định dạng đa dòng (Xuống dòng bằng \\n): Câu ngoại ngữ | Bản dịch \\n Câu ngoại ngữ | Bản dịch. (TUYỆT ĐỐI KHÔNG in kèm tag từ loại vào đầu dòng).\n`;
 }
@@ -4105,7 +4118,8 @@ const baseRequired = ["term", "definition", "image_keyword"];
 if (dataMode === 'sentence') {
 baseRequired.push("grammar_type");
 } else {
-baseRequired.push("partOfSpeech", "example");
+// [V1.43] Bơm trường posAnalysis vào danh sách bắt buộc cho chế độ vocab
+baseRequired.push("posAnalysis", "partOfSpeech", "example");
 }
 return {
 type: "OBJECT",
@@ -4114,8 +4128,9 @@ term: { type: "STRING" },
 definition: { type: "STRING" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } },
-// [V1.42] Định nghĩa Schema ràng buộc Multi-PoS & Multi-Example & Level-Appropriate & Language Enforcement
-partOfSpeech: { type: "STRING", description: "Từ loại của từ (BẰNG TIẾNG VIỆT). CHỈ liệt kê các từ loại phổ biến cốt lõi nhất và phù hợp cấp độ, cách nhau bằng dấu '|'." },
+// [V1.43] Định nghĩa Schema tích hợp Chain of Thought (posAnalysis)
+posAnalysis: { type: "STRING", description: "Tờ giấy nháp: Phân tích các từ loại có thể có và đánh giá tỉ lệ % sử dụng thực tế. Quyết định loại bỏ các từ loại có tỉ lệ <10%." },
+partOfSpeech: { type: "STRING", description: "Từ loại của từ (BẰNG TIẾNG VIỆT). Xuất kết quả cuối cùng từ posAnalysis (chỉ lấy >10%), cách nhau bằng dấu '|'." },
 example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech' AND KEEP THE EXACT ORDER. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
 ...commonProps
 },
@@ -4158,7 +4173,7 @@ timeoutId = setTimeout(() => r(new Error("AI Base Card Timeout")), dynamicTimeou
 const res = await Promise.race([aiPromise, timeoutPromise]);
 clearTimeout(timeoutId);
 const parsed = window.Utils.parseAiJson(res.text);
-// [V1.42] Đẩy dữ liệu ra UI
+// [V1.43] Đẩy dữ liệu ra UI (Tự động loại bỏ posAnalysis vì không được map)
 return {
 term: parsed.term,
 definition: parsed.definition,
