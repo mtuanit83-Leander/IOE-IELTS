@@ -643,14 +643,13 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.14
-// Last Updated: 2026-08-25 17:08
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.15
+// Last Updated: 2026-08-25 20:45
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V4.15: [POSITIVE MAPPING] Thay đổi luật cấm gộp cụm từ thành luật Positive Mapping, xóa bỏ từ khóa "Phó từ" để chống hội chứng Negative Constraint Blindness.
 // Cập nhật V4.14: [SELF-JUSTIFICATION FALLACY FIX] Khóa chặt câu ví dụ (Exact Match Constraint) chống AI tự ý biến tấu ký tự để hợp thức hóa từ loại sai (vd: đổi 还有 thành 还要). Tiêm luật ÉP 0% vào Tờ giấy nháp đối với các từ loại vi phạm luật cấm.
 // Cập nhật V4.13: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Tái cấu trúc vòng đời Prompt: Chuyển toàn bộ các Vắc-xin Ngữ pháp (Động-Tân, Gộp cụm từ, Hình vị, Chảy máu ngữ nghĩa) lên TRƯỚC luật định dạng JSON để khóa nhận thức AI sớm. Thay thế luật sinh câu ví dụ bằng giọng văn sư phạm mềm mỏng.
-// Cập nhật V4.12: [PHRASE COLLAPSE VACCINE] Bổ sung luật cấm AI gộp cụm từ thành từ đơn (Ví dụ: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không được gán phó từ).
-// Cập nhật V4.11: [STRUCTURAL FIX & PROMPT PRUNING] Ép khuôn thứ tự JSON Schema (buộc posAnalysis đứng đầu). Gọt giũa toàn bộ Prompt dư thừa, chuyển sang các câu lệnh súc tích.
-// Cập nhật V4.10: [GRAMMAR FALLACY VACCINE] Tiêm mũi "Vắc-xin Cụm Động-Tân" vào luật phân tích từ loại. Cấm tuyệt đối AI ngụy biện Danh từ đóng vai trò Tân ngữ thành Động từ.
+// Cập nhật V4.12: [PHRASE COLLAPSE VACCINE] Bổ sung luật cấm AI gộp cụm từ thành từ đơn.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1009,7 +1008,7 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.14] Tái cấu trúc Prompt: Tiêm "Luật ép 0%" vào posAnalysis và "Khóa ký tự" vào luật sinh câu ví dụ để trị hội chứng Tự chứng minh ảo giác (Self-Justification Hallucination).
+// [V4.15] Tái cấu trúc Prompt: Xóa bỏ từ khóa "Phó từ" ở lỗi gộp cụm từ. Dùng cấu trúc Positive Mapping If-Then phạt 0%.
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1103,7 +1102,7 @@ dynamicInstruction = lang === 'zh'
 ? " Đối với pronunciation: BẮT BUỘC xuất Pinyin. " + (requiredFields.includes('sinoViet') ? "Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : "")
 : " Đối với pronunciation: BẮT BUỘC xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
 }
-// [PROMPT OPTIMIZATION V4.14] - Cấu trúc Prompt phân nhánh cho Progressive Disclosure, Pre-computation Constraint
+// [PROMPT OPTIMIZATION V4.15] - Tái cấu trúc luật Cụm Từ thành Positive Mapping chống mù từ khóa
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Bổ sung thông tin cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}).\n`;
@@ -1121,14 +1120,14 @@ userQuery += `1. TIÊU ĐIỂM: Máy trích xuất dữ liệu tự động.\n`;
 userQuery += `2. NGÔN NGỮ: Xử lý bằng Tiếng Việt dễ hiểu.\n`;
 userQuery += `3. PHONG CÁCH: Cực kỳ NGẮN GỌN (tối đa 2-3 câu), không lan man.\n`;
 }
-// [V4.13] NEW PRE-COMPUTATION CONSTRAINT - Đưa luật Ngữ pháp lên trước luật JSON
+// [V4.15] NEW POSITIVE MAPPING CONSTRAINT - Đổi luật cấm gộp cụm từ
 if (requiredFields.includes('partOfSpeech') || requiredFields.includes('posAnalysis')) {
 userQuery += `\n[CÁC LỖI NGỮ PHÁP NGHIÊM CẤM]:\n`;
 userQuery += `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
 if (lang === 'zh') {
 userQuery += `- Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').\n`;
 userQuery += `- Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ).\n`;
-userQuery += `- Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán Phó từ).\n`;
+userQuery += `- Với các cụm từ ghép (VD: 还有), BẮT BUỘC phân loại theo chức năng của CẢ CỤM (Cụm động từ / Liên từ). Nếu chỉ lấy từ loại của chữ cái đầu tiên để gán cho cả cụm, tỉ lệ phần trăm đó BẮT BUỘC bị ép về 0%.\n`;
 }
 userQuery += `\n`;
 }
@@ -1381,7 +1380,7 @@ if (finalResult[key] === "" || finalResult[key] === null) {
 delete finalResult[key];
 }
 }
-// [V4.08 - V4.14] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
+// [V4.08 - V4.15] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
 delete finalResult.posAnalysis;
 delete finalResult.image;
 if (finalResult.image_keyword && finalResult.image_keyword.trim() !== "") {
