@@ -3894,9 +3894,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.48
-// Last Updated: 2026-08-25 17:15
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.49
+// Last Updated: 2026-08-25 22:30
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.49: [THOUGHT TEMPLATING & ZERO-PERCENT RULE] Đồng bộ hóa chiến thuật "Ép khuôn Tư duy" (Viết phân tích chữ trước, chốt tỉ lệ số sau) và "Luật ép 0%" từ Tầng 2.1C sang Lò đúc để trị dứt điểm hội chứng ngụy biện sau sự kiện (Post-hoc Justification).
 // Cập nhật V1.48: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Đồng bộ hóa kiến trúc Prompt từ Tầng 2.1C: Dời các Vắc-xin ngữ pháp lên trước luật định dạng JSON và áp dụng giọng văn sư phạm mềm mỏng cho câu ví dụ.
 // Cập nhật V1.47: [PHRASE COLLAPSE VACCINE] Đồng bộ hóa luật cấm gộp cụm từ thành từ đơn (Ví dụ: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán phó từ) vào AI Factory.
 // Cập nhật V1.46: [STRUCTURAL FIX & PROMPT PRUNING] Gọt giũa toàn bộ Prompt dư thừa, chuyển sang các câu lệnh súc tích (Chain-of-thought giúp logic tự vững). Ép AI phải xuất trường 'posAnalysis' đầu tiên trong JSON.
@@ -4001,7 +4002,7 @@ actualIsReverse = false;
 } catch(e) {}
 const targetLangName = lang === 'zh' ? 'Tiếng Trung' : (lang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh');
 const cefrLevel = window.ExamProfiles && window.ExamProfiles.getCefrLevel ? window.ExamProfiles.getCefrLevel(level) : "Intermediate";
-// [V1.44] Tính toán Ngưỡng Từ loại Động (Dynamic POS Threshold)
+// Tính toán Ngưỡng Từ loại Động (Dynamic POS Threshold)
 let isAdvancedLevel = false;
 if (typeof level === 'string') {
 const advKeywords = ['level_5', 'level_6', 'hsk5', 'hsk6', 'hsk 5', 'hsk 6', 'c1', 'c2'];
@@ -4045,7 +4046,7 @@ prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
 prompt += `QUY TẮC BỔ SUNG: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
-// [V1.48] PRE-COMPUTATION CONSTRAINT: Dời luật Ngữ pháp lên trước luật JSON và thêm Pedagogical Prompt
+// PRE-COMPUTATION CONSTRAINT: Dời luật Ngữ pháp lên trước luật JSON và thêm Pedagogical Prompt
 if (dataMode === 'vocab') {
 prompt += `\n[CÁC LỖI NGỮ PHÁP NGHIÊM CẤM]:\n`;
 prompt += `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
@@ -4056,9 +4057,9 @@ prompt += `- Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘ
 }
 prompt += `\n[QUY TẮC ĐỊNH DẠNG JSON (TỪ VỰNG)]:\n`;
 prompt += `  -> THỨ TỰ BẮT BUỘC: Phải xuất trường 'posAnalysis' ĐẦU TIÊN trong chuỗi JSON để làm nháp.\n`;
-prompt += `  -> 'posAnalysis' (TỜ GIẤY NHÁP): Tư duy theo chuỗi. Liệt kê mọi từ loại, đánh giá % tần suất sử dụng thực tế. (VD: Danh từ 95%, Động từ <5%. Do <${posThresholdStr} nên loại Động từ).\n`;
+prompt += `  -> 'posAnalysis' (TỜ GIẤY NHÁP): Tư duy theo chuỗi. BẮT BUỘC viết phân tích chức năng ngữ pháp TRƯỚC, sau đó mới chốt lại tỉ lệ % ở cuối cùng. (VD: Từ này ghép bởi A và B, hoạt động như C, do đó C chiếm 100%, D chiếm 0%). [LUẬT ÉP 0%]: Nếu vi phạm [CÁC LỖI NGỮ PHÁP NGHIÊM CẤM], lập tức ép % về 0.\n`;
 prompt += `  -> 'partOfSpeech': Dựa vào 'posAnalysis', CHỈ xuất các từ loại >${posThresholdStr}, cách nhau bằng '|'. Dịch tên từ loại sang Tiếng Việt.\n`;
-prompt += `  -> 'example': Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng.\n`;
+prompt += `  -> 'example': Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng. Câu ví dụ BẮT BUỘC phải chứa CHÍNH XÁC từ vựng ở trường 'term'.\n`;
 prompt += `  -> Định dạng 'example': Câu ngoại ngữ | Bản dịch. (KHÔNG chèn tag từ loại vào câu).\n`;
 prompt += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Câu ví dụ cần tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn (robotic) hoặc lười biếng.\n`;
 }
@@ -4130,7 +4131,7 @@ return prompt;
 _getMasterSchema: function(forgeType, subType, dataMode = 'vocab', level = "") {
 const commonProps = { cefr_level: { type: "STRING" } };
 const commonRequired = ["cefr_level"];
-// [V1.44] Tính toán Ngưỡng Từ loại Động (Dynamic POS Threshold)
+// Tính toán Ngưỡng Từ loại Động (Dynamic POS Threshold)
 let isAdvancedLevel = false;
 if (typeof level === 'string') {
 const advKeywords = ['level_5', 'level_6', 'hsk5', 'hsk6', 'hsk 5', 'hsk 6', 'c1', 'c2'];
@@ -4151,7 +4152,7 @@ term: { type: "STRING" },
 definition: { type: "STRING" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } },
-posAnalysis: { type: "STRING", description: `Tờ giấy nháp: Phân tích các từ loại có thể có và đánh giá tỉ lệ % sử dụng thực tế. Quyết định loại bỏ các từ loại có tỉ lệ <${posThresholdStr}.` },
+posAnalysis: { type: "STRING", description: `Tờ giấy nháp: Tư duy theo chuỗi. BẮT BUỘC viết phân tích chức năng ngữ pháp TRƯỚC, sau đó mới chốt lại tỉ lệ % ở cuối cùng. Ép 0% nếu vi phạm luật cấm. Quyết định loại bỏ các từ loại có tỉ lệ <${posThresholdStr}.` },
 partOfSpeech: { type: "STRING", description: `Từ loại của từ (BẰNG TIẾNG VIỆT). Xuất kết quả cuối cùng từ posAnalysis (chỉ lấy >${posThresholdStr}), cách nhau bằng dấu '|'.` },
 example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech' AND KEEP THE EXACT ORDER. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
 ...commonProps
