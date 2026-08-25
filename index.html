@@ -643,14 +643,14 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.17
-// Last Updated: 2026-08-25 23:15
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.18
+// Last Updated: 2026-08-25 23:45
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
-// Cập nhật V4.17: [ANTI-ENCYCLOPEDIC TRANSLATION] Thay đổi prompt dịch nghĩa từ "Định nghĩa" sang "Bản dịch trực tiếp, chuẩn xác", tiêm vắc-xin chống giải thích bách khoa toàn thư (VD: Khoảng thời gian 24h) để chữa dứt điểm lỗi dịch ngô nghê.
-// Cập nhật V4.16: [THOUGHT TEMPLATING FIX] Ép cấu trúc Tờ giấy nháp: Bắt buộc AI phải phân tích logic (chữ) trước khi xuất ra tỉ lệ (số) để diệt trừ lỗi ngụy biện sau sự kiện (Post-hoc Justification).
+// Cập nhật V4.18: [DEFENSIVE RENDERING MARKER] Yêu cầu AI chèn điểm neo "- " (gạch ngang và khoảng trắng) vào đầu mỗi câu ví dụ để chuẩn bị cho thuật toán cắt dòng offline ở Tầng 3.
+// Cập nhật V4.17: [ANTI-ENCYCLOPEDIC TRANSLATION] Thay đổi prompt dịch nghĩa từ "Định nghĩa" sang "Bản dịch trực tiếp, chuẩn xác", tiêm vắc-xin chống giải thích bách khoa toàn thư để chữa dứt điểm lỗi dịch ngô nghê.
+// Cập nhật V4.16: [THOUGHT TEMPLATING FIX] Ép cấu trúc Tờ giấy nháp: Bắt buộc AI phải phân tích logic (chữ) trước khi xuất ra tỉ lệ (số) để diệt trừ lỗi ngụy biện sau sự kiện.
 // Cập nhật V4.15: [POSITIVE MAPPING] Thay đổi luật cấm gộp cụm từ thành luật Positive Mapping, xóa bỏ từ khóa "Phó từ" để chống hội chứng Negative Constraint Blindness.
-// Cập nhật V4.14: [SELF-JUSTIFICATION FALLACY FIX] Khóa chặt câu ví dụ (Exact Match Constraint) chống AI tự ý biến tấu ký tự để hợp thức hóa từ loại sai (vd: đổi 还有 thành 还要). Tiêm luật ÉP 0% vào Tờ giấy nháp đối với các từ loại vi phạm luật cấm.
-// Cập nhật V4.13: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Tái cấu trúc vòng đời Prompt: Chuyển toàn bộ các Vắc-xin Ngữ pháp (Động-Tân, Gộp cụm từ, Hình vị, Chảy máu ngữ nghĩa) lên TRƯỚC luật định dạng JSON để khóa nhận thức AI sớm. Thay thế luật sinh câu ví dụ bằng giọng văn sư phạm mềm mỏng.
+// Cập nhật V4.14: [SELF-JUSTIFICATION FALLACY FIX] Khóa chặt câu ví dụ (Exact Match Constraint) chống AI tự ý biến tấu ký tự để hợp thức hóa từ loại sai. Tiêm luật ÉP 0% vào Tờ giấy nháp.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -1009,7 +1009,6 @@ return { text: resultText, tokenMetadata };
 // ============================================================================
 // 4. LÀM GIÀU THẺ TỰ ĐỘNG BẰNG AI (DYNAMIC SCHEMA & POOLING)
 // ============================================================================
-// [V4.17] Chống Từ điển hóa: Ép AI dịch nghĩa trực tiếp, không giải thích bách khoa toàn thư
 window.Utils.fillCardWithAi = async (term, lang, apiKey, targetFields = null, dataMode = 'vocab', levelContext = [], existingData = null) => {
 return window.Utils.withApiLock(async () => {
 if (window.Utils.isGlobalPaused()) {
@@ -1058,7 +1057,8 @@ partOfSpeech: { type: "STRING" },
 topic: { type: "STRING" },
 analysis: { type: "STRING" },
 sinoViet: { type: "STRING" },
-example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
+// [V4.18] MARKER INJECTION: Ép AI chèn "- " vào đầu mỗi dòng ví dụ
+example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: - Foreign Sentence | Vietnamese Translation" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
 };
@@ -1199,7 +1199,8 @@ fieldRules += `- 'example': Sáng tác câu mới mang cấu trúc tương tự.
 } else {
 fieldRules += `- 'example': Sáng tác các câu có chứa CHÍNH XÁC từ "${cleanTermForAi}". TUYỆT ĐỐI không tự ý thay đổi, cắt xén hay biến tấu ký tự của từ gốc.${difficultyPrompt}${posConstraint}\n`;
 }
-fieldRules += `  -> Dùng định dạng: Câu ngoại ngữ | Bản dịch.\n`;
+// [V4.18] MARKER INJECTION: Ép AI chèn "- " vào đầu mỗi dòng ví dụ
+fieldRules += `  -> Dùng định dạng: Bắt đầu mỗi câu bằng dấu "- " (gạch ngang và khoảng trắng), theo sau là: Câu ngoại ngữ | Bản dịch.\n`;
 fieldRules += `  -> KHÔNG chứa Pinyin/IPA, KHÔNG chèn tag từ loại.\n`;
 fieldRules += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Câu ví dụ cần tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn (robotic) hoặc lười biếng.\n`;
 }
@@ -3895,9 +3896,10 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.50
-// Last Updated: 2026-08-25 23:30
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.51
+// Last Updated: 2026-08-25 23:45
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
+// Cập nhật V1.51: [DEFENSIVE RENDERING MARKER] Ép Lò đúc Cơ sở (Base Card) chèn điểm neo "- " vào đầu mỗi dòng ví dụ, đồng bộ với Tầng 2.1C để Tầng 3 tự động bẻ dòng Offline.
 // Cập nhật V1.50: [ANTI-ENCYCLOPEDIC TRANSLATION] Thay đổi prompt dịch nghĩa trong batchEnrich và các Lò đúc sang "Bản dịch trực tiếp, chuẩn xác", tiêm vắc-xin chống giải thích bách khoa toàn thư để chữa dứt điểm lỗi dịch ngô nghê (Ví dụ: Music -> Nghệ thuật âm thanh).
 // Cập nhật V1.49: [THOUGHT TEMPLATING & ZERO-PERCENT RULE] Đồng bộ hóa chiến thuật "Ép khuôn Tư duy" (Viết phân tích chữ trước, chốt tỉ lệ số sau) và "Luật ép 0%" từ Tầng 2.1C sang Lò đúc để trị dứt điểm hội chứng ngụy biện sau sự kiện (Post-hoc Justification).
 // Cập nhật V1.48: [PRE-COMPUTATION CONSTRAINT & PEDAGOGICAL PROMPT] Đồng bộ hóa kiến trúc Prompt từ Tầng 2.1C: Dời các Vắc-xin ngữ pháp lên trước luật định dạng JSON và áp dụng giọng văn sư phạm mềm mỏng cho câu ví dụ.
@@ -4064,7 +4066,7 @@ prompt += `  -> THỨ TỰ BẮT BUỘC: Phải xuất trường 'posAnalysis' �
 prompt += `  -> 'posAnalysis' (TỜ GIẤY NHÁP): Tư duy theo chuỗi. BẮT BUỘC viết phân tích chức năng ngữ pháp TRƯỚC, sau đó mới chốt lại tỉ lệ % ở cuối cùng. (VD: Từ này ghép bởi A và B, hoạt động như C, do đó C chiếm 100%, D chiếm 0%). [LUẬT ÉP 0%]: Nếu vi phạm [CÁC LỖI NGỮ PHÁP NGHIÊM CẤM], lập tức ép % về 0.\n`;
 prompt += `  -> 'partOfSpeech': Dựa vào 'posAnalysis', CHỈ xuất các từ loại >${posThresholdStr}, cách nhau bằng '|'. Dịch tên từ loại sang Tiếng Việt.\n`;
 prompt += `  -> 'example': Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng. Câu ví dụ BẮT BUỘC phải chứa CHÍNH XÁC từ vựng ở trường 'term'.\n`;
-prompt += `  -> Định dạng 'example': Câu ngoại ngữ | Bản dịch. (KHÔNG chèn tag từ loại vào câu).\n`;
+prompt += `  -> Định dạng 'example': Bắt đầu mỗi câu bằng dấu "- " (gạch ngang và khoảng trắng), theo sau là: Câu ngoại ngữ | Bản dịch. (KHÔNG chèn tag từ loại vào câu).\n`;
 prompt += `  -> [CHẤT LƯỢNG SƯ PHẠM]: Câu ví dụ cần tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn (robotic) hoặc lười biếng.\n`;
 }
 }
@@ -4160,7 +4162,8 @@ image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } },
 posAnalysis: { type: "STRING", description: `Tờ giấy nháp: Tư duy theo chuỗi. BẮT BUỘC viết phân tích chức năng ngữ pháp TRƯỚC, sau đó mới chốt lại tỉ lệ % ở cuối cùng. Ép 0% nếu vi phạm luật cấm. Quyết định loại bỏ các từ loại có tỉ lệ <${posThresholdStr}.` },
 partOfSpeech: { type: "STRING", description: `Từ loại của từ (BẰNG TIẾNG VIỆT). Xuất kết quả cuối cùng từ posAnalysis (chỉ lấy >${posThresholdStr}), cách nhau bằng dấu '|'.` },
-example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech' AND KEEP THE EXACT ORDER. Format each line exactly as: Foreign Sentence | Vietnamese Translation" },
+// [V1.51] Đánh dấu neo "- " cho thuật toán bẻ dòng
+example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech' AND KEEP THE EXACT ORDER. Format each line exactly as: - Foreign Sentence | Vietnamese Translation" },
 ...commonProps
 },
 required: [...baseRequired, ...commonRequired]
@@ -6721,12 +6724,13 @@ window.MenuToggle = MenuToggle;
 window.LevelSelector = LevelSelector;
 window.TopicSelectorDropdown = TopicSelectorDropdown;
 window.TopicSelector = TopicSelectorDropdown; // Ghi đè để đồng bộ
-// Block 3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.12
-// Last Updated: 2026-08-24 22:50
+<selection-tag>// Block 3.2: TẦNG 3: GIAO DIỆN BỐ CỤC & ĐIỀU KHIỂN (Layout & Control Components) - Version 1.13
+// Last Updated: 2026-08-25 23:45
 // Nhiệm vụ: Chứa các Component định hình khung giao diện chính của ứng dụng (AppHeader, FlashcardDisplay, ControlBar, BottomNav).
+// Cập nhật V1.13: [DEFENSIVE RENDERING] Triển khai thuật toán bẻ dòng Offline cho trường 'example'. Tự động nhận diện marker "- " để chuyển thành danh sách gạch đầu dòng, căn trái (text-left) để tối ưu hiển thị.
 // Cập nhật V1.12: [DICTIONARY STYLE UX] Bọc Từ loại (partOfSpeech) trong ngoặc đơn và nới rộng khoảng cách với phiên âm để UI thoáng hơn.
 // Cập nhật V1.11: [DICTIONARY STYLE REFINEMENT] Tinh chỉnh UX hiển thị Từ loại (partOfSpeech): Dời ra sau phiên âm, bỏ định dạng khối/badge, chuyển sang chữ thường in nghiêng (italic, lowercase) theo chuẩn từ điển. Ẩn hoàn toàn trong chế độ câu văn.
-// Cập nhật V1.10: [MISSING POS DISPLAY] Bổ sung thẻ tag hiển thị Từ loại (partOfSpeech) ở mặt sau thẻ cho chế độ Từ vựng.
+// Cập nhật V1.10: [MISSING POS DISPLAY] Bổ bổ thẻ tag hiển thị Từ loại (partOfSpeech) ở mặt sau thẻ cho chế độ Từ vựng.
 // Cập nhật V1.09: [UX/UI] Nâng cấp cơ chế Tiết lộ Lũy tiến (Progressive Disclosure) cho trường Analysis.
 // ==================================================================================
 const AppHeader = ({ lang, setLang, notebookCount, masteredCount, incorrectCount, onOpenNotebook, onOpenMastered, onOpenIncorrect, onOpenLinkManager, onOpenManual, onOpenHelp, onReload, t, studySourceName, onExitStudyMode, onOpenSaveLoad, dataMode, setDataMode, currentLevel, setCurrentLevel, currentTopic, setCurrentTopic }) => {
@@ -7143,7 +7147,14 @@ onClick={(e) => e.stopPropagation()}
 {currentCard?.sinoViet}
 </div>
 )}
-{currentCard?.example && (<div className="text-gray-600 text-center italic w-full border-t border-gray-200 pt-2 whitespace-pre-wrap mt-2" style={{ fontSize: '0.85em' }}>{currentCard?.example}</div>)}
+{/* [V1.13 DEFENSIVE RENDERING] Thuật toán Bẻ dòng thông minh nhận diện marker "- " */}
+{currentCard?.example && (
+<div className="text-gray-600 text-left italic w-full border-t border-gray-200 pt-2 whitespace-pre-wrap mt-2" style={{ fontSize: '0.85em' }}>
+{currentCard.example.includes('- ')
+? currentCard.example.split('- ').filter(p => p.trim() !== '').map(p => '- ' + p.trim()).join('\n')
+: currentCard.example}
+</div>
+)}
 {!currentCard?.analysis && (
 <button
 onClick={(e) => { e.stopPropagation(); onExplainGrammar(); }}
@@ -7267,6 +7278,7 @@ window.FlashcardDisplay = FlashcardDisplay;
 window.ControlBar = ControlBar;
 window.BottomNav = BottomNav;
 window.GlobalLoadingScreen = GlobalLoadingScreen;
+</selection-tag>
 // Block4.1: TẦNG 4: CÁC TÍNH NĂNG & MODALS (Feature Modals - Hanzi Writer) - Version 1.01
 // Last Updated: 2026-03-31 11:15
 // Nhiệm vụ: Chứa tính năng Tập viết chữ Hán (Hanzi Writer Modal). Tầng này đóng gói trọn vẹn UI và logic cục bộ của một tính năng cụ thể.
