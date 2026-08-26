@@ -1537,12 +1537,12 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.17
-// Last Updated: 2026-08-26 13:25
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.20
+// Last Updated: 2026-08-26 14:30
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
-// Cập nhật V1.17: [LEVEL SYSTEM OVERHAUL] Đại tu toàn diện Hệ thống Cấp độ. Đồng bộ Tiếng Trung lên chuẩn HSK 3.0 (9 bậc, 3 giai đoạn: Sơ-Trung-Cao). Chỉnh chuẩn Tiếng Anh CEFR (A1-C2) khớp với khung hệ thống. Bổ sung Vắc-xin chống lỗi bóp méo chuỗi con (Substring Fallacy) cho Spot Mistake.
-// Cập nhật V1.16: [HOTFIX] Chuyển đổi dấu ngoặc kép ("") thành ngoặc đơn ('') trong mảng TOPICS để chống lỗi Google Sheets tự động xóa ngoặc khi Copy/Paste gây sập Babel AST.
-// Cập nhật V1.15: [LOGIC CENTRALIZATION] Dịch chuyển Từ điển Ánh xạ Cấp độ (LEVEL_DICTIONARY) và Vắc-xin Lỗi Ngữ pháp (getMicroTierGrammarRule) từ Tầng 2.1c và 2.6 về Tầng 2.2.
+// Cập nhật V1.20: [BILINGUAL PEDAGOGY POOLS] Tách dòng sư phạm song ngữ. Bơm đầy nguyên liệu ngữ pháp, từ vựng, ngữ cảnh cho 5 hồ bơi Tiếng Anh (CEFR) và 5 hồ bơi Tiếng Trung (HSK 3.0).
+// Cập nhật V1.18: [MICRO-PEDAGOGY ROUTING] Phân rã hàm getPedagogyMatrixRule thành 5 chặng sư phạm độc lập, đáp ứng chính xác ma trận kiến thức ngữ pháp và độ dài câu cho từng Level.
+// Cập nhật V1.17: [LEVEL SYSTEM OVERHAUL] Đại tu toàn diện Hệ thống Cấp độ. Đồng bộ Tiếng Trung lên chuẩn HSK 3.0 (9 bậc). Chỉnh chuẩn Tiếng Anh CEFR (A1-C2).
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -1645,28 +1645,72 @@ TOPICS: [
 // ==================================================================================
 // HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
 // ==================================================================================
-// [MA TRẬN ĐỊNH TUYẾN SƯ PHẠM V1.17]
-getPedagogyMatrixRule: function(mappedKey) {
+// [MA TRẬN ĐỊNH TUYẾN SƯ PHẠM V1.20 - BILINGUAL PEDAGOGY ROUTING]
+getPedagogyMatrixRule: function(mappedKey, lang) {
 let rules = {
 example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.",
 definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác."
 };
 if (!mappedKey) return rules;
 const keyStr = String(mappedKey).toLowerCase();
-// Nhóm Sơ Cấp (Pre-A1 -> A2+ | HSK 1, 2, 3)
-if (['level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'hsk1', 'hsk2', 'hsk3', 'kiddie', 'junior', 'discovery', 'a1', 'a2'].some(k => keyStr.includes(k))) {
-rules.example = "BẮT BUỘC dùng cấu trúc câu đơn (Simple sentence), thì hiện tại. Tối đa 5-8 từ. Tuyệt đối KHÔNG dùng thành ngữ (idioms), cụm động từ phức tạp (phrasal verbs) hoặc ẩn dụ. Ưu tiên chủ ngữ là I, You, He, She hoặc danh từ cụ thể (chó, mèo, táo).";
+if (lang === 'zh') {
+// ============================================================
+// HỆ THỐNG 5 HỒ BƠI TIẾNG TRUNG (CHUẨN HSK 3.0 MỚI)
+// ============================================================
+// HSK 1: Sơ cấp 1
+if (['level_1', 'hsk1'].some(k => keyStr.includes(k))) {
+rules.example = "BẮT BUỘC câu cực kỳ ngắn gọn (4-7 chữ Hán). Ngữ cảnh: Miêu tả nhân vật, đồ vật, phương hướng cơ bản. Ngữ pháp: Chỉ dùng câu chữ 是 (Shi), câu chữ 有 (You), đại từ cơ bản và số đếm. Không dùng cấu trúc phức tạp.";
 rules.definition = "Dịch nghĩa đen, cơ bản nhất, dùng từ vựng sinh hoạt hàng ngày.";
 }
-// Nhóm Trung Cấp (B1 -> B2 | HSK 4, 5, 6)
-else if (['level_6', 'level_7', 'level_8', 'hsk4', 'hsk5', 'hsk6', 'b1', 'b2', 'pre_ielts', 'breakthrough', 'academic'].some(k => keyStr.includes(k))) {
-rules.example = "Sử dụng câu phức cơ bản. Có thể chứa mệnh đề quan hệ hoặc cụm động từ thông dụng. Ngữ cảnh đời sống, công sở hoặc trường học.";
+// HSK 2-3: Sơ cấp 2 & 3
+else if (['level_2', 'level_3', 'hsk2', 'hsk3'].some(k => keyStr.includes(k))) {
+rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Các hoạt động hàng ngày, sở thích, mua sắm. Ngữ pháp: Dùng trợ từ động thái (了/着/过) biểu đạt thời gian, cấu trúc chữ 把 (Ba) và 被 (Bei) cơ bản, lượng từ phong phú, câu hỏi 吗/呢, và câu ghép đơn giản (Vì... nên...).";
+rules.definition = "Dịch nghĩa đen, dùng từ vựng sinh hoạt hàng ngày.";
+}
+// HSK 4-5: Trung cấp
+else if (['level_4', 'level_5', 'hsk4', 'hsk5'].some(k => keyStr.includes(k))) {
+rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Lập luận quan điểm cá nhân, môi trường làm việc. Bắt đầu chuyển từ khẩu ngữ sang văn viết (书面语), chèn một vài Thành ngữ (成语) phổ biến. Ngữ pháp: Bổ ngữ trạng thái, Bổ ngữ kết quả phức tạp, Cấu trúc so sánh (比...更...).";
+rules.definition = "Dịch chính xác sắc thái nghĩa, ngữ cảnh đời sống hoặc công sở.";
+}
+// HSK 6-7: Trung - Cao Cấp
+else if (['level_6', 'level_7', 'hsk6', 'hsk7'].some(k => keyStr.includes(k))) {
+rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Tranh luận, tin tức xã hội, hiện tượng văn hóa. Ngữ pháp: Dùng câu phức đa tầng, cặp liên từ logic phức tạp (Dù... vẫn..., Hễ... là...). Sử dụng các từ vựng Cận nghĩa (近义词) có sắc thái tinh tế.";
 rules.definition = "Dịch chính xác sắc thái nghĩa, có thể bao gồm nghĩa bóng phổ biến.";
 }
-// Nhóm Cao Cấp (C1, C2, IELTS, SAT | HSK 7, 8, 9)
-else if (['level_9', 'hsk7', 'hsk8', 'hsk9', 'c1', 'c2', 'expert', 'ielts', 'sat'].some(k => keyStr.includes(k))) {
-rules.example = "Sử dụng cấu trúc ngữ pháp phức tạp (đảo ngữ, câu điều kiện, mệnh đề phân từ). Khuyến khích dùng thành ngữ (idioms), từ vựng học thuật (academic). Thể hiện văn phong bản xứ cao cấp.";
+// HSK 8-9: Chuyên gia
+else {
+rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Triết học phương Đông, kinh tế vĩ mô, ngoại giao, y sinh. Ngữ pháp: Sử dụng thành thạo Thành ngữ (成语) sâu sắc, Tục ngữ (俗语). Cấu trúc câu mang đậm âm hưởng Văn ngôn (文言文). Cách hành văn chuẩn xác như người bản xứ mang hàm lượng văn hóa cao.";
 rules.definition = "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt.";
+}
+} else {
+// ============================================================
+// HỆ THỐNG 5 HỒ BƠI TIẾNG ANH (CHUẨN CEFR)
+// ============================================================
+// Nhóm 1: Pre-A1 (Level 1)
+if (['level_1', 'kiddie', 'pre_a1', 'pre-a1'].some(k => keyStr.includes(k))) {
+rules.example = "BẮT BUỘC độ dài 3-5 từ. Ngữ cảnh: Miêu tả đồ vật vật lý xung quanh, màu sắc, con vật, số đếm, gia đình. Ngữ pháp: Chỉ dùng To-Be, Have/Has, Thì hiện tại đơn, giới từ vị trí cơ bản (in, on, under), câu hỏi Yes/No ngắn. KHÔNG dùng cụm động từ/thành ngữ.";
+rules.definition = "Dịch nghĩa đen, cơ bản nhất, dùng từ vựng sinh hoạt hàng ngày.";
+}
+// Nhóm 2: A1/A1+ (Level 2 & 3)
+else if (['level_2', 'level_3', 'junior', 'a1'].some(k => keyStr.includes(k))) {
+rules.example = "BẮT BUỘC độ dài 5-8 từ. Ngữ cảnh: Các hoạt động thói quen hàng ngày, sở thích, trường học. Ngữ pháp: Câu đơn/ghép (And/But). Dùng Hiện tại đơn/tiếp diễn, Quá khứ đơn (V-ed). BẮT BUỘC dùng Trạng từ tần suất (always, usually, never), tính từ sở hữu, đại từ chỉ định.";
+rules.definition = "Dịch nghĩa đen, dùng từ vựng sinh hoạt hàng ngày.";
+}
+// Nhóm 3: A2/A2+ (Level 4 & 5)
+else if (['level_4', 'level_5', 'discovery', 'a2'].some(k => keyStr.includes(k))) {
+rules.example = "BẮT BUỘC độ dài 8-12 từ. Ngữ cảnh: Kể câu chuyện hoặc trải nghiệm cá nhân ngắn, nêu lý do. Ngữ pháp: Sử dụng linh hoạt Quá khứ tiếp diễn, Hiện tại hoàn thành, Tương lai, So sánh. Bổ sung Câu điều kiện loại 0 và 1, Động từ khuyết thiếu chỉ sự bắt buộc/lời khuyên (Must, Have to, Should), Liên từ nối thời gian (When, While, Before, After).";
+rules.definition = "Dịch chính xác sắc thái nghĩa, ngữ cảnh đời sống hoặc trường học.";
+}
+// Nhóm 4: B1/B1+ (Level 6 & 7)
+else if (['level_6', 'level_7', 'pre_ielts', 'breakthrough', 'b1'].some(k => keyStr.includes(k))) {
+rules.example = "BẮT BUỘC độ dài 12-15 từ. Ngữ cảnh: Trình bày quan điểm cá nhân, cảm xúc trừu tượng, môi trường công sở, xã hội. Ngữ pháp: Dùng câu phức (Complex sentence). Yêu cầu có Mệnh đề quan hệ (Who/Which/That), Câu bị động, Câu điều kiện loại 2, Cấu trúc V-ing/To-V (Gerunds & Infinitives), Câu tường thuật (Reported Speech), Liên từ logic (Although, However, Therefore).";
+rules.definition = "Dịch chính xác sắc thái nghĩa, có thể bao gồm nghĩa bóng phổ biến.";
+}
+// Nhóm 5: B2-C2 (Level 8 & 9)
+else {
+rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Luận văn, báo chí, các vấn đề toàn cầu, triết học, kinh tế vĩ mô. Ngữ pháp: Văn phong học thuật, Đảo ngữ, Câu điều kiện hỗn hợp (Mixed Conditionals), Rút gọn mệnh đề phân từ (Participle Clauses), Câu bị động khách quan (It is said that...), Collocations nâng cao và Thành ngữ (Idioms). Cấu trúc ngữ pháp phức tạp.";
+rules.definition = "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt.";
+}
 }
 // Vaccine chống từ điển hóa cho mọi cấp độ
 rules.definition += " TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa (VD: dịch 'Ngày', KHÔNG dịch 'Khoảng thời gian 24h'). Ưu tiên 1-3 từ (trừ thành ngữ).";
@@ -1858,8 +1902,8 @@ window.IoeDataEngine._buildSystemPromptForFactory = function(forgeType, subType,
 const targetLang = lang === 'zh' ? 'Tiếng Trung' : (lang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh');
 const cefrLevel = window.ExamProfiles && window.ExamProfiles.getCefrLevel ? window.ExamProfiles.getCefrLevel(level) : "Intermediate";
 // Lấy luật Sư phạm động từ Ma trận
-const pedagogyRules = window.IoeDataEngine.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(level) : {
-example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng.",
+const pedagogyRules = window.IoeDataEngine.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(level, lang) : {
+example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.",
 definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa."
 };
 let prompt = `Bạn là một gia sư ${targetLang} chuyên nghiệp và tận tâm, đang tạo nội dung cho một ứng dụng giáo dục.\n`;
