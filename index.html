@@ -1537,9 +1537,10 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.16
-// Last Updated: 2026-08-26 10:45
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.17
+// Last Updated: 2026-08-26 13:25
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
+// Cập nhật V1.17: [LEVEL SYSTEM OVERHAUL] Đại tu toàn diện Hệ thống Cấp độ. Đồng bộ Tiếng Trung lên chuẩn HSK 3.0 (9 bậc, 3 giai đoạn: Sơ-Trung-Cao). Chỉnh chuẩn Tiếng Anh CEFR (A1-C2) khớp với khung hệ thống. Bổ sung Vắc-xin chống lỗi bóp méo chuỗi con (Substring Fallacy) cho Spot Mistake.
 // Cập nhật V1.16: [HOTFIX] Chuyển đổi dấu ngoặc kép ("") thành ngoặc đơn ('') trong mảng TOPICS để chống lỗi Google Sheets tự động xóa ngoặc khi Copy/Paste gây sập Babel AST.
 // Cập nhật V1.15: [LOGIC CENTRALIZATION] Dịch chuyển Từ điển Ánh xạ Cấp độ (LEVEL_DICTIONARY) và Vắc-xin Lỗi Ngữ pháp (getMicroTierGrammarRule) từ Tầng 2.1c và 2.6 về Tầng 2.2.
 // ==================================================================================
@@ -1586,7 +1587,7 @@ modules: [
 ]
 }
 },
-// 1. HỆ THỐNG CẤP ĐỘ ĐÀO TẠO NỀN TẢNG (GRADE CONTEXTS)
+// 1. HỆ THỐNG CẤP ĐỘ ĐÀO TẠO NỀN TẢNG (GRADE CONTEXTS) - V1.17 OVERHAUL
 GRADE_CONTEXTS: {
 en_level_1: "Level 1 (Mẫu giáo - Pre-A1/Lớp 1-2). Ngữ pháp: Số ít/Số nhiều (s/es), mạo từ cơ bản (a/an). Từ vựng: Các danh từ cực kỳ cơ bản.",
 en_level_2: "Level 2 (Tiểu học Cơ bản - A1/Lớp 3-4). Ngữ pháp: Đại từ Chủ ngữ/Tân ngữ, Hiện tại Đơn, động từ 'to be'.",
@@ -1596,32 +1597,38 @@ en_level_5: "Level 5 (Khám phá Nâng cao - A2+/Lớp 8-9). Ngữ pháp: Tính 
 en_level_6: "Level 6 (Tiền IELTS - B1/Lớp 10/IELTS 4.0). Ngữ pháp: Hiện tại Hoàn thành, mạo từ xác định 'the', Động từ Khuyết thiếu.",
 en_level_7: "Level 7 (Đột phá - B1+/Lớp 11-12/IELTS 5.0). Ngữ pháp: Câu bị động, Danh động từ/Động từ nguyên thể, Câu điều kiện loại 1 & 2.",
 en_level_8: "Level 8 (Học thuật - B2/IELTS 5.5-6.5). Ngữ pháp: Mệnh đề quan hệ, Cấu tạo từ, Liên từ học thuật. Từ vựng trang trọng.",
-en_level_9: "Level 9 (Chuyên gia - C1+/IELTS 7.0+). Ngữ pháp: Đảo ngữ, Câu điều kiện hỗn hợp, Collocation nâng cao. Từ vựng phức tạp/tinh tế.",
-zh_level_1: "HSK 1 (Người mới bắt đầu). Ngữ pháp: Đại từ cơ bản, câu chữ 'Shi' (是), câu chữ 'You' (有). Từ vựng: 500 từ sinh tồn cơ bản.",
+en_level_9: "Level 9 (Chuyên gia - C1/C2/IELTS 7.0+). Ngữ pháp: Đảo ngữ, Câu điều kiện hỗn hợp, Collocation nâng cao. Từ vựng phức tạp/tinh tế.",
+zh_level_1: "HSK 1 (Sơ cấp). Ngữ pháp: Đại từ cơ bản, câu chữ 'Shi' (是), câu chữ 'You' (有). Từ vựng: 500 từ sinh tồn cơ bản.",
 zh_level_2: "HSK 2 (Sơ cấp). Ngữ pháp: Câu hỏi với 'Ma/Ne' (吗/呢), Trợ từ động thái (了/着/过).",
-zh_level_3: "HSK 3 (Tiền Trung cấp). Ngữ pháp: Cấu trúc chữ 'Ba' (把) và chữ 'Bei' (被), Câu phức đơn giản.",
+zh_level_3: "HSK 3 (Sơ cấp). Ngữ pháp: Cấu trúc chữ 'Ba' (把) và chữ 'Bei' (被), Câu phức đơn giản.",
 zh_level_4: "HSK 4 (Trung cấp). Ngữ pháp: Cấu trúc so sánh, Bổ ngữ kết quả/trạng thái.",
-zh_level_5: "HSK 5 (Thượng Trung cấp). Từ vựng: Thành ngữ (Chengyu), Ngôn ngữ văn viết trang trọng (书面语), Thuật ngữ xã hội & kinh tế.",
-zh_level_6: "HSK 6 (Cao cấp). Từ vựng: Tranh luận học thuật, vấn đề toàn cầu, cảm thụ nghệ thuật. Ngữ pháp phức tạp.",
-zh_level_7: "HSK 7 (Chuyên gia). Từ vựng: Nghiên cứu giáo dục, quan hệ quốc tế, đột phá công nghệ. Trôi chảy ở mức chuyên môn.",
-zh_level_8: "HSK 8 (Tinh thông). Từ vựng: Triết học phương Đông, tâm lý học, khoa học vũ trụ, đạo đức y sinh. Tinh thông học thuật.",
-zh_level_9: "HSK 9 (Như người bản xứ). Từ vựng: 文言文 (Văn ngôn), phê bình kinh tế vĩ mô, tín ngưỡng tôn giáo. Diễn đạt như người bản xứ.",
+zh_level_5: "HSK 5 (Trung cấp). Từ vựng: Thành ngữ (Chengyu), Ngôn ngữ văn viết (书面语), Thuật ngữ xã hội & kinh tế.",
+zh_level_6: "HSK 6 (Trung cấp). Từ vựng: Tranh luận học thuật, vấn đề toàn cầu, cảm thụ nghệ thuật. Ngữ pháp phức tạp.",
+zh_level_7: "HSK 7 (Cao cấp). Từ vựng: Nghiên cứu giáo dục, quan hệ quốc tế, đột phá công nghệ. Trôi chảy ở mức chuyên môn.",
+zh_level_8: "HSK 8 (Cao cấp). Từ vựng: Triết học phương Đông, tâm lý học, khoa học vũ trụ, đạo đức y sinh. Tinh thông học thuật.",
+zh_level_9: "HSK 9 (Cao cấp). Từ vựng: 文言文 (Văn ngôn), phê bình kinh tế vĩ mô, tín ngưỡng tôn giáo. Diễn đạt như người bản xứ.",
 vi_default: "Mặc định Tiếng Việt. Giao tiếp cơ bản."
 },
-// TỪ ĐIỂN ÁNH XẠ CẤP ĐỘ (LEVEL DICTIONARY)
+// TỪ ĐIỂN ÁNH XẠ CẤP ĐỘ (LEVEL DICTIONARY) - V1.17 OVERHAUL
 LEVEL_DICTIONARY: {
 'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)', 'hsk1': 'Tiếng Trung HSK 1 (Sơ cấp)',
 'zh_level_2': 'Tiếng Trung HSK 2 (Sơ cấp)', 'hsk2': 'Tiếng Trung HSK 2 (Sơ cấp)',
-'zh_level_3': 'Tiếng Trung HSK 3 (Trung cấp)', 'hsk3': 'Tiếng Trung HSK 3 (Trung cấp)',
+'zh_level_3': 'Tiếng Trung HSK 3 (Sơ cấp)', 'hsk3': 'Tiếng Trung HSK 3 (Sơ cấp)',
 'zh_level_4': 'Tiếng Trung HSK 4 (Trung cấp)', 'hsk4': 'Tiếng Trung HSK 4 (Trung cấp)',
-'zh_level_5': 'Tiếng Trung HSK 5 (Cao cấp)', 'hsk5': 'Tiếng Trung HSK 5 (Cao cấp)',
-'zh_level_6': 'Tiếng Trung HSK 6 (Cao cấp)', 'hsk6': 'Tiếng Trung HSK 6 (Cao cấp)',
-'en_level_1': 'Tiếng Anh A1 (Sơ cấp)', 'a1': 'Tiếng Anh A1 (Sơ cấp)',
-'en_level_2': 'Tiếng Anh A2 (Tiền trung cấp)', 'a2': 'Tiếng Anh A2 (Tiền trung cấp)',
-'en_level_3': 'Tiếng Anh B1 (Trung cấp)', 'b1': 'Tiếng Anh B1 (Trung cấp)',
-'en_level_4': 'Tiếng Anh B2 (Trung cao cấp)', 'b2': 'Tiếng Anh B2 (Trung cao cấp)',
-'en_level_5': 'Tiếng Anh C1 (Cao cấp)', 'c1': 'Tiếng Anh C1 (Cao cấp)',
-'en_level_6': 'Tiếng Anh C2 (Thành thạo)', 'c2': 'Tiếng Anh C2 (Thành thạo)'
+'zh_level_5': 'Tiếng Trung HSK 5 (Trung cấp)', 'hsk5': 'Tiếng Trung HSK 5 (Trung cấp)',
+'zh_level_6': 'Tiếng Trung HSK 6 (Trung cấp)', 'hsk6': 'Tiếng Trung HSK 6 (Trung cấp)',
+'zh_level_7': 'Tiếng Trung HSK 7 (Cao cấp)', 'hsk7': 'Tiếng Trung HSK 7 (Cao cấp)',
+'zh_level_8': 'Tiếng Trung HSK 8 (Cao cấp)', 'hsk8': 'Tiếng Trung HSK 8 (Cao cấp)',
+'zh_level_9': 'Tiếng Trung HSK 9 (Cao cấp)', 'hsk9': 'Tiếng Trung HSK 9 (Cao cấp)',
+'en_level_1': 'Tiếng Anh Pre-A1 (Kiddie)', 'pre_a1': 'Tiếng Anh Pre-A1 (Kiddie)', 'kiddie': 'Tiếng Anh Pre-A1 (Kiddie)',
+'en_level_2': 'Tiếng Anh A1 (Junior)', 'a1': 'Tiếng Anh A1 (Junior)', 'junior': 'Tiếng Anh A1 (Junior)',
+'en_level_3': 'Tiếng Anh A1+ (Junior+)', 'a1p': 'Tiếng Anh A1+ (Junior+)', 'junior+': 'Tiếng Anh A1+ (Junior+)',
+'en_level_4': 'Tiếng Anh A2 (Discovery)', 'a2': 'Tiếng Anh A2 (Discovery)', 'discovery': 'Tiếng Anh A2 (Discovery)',
+'en_level_5': 'Tiếng Anh A2+ (Discovery+)', 'a2p': 'Tiếng Anh A2+ (Discovery+)', 'discovery+': 'Tiếng Anh A2+ (Discovery+)',
+'en_level_6': 'Tiếng Anh B1 (Pre-IELTS)', 'b1': 'Tiếng Anh B1 (Pre-IELTS)', 'pre_ielts': 'Tiếng Anh B1 (Pre-IELTS)',
+'en_level_7': 'Tiếng Anh B1+ (Breakthrough)', 'b1p': 'Tiếng Anh B1+ (Breakthrough)', 'breakthrough': 'Tiếng Anh B1+ (Breakthrough)',
+'en_level_8': 'Tiếng Anh B2 (Academic)', 'b2': 'Tiếng Anh B2 (Academic)', 'academic': 'Tiếng Anh B2 (Academic)',
+'en_level_9': 'Tiếng Anh C1-C2 (Expert)', 'c1': 'Tiếng Anh C1-C2 (Expert)', 'c2': 'Tiếng Anh C1-C2 (Expert)', 'expert': 'Tiếng Anh C1-C2 (Expert)'
 },
 // 2. HỆ THỐNG CHỦ ĐỀ MỞ RỘNG (MACRO TOPICS) - 8 CHỦ ĐỀ LÕI + OTHER
 TOPICS: [
@@ -1638,7 +1645,7 @@ TOPICS: [
 // ==================================================================================
 // HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
 // ==================================================================================
-// [MA TRẬN ĐỊNH TUYẾN SƯ PHẠM V1.14]
+// [MA TRẬN ĐỊNH TUYẾN SƯ PHẠM V1.17]
 getPedagogyMatrixRule: function(mappedKey) {
 let rules = {
 example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.",
@@ -1646,18 +1653,18 @@ definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác."
 };
 if (!mappedKey) return rules;
 const keyStr = String(mappedKey).toLowerCase();
-// Nhóm Sơ Cấp (Kiddie, A1, A2, HSK1, HSK2)
-if (['level_1', 'level_2', 'hsk1', 'hsk2', 'kiddie', 'a1', 'a2'].some(k => keyStr.includes(k))) {
+// Nhóm Sơ Cấp (Pre-A1 -> A2+ | HSK 1, 2, 3)
+if (['level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'hsk1', 'hsk2', 'hsk3', 'kiddie', 'junior', 'discovery', 'a1', 'a2'].some(k => keyStr.includes(k))) {
 rules.example = "BẮT BUỘC dùng cấu trúc câu đơn (Simple sentence), thì hiện tại. Tối đa 5-8 từ. Tuyệt đối KHÔNG dùng thành ngữ (idioms), cụm động từ phức tạp (phrasal verbs) hoặc ẩn dụ. Ưu tiên chủ ngữ là I, You, He, She hoặc danh từ cụ thể (chó, mèo, táo).";
 rules.definition = "Dịch nghĩa đen, cơ bản nhất, dùng từ vựng sinh hoạt hàng ngày.";
 }
-// Nhóm Trung Cấp (B1, B2, HSK3, HSK4)
-else if (['level_3', 'level_4', 'hsk3', 'hsk4', 'b1', 'b2'].some(k => keyStr.includes(k))) {
+// Nhóm Trung Cấp (B1 -> B2 | HSK 4, 5, 6)
+else if (['level_6', 'level_7', 'level_8', 'hsk4', 'hsk5', 'hsk6', 'b1', 'b2', 'pre_ielts', 'breakthrough', 'academic'].some(k => keyStr.includes(k))) {
 rules.example = "Sử dụng câu phức cơ bản. Có thể chứa mệnh đề quan hệ hoặc cụm động từ thông dụng. Ngữ cảnh đời sống, công sở hoặc trường học.";
 rules.definition = "Dịch chính xác sắc thái nghĩa, có thể bao gồm nghĩa bóng phổ biến.";
 }
-// Nhóm Cao Cấp (C1, C2, HSK5+, IELTS, SAT)
-else if (['level_5', 'level_6', 'level_7', 'level_8', 'level_9', 'hsk5', 'hsk6', 'hsk7', 'hsk8', 'hsk9', 'c1', 'c2', 'ielts', 'sat'].some(k => keyStr.includes(k))) {
+// Nhóm Cao Cấp (C1, C2, IELTS, SAT | HSK 7, 8, 9)
+else if (['level_9', 'hsk7', 'hsk8', 'hsk9', 'c1', 'c2', 'expert', 'ielts', 'sat'].some(k => keyStr.includes(k))) {
 rules.example = "Sử dụng cấu trúc ngữ pháp phức tạp (đảo ngữ, câu điều kiện, mệnh đề phân từ). Khuyến khích dùng thành ngữ (idioms), từ vựng học thuật (academic). Thể hiện văn phong bản xứ cao cấp.";
 rules.definition = "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt.";
 }
@@ -1860,7 +1867,7 @@ prompt += `CẤP ĐỘ MỤC TIÊU: ${level} (Tiêu chuẩn tương đương: ${
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
 if (levelContext) prompt += `NGỮ CẢNH (CONTEXT): ${levelContext}\n`;
 if (lang === 'zh') {
-prompt += `QUY TẮC TỪ VỰNG: Vui lòng sử dụng từ vựng phù hợp với tiêu chuẩn ${level}. Đối với cấp độ cơ bản (HSK 1-2), chỉ dùng các từ giao tiếp hàng ngày cơ bản. Với cấp độ cao hơn, dùng từ vựng nâng cao phù hợp nhưng không quá hiếm gặp hoặc tối nghĩa.\n`;
+prompt += `QUY TẮC TỪ VỰNG: Vui lòng sử dụng từ vựng phù hợp với tiêu chuẩn ${level}. Đối với cấp độ cơ bản (HSK 1-3), chỉ dùng các từ giao tiếp hàng ngày cơ bản. Với cấp độ cao hơn, dùng từ vựng nâng cao phù hợp nhưng không quá hiếm gặp hoặc tối nghĩa.\n`;
 } else {
 prompt += `QUY TẮC TỪ VỰNG: Vui lòng sử dụng từ vựng bám sát tiêu chuẩn ${cefrLevel}. Đảm bảo độ khó hoàn toàn phù hợp với học viên mục tiêu.\n`;
 }
@@ -1868,9 +1875,9 @@ if (dataMode === 'sentence') {
 prompt += `QUY TẮC ĐỊNH DẠNG: Trường 'displaySentence' và tất cả các đáp án (options) đều phải là các câu văn hoàn chỉnh, nghe tự nhiên. KHÔNG trả về các mảnh vụn ngắn.\n`;
 } else {
 if (lang === 'zh') {
-prompt += `QUY TẮC ĐỊNH DẠNG: Đối với HSK 1 hoặc 2, hãy giữ cho các đáp án (options) tương đối ngắn gọn và dễ đọc.\n`;
+prompt += `QUY TẮC ĐỊNH DẠNG: Đối với HSK Sơ cấp (1-3), hãy giữ cho các đáp án (options) tương đối ngắn gọn và dễ đọc.\n`;
 } else {
-prompt += `QUY TẮC ĐỊNH DẠNG: Đối với cấp độ cơ bản (Pre-A1 đến A2), hãy giữ cho các đáp án (options) tương đối đơn giản, dễ đọc.\n`;
+prompt += `QUY TẮC ĐỊNH DẠNG: Đối với cấp độ Sơ cấp (Pre-A1 đến A2+), hãy giữ cho các đáp án (options) tương đối đơn giản, dễ đọc.\n`;
 }
 }
 prompt += `GẮN NHÃN CẤP ĐỘ: Vui lòng khai báo đúng cấp độ CEFR/HSK vào trường 'cefr_level'. Khai báo sai cấp độ là một lỗi nghiêm trọng.\n`;
@@ -1939,6 +1946,7 @@ prompt += `QUY TẮC: Trường 'explanation' PHẢI BẰNG TIẾNG VIỆT 100%.
 } else if (subType === 'spot_mistake') {
 prompt += `NHIỆM VỤ: Tạo một câu ${targetLang} khớp với cấp độ ${cefrLevel} chứa CHÍNH XÁC MỘT lỗi ngữ pháp hoặc từ vựng nhỏ.\n`;
 prompt += `QUY TẮC SƯ PHẠM: Câu văn (displaySentence) BẮT BUỘC tuân thủ: ${pedagogyRules.example}\n`;
+prompt += `VẮC-XIN CHỐNG LỖI TỪ ĐỒNG DẠNG (SUBSTRING FALLACY): Từ bị sai PHẢI là một từ độc lập trong câu. TUYỆT ĐỐI CẤM chọn một từ nằm bên trong một từ ghép khác để làm lỗi (Ví dụ: Cấm thay chữ 'broken' nằm bên trong từ 'heartbroken' thành chữ khác). Đây là quy tắc bất di bất dịch.\n`;
 prompt += `QUY TẮC GIẢI THÍCH: Cung cấp câu sai, từ sai, từ sửa lại cho đúng, và giải thích bằng TIẾNG VIỆT.\n`;
 } else if (subType === 'listening') {
 prompt += `NHIỆM VỤ: Tạo một kịch bản bài nghe hiểu và một câu hỏi trắc nghiệm tương ứng khớp với cấp độ ${cefrLevel}.\n`;
