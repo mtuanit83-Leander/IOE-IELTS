@@ -643,13 +643,11 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.19
-// Last Updated: 2026-08-26 07:25
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.21
+// Last Updated: 2026-08-26 10:35
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
-// Cập nhật V4.19: [PROMPT RESTRUCTURING] Tái cấu trúc Prompt trường 'example': Gộp nhóm nội dung (Level + Sư phạm) lên trên cùng, đẩy toàn bộ định dạng kỹ thuật (1:1, gạch ngang, cấm Pinyin/Tag) xuống cuối để tận dụng Recency Effect, giúp AI tuân thủ form cứng tốt hơn.
-// Cập nhật V4.18: [DEFENSIVE RENDERING MARKER] Yêu cầu AI chèn điểm neo "- " (gạch ngang và khoảng trắng) vào đầu mỗi câu ví dụ để chuẩn bị cho thuật toán cắt dòng offline ở Tầng 3.
-// Cập nhật V4.17: [ANTI-ENCYCLOPEDIC TRANSLATION] Thay đổi prompt dịch nghĩa từ "Định nghĩa" sang "Bản dịch trực tiếp, chuẩn xác", tiêm vắc-xin chống giải thích bách khoa toàn thư để chữa dứt điểm lỗi dịch ngô nghê.
-// Cập nhật V4.16: [THOUGHT TEMPLATING FIX] Ép cấu trúc Tờ giấy nháp: Bắt buộc AI phải phân tích logic (chữ) trước khi xuất ra tỉ lệ (số) để diệt trừ lỗi ngụy biện sau sự kiện.
+// Cập nhật V4.21: [LOGIC CENTRALIZATION] Loại bỏ hardcode LEVEL_DICTIONARY và các luật Grammar Fallacy. Sử dụng trực tiếp nguồn sự thật duy nhất từ window.IoeDataEngine (Tầng 2.2).
+// Cập nhật V4.20: [PEDAGOGY ROUTING INTEGRATION] Tích hợp Ma trận Định tuyến Sư phạm (Pedagogy Routing Matrix) vào hàm fillCardWithAi. Tự động cấp phát luật sinh ví dụ và dịch nghĩa phù hợp với cấp độ, trị dứt điểm hội chứng "ảo giác khoe chữ" của AI ở các level sơ cấp.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -661,12 +659,11 @@ window.Utils.withApiLock = async (taskFn) => {
 const previousLock = window.Utils.__apiMutex;
 let releaseLock;
 window.Utils.__apiMutex = new Promise(resolve => { releaseLock = resolve; });
-// Chờ luồng trước đó chạy xong (Bỏ qua lỗi của luồng trước để không đứt chuỗi)
 await previousLock.catch(() => {});
 try {
 return await taskFn();
 } finally {
-releaseLock(); // Mở khóa cho luồng tiếp theo
+releaseLock();
 }
 };
 // ============================================================================
@@ -712,11 +709,9 @@ return (config.cooldown429 || 120) * 60 * 1000;
 window.Utils.RPDTracker = {
 _getQuotaDay: function() {
 const now = new Date();
-// Chuyển đổi sang múi giờ VN (UTC+7)
 const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
 const vnTime = new Date(utc + (3600000 * 7));
 let qDate = new Date(vnTime);
-// Nếu trước 15:00 chiều VN (Tức trước 00:00 PT), tính là quota của ngày hôm qua
 if (vnTime.getHours() < 15) {
 qDate.setDate(qDate.getDate() - 1);
 }
@@ -729,7 +724,6 @@ _load: function() {
 const key = window.STORAGE_KEYS?.QUOTA_TRACKER || 'fc_quota_tracker';
 let data = window.Utils.safeJsonParse(key, null);
 const currentQuotaDay = this._getQuotaDay();
-// Tự động Reset 0 nếu sang Quota Day mới
 if (!data || data.quotaDay !== currentQuotaDay) {
 data = { quotaDay: currentQuotaDay, usage: {} };
 localStorage.setItem(key, JSON.stringify(data));
@@ -790,7 +784,6 @@ const k = apiKey.replace(/["'\s]/g, "");
 const body = { contents: [{ parts: [{ text: "Hãy trả lời 'OK'" }] }] };
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 10000);
-// Quét Radar bằng Mô hình đang được chọn ưu tiên
 const primaryModelId = localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${primaryModelId}:generateContent?key=${k}`, {
 method: 'POST',
@@ -834,12 +827,8 @@ const abortSignal = window.__currentGameAbortController ? window.__currentGameAb
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
 let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
 const poolSize = keyPool.length;
-// --- CỜ CẤU HÌNH CASCADE ---
-// Mặc định Auto Cascade là bật
 const isAuto = localStorage.getItem('fc_is_auto_cascade') !== 'false';
-// Kiểm tra trạng thái Key Trả Phí (Bypass RPD)
 const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
-// --- CHUẨN BỊ MẢNG CASCADE MÔ HÌNH ---
 const primaryModelId = localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 const modelsPool = window.AI_MODELS ? [...window.AI_MODELS] : [
 { id: 'gemini-3.5-flash-lite', rpdLimit: 500 },
@@ -855,7 +844,6 @@ let cascadeModels = [];
 const primaryObj = modelsPool.find(m => m.id === primaryModelId);
 if (primaryObj) cascadeModels.push(primaryObj);
 modelsPool.forEach(m => { if (m.id !== primaryModelId) cascadeModels.push(m); });
-// --- CẤU HÌNH PAYLOAD ---
 const body = { contents: [{ parts: [{ text: prompt }] }] };
 if (schema) {
 body.generationConfig = { responseMimeType: "application/json", responseSchema: schema };
@@ -867,32 +855,24 @@ let lastError = null;
 let shortestWaitMs = Infinity;
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
-// ==========================================================================
-// THUẬT TOÁN VÒNG LẶP KÉP (OUTER: KEY -> INNER: MODEL)
-// ==========================================================================
 for (let i = 0; i < poolSize; i++) {
 const checkIndex = (pointer + i) % poolSize;
 const rawK = keyPool[checkIndex];
 if (!rawK || rawK.length < 10) continue;
 const cleanK = rawK.replace(/["'\s]/g, "");
-// 1. Kiểm tra án phạt của Key
 const cdData = activeCooldowns[cleanK];
 const cooldownUntil = cdData ? cdData.expireAt : 0;
 const waitMs = cooldownUntil - Date.now();
 if (waitMs > 0) {
 if (waitMs < shortestWaitMs) shortestWaitMs = waitMs;
-continue; // Key đang thụ án -> Bỏ qua, xét Key tiếp theo
+continue;
 }
-// 2. Quyết định mảng Model dựa trên cờ Auto Cascade
 let modelsToTry = isAuto ? cascadeModels : [cascadeModels[0]];
-// INNER LOOP: Quét qua các mô hình được phép dùng cho Key này
 for (const model of modelsToTry) {
 const currentRpd = window.Utils.RPDTracker.getUsage(cleanK, model.id);
-// Ngắt theo RPD Limit (Tự động lùi model nếu Auto, hoặc bỏ qua Key nếu Manual)
 if (!isPremium && currentRpd >= model.rpdLimit) {
-console.warn(`[Cascade] Key ...${cleanK.slice(-4)} bỏ qua ${model.id} (Đã dùng ${currentRpd}/${model.rpdLimit} RPD).`);
 lastError = new Error(`[Cạn Quota] Mô hình ${model.id} của Key ...${cleanK.slice(-4)}`);
-continue; // Nhảy sang mô hình dự phòng (Nếu Manual thì vòng lặp này sẽ kết thúc luôn)
+continue;
 }
 try {
 const controller = new AbortController();
@@ -913,15 +893,8 @@ reject(new Error(`Hết thời gian chờ API (${Math.round(dynamicTimeoutMs/100
 }, dynamicTimeoutMs);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
-// Xử lý Lỗi Mạng Bề Mặt (HTTP Status)
-if (res.status === 429) {
-lastError = new Error(`429: Too Many Requests (${model.id})`);
-continue; // Server nghẽn hoặc hết Quota -> Lùi mô hình
-}
-if (res.status === 503) {
-lastError = new Error(`503: Service Unavailable (${model.id})`);
-continue; // Server nghẽn -> Lùi mô hình
-}
+if (res.status === 429) { lastError = new Error(`429: Too Many Requests (${model.id})`); continue; }
+if (res.status === 503) { lastError = new Error(`503: Service Unavailable (${model.id})`); continue; }
 if (res.status === 500) throw new Error("500: Internal Server Error");
 if (!res.ok && res.status !== 200 && res.status !== 400 && res.status !== 403) {
 const contentType = res.headers.get("content-type");
@@ -930,74 +903,62 @@ throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)
 }
 }
 const d = await res.json();
-// Phân tích Lỗi API JSON chuyên sâu
 if (d.error) {
 const msgLower = (d.error.message || "").toLowerCase();
-// Nhóm lỗi Quota / Quá tải (429)
 if (d.error.code === 429 || d.error.status === 'RESOURCE_EXHAUSTED' || msgLower.includes('quota')) {
 if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLower.includes('load balancer')) {
-// LỖI SPAM -> Phạt Key 5 phút và BỎ QUA TOÀN BỘ MÔ HÌNH CÒN LẠI CỦA KEY NÀY
 window.Utils.setKeyCooldown(cleanK, 5 * 60 * 1000);
 window.Utils.triggerGlobalPause(15000);
-lastError = new Error(`[Spam 429] Key ...${cleanK.slice(-4)} gọi quá nhanh. Phạt 5 phút.`);
-break; // Thoát vòng lặp Model -> Nhảy qua vòng lặp Key tiếp theo
+lastError = new Error(`[Spam 429] Key ...${cleanK.slice(-4)} gọi quá nhanh.`);
+break;
 } else {
-// LỖI CẠN RPD -> Chỉ đổi mô hình (Cascade)
 lastError = new Error(`429: Cạn Quota mô hình ${model.id}`);
 continue;
 }
 }
 if (d.error.code === 503 || d.error.code === 500 || msgLower.includes('overloaded')) {
 lastError = new Error(`503: Nghẽn mô hình ${model.id}`);
-continue; // Nghẽn mô hình -> Thử mô hình dự phòng
+continue;
 }
-// Nhóm lỗi Chết Key (403, 400)
 if (d.error.code === 403 || msgLower.includes('api key') || msgLower.includes('unregistered')) {
-window.Utils.setKeyCooldown(cleanK, 24 * 60 * 60 * 1000); // Phạt 24h
+window.Utils.setKeyCooldown(cleanK, 24 * 60 * 60 * 1000);
 lastError = new Error(`403: Key ...${cleanK.slice(-4)} bị vô hiệu hóa.`);
-break; // Key hỏng -> Nhảy Key tiếp theo
+break;
 }
 if (d.error.code === 400) {
 lastError = new Error(`400: Lỗi cú pháp - ${d.error.message}`);
-break; // Lỗi cú pháp gửi -> Nhảy Key tiếp theo
+break;
 }
 throw new Error(d.error.message);
 }
 if (!d.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API trả về rỗng");
-// THÀNH CÔNG -> Chốt Model, Chốt Key & Thoát Toàn Bộ
 finalData = d;
 usedModelId = model.id;
 usedApiKey = cleanK;
 localStorage.setItem('fc_key_pointer', (checkIndex + 1) % poolSize);
-break; // Thoát vòng lặp Model
+break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('Hủy')) || (e.message && e.message.includes('thời gian chờ'))) {
-throw e; // Lỗi chủ động Timeout/Abort từ phía Client -> Quăng Error văng ra ngoài
+throw e;
 }
 lastError = e;
-// Các lỗi không xác định -> Continue thử model khác
 }
 }
-if (finalData) break; // Thành công -> Thoát vòng lặp Key
+if (finalData) break;
 }
-// ==========================================================================
-// TỔNG KẾT SAU VÒNG LẶP KÉP
-// ==========================================================================
 if (!finalData) {
 if (shortestWaitMs !== Infinity && shortestWaitMs > 0) {
-throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang bị đóng băng. Cần chờ ${Math.ceil(shortestWaitMs/60000)} phút.`);
+throw new Error(`[API_COOLDOWN] Toàn bộ kho Key đang đóng băng. Chờ ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
 if (lastError) throw lastError;
-throw new Error("Không có Key & Mô hình AI nào khả dụng (Cạn Quota RPD toàn tập).");
+throw new Error("Không có Key & Mô hình AI nào khả dụng.");
 }
-// XỬ LÝ THÀNH CÔNG VÀ LƯU QUOTA THEO TỌA ĐỘ MA TRẬN [KEY][MODEL]
 window.Utils.RPDTracker.incrementUsage(usedApiKey, usedModelId);
 const resultText = finalData.candidates[0].content.parts[0].text;
 const tokenMetadata = finalData.usageMetadata || null;
 if (keyPool.length > 1) {
-window.Utils.setKeyCooldown(usedApiKey, 5000); // Đảo Key chống Spam
+window.Utils.setKeyCooldown(usedApiKey, 5000);
 }
-// Đồng bộ Key đang dùng hiển thị lên Radar UI
 if (usedApiKey !== localStorage.getItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key')) {
 localStorage.setItem(window.STORAGE_KEYS?.API_KEY || 'fc_gemini_api_key', usedApiKey);
 }
@@ -1021,23 +982,10 @@ if (keyPool.length === 0) throw new Error("Chưa nhập API Key (Thiếu Key Poo
 const cleanTermForAi = term ? term.replace(/\u0332/g, '') : '';
 const isSentence = dataMode === 'sentence';
 const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
-const levelDictionary = {
-'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)', 'hsk1': 'Tiếng Trung HSK 1 (Sơ cấp)',
-'zh_level_2': 'Tiếng Trung HSK 2 (Sơ cấp)', 'hsk2': 'Tiếng Trung HSK 2 (Sơ cấp)',
-'zh_level_3': 'Tiếng Trung HSK 3 (Trung cấp)', 'hsk3': 'Tiếng Trung HSK 3 (Trung cấp)',
-'zh_level_4': 'Tiếng Trung HSK 4 (Trung cấp)', 'hsk4': 'Tiếng Trung HSK 4 (Trung cấp)',
-'zh_level_5': 'Tiếng Trung HSK 5 (Cao cấp)', 'hsk5': 'Tiếng Trung HSK 5 (Cao cấp)',
-'zh_level_6': 'Tiếng Trung HSK 6 (Cao cấp)', 'hsk6': 'Tiếng Trung HSK 6 (Cao cấp)',
-'en_level_1': 'Tiếng Anh A1 (Sơ cấp)', 'a1': 'Tiếng Anh A1 (Sơ cấp)',
-'en_level_2': 'Tiếng Anh A2 (Tiền trung cấp)', 'a2': 'Tiếng Anh A2 (Tiền trung cấp)',
-'en_level_3': 'Tiếng Anh B1 (Trung cấp)', 'b1': 'Tiếng Anh B1 (Trung cấp)',
-'en_level_4': 'Tiếng Anh B2 (Trung cao cấp)', 'b2': 'Tiếng Anh B2 (Trung cao cấp)',
-'en_level_5': 'Tiếng Anh C1 (Cao cấp)', 'c1': 'Tiếng Anh C1 (Cao cấp)',
-'en_level_6': 'Tiếng Anh C2 (Thành thạo)', 'c2': 'Tiếng Anh C2 (Thành thạo)'
-};
-// [V4.09] Tính toán Ngưỡng Từ loại Động (Dynamic POS Threshold)
+const levelDictionary = window.IoeDataEngine?.LEVEL_DICTIONARY || {};
 let translatedLevels = [];
 let isAdvancedLevel = false;
+let primaryLevelKey = levelContext && levelContext.length > 0 ? levelContext[0] : "";
 if (levelContext && Array.isArray(levelContext) && levelContext.length > 0) {
 translatedLevels = levelContext.map(lvl => levelDictionary[lvl] || lvl);
 const advKeywords = ['level_5', 'level_6', 'hsk5', 'hsk6', 'hsk 5', 'hsk 6', 'c1', 'c2'];
@@ -1046,7 +994,11 @@ isAdvancedLevel = levelContext.some(lvl => advKeywords.some(kw => (typeof lvl ==
 translatedLevels = [lang === 'zh' ? 'Tiếng Trung phổ thông (Mọi cấp độ)' : 'Tiếng Anh phổ thông (Mọi cấp độ)'];
 }
 const posThresholdStr = isAdvancedLevel ? "10%" : "20%";
-// [V4.08] Tiêm trường posAnalysis làm Tờ giấy nháp (Chain of Thought)
+// Lấy luật Sư phạm động từ Ma trận (Pedagogy Routing Matrix)
+const pedagogyRules = window.IoeDataEngine?.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(primaryLevelKey) : {
+example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng.",
+definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa."
+};
 let propertiesToFetch = {
 term: { type: "STRING" },
 pronunciation: { type: "STRING" },
@@ -1056,7 +1008,6 @@ partOfSpeech: { type: "STRING" },
 topic: { type: "STRING" },
 analysis: { type: "STRING" },
 sinoViet: { type: "STRING" },
-// [V4.18] MARKER INJECTION: Ép AI chèn "- " vào đầu mỗi dòng ví dụ
 example: { type: "STRING", description: "Multiline string containing examples. MUST generate exactly ONE example sentence for EACH part of speech listed in 'partOfSpeech'. Format each line exactly as: - Foreign Sentence | Vietnamese Translation" },
 image_keyword: { type: "STRING" },
 grammar_type: { type: "ARRAY", items: { type: "STRING" } }
@@ -1075,14 +1026,12 @@ if (targetFields && Array.isArray(targetFields) && targetFields.length > 0) {
 isTrimming = true;
 const mappedTargetFields = targetFields.map(f => f === 'image' ? 'image_keyword' : f);
 requiredFields = requiredFields.filter(f => mappedTargetFields.includes(f));
-// [V4.08, V4.11] Ép buộc gọi posAnalysis (Tờ nháp) nếu hệ thống cần lấy partOfSpeech
 if (requiredFields.includes('partOfSpeech') && !requiredFields.includes('posAnalysis')) {
 requiredFields.push('posAnalysis');
 }
 if (requiredFields.length === 0) {
 requiredFields = ['term'];
 }
-// [V4.11] STRUCTURAL JSON FIX: Ép khuôn thứ tự mảng và object (Strict Order Enforcement)
 const strictOrder = ["posAnalysis", "partOfSpeech", "example", "term", "pronunciation", "definition", "topic", "analysis", "sinoViet", "image_keyword", "grammar_type"];
 const trimmedProperties = {};
 strictOrder.forEach(f => {
@@ -1102,36 +1051,28 @@ dynamicInstruction = lang === 'zh'
 ? " Đối với pronunciation: BẮT BUỘC xuất Pinyin. " + (requiredFields.includes('sinoViet') ? "Bắt buộc xuất thêm trường sinoViet (Âm Hán Việt thuần túy)." : "")
 : " Đối với pronunciation: BẮT BUỘC xuất chuẩn quốc tế IPA. Tuyệt đối KHÔNG xuất trường sinoViet.";
 }
-// [PROMPT OPTIMIZATION V4.15] - Tái cấu trúc luật Cụm Từ thành Positive Mapping chống mù từ khóa
 let userQuery = "";
 if (isTrimming) {
 userQuery = `Nhiệm vụ: Bổ sung thông tin cho ${typeLabel} này: "${cleanTermForAi}" (Ngôn ngữ: ${lang}).\n`;
 userQuery += `[ĐỊNH HƯỚNG BẮT BUỘC]:\n`;
 if (requiredFields.includes('analysis')) {
 if (isSentence) {
-userQuery += `1. TIÊU ĐIỂM: Mổ xẻ ĐIỂM NGỮ PHÁP TRỌNG TÂM của câu (Thì, cấu trúc, cụm từ cố định...). Giải thích công thức và cách dùng.\n`;
+userQuery += `1. TIÊU ĐIỂM: Mổ xẻ ĐIỂM NGỮ PHÁP TRỌNG TÂM của câu. Giải thích công thức và cách dùng.\n`;
 } else {
 userQuery += `1. TIÊU ĐIỂM: Chỉ ra Từ loại, Phân tích gốc từ/sắc thái nghĩa, liệt kê cấu trúc đi kèm và cách dùng phổ biến.\n`;
 }
-userQuery += `2. NGÔN NGỮ & TRÌNH BÀY: Tiếng Việt. Trình bày bằng gạch đầu dòng mạch lạc. Tuyệt đối không viết thành khối đặc chữ.\n`;
+userQuery += `2. NGÔN NGỮ & TRÌNH BÀY: Tiếng Việt. Trình bày bằng gạch đầu dòng mạch lạc.\n`;
 userQuery += `3. PHONG CÁCH: Chi tiết nhưng súc tích, đi thẳng vào bản chất.\n`;
 } else {
 userQuery += `1. TIÊU ĐIỂM: Máy trích xuất dữ liệu tự động.\n`;
 userQuery += `2. NGÔN NGỮ: Xử lý bằng Tiếng Việt dễ hiểu.\n`;
 userQuery += `3. PHONG CÁCH: Cực kỳ NGẮN GỌN (tối đa 2-3 câu), không lan man.\n`;
 }
-// [V4.15] NEW POSITIVE MAPPING CONSTRAINT - Đổi luật cấm gộp cụm từ
 if (requiredFields.includes('partOfSpeech') || requiredFields.includes('posAnalysis')) {
 userQuery += `\n[CÁC LỖI NGỮ PHÁP NGHIÊM CẤM]:\n`;
-userQuery += `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
-if (lang === 'zh') {
-userQuery += `- Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').\n`;
-userQuery += `- Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ).\n`;
-userQuery += `- Với các cụm từ ghép (VD: 还有), BẮT BUỘC phân loại theo chức năng của CẢ CỤM (Cụm động từ / Liên từ). Nếu chỉ lấy từ loại của chữ cái đầu tiên để gán cho cả cụm, tỉ lệ phần trăm đó BẮT BUỘC bị ép về 0%.\n`;
+const grammarRule = window.IoeDataEngine?.getMicroTierGrammarRule ? window.IoeDataEngine.getMicroTierGrammarRule(lang) : `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
+userQuery += grammarRule + "\n";
 }
-userQuery += `\n`;
-}
-// [V4.11] Bơm lệnh bắt buộc xuất posAnalysis đầu tiên
 userQuery += `4. ĐỊNH DẠNG & THỨ TỰ BẮT BUỘC: TRỌNG TÂM: Phải xuất trường 'posAnalysis' ĐẦU TIÊN trong chuỗi JSON để làm nháp. Chỉ xuất CHÍNH XÁC các trường: ${requiredFields.join(', ')}.\n`;
 userQuery += `${dynamicInstruction}`;
 } else {
@@ -1154,18 +1095,12 @@ validTagsStr = `Chỉ xuất mã nhãn hợp lệ.`;
 } else {
 validTagsStr = `Chỉ xuất mã nhãn hợp lệ.`;
 }
-// [V4.14] Chain of Thought & Vắc-xin gọt giũa (Ép 0% + Khóa Ký Tự)
 let fieldRules = `\n[QUY TẮC CÁC TRƯỜNG]:\n`;
 if (requiredFields.includes('pronunciation') && isSentence) {
 fieldRules += `- 'pronunciation': Phiên âm (IPA/Pinyin) TOÀN BỘ CÂU VĂN.\n`;
 }
 if (requiredFields.includes('definition')) {
-let defDifficulty = translatedLevels.length > 0 ? ` (Phù hợp trình độ [${translatedLevels.join(', ')}]).` : ``;
-if (isSentence) {
-fieldRules += `- 'definition': Bản dịch Tiếng Việt tự nhiên cho toàn bộ câu.${defDifficulty}\n`;
-} else {
-fieldRules += `- 'definition': Bản dịch Tiếng Việt trực tiếp, chuẩn xác. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa (VD: 'Day' dịch là 'Ngày', KHÔNG dịch là 'Khoảng thời gian 24h'). Ưu tiên 1-3 từ.${defDifficulty}\n`;
-}
+fieldRules += `- 'definition': Bản dịch Tiếng Việt trực tiếp, chuẩn xác. ${pedagogyRules.definition}\n`;
 }
 if (requiredFields.includes('topic')) {
 const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.IoeDataEngine.TOPICS.length > 0
@@ -1173,9 +1108,8 @@ const predefinedTopics = Array.isArray(window.IoeDataEngine?.TOPICS) && window.I
 : ['Self & Body', 'Social Connections', 'Living Spaces', 'The Natural World', 'Food & Health', 'Daily Life & Leisure', 'School & Career', 'Travel & Exploration', 'Other'];
 fieldRules += `- 'topic': Chọn CHÍNH XÁC 1 từ khóa từ: [${predefinedTopics.join(', ')}].\n`;
 }
-// [V4.16] THOUGHT TEMPLATING (Ép cấu trúc Tờ giấy nháp: Phân tích trước, Số sau)
 if (requiredFields.includes('posAnalysis')) {
-fieldRules += `- 'posAnalysis' (TỜ GIẤY NHÁP): Tư duy theo chuỗi. BẮT BUỘC viết phân tích chức năng ngữ pháp TRƯỚC, sau đó mới chốt lại tỉ lệ % ở cuối cùng. (VD: Từ này ghép bởi A và B, hoạt động như C, do đó C chiếm 100%, D chiếm 0%). [LUẬT ÉP 0%]: Nếu vi phạm [CÁC LỖI NGỮ PHÁP NGHIÊM CẤM], lập tức ép % về 0.\n`;
+fieldRules += `- 'posAnalysis' (TỜ GIẤY NHÁP): Tư duy theo chuỗi. BẮT BUỘC viết phân tích chức năng ngữ pháp TRƯỚC, sau đó mới chốt lại tỉ lệ % ở cuối cùng. [LUẬT ÉP 0%]: Nếu vi phạm [CÁC LỖI NGỮ PHÁP NGHIÊM CẤM], lập tức ép % về 0.\n`;
 }
 if (requiredFields.includes('partOfSpeech')) {
 let posDifficulty = translatedLevels.length > 0 ? ` Chỉ liệt kê từ loại phổ biến, phù hợp cấp độ [${translatedLevels.join(', ')}].` : ` Chỉ liệt kê từ loại phổ biến trong giao tiếp.`;
@@ -1189,15 +1123,8 @@ fieldRules += `- 'partOfSpeech': Xuất kết quả cuối cùng từ 'posAnalys
 if (requiredFields.includes('image_keyword')) {
 fieldRules += `- 'image_keyword': 1 từ khóa TIẾNG ANH mô tả trực quan nhất để tìm ảnh minh họa.\n`;
 }
-// [V4.19] Cấu trúc lại Prompt trường Example: Gom Content (Level + Sư phạm) lên trên, đẩy Format xuống dưới cùng
 if (requiredFields.includes('example')) {
-let difficultyPrompt = translatedLevels.length > 0 ? ` Phù hợp trình độ: [${translatedLevels.join(', ')}].` : ``;
-let pedaPrompt = ` [CHẤT LƯỢNG SƯ PHẠM]: Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.`;
-if (isSentence) {
-fieldRules += `- 'example': Sáng tác câu mới mang cấu trúc tương tự.${difficultyPrompt}${pedaPrompt}\n`;
-} else {
-fieldRules += `- 'example': Sáng tác các câu có chứa CHÍNH XÁC từ "${cleanTermForAi}". TUYỆT ĐỐI không tự ý thay đổi hay biến tấu ký tự của từ gốc.${difficultyPrompt}${pedaPrompt}\n`;
-}
+fieldRules += `- 'example': Sáng tác các câu có chứa CHÍNH XÁC từ "${cleanTermForAi}". [TIÊU CHUẨN SƯ PHẠM]: ${pedagogyRules.example}\n`;
 fieldRules += `  -> [ĐỊNH DẠNG BẮT BUỘC]:\n`;
 fieldRules += `  1. Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng.\n`;
 fieldRules += `  2. Bắt đầu mỗi câu bằng dấu "- " (gạch ngang và khoảng trắng), theo sau là: Câu ngoại ngữ | Bản dịch.\n`;
@@ -1226,10 +1153,8 @@ const abortSignal = window.__currentGameAbortController ? window.__currentGameAb
 if (abortSignal && abortSignal.aborted) throw new DOMException("Người dùng đã hủy thao tác", "AbortError");
 let pointer = parseInt(localStorage.getItem('fc_key_pointer') || '0', 10);
 const poolSize = keyPool.length;
-// --- CỜ CẤU HÌNH CASCADE ---
 const isAuto = localStorage.getItem('fc_is_auto_cascade') !== 'false';
 const isPremium = localStorage.getItem('fc_is_premium_key') === 'true';
-// --- CHUẨN BỊ MẢNG CASCADE MÔ HÌNH ---
 const primaryModelId = localStorage.getItem(window.STORAGE_KEYS?.AI_MODEL || 'fc_ai_model') || 'gemini-3.5-flash-lite';
 const modelsPool = window.AI_MODELS ? [...window.AI_MODELS] : [
 { id: 'gemini-3.5-flash-lite', rpdLimit: 500 },
@@ -1252,9 +1177,6 @@ let lastError = null;
 let shortestWaitMs = Infinity;
 window.Utils.cleanExpiredCooldowns();
 const activeCooldowns = window.Utils.getPersistentCooldowns();
-// ==========================================================================
-// THUẬT TOÁN VÒNG LẶP KÉP (OUTER: KEY -> INNER: MODEL)
-// ==========================================================================
 for (let i = 0; i < poolSize; i++) {
 const checkIndex = (pointer + i) % poolSize;
 const rawK = keyPool[checkIndex];
@@ -1268,7 +1190,6 @@ if (waitMs < shortestWaitMs) shortestWaitMs = waitMs;
 continue;
 }
 let modelsToTry = isAuto ? cascadeModels : [cascadeModels[0]];
-// INNER LOOP
 for (const model of modelsToTry) {
 const currentRpd = window.Utils.RPDTracker.getUsage(cleanK, model.id);
 if (!isPremium && currentRpd >= model.rpdLimit) {
@@ -1287,15 +1208,13 @@ signal: controller.signal
 }).finally(() => {
 if (abortSignal) abortSignal.removeEventListener('abort', onAbort);
 });
-// ZOMBIE KILLER - Hard Timeout 15s
 const timeoutPromise = new Promise((_, reject) => {
 setTimeout(() => {
 controller.abort();
-reject(new Error("Hết thời gian chờ 15s (Bị treo ở tầng Network - Zombie Request)."));
+reject(new Error("Hết thời gian chờ 15s (Bị treo ở tầng Network)."));
 }, 15000);
 });
 const res = await Promise.race([fetchPromise, timeoutPromise]);
-// Xử lý Lỗi Mạng Bề Mặt
 if (res.status === 429) { lastError = new Error(`429: Too Many Requests (${model.id})`); continue; }
 if (res.status === 503) { lastError = new Error(`503: Service Unavailable (${model.id})`); continue; }
 if (res.status === 500) throw new Error("500: Internal Server Error");
@@ -1306,7 +1225,6 @@ throw new Error(`HTTP ${res.status}: Lỗi mạng không xác định (Non-JSON)
 }
 }
 const data = await res.json();
-// Phân tích Lỗi API JSON chuyên sâu
 if (data.error) {
 const msgLower = (data.error.message || "").toLowerCase();
 if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED' || msgLower.includes('quota')) {
@@ -1314,10 +1232,10 @@ if (msgLower.includes('per minute') || msgLower.includes('rate limit') || msgLow
 window.Utils.setKeyCooldown(cleanK, 5 * 60 * 1000);
 window.Utils.triggerGlobalPause(15000);
 lastError = new Error(`[Spam 429] Key ...${cleanK.slice(-4)} gọi quá nhanh.`);
-break; // Thoát vòng Model, nhảy Key
+break;
 } else {
 lastError = new Error(`429: Cạn Quota mô hình ${model.id}`);
-continue; // Nhảy mô hình
+continue;
 }
 }
 if (data.error.code === 503 || data.error.code === 500 || msgLower.includes('overloaded')) {
@@ -1335,32 +1253,27 @@ break;
 }
 throw new Error(data.error.message);
 }
-// THÀNH CÔNG
 finalData = data;
 usedModelId = model.id;
 usedApiKey = cleanK;
 localStorage.setItem('fc_key_pointer', (checkIndex + 1) % poolSize);
-break; // Thoát vòng lặp Model
+break;
 } catch (e) {
 if (e.name === 'AbortError' || (e.message && e.message.includes('Người dùng đã hủy')) || (e.message && e.message.includes('Hết thời gian chờ'))) {
-throw e; // Văng ra ngoài
+throw e;
 }
 lastError = e;
 }
 }
-if (finalData) break; // Thành công -> Thoát vòng lặp Key
+if (finalData) break;
 }
-// ==========================================================================
-// TỔNG KẾT SAU VÒNG LẶP KÉP
-// ==========================================================================
 if (!finalData) {
 if (shortestWaitMs !== Infinity && shortestWaitMs > 0) {
-throw new Error(`[API_COOLDOWN] SmartFill: Toàn bộ kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/60000)} phút.`);
+throw new Error(`[API_COOLDOWN] SmartFill: Kho Key đang đóng băng. Thử lại sau ${Math.ceil(shortestWaitMs/60000)} phút.`);
 }
 if (lastError) throw lastError;
-throw new Error("Không có Key & Mô hình AI nào khả dụng (Cạn Quota RPD toàn tập).");
+throw new Error("Không có Key & Mô hình AI nào khả dụng.");
 }
-// XỬ LÝ THÀNH CÔNG VÀ LƯU QUOTA THEO TỌA ĐỘ MA TRẬN [KEY][MODEL]
 window.Utils.RPDTracker.incrementUsage(usedApiKey, usedModelId);
 if (keyPool.length > 1) {
 window.Utils.setKeyCooldown(usedApiKey, 5000);
@@ -1381,7 +1294,6 @@ if (finalResult[key] === "" || finalResult[key] === null) {
 delete finalResult[key];
 }
 }
-// [V4.08 - V4.17] Xóa "Tờ giấy nháp" trước khi xuất về UI để giữ dữ liệu sạch sẽ
 delete finalResult.posAnalysis;
 delete finalResult.image;
 if (finalResult.image_keyword && finalResult.image_keyword.trim() !== "") {
@@ -1625,11 +1537,11 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.13
-// Last Updated: 2026-06-15 23:15
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.15
+// Last Updated: 2026-08-26 10:30
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
-// Cập nhật V1.13: [SYNTAX HOTFIX] Vá lỗi sập Babel tại mảng TOPICS do khuyết dấu nháy kép. Khôi phục tính hợp lệ của mảng chuỗi (String Array). Tuân thủ tuyệt đối Điều 3 Hiến pháp (Toàn vẹn mã nguồn nguyên khối).
-// Cập nhật V1.12: [MACRO TOPICS STANDARDIZATION] Triệt tiêu mảng 26 chủ đề phân mảnh, thay thế bằng mảng phẳng 9 chủ đề vĩ mô (8+1). Áp dụng thiết quân luật (Strict Lexical Constraint) vào System Prompt để ép AI trả về đúng 1 trong 9 chủ đề, chống rác CSDL.
+// Cập nhật V1.15: [LOGIC CENTRALIZATION] Dịch chuyển Từ điển Ánh xạ Cấp độ (LEVEL_DICTIONARY) và Vắc-xin Lỗi Ngữ pháp (getMicroTierGrammarRule) từ Tầng 2.1c và 2.6 về Tầng 2.2 để quản lý tập trung, tuân thủ nguyên tắc Single Source of Truth.
+// Cập nhật V1.14: [PEDAGOGY ROUTING MATRIX] Khai sinh Ma trận Định tuyến Sư phạm. Bổ sung hàm getPedagogyMatrixRule(level).
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -1696,21 +1608,74 @@ zh_level_8: "HSK 8 (Tinh thông). Từ vựng: Triết học phương Đông, t�
 zh_level_9: "HSK 9 (Như người bản xứ). Từ vựng: 文言文 (Văn ngôn), phê bình kinh tế vĩ mô, tín ngưỡng tôn giáo. Diễn đạt như người bản xứ.",
 vi_default: "Mặc định Tiếng Việt. Giao tiếp cơ bản."
 },
+// TỪ ĐIỂN ÁNH XẠ CẤP ĐỘ (LEVEL DICTIONARY) - Dịch chuyển từ Block 2.1c
+LEVEL_DICTIONARY: {
+'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)', 'hsk1': 'Tiếng Trung HSK 1 (Sơ cấp)',
+'zh_level_2': 'Tiếng Trung HSK 2 (Sơ cấp)', 'hsk2': 'Tiếng Trung HSK 2 (Sơ cấp)',
+'zh_level_3': 'Tiếng Trung HSK 3 (Trung cấp)', 'hsk3': 'Tiếng Trung HSK 3 (Trung cấp)',
+'zh_level_4': 'Tiếng Trung HSK 4 (Trung cấp)', 'hsk4': 'Tiếng Trung HSK 4 (Trung cấp)',
+'zh_level_5': 'Tiếng Trung HSK 5 (Cao cấp)', 'hsk5': 'Tiếng Trung HSK 5 (Cao cấp)',
+'zh_level_6': 'Tiếng Trung HSK 6 (Cao cấp)', 'hsk6': 'Tiếng Trung HSK 6 (Cao cấp)',
+'en_level_1': 'Tiếng Anh A1 (Sơ cấp)', 'a1': 'Tiếng Anh A1 (Sơ cấp)',
+'en_level_2': 'Tiếng Anh A2 (Tiền trung cấp)', 'a2': 'Tiếng Anh A2 (Tiền trung cấp)',
+'en_level_3': 'Tiếng Anh B1 (Trung cấp)', 'b1': 'Tiếng Anh B1 (Trung cấp)',
+'en_level_4': 'Tiếng Anh B2 (Trung cao cấp)', 'b2': 'Tiếng Anh B2 (Trung cao cấp)',
+'en_level_5': 'Tiếng Anh C1 (Cao cấp)', 'c1': 'Tiếng Anh C1 (Cao cấp)',
+'en_level_6': 'Tiếng Anh C2 (Thành thạo)', 'c2': 'Tiếng Anh C2 (Thành thạo)'
+},
 // 2. HỆ THỐNG CHỦ ĐỀ MỞ RỘNG (MACRO TOPICS) - 8 CHỦ ĐỀ LÕI + OTHER
 TOPICS: [
-"Self & Body",
-"Social Connections",
-"Living Spaces",
-"The Natural World",
-"Food & Health",
-"Daily Life & Leisure",
-"School & Career",
-"Travel & Exploration",
-"Other"
+Self & Body,
+Social Connections,
+Living Spaces,
+The Natural World,
+Food & Health,
+Daily Life & Leisure,
+School & Career,
+Travel & Exploration,
+Other
 ],
 // ==================================================================================
 // HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
 // ==================================================================================
+// [MA TRẬN ĐỊNH TUYẾN SƯ PHẠM V1.14]
+getPedagogyMatrixRule: function(mappedKey) {
+let rules = {
+example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.",
+definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác."
+};
+if (!mappedKey) return rules;
+const keyStr = String(mappedKey).toLowerCase();
+// Nhóm Sơ Cấp (Kiddie, A1, A2, HSK1, HSK2)
+if (['level_1', 'level_2', 'hsk1', 'hsk2', 'kiddie', 'a1', 'a2'].some(k => keyStr.includes(k))) {
+rules.example = "BẮT BUỘC dùng cấu trúc câu đơn (Simple sentence), thì hiện tại. Tối đa 5-8 từ. Tuyệt đối KHÔNG dùng thành ngữ (idioms), cụm động từ phức tạp (phrasal verbs) hoặc ẩn dụ. Ưu tiên chủ ngữ là I, You, He, She hoặc danh từ cụ thể (chó, mèo, táo).";
+rules.definition = "Dịch nghĩa đen, cơ bản nhất, dùng từ vựng sinh hoạt hàng ngày.";
+}
+// Nhóm Trung Cấp (B1, B2, HSK3, HSK4)
+else if (['level_3', 'level_4', 'hsk3', 'hsk4', 'b1', 'b2'].some(k => keyStr.includes(k))) {
+rules.example = "Sử dụng câu phức cơ bản. Có thể chứa mệnh đề quan hệ hoặc cụm động từ thông dụng. Ngữ cảnh đời sống, công sở hoặc trường học.";
+rules.definition = "Dịch chính xác sắc thái nghĩa, có thể bao gồm nghĩa bóng phổ biến.";
+}
+// Nhóm Cao Cấp (C1, C2, HSK5+, IELTS, SAT)
+else if (['level_5', 'level_6', 'level_7', 'level_8', 'level_9', 'hsk5', 'hsk6', 'hsk7', 'hsk8', 'hsk9', 'c1', 'c2', 'ielts', 'sat'].some(k => keyStr.includes(k))) {
+rules.example = "Sử dụng cấu trúc ngữ pháp phức tạp (đảo ngữ, câu điều kiện, mệnh đề phân từ). Khuyến khích dùng thành ngữ (idioms), từ vựng học thuật (academic). Thể hiện văn phong bản xứ cao cấp.";
+rules.definition = "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt.";
+}
+// Vaccine chống từ điển hóa cho mọi cấp độ
+rules.definition += " TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa (VD: dịch 'Ngày', KHÔNG dịch 'Khoảng thời gian 24h'). Ưu tiên 1-3 từ (trừ thành ngữ).";
+return rules;
+},
+// [VẮC-XIN LỖI NGỮ PHÁP - CHỐNG ẢO GIÁC ĐỘNG TỪ/TÂN NGỮ] - Dịch chuyển từ Block 2.1c & 2.6
+getMicroTierGrammarRule: function(lang) {
+let rule = `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
+if (lang === 'zh') {
+rule += `- Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').\n`;
+rule += `- Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ).\n`;
+rule += `- Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán Phó từ).\n`;
+rule += `- Với các cụm từ ghép, BẮT BUỘC phân loại theo chức năng của CẢ CỤM.\n`;
+}
+return rule;
+},
 getMicroTierDistortionRule: function(targetLang, dataMode, mappedKey, topic) {
 let rule = "";
 const antiLengthRule = "TỐI QUAN TRỌNG: BẠN PHẢI VIẾT LẠI CHÍNH XÁC CÂU VĂN NGỮ CẢNH ĐÓ. KHÔNG ĐƯỢC tự bịa ra câu mới hoặc thay đổi độ dài của câu. CHỈ ĐƯỢC PHÉP thay đổi ĐÚNG MỘT TỪ để biến nó thành câu sai. ";
@@ -1760,7 +1725,7 @@ else optionsRule = "3 đáp án nhiễu PHẢI LÀ các từ vựng văn viết 
 } else if (targetLang === 'Chinese' && dataMode === 'sentence') {
 if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CÓ các lỗi sai trật tự từ rõ rệt hoặc dùng sai lượng từ hoàn toàn.";
 else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CÓ các lỗi ngữ pháp tinh vi (VD: sai trợ từ động thái 了/着/过, hoặc cấu trúc chữ 'Ba'/'Bei' hơi sai lệch).";
-else optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI LÀ những câu hoàn hảo về mặt cấu trúc nhưng sai về mặt ngữ nghĩa (VD: dùng sai Thành ngữ trong ngữ cảnh).";
+else optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI LÀ những câu hoàn hảo về mặt cấu trúc nhưng sai về mặt ngữ nghĩa (VD: dùng Thành ngữ sai trong ngữ cảnh).";
 } else if (targetLang === 'Vietnamese' && dataMode === 'vocab') {
 optionsRule = "3 đáp án nhiễu PHẢI LÀ các từ Tiếng Việt có vẻ hợp lý liên quan đến chủ đề, nhưng mang ý nghĩa hoàn toàn khác. KHÔNG sử dụng lỗi chính tả.";
 } else if (targetLang === 'Vietnamese' && dataMode === 'sentence') {
@@ -1880,11 +1845,16 @@ return "QUY TẮC BÀI ĐỌC QUAN TRỌNG (LEVEL 6+): Trường 'passage' nên 
 }
 };
 // ==================================================================================
-// HÀM _buildSystemPrompt CỦA BỘ NÃO AI (SẼ ĐƯỢC CHÈN VÀO Block 2.6)
+// HÀM _buildSystemPrompt CỦA BỘ NÃO AI (BỌC LẠI CHO KHẢO THÍ)
 // ==================================================================================
 window.IoeDataEngine._buildSystemPromptForFactory = function(forgeType, subType, level, lang, topic, dataMode) {
 const targetLang = lang === 'zh' ? 'Tiếng Trung' : (lang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh');
 const cefrLevel = window.ExamProfiles && window.ExamProfiles.getCefrLevel ? window.ExamProfiles.getCefrLevel(level) : "Intermediate";
+// Lấy luật Sư phạm động từ Ma trận
+const pedagogyRules = window.IoeDataEngine.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(level) : {
+example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng.",
+definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa."
+};
 let prompt = `Bạn là một gia sư ${targetLang} chuyên nghiệp và tận tâm, đang tạo nội dung cho một ứng dụng giáo dục.\n`;
 prompt += `CẤP ĐỘ MỤC TIÊU: ${level} (Tiêu chuẩn tương đương: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
@@ -1919,11 +1889,13 @@ if (typeRule && dataMode === 'vocab') {
 prompt += typeRule + "\n";
 prompt += `QUY TẮC RÕ RÀNG VỀ MẶT THỊ GIÁC: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể (động vật, trái cây, đồ vật, nghề nghiệp) có hình dáng rõ ràng. TỐI QUAN TRỌNG: Danh từ được chọn PHẢI ĐÚNG CẤP ĐỘ HỌC THUẬT (${cefrLevel}). Tránh các tính từ trừu tượng.\n`;
 }
-prompt += `QUY TẮC: Trường 'definition' phải là bản dịch Tiếng Việt rõ nghĩa. Bạn CŨNG PHẢI cung cấp một 'image_keyword' bằng Tiếng Anh. Từ khóa này phải cực kỳ cụ thể và CHỈ tập trung vào vật thể cốt lõi (VD: 'red apple isolated cartoon', 'microscope isolated clipart').\n`;
+prompt += `QUY TẮC ĐỊNH NGHĨA: Trường 'definition' BẮT BUỘC tuân thủ: ${pedagogyRules.definition}\n`;
+prompt += `TỪ KHÓA ẢNH: Bạn CŨNG PHẢI cung cấp một 'image_keyword' bằng Tiếng Anh. Từ khóa này phải cực kỳ cụ thể và CHỈ tập trung vào vật thể cốt lõi.\n`;
 }
 else if (forgeType === 'matrix') {
 if (subType === 'match' || subType === 'match_hard') {
 prompt += `NHIỆM VỤ: Tạo chính xác 5 cặp ${dataMode === 'sentence' ? 'câu văn' : 'từ vựng'} và bản dịch Tiếng Việt chính xác của chúng.\n`;
+prompt += `QUY TẮC DỊCH NGHĨA: ${pedagogyRules.definition}\n`;
 const typeRule = window.IoeDataEngine?.getMicroTierVocabTypeRule ? window.IoeDataEngine.getMicroTierVocabTypeRule(level) : "";
 if (typeRule && dataMode === 'vocab') {
 prompt += typeRule + "\n";
@@ -1961,12 +1933,13 @@ prompt += `QUY TẮC: Trường 'hint' PHẢI LÀ bản dịch Tiếng Việt c�
 } else if (subType === 'vocab_mcq') {
 prompt += `NHIỆM VỤ: Tạo một câu hỏi trắc nghiệm nhận diện từ vựng ở cấp độ ${cefrLevel}.\n`;
 prompt += `ĐỊNH DẠNG: Cung cấp từ/cụm từ mục tiêu bằng ${targetLang} trong trường 'term'. Cung cấp chính xác 4 đáp án bằng TIẾNG VIỆT (1 bản dịch đúng, 3 đáp án nhiễu).\n`;
-prompt += `QUY TẮC TÁCH RỜI NGỮ NGHĨA: 3 đáp án nhiễu PHẢI thuộc cùng một chủ đề rộng nhưng PHẢI LÀ CÁC VẬT THỂ CÓ HÌNH DÁNG KHÁC BIỆT RÕ RÀNG hoặc các danh mục con hoàn toàn khác nhau. KHÔNG dùng các đồ vật có họ hàng gần nhìn giống nhau (VD: nếu đáp án là 'Lamp - Cái đèn', KHÔNG dùng 'Bulb - Bóng đèn' làm đáp án nhiễu. Hãy dùng 'Table', 'Chair'...).\n`;
+prompt += `QUY TẮC TÁCH RỜI NGỮ NGHĨA: 3 đáp án nhiễu PHẢI thuộc cùng một chủ đề rộng nhưng PHẢI LÀ CÁC VẬT THỂ CÓ HÌNH DÁNG KHÁC BIỆT RÕ RÀNG hoặc các danh mục con hoàn toàn khác nhau. KHÔNG dùng các đồ vật có họ hàng gần nhìn giống nhau.\n`;
 prompt += `QUY TẮC TỪ KHÓA ẢNH: Cung cấp một 'image_keyword' bằng Tiếng Anh cực kỳ cụ thể cho từ đúng, thêm hậu tố 'isolated white background clipart' để đảm bảo tìm kiếm hình ảnh rõ nét.\n`;
 prompt += `QUY TẮC: Trường 'explanation' PHẢI BẰNG TIẾNG VIỆT 100%.\n`;
 } else if (subType === 'spot_mistake') {
 prompt += `NHIỆM VỤ: Tạo một câu ${targetLang} khớp với cấp độ ${cefrLevel} chứa CHÍNH XÁC MỘT lỗi ngữ pháp hoặc từ vựng nhỏ.\n`;
-prompt += `QUY TẮC: Cung cấp câu sai, từ sai, từ sửa lại cho đúng, và giải thích bằng TIẾNG VIỆT.\n`;
+prompt += `QUY TẮC SƯ PHẠM: Câu văn (displaySentence) BẮT BUỘC tuân thủ: ${pedagogyRules.example}\n`;
+prompt += `QUY TẮC GIẢI THÍCH: Cung cấp câu sai, từ sai, từ sửa lại cho đúng, và giải thích bằng TIẾNG VIỆT.\n`;
 } else if (subType === 'listening') {
 prompt += `NHIỆM VỤ: Tạo một kịch bản bài nghe hiểu và một câu hỏi trắc nghiệm tương ứng khớp với cấp độ ${cefrLevel}.\n`;
 const listenRule = window.IoeDataEngine?.getMicroTierListeningRule ? window.IoeDataEngine.getMicroTierListeningRule(level) : "";
@@ -1981,6 +1954,7 @@ prompt += `QUY TẮC: Phần 'explanation' cho mỗi câu hỏi PHẢI BẰNG TI
 } else if (subType === 'grammar_mcq') {
 prompt += `NHIỆM VỤ: Tạo một câu hỏi trắc nghiệm ngữ pháp/từ vựng khớp với cấp độ ${cefrLevel}.\n`;
 prompt += `ĐỊNH DẠNG: Tạo một câu ${targetLang} hoàn chỉnh nhưng thay thế từ/cụm từ mục tiêu bằng '[__________]'. Đặt câu này vào trường 'term'.\n`;
+prompt += `QUY TẮC SƯ PHẠM: Câu văn gốc BẮT BUỘC tuân thủ: ${pedagogyRules.example}\n`;
 prompt += `YÊU CẦU: Cung cấp chính xác 4 đáp án. Chỉ có 1 đáp án đúng về ngữ pháp và ngữ nghĩa để điền vào chỗ trống.\n`;
 prompt += `QUY TẮC: Trường 'explanation' PHẢI BẰNG TIẾNG VIỆT 100%, giải thích tại sao đáp án đúng lại phù hợp và tại sao các đáp án nhiễu bị sai.\n`;
 }
@@ -3895,13 +3869,14 @@ getPendingItems: function() { return [...this.queue]; }
 };
 }
 };
-// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.52
-// Last Updated: 2026-08-26 07:35
+// Block 2.6: TẦNG 2: NHÀ MÁY AI (AI Factory Engine) - Version 1.54
+// Last Updated: 2026-08-26 10:40
 // Nhiệm vụ: Nguồn sự thật duy nhất cho việc giao tiếp với Gemini API. Đóng gói 3 Lò đúc vạn năng.
-// Cập nhật V1.52: [PROMPT RESTRUCTURING] Tái cấu trúc Prompt trường 'example': Gộp nhóm nội dung (Level + Sư phạm) lên trên cùng, đẩy toàn bộ định dạng kỹ thuật (1:1, gạch ngang, cấm Pinyin/Tag) xuống cuối để tận dụng Recency Effect. Đồng bộ với Tầng 2.1C.
-// Cập nhật V1.51: [DEFENSIVE RENDERING MARKER] Ép Lò đúc Cơ sở (Base Card) chèn điểm neo "- " vào đầu mỗi dòng ví dụ, đồng bộ với Tầng 2.1C để Tầng 3 tự động bẻ dòng Offline.
-// Cập nhật V1.50: [ANTI-ENCYCLOPEDIC TRANSLATION] Thay đổi prompt dịch nghĩa trong batchEnrich và các Lò đúc sang "Bản dịch trực tiếp, chuẩn xác", tiêm vắc-xin chống giải thích bách khoa toàn thư để chữa dứt điểm lỗi dịch ngô nghê.
-// Cập nhật V1.49: [THOUGHT TEMPLATING & ZERO-PERCENT RULE] Đồng bộ hóa chiến thuật "Ép khuôn Tư duy" và "Luật ép 0%" từ Tầng 2.1C sang Lò đúc để trị dứt điểm hội chứng ngụy biện sau sự kiện.
+// Cập nhật V1.54: [LOGIC CENTRALIZATION] Sử dụng window.IoeDataEngine.getMicroTierGrammarRule để nạp vắc-xin ngữ pháp, loại bỏ hardcode.
+// Cập nhật V1.53: [PEDAGOGY ROUTING INTEGRATION] Tích hợp Ma trận Định tuyến Sư phạm vào _buildSystemPrompt. Kéo luật động từ Tầng 2.2 để ép AI tuân thủ cấu trúc câu và từ vựng phù hợp với trình độ người dùng. Dọn sạch rác selection-tag.
+// Cập nhật V1.52: [PROMPT RESTRUCTURING] Tái cấu trúc Prompt trường 'example': Gộp nhóm nội dung (Level + Sư phạm) lên trên cùng, đẩy toàn bộ định dạng kỹ thuật xuống cuối.
+// Cập nhật V1.51: [DEFENSIVE RENDERING MARKER] Ép Lò đúc Cơ sở (Base Card) chèn điểm neo "- " vào đầu mỗi dòng ví dụ.
+// Cập nhật V1.50: [ANTI-ENCYCLOPEDIC TRANSLATION] Tiêm vắc-xin chống giải thích bách khoa toàn thư.
 // ==================================================================================
 window.AiFactoryEngine = {
 // ============================================================================
@@ -4011,6 +3986,11 @@ const advKeywords = ['level_5', 'level_6', 'hsk5', 'hsk6', 'hsk 5', 'hsk 6', 'c1
 isAdvancedLevel = advKeywords.some(kw => level.toLowerCase().includes(kw));
 }
 const posThresholdStr = isAdvancedLevel ? "10%" : "20%";
+// Lấy luật Sư phạm động từ Ma trận (Pedagogy Routing Matrix V1.14)
+const pedagogyRules = window.IoeDataEngine?.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(level) : {
+example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng.",
+definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa."
+};
 let prompt = `Bạn là một gia sư ${targetLangName} chuyên nghiệp và tận tâm, đang tạo nội dung cho một ứng dụng giáo dục.\n`;
 prompt += `CẤP ĐỘ MỤC TIÊU: ${level} (Tiêu chuẩn tương đương: ${cefrLevel}).\n`;
 const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
@@ -4047,23 +4027,21 @@ if (typeRule && dataMode === 'vocab') {
 prompt += typeRule + "\n";
 prompt += `TÍNH TRỰC QUAN: Đối với từ vựng, ưu tiên chọn các danh từ cụ thể, có hình khối rõ ràng nếu có thể.\n`;
 }
-// [V1.50] Anti-Encyclopedic Vaccine for Definition
-prompt += `QUY TẮC BỔ SUNG: Trường 'definition' phải là bản dịch Tiếng Việt trực tiếp, chuẩn xác theo cấp độ. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa (VD: 'Day' dịch là 'Ngày', KHÔNG dịch là 'Khoảng thời gian 24h'). Ưu tiên 1-3 từ. Cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
+// [V1.53] Áp dụng luật dịch nghĩa từ Ma trận Định tuyến
+prompt += `QUY TẮC ĐỊNH NGHĨA: Trường 'definition' BẮT BUỘC tuân thủ: ${pedagogyRules.definition} Ngoài ra, cung cấp thêm một 'image_keyword' bằng Tiếng Anh đơn giản.\n`;
 // PRE-COMPUTATION CONSTRAINT: Dời luật Ngữ pháp lên trước luật JSON và thêm Pedagogical Prompt
 if (dataMode === 'vocab') {
 prompt += `\n[CÁC LỖI NGỮ PHÁP NGHIÊM CẤM]:\n`;
-prompt += `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
-if (lang === 'zh') {
-prompt += `- Không nhầm lẫn 'Từ độc lập' và 'Hình vị' (VD: '能' là trợ động từ, không gán mác danh từ vì có trong '能力').\n`;
-prompt += `- Không nhầm lẫn Tân ngữ với Động từ (VD: '动作' trong '做动作' BẮT BUỘC là Danh từ).\n`;
-prompt += `- Không gộp Cụm từ thành Từ đơn (VD: '还有' BẮT BUỘC là Cụm động từ hoặc Liên từ, không gán Phó từ).\n`;
-}
+// [V1.54] LOGIC CENTRALIZATION: Tích hợp Vắc-xin Ngữ pháp từ Block 2.2
+const grammarRule = window.IoeDataEngine?.getMicroTierGrammarRule ? window.IoeDataEngine.getMicroTierGrammarRule(lang) : `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
+prompt += grammarRule + "\n";
 // [V1.52] PROMPT RESTRUCTURING: Tái cấu trúc Prompt trường 'example'
 prompt += `\n[QUY TẮC ĐỊNH DẠNG JSON (TỪ VỰNG)]:\n`;
 prompt += `  -> THỨ TỰ BẮT BUỘC: Phải xuất trường 'posAnalysis' ĐẦU TIÊN trong chuỗi JSON để làm nháp.\n`;
 prompt += `  -> 'posAnalysis' (TỜ GIẤY NHÁP): Tư duy theo chuỗi. BẮT BUỘC viết phân tích chức năng ngữ pháp TRƯỚC, sau đó mới chốt lại tỉ lệ % ở cuối cùng. (VD: Từ này ghép bởi A và B, hoạt động như C, do đó C chiếm 100%, D chiếm 0%). [LUẬT ÉP 0%]: Nếu vi phạm [CÁC LỖI NGỮ PHÁP NGHIÊM CẤM], lập tức ép % về 0.\n`;
 prompt += `  -> 'partOfSpeech': Dựa vào 'posAnalysis', CHỈ xuất các từ loại >${posThresholdStr}, cách nhau bằng '|'. Dịch tên từ loại sang Tiếng Việt.\n`;
-prompt += `  -> 'example': Câu ví dụ BẮT BUỘC phải chứa CHÍNH XÁC từ vựng ở trường 'term'. [CHẤT LƯỢNG SƯ PHẠM]: Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.\n`;
+// [V1.53] Áp dụng luật ví dụ từ Ma trận Định tuyến
+prompt += `  -> 'example': Câu ví dụ BẮT BUỘC phải chứa CHÍNH XÁC từ vựng ở trường 'term'. [TIÊU CHUẨN SƯ PHẠM]: ${pedagogyRules.example}\n`;
 prompt += `  -> [ĐỊNH DẠNG BẮT BUỘC CỦA EXAMPLE]:\n`;
 prompt += `     1. Ánh xạ 1:1 với 'partOfSpeech' (Đúng số lượng, đúng thứ tự từ loại), mỗi câu 1 dòng.\n`;
 prompt += `     2. Bắt đầu mỗi câu bằng dấu "- " (gạch ngang và khoảng trắng), theo sau là: Câu ngoại ngữ | Bản dịch.\n`;
@@ -4072,8 +4050,9 @@ prompt += `     3. KHÔNG chứa Pinyin/IPA, KHÔNG chèn tag từ loại.\n`;
 }
 else if (forgeType === 'matrix') {
 if (subType === 'match' || subType === 'match_hard') {
-// [V1.50] Anti-Encyclopedic Vaccine for Match Matrix
-prompt += `NHIỆM VỤ: Tạo 5 cặp ${dataMode === 'sentence' ? 'câu văn' : 'từ vựng'} kèm theo bản dịch Tiếng Việt trực tiếp và chuẩn xác (TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa).\n`;
+// [V1.53] Áp dụng luật dịch nghĩa từ Ma trận Định tuyến
+prompt += `NHIỆM VỤ: Tạo chính xác 5 cặp ${dataMode === 'sentence' ? 'câu văn' : 'từ vựng'} và bản dịch Tiếng Việt chính xác của chúng.\n`;
+prompt += `QUY TẮC DỊCH NGHĨA: ${pedagogyRules.definition}\n`;
 if (subType === 'match_hard') {
 prompt += `NHIỆM VỤ BỔ SUNG: Tạo thêm 2 mục BẪY (đáp án sai, có vẻ hợp lý) để thử thách học viên, kèm theo giải thích bằng Tiếng Việt.\n`;
 }
@@ -4106,12 +4085,13 @@ if (actualIsReverse) {
 prompt += `- 'definition': BẢN DỊCH TIẾNG VIỆT HOÀN CHỈNH của 'displaySentence' (Điều này cực kỳ quan trọng đối với Chế độ Đảo ngược để dùng làm câu hỏi).\n`;
 prompt += `- 'options': 4 câu văn hoàn chỉnh bằng ${targetLangName} (1 câu đúng, 3 câu nhiễu). TỐI QUAN TRỌNG: 1 đáp án đúng BẮT BUỘC PHẢI SAO CHÉP GIỐNG HỆT nội dung của trường 'displaySentence'.\n`;
 } else {
-prompt += `- 'definition': Bản dịch Tiếng Việt trực tiếp, chuẩn xác của từ 'term'. KHÔNG giải nghĩa kiểu từ điển.\n`;
+// [V1.53] Áp dụng luật dịch nghĩa từ Ma trận Định tuyến
+prompt += `- 'definition': ${pedagogyRules.definition}\n`;
 prompt += `- 'options': 4 câu văn hoàn chỉnh bằng TIẾNG VIỆT dịch nghĩa cho 'displaySentence' (1 đáp án dịch đúng, 3 đáp án nhiễu). TỐI QUAN TRỌNG: 1 đáp án đúng BẮT BUỘC PHẢI SAO CHÉP GIỐNG HỆT bản dịch tiếng Việt của 'displaySentence'.\n`;
 }
 } else {
-// [V1.50] Anti-Encyclopedic Vaccine for Context definitions
-prompt += `- 'definition': Bản dịch Tiếng Việt trực tiếp, chuẩn xác của 'term'. KHÔNG giải nghĩa kiểu từ điển (Quan trọng cho Chế độ Đảo ngược).\n`;
+// [V1.53] Áp dụng luật dịch nghĩa từ Ma trận Định tuyến
+prompt += `- 'definition': ${pedagogyRules.definition}\n`;
 prompt += `- 'displaySentence': Một câu ví dụ ngắn gọn bằng ${targetLangName}.\n`;
 if (actualIsReverse) {
 prompt += `- 'options': 4 từ/cụm từ ngắn bằng ${targetLangName} dịch từ 'definition' (1 đúng, 3 nhiễu). TỐI QUAN TRỌNG: 1 đáp án đúng BẮT BUỘC PHẢI SAO CHÉP GIỐNG HỆT nội dung của trường 'term'.\n`;
@@ -4304,7 +4284,6 @@ throw e;
 }
 }
 };
-
 // Block 2.7a: TẦNG 2: TRẠM GÁC & BỘ NHỚ (Exam Memory & QA Guards) - Version 2.2
 // Last Updated: 2026-06-11 15:37
 // Nhiệm vụ: Quản lý bộ nhớ tạm (Volatile RAM) và lưới lọc sư phạm (Sanitizer) cho Máy trộn đề ExamEngine.
