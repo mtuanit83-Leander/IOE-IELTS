@@ -1537,11 +1537,11 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.15
-// Last Updated: 2026-08-26 10:30
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.16
+// Last Updated: 2026-08-26 10:45
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
-// Cập nhật V1.15: [LOGIC CENTRALIZATION] Dịch chuyển Từ điển Ánh xạ Cấp độ (LEVEL_DICTIONARY) và Vắc-xin Lỗi Ngữ pháp (getMicroTierGrammarRule) từ Tầng 2.1c và 2.6 về Tầng 2.2 để quản lý tập trung, tuân thủ nguyên tắc Single Source of Truth.
-// Cập nhật V1.14: [PEDAGOGY ROUTING MATRIX] Khai sinh Ma trận Định tuyến Sư phạm. Bổ sung hàm getPedagogyMatrixRule(level).
+// Cập nhật V1.16: [HOTFIX] Chuyển đổi dấu ngoặc kép ("") thành ngoặc đơn ('') trong mảng TOPICS để chống lỗi Google Sheets tự động xóa ngoặc khi Copy/Paste gây sập Babel AST.
+// Cập nhật V1.15: [LOGIC CENTRALIZATION] Dịch chuyển Từ điển Ánh xạ Cấp độ (LEVEL_DICTIONARY) và Vắc-xin Lỗi Ngữ pháp (getMicroTierGrammarRule) từ Tầng 2.1c và 2.6 về Tầng 2.2.
 // ==================================================================================
 window.IoeDataEngine = {
 // HẰNG SỐ DẠNG BÀI (Mock Test Era - Atomic Question Types)
@@ -1608,7 +1608,7 @@ zh_level_8: "HSK 8 (Tinh thông). Từ vựng: Triết học phương Đông, t�
 zh_level_9: "HSK 9 (Như người bản xứ). Từ vựng: 文言文 (Văn ngôn), phê bình kinh tế vĩ mô, tín ngưỡng tôn giáo. Diễn đạt như người bản xứ.",
 vi_default: "Mặc định Tiếng Việt. Giao tiếp cơ bản."
 },
-// TỪ ĐIỂN ÁNH XẠ CẤP ĐỘ (LEVEL DICTIONARY) - Dịch chuyển từ Block 2.1c
+// TỪ ĐIỂN ÁNH XẠ CẤP ĐỘ (LEVEL DICTIONARY)
 LEVEL_DICTIONARY: {
 'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)', 'hsk1': 'Tiếng Trung HSK 1 (Sơ cấp)',
 'zh_level_2': 'Tiếng Trung HSK 2 (Sơ cấp)', 'hsk2': 'Tiếng Trung HSK 2 (Sơ cấp)',
@@ -1625,15 +1625,15 @@ LEVEL_DICTIONARY: {
 },
 // 2. HỆ THỐNG CHỦ ĐỀ MỞ RỘNG (MACRO TOPICS) - 8 CHỦ ĐỀ LÕI + OTHER
 TOPICS: [
-Self & Body,
-Social Connections,
-Living Spaces,
-The Natural World,
-Food & Health,
-Daily Life & Leisure,
-School & Career,
-Travel & Exploration,
-Other
+'Self & Body',
+'Social Connections',
+'Living Spaces',
+'The Natural World',
+'Food & Health',
+'Daily Life & Leisure',
+'School & Career',
+'Travel & Exploration',
+'Other'
 ],
 // ==================================================================================
 // HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
@@ -1665,7 +1665,7 @@ rules.definition = "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc c
 rules.definition += " TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa (VD: dịch 'Ngày', KHÔNG dịch 'Khoảng thời gian 24h'). Ưu tiên 1-3 từ (trừ thành ngữ).";
 return rules;
 },
-// [VẮC-XIN LỖI NGỮ PHÁP - CHỐNG ẢO GIÁC ĐỘNG TỪ/TÂN NGỮ] - Dịch chuyển từ Block 2.1c & 2.6
+// [VẮC-XIN LỖI NGỮ PHÁP - CHỐNG ẢO GIÁC ĐỘNG TỪ/TÂN NGỮ]
 getMicroTierGrammarRule: function(lang) {
 let rule = `- Chỉ phân loại theo đúng ngữ pháp ngôn ngữ gốc, tuyệt đối không vay mượn ngữ pháp bản dịch Tiếng Việt.\n`;
 if (lang === 'zh') {
@@ -1905,7 +1905,7 @@ if (subType === 'match_hard') {
 prompt += `NHIỆM VỤ BỔ SUNG: Tạo chính xác 2 mục BẪY (đáp án sai). Mỗi bẫy phải là một phiên bản hơi sai lệch/bị bóp méo của một từ/câu hợp lệ ở cấp độ ${cefrLevel} để đánh lừa học viên. Cung cấp giải thích bằng Tiếng Việt tại sao bẫy đó lại sai.\n`;
 }
 } else if (subType === 'odd_one_out') {
-const allTopics = ["Animals", "Food", "Colors", "Numbers", "Body parts", "Clothes", "House", "School", "Jobs", "Weather", "Sports", "Vehicles", "Nature", "Emotions", "Technology", "Space", "Art", "Music", "Medicine", "Business"];
+const allTopics = ['Animals', 'Food', 'Colors', 'Numbers', 'Body parts', 'Clothes', 'House', 'School', 'Jobs', 'Weather', 'Sports', 'Vehicles', 'Nature', 'Emotions', 'Technology', 'Space', 'Art', 'Music', 'Medicine', 'Business'];
 const shuffledTopics = window.Utils && window.Utils.shuffleArray ? window.Utils.shuffleArray([...allTopics]) : allTopics.sort(() => Math.random() - 0.5);
 prompt += `NHIỆM VỤ: Tạo một câu hỏi 'Tìm Từ Khác Loại' với chính xác 4 từ ${targetLang} khớp với cấp độ chuẩn ${cefrLevel}.\n`;
 prompt += `QUY TẮC TẠO HẠT GIỐNG ĐỘNG: BẠN PHẢI chọn 3 mục thuộc nhóm ngữ nghĩa [${shuffledTopics[0]}] và 1 mục khác loại thuộc nhóm ngữ nghĩa [${shuffledTopics[1]}].\n`;
