@@ -643,11 +643,12 @@ fIdx++;
 return Array.from(distractors).slice(0, 4);
 }
 };
-// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.21
-// Last Updated: 2026-08-26 10:35
+// Block 2.1c: TẦNG 2: MẠNG & TÁC NHÂN AI (Network & API Agent) - Version 4.22
+// Last Updated: 2026-08-26 14:55
 // Nhiệm vụ: Giao tiếp HTTP, kết nối Gemini API, quản lý Mutex và Model Cascade.
+// Cập nhật V4.22: [POOL AGGREGATION] Mở khóa truyền mảng `levelContext` nguyên vẹn xuống Động cơ Sư phạm thay vì bị chặn ở phần tử đầu tiên.
 // Cập nhật V4.21: [LOGIC CENTRALIZATION] Loại bỏ hardcode LEVEL_DICTIONARY và các luật Grammar Fallacy. Sử dụng trực tiếp nguồn sự thật duy nhất từ window.IoeDataEngine (Tầng 2.2).
-// Cập nhật V4.20: [PEDAGOGY ROUTING INTEGRATION] Tích hợp Ma trận Định tuyến Sư phạm (Pedagogy Routing Matrix) vào hàm fillCardWithAi. Tự động cấp phát luật sinh ví dụ và dịch nghĩa phù hợp với cấp độ, trị dứt điểm hội chứng "ảo giác khoe chữ" của AI ở các level sơ cấp.
+// Cập nhật V4.20: [PEDAGOGY ROUTING INTEGRATION] Tích hợp Ma trận Định tuyến Sư phạm (Pedagogy Routing Matrix) vào hàm fillCardWithAi.
 // ==================================================================================
 // Đảm bảo window.Utils đã được khởi tạo từ Block 2.1b (Trạm phòng vệ an toàn)
 window.Utils = window.Utils || {};
@@ -985,7 +986,6 @@ const typeLabel = isSentence ? "CÂU VĂN" : "TỪ VỰNG";
 const levelDictionary = window.IoeDataEngine?.LEVEL_DICTIONARY || {};
 let translatedLevels = [];
 let isAdvancedLevel = false;
-let primaryLevelKey = levelContext && levelContext.length > 0 ? levelContext[0] : "";
 if (levelContext && Array.isArray(levelContext) && levelContext.length > 0) {
 translatedLevels = levelContext.map(lvl => levelDictionary[lvl] || lvl);
 const advKeywords = ['level_5', 'level_6', 'hsk5', 'hsk6', 'hsk 5', 'hsk 6', 'c1', 'c2'];
@@ -994,8 +994,8 @@ isAdvancedLevel = levelContext.some(lvl => advKeywords.some(kw => (typeof lvl ==
 translatedLevels = [lang === 'zh' ? 'Tiếng Trung phổ thông (Mọi cấp độ)' : 'Tiếng Anh phổ thông (Mọi cấp độ)'];
 }
 const posThresholdStr = isAdvancedLevel ? "10%" : "20%";
-// Lấy luật Sư phạm động từ Ma trận (Pedagogy Routing Matrix)
-const pedagogyRules = window.IoeDataEngine?.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(primaryLevelKey) : {
+// Lấy luật Sư phạm động từ Ma trận (Pedagogy Routing Matrix - Truyền Toàn bộ Mảng)
+const pedagogyRules = window.IoeDataEngine?.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(levelContext, lang) : {
 example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng.",
 definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa."
 };
@@ -1537,9 +1537,10 @@ request.onerror = (e) => reject(e.target.error);
 });
 }
 };
-// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.20
-// Last Updated: 2026-08-26 14:30
+// Block 2.2: TẦNG 2: DỮ LIỆU & AI PROMPT (Schemas & Level Context) - Version 1.21
+// Last Updated: 2026-08-26 15:35
 // Nhiệm vụ: Quản lý cấu trúc dữ liệu, Hệ thống Cấp độ và các định chuẩn Sư phạm.
+// Cập nhật V1.21: [POOL AGGREGATION] Thuật toán Hợp nhất Hồ bơi. Xử lý Multi-select Level, gộp cấu trúc ngữ pháp và từ vựng của tất cả các cấp độ được chọn thành một Prompt tổng hợp đa tầng.
 // Cập nhật V1.20: [BILINGUAL PEDAGOGY POOLS] Tách dòng sư phạm song ngữ. Bơm đầy nguyên liệu ngữ pháp, từ vựng, ngữ cảnh cho 5 hồ bơi Tiếng Anh (CEFR) và 5 hồ bơi Tiếng Trung (HSK 3.0).
 // Cập nhật V1.18: [MICRO-PEDAGOGY ROUTING] Phân rã hàm getPedagogyMatrixRule thành 5 chặng sư phạm độc lập, đáp ứng chính xác ma trận kiến thức ngữ pháp và độ dài câu cho từng Level.
 // Cập nhật V1.17: [LEVEL SYSTEM OVERHAUL] Đại tu toàn diện Hệ thống Cấp độ. Đồng bộ Tiếng Trung lên chuẩn HSK 3.0 (9 bậc). Chỉnh chuẩn Tiếng Anh CEFR (A1-C2).
@@ -1587,7 +1588,7 @@ modules: [
 ]
 }
 },
-// 1. HỆ THỐNG CẤP ĐỘ ĐÀO TẠO NỀN TẢNG (GRADE CONTEXTS) - V1.17 OVERHAUL
+// 1. HỆ THỐNG CẤP ĐỘ ĐÀO TẠO NỀN TẢNG (GRADE CONTEXTS)
 GRADE_CONTEXTS: {
 en_level_1: "Level 1 (Mẫu giáo - Pre-A1/Lớp 1-2). Ngữ pháp: Số ít/Số nhiều (s/es), mạo từ cơ bản (a/an). Từ vựng: Các danh từ cực kỳ cơ bản.",
 en_level_2: "Level 2 (Tiểu học Cơ bản - A1/Lớp 3-4). Ngữ pháp: Đại từ Chủ ngữ/Tân ngữ, Hiện tại Đơn, động từ 'to be'.",
@@ -1609,7 +1610,7 @@ zh_level_8: "HSK 8 (Cao cấp). Từ vựng: Triết học phương Đông, tâm
 zh_level_9: "HSK 9 (Cao cấp). Từ vựng: 文言文 (Văn ngôn), phê bình kinh tế vĩ mô, tín ngưỡng tôn giáo. Diễn đạt như người bản xứ.",
 vi_default: "Mặc định Tiếng Việt. Giao tiếp cơ bản."
 },
-// TỪ ĐIỂN ÁNH XẠ CẤP ĐỘ (LEVEL DICTIONARY) - V1.17 OVERHAUL
+// TỪ ĐIỂN ÁNH XẠ CẤP ĐỘ (LEVEL DICTIONARY)
 LEVEL_DICTIONARY: {
 'zh_level_1': 'Tiếng Trung HSK 1 (Sơ cấp)', 'hsk1': 'Tiếng Trung HSK 1 (Sơ cấp)',
 'zh_level_2': 'Tiếng Trung HSK 2 (Sơ cấp)', 'hsk2': 'Tiếng Trung HSK 2 (Sơ cấp)',
@@ -1630,7 +1631,7 @@ LEVEL_DICTIONARY: {
 'en_level_8': 'Tiếng Anh B2 (Academic)', 'b2': 'Tiếng Anh B2 (Academic)', 'academic': 'Tiếng Anh B2 (Academic)',
 'en_level_9': 'Tiếng Anh C1-C2 (Expert)', 'c1': 'Tiếng Anh C1-C2 (Expert)', 'c2': 'Tiếng Anh C1-C2 (Expert)', 'expert': 'Tiếng Anh C1-C2 (Expert)'
 },
-// 2. HỆ THỐNG CHỦ ĐỀ MỞ RỘNG (MACRO TOPICS) - 8 CHỦ ĐỀ LÕI + OTHER
+// 2. HỆ THỐNG CHỦ ĐỀ MỞ RỘNG (MACRO TOPICS)
 TOPICS: [
 'Self & Body',
 'Social Connections',
@@ -1645,76 +1646,128 @@ TOPICS: [
 // ==================================================================================
 // HỆ THỐNG ĐỘNG CƠ SƯ PHẠM VI PHÂN (MICRO-TIER PEDAGOGY RULES)
 // ==================================================================================
-// [MA TRẬN ĐỊNH TUYẾN SƯ PHẠM V1.20 - BILINGUAL PEDAGOGY ROUTING]
-getPedagogyMatrixRule: function(mappedKey, lang) {
+// [MA TRẬN ĐỊNH TUYẾN SƯ PHẠM V1.21 - POOL AGGREGATION ALGORITHM]
+getPedagogyMatrixRule: function(mappedKeys, lang) {
 let rules = {
-example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.",
+example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng.",
 definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác."
 };
-if (!mappedKey) return rules;
-const keyStr = String(mappedKey).toLowerCase();
+if (!mappedKeys || (Array.isArray(mappedKeys) && mappedKeys.length === 0)) {
+rules.example += " Tránh sinh câu cụt lủn, vô hồn.";
+rules.definition += " TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa.";
+return rules;
+}
+const keysArray = Array.isArray(mappedKeys) ? mappedKeys : [mappedKeys];
+const keyStrs = keysArray.map(k => String(k).toLowerCase());
+// Gom các hồ bơi được kích hoạt
+let activePools = new Set();
 if (lang === 'zh') {
 // ============================================================
-// HỆ THỐNG 5 HỒ BƠI TIẾNG TRUNG (CHUẨN HSK 3.0 MỚI)
+// HỆ THỐNG HỒ BƠI TIẾNG TRUNG (CHUẨN HSK 3.0 MỚI)
 // ============================================================
-// HSK 1: Sơ cấp 1
-if (['level_1', 'hsk1'].some(k => keyStr.includes(k))) {
-rules.example = "BẮT BUỘC câu cực kỳ ngắn gọn (4-7 chữ Hán). Ngữ cảnh: Miêu tả nhân vật, đồ vật, phương hướng cơ bản. Ngữ pháp: Chỉ dùng câu chữ 是 (Shi), câu chữ 有 (You), đại từ cơ bản và số đếm. Không dùng cấu trúc phức tạp.";
-rules.definition = "Dịch nghĩa đen, cơ bản nhất, dùng từ vựng sinh hoạt hàng ngày.";
+keyStrs.forEach(keyStr => {
+if (['level_1', 'hsk1'].some(k => keyStr.includes(k))) activePools.add(1);
+if (['level_2', 'level_3', 'hsk2', 'hsk3'].some(k => keyStr.includes(k))) activePools.add(2);
+if (['level_4', 'level_5', 'hsk4', 'hsk5'].some(k => keyStr.includes(k))) activePools.add(3);
+if (['level_6', 'level_7', 'hsk6', 'hsk7'].some(k => keyStr.includes(k))) activePools.add(4);
+if (['level_8', 'level_9', 'hsk8', 'hsk9'].some(k => keyStr.includes(k))) activePools.add(5);
+});
+if (activePools.size === 0) activePools.add(1);
+let minPool = Math.min(...activePools);
+let maxPool = Math.max(...activePools);
+let lengths = ["cực kỳ ngắn gọn (4-7 chữ)", "ngắn gọn, tự nhiên", "vừa phải, có chuyển ý", "câu phức đa tầng", "câu văn ngôn/chuyên sâu"];
+let lengthDesc = (minPool === maxPool) ? lengths[minPool - 1] : `linh hoạt, đa dạng từ ${lengths[minPool - 1]} đến ${lengths[maxPool - 1]}`;
+let contexts = [];
+let grammars = [];
+if (activePools.has(1)) {
+contexts.push("miêu tả nhân vật, đồ vật, phương hướng cơ bản");
+grammars.push("câu chữ 是 (Shi), câu chữ 有 (You), đại từ cơ bản và số đếm");
 }
-// HSK 2-3: Sơ cấp 2 & 3
-else if (['level_2', 'level_3', 'hsk2', 'hsk3'].some(k => keyStr.includes(k))) {
-rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Các hoạt động hàng ngày, sở thích, mua sắm. Ngữ pháp: Dùng trợ từ động thái (了/着/过) biểu đạt thời gian, cấu trúc chữ 把 (Ba) và 被 (Bei) cơ bản, lượng từ phong phú, câu hỏi 吗/呢, và câu ghép đơn giản (Vì... nên...).";
-rules.definition = "Dịch nghĩa đen, dùng từ vựng sinh hoạt hàng ngày.";
+if (activePools.has(2)) {
+contexts.push("các hoạt động hàng ngày, sở thích, mua sắm");
+grammars.push("trợ từ động thái (了/着/过), cấu trúc chữ 把 (Ba) và 被 (Bei) cơ bản, lượng từ phong phú, câu hỏi 吗/呢, và câu ghép đơn giản");
 }
-// HSK 4-5: Trung cấp
-else if (['level_4', 'level_5', 'hsk4', 'hsk5'].some(k => keyStr.includes(k))) {
-rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Lập luận quan điểm cá nhân, môi trường làm việc. Bắt đầu chuyển từ khẩu ngữ sang văn viết (书面语), chèn một vài Thành ngữ (成语) phổ biến. Ngữ pháp: Bổ ngữ trạng thái, Bổ ngữ kết quả phức tạp, Cấu trúc so sánh (比...更...).";
-rules.definition = "Dịch chính xác sắc thái nghĩa, ngữ cảnh đời sống hoặc công sở.";
+if (activePools.has(3)) {
+contexts.push("lập luận quan điểm cá nhân, môi trường làm việc");
+grammars.push("bổ ngữ trạng thái, bổ ngữ kết quả phức tạp, cấu trúc so sánh (比...更...), và một vài Thành ngữ (成语) phổ biến");
 }
-// HSK 6-7: Trung - Cao Cấp
-else if (['level_6', 'level_7', 'hsk6', 'hsk7'].some(k => keyStr.includes(k))) {
-rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Tranh luận, tin tức xã hội, hiện tượng văn hóa. Ngữ pháp: Dùng câu phức đa tầng, cặp liên từ logic phức tạp (Dù... vẫn..., Hễ... là...). Sử dụng các từ vựng Cận nghĩa (近义词) có sắc thái tinh tế.";
-rules.definition = "Dịch chính xác sắc thái nghĩa, có thể bao gồm nghĩa bóng phổ biến.";
+if (activePools.has(4)) {
+contexts.push("tranh luận, tin tức xã hội, hiện tượng văn hóa");
+grammars.push("câu phức đa tầng, cặp liên từ logic phức tạp (Dù... vẫn..., Hễ... là...), từ vựng cận nghĩa tinh tế");
 }
-// HSK 8-9: Chuyên gia
-else {
-rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Triết học phương Đông, kinh tế vĩ mô, ngoại giao, y sinh. Ngữ pháp: Sử dụng thành thạo Thành ngữ (成语) sâu sắc, Tục ngữ (俗语). Cấu trúc câu mang đậm âm hưởng Văn ngôn (文言文). Cách hành văn chuẩn xác như người bản xứ mang hàm lượng văn hóa cao.";
-rules.definition = "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt.";
+if (activePools.has(5)) {
+contexts.push("triết học phương Đông, kinh tế vĩ mô, ngoại giao, y sinh");
+grammars.push("Thành ngữ sâu sắc, Tục ngữ, cấu trúc câu mang đậm âm hưởng Văn ngôn (文言文)");
 }
+rules.example = `ĐỊNH HƯỚNG SƯ PHẠM ĐA CẤP ĐỘ: BẮT BUỘC độ dài ${lengthDesc}. Ngữ cảnh trải rộng từ: [${contexts.join('; ')}]. Ngữ pháp tổng hợp, linh hoạt sử dụng: [${grammars.join('; ')}].`;
+rules.definition = maxPool >= 4 ? "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt." : "Dịch nghĩa đen, hoặc dịch chính xác sắc thái đời sống/công sở.";
 } else {
 // ============================================================
-// HỆ THỐNG 5 HỒ BƠI TIẾNG ANH (CHUẨN CEFR)
+// HỆ THỐNG HỒ BƠI TIẾNG ANH (CHUẨN CEFR)
 // ============================================================
-// Nhóm 1: Pre-A1 (Level 1)
-if (['level_1', 'kiddie', 'pre_a1', 'pre-a1'].some(k => keyStr.includes(k))) {
-rules.example = "BẮT BUỘC độ dài 3-5 từ. Ngữ cảnh: Miêu tả đồ vật vật lý xung quanh, màu sắc, con vật, số đếm, gia đình. Ngữ pháp: Chỉ dùng To-Be, Have/Has, Thì hiện tại đơn, giới từ vị trí cơ bản (in, on, under), câu hỏi Yes/No ngắn. KHÔNG dùng cụm động từ/thành ngữ.";
-rules.definition = "Dịch nghĩa đen, cơ bản nhất, dùng từ vựng sinh hoạt hàng ngày.";
+keyStrs.forEach(keyStr => {
+if (['level_1', 'kiddie', 'pre_a1', 'pre-a1'].some(k => keyStr.includes(k))) activePools.add(1);
+if (['level_2', 'level_3', 'junior', 'a1'].some(k => keyStr.includes(k))) activePools.add(2);
+if (['level_4', 'level_5', 'discovery', 'a2'].some(k => keyStr.includes(k))) activePools.add(3);
+if (['level_6', 'level_7', 'pre_ielts', 'breakthrough', 'b1'].some(k => keyStr.includes(k))) activePools.add(4);
+if (['level_8', 'level_9', 'academic', 'expert', 'b2', 'c1', 'c2'].some(k => keyStr.includes(k))) activePools.add(5);
+});
+if (activePools.size === 0) activePools.add(1);
+let minPool = Math.min(...activePools);
+let maxPool = Math.max(...activePools);
+let minLens = [3, 5, 8, 12, 15];
+let maxLens = [5, 8, 12, 15, 25];
+let minLen = minLens[minPool - 1];
+let maxLen = maxLens[maxPool - 1];
+let lengthDesc = (minPool === maxPool) ? `${minLen}-${maxLen} từ` : `linh hoạt, đa dạng từ ${minLen} đến ${maxLen} từ`;
+let contexts = [];
+let grammars = [];
+if (activePools.has(1)) {
+contexts.push("miêu tả đồ vật vật lý xung quanh, màu sắc, con vật, số đếm, gia đình");
+grammars.push("To-Be, Have/Has, Thì hiện tại đơn, giới từ vị trí cơ bản (in, on, under), câu hỏi Yes/No ngắn (KHÔNG cụm động từ/thành ngữ)");
 }
-// Nhóm 2: A1/A1+ (Level 2 & 3)
-else if (['level_2', 'level_3', 'junior', 'a1'].some(k => keyStr.includes(k))) {
-rules.example = "BẮT BUỘC độ dài 5-8 từ. Ngữ cảnh: Các hoạt động thói quen hàng ngày, sở thích, trường học. Ngữ pháp: Câu đơn/ghép (And/But). Dùng Hiện tại đơn/tiếp diễn, Quá khứ đơn (V-ed). BẮT BUỘC dùng Trạng từ tần suất (always, usually, never), tính từ sở hữu, đại từ chỉ định.";
-rules.definition = "Dịch nghĩa đen, dùng từ vựng sinh hoạt hàng ngày.";
+if (activePools.has(2)) {
+contexts.push("các hoạt động thói quen hàng ngày, sở thích, trường học");
+grammars.push("câu đơn/ghép (And/But), Hiện tại đơn/tiếp diễn, Quá khứ đơn (V-ed), Trạng từ tần suất, tính từ sở hữu, đại từ chỉ định");
 }
-// Nhóm 3: A2/A2+ (Level 4 & 5)
-else if (['level_4', 'level_5', 'discovery', 'a2'].some(k => keyStr.includes(k))) {
-rules.example = "BẮT BUỘC độ dài 8-12 từ. Ngữ cảnh: Kể câu chuyện hoặc trải nghiệm cá nhân ngắn, nêu lý do. Ngữ pháp: Sử dụng linh hoạt Quá khứ tiếp diễn, Hiện tại hoàn thành, Tương lai, So sánh. Bổ sung Câu điều kiện loại 0 và 1, Động từ khuyết thiếu chỉ sự bắt buộc/lời khuyên (Must, Have to, Should), Liên từ nối thời gian (When, While, Before, After).";
-rules.definition = "Dịch chính xác sắc thái nghĩa, ngữ cảnh đời sống hoặc trường học.";
+if (activePools.has(3)) {
+contexts.push("kể câu chuyện hoặc trải nghiệm cá nhân ngắn, nêu lý do");
+grammars.push("Quá khứ tiếp diễn, Hiện tại hoàn thành, Tương lai, So sánh, Câu điều kiện loại 0/1, Động từ khuyết thiếu (Must, Have to, Should), Liên từ nối thời gian (When, While)");
 }
-// Nhóm 4: B1/B1+ (Level 6 & 7)
-else if (['level_6', 'level_7', 'pre_ielts', 'breakthrough', 'b1'].some(k => keyStr.includes(k))) {
-rules.example = "BẮT BUỘC độ dài 12-15 từ. Ngữ cảnh: Trình bày quan điểm cá nhân, cảm xúc trừu tượng, môi trường công sở, xã hội. Ngữ pháp: Dùng câu phức (Complex sentence). Yêu cầu có Mệnh đề quan hệ (Who/Which/That), Câu bị động, Câu điều kiện loại 2, Cấu trúc V-ing/To-V (Gerunds & Infinitives), Câu tường thuật (Reported Speech), Liên từ logic (Although, However, Therefore).";
-rules.definition = "Dịch chính xác sắc thái nghĩa, có thể bao gồm nghĩa bóng phổ biến.";
+if (activePools.has(4)) {
+contexts.push("trình bày quan điểm cá nhân, cảm xúc trừu tượng, môi trường công sở, xã hội");
+grammars.push("câu phức (Complex sentence), Mệnh đề quan hệ, Câu bị động, Câu điều kiện loại 2, V-ing/To-V (Gerunds & Infinitives), Câu tường thuật, Liên từ logic");
 }
-// Nhóm 5: B2-C2 (Level 8 & 9)
-else {
-rules.example = "ĐỊNH HƯỚNG SƯ PHẠM: Ngữ cảnh: Luận văn, báo chí, các vấn đề toàn cầu, triết học, kinh tế vĩ mô. Ngữ pháp: Văn phong học thuật, Đảo ngữ, Câu điều kiện hỗn hợp (Mixed Conditionals), Rút gọn mệnh đề phân từ (Participle Clauses), Câu bị động khách quan (It is said that...), Collocations nâng cao và Thành ngữ (Idioms). Cấu trúc ngữ pháp phức tạp.";
-rules.definition = "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt.";
+if (activePools.has(5)) {
+contexts.push("luận văn, báo chí, các vấn đề toàn cầu, triết học, kinh tế vĩ mô");
+grammars.push("văn phong học thuật, Đảo ngữ, Câu điều kiện hỗn hợp, Rút gọn mệnh đề phân từ, Câu bị động khách quan, Collocations nâng cao và Thành ngữ (Idioms)");
 }
+rules.example = `ĐỊNH HƯỚNG SƯ PHẠM ĐA CẤP ĐỘ: BẮT BUỘC độ dài ${lengthDesc}. Ngữ cảnh trải rộng từ: [${contexts.join('; ')}]. Ngữ pháp tổng hợp, linh hoạt sử dụng các cấu trúc: [${grammars.join('; ')}].`;
+rules.definition = maxPool >= 4 ? "Dịch chuẩn xác theo ngữ cảnh học thuật hoặc chuyên ngành. Có thể dùng từ Hán Việt/từ vựng cấp cao trong tiếng Việt." : "Dịch nghĩa đen, cơ bản nhất hoặc dịch sắc thái đời sống.";
 }
 // Vaccine chống từ điển hóa cho mọi cấp độ
 rules.definition += " TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa (VD: dịch 'Ngày', KHÔNG dịch 'Khoảng thời gian 24h'). Ưu tiên 1-3 từ (trừ thành ngữ).";
 return rules;
+},
+// [HÀM BẢO VỆ]: Xử lý mảng và nhặt ra Level có trọng số cao nhất cho Micro-tier Rules
+_getHighestLevelKey: function(mappedKey, targetLang) {
+if (!mappedKey) return '';
+const arr = Array.isArray(mappedKey) ? mappedKey : [mappedKey];
+const str = arr.join(',').toLowerCase();
+if (targetLang === 'English' || targetLang === 'en') {
+if (['level_8', 'level_9', 'academic', 'expert', 'b2', 'c1', 'c2'].some(k => str.includes(k))) return 'en_level_9';
+if (['level_6', 'level_7', 'pre_ielts', 'breakthrough', 'b1'].some(k => str.includes(k))) return 'en_level_6';
+if (['level_4', 'level_5', 'discovery', 'a2'].some(k => str.includes(k))) return 'en_level_4';
+if (['level_2', 'level_3', 'junior', 'a1'].some(k => str.includes(k))) return 'en_level_2';
+return 'en_level_1';
+} else if (targetLang === 'Chinese' || targetLang === 'zh') {
+if (['level_8', 'level_9', 'hsk8', 'hsk9'].some(k => str.includes(k))) return 'zh_level_9';
+if (['level_6', 'level_7', 'hsk6', 'hsk7'].some(k => str.includes(k))) return 'zh_level_6';
+if (['level_4', 'level_5', 'hsk4', 'hsk5'].some(k => str.includes(k))) return 'zh_level_4';
+if (['level_2', 'level_3', 'hsk2', 'hsk3'].some(k => str.includes(k))) return 'zh_level_2';
+return 'zh_level_1';
+}
+return arr[arr.length - 1];
 },
 // [VẮC-XIN LỖI NGỮ PHÁP - CHỐNG ẢO GIÁC ĐỘNG TỪ/TÂN NGỮ]
 getMicroTierGrammarRule: function(lang) {
@@ -1728,28 +1781,29 @@ rule += `- Với các cụm từ ghép, BẮT BUỘC phân loại theo chức n�
 return rule;
 },
 getMicroTierDistortionRule: function(targetLang, dataMode, mappedKey, topic) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, targetLang);
 let rule = "";
 const antiLengthRule = "TỐI QUAN TRỌNG: BẠN PHẢI VIẾT LẠI CHÍNH XÁC CÂU VĂN NGỮ CẢNH ĐÓ. KHÔNG ĐƯỢC tự bịa ra câu mới hoặc thay đổi độ dài của câu. CHỈ ĐƯỢC PHÉP thay đổi ĐÚNG MỘT TỪ để biến nó thành câu sai. ";
 if (targetLang === 'English' && dataMode === 'vocab') {
-if (['en_level_1'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan chặt chẽ đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi chính tả cơ bản (VD: thiếu một chữ cái, hoặc dư một nguyên âm). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
-else if (['en_level_2', 'en_level_3'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi hình thái cơ bản (VD: sai dạng số nhiều 's/es', đổi chỗ nguyên âm cơ bản). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
-else if (['en_level_4', 'en_level_5'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi chính tả phổ biến ở trình độ trung cấp (VD: thiếu phụ âm đôi, nhầm lẫn 'ie' và 'ei'). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
-else if (['en_level_6'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi cấu tạo từ (VD: dùng dạng tính từ thay vì danh từ, như 'beautifulness' thay vì 'beauty'). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
-else if (['en_level_7', 'en_level_8'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi hình thái nâng cao (VD: dùng sai tiền tố/hậu tố như '-tion' thay vì '-sion', 'un-' thay vì 'in-'). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+if (['en_level_1'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan chặt chẽ đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi chính tả cơ bản (VD: thiếu một chữ cái, hoặc dư một nguyên âm). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+else if (['en_level_2', 'en_level_3'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi hình thái cơ bản (VD: sai dạng số nhiều 's/es', đổi chỗ nguyên âm cơ bản). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+else if (['en_level_4', 'en_level_5'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi chính tả phổ biến ở trình độ trung cấp (VD: thiếu phụ âm đôi, nhầm lẫn 'ie' và 'ei'). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+else if (['en_level_6'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi cấu tạo từ (VD: dùng dạng tính từ thay vì danh từ, như 'beautifulness' thay vì 'beauty'). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+else if (['en_level_7', 'en_level_8'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Hãy tạo ĐÚNG MỘT lỗi hình thái nâng cao (VD: dùng sai tiền tố/hậu tố như '-tion' thay vì '-sion', 'un-' thay vì 'in-'). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
 else rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Tập trung vào các cách cấu tạo từ học thuật sai nhưng trông rất hợp lý hoặc các từ 'False friends' (nhìn giống nhưng khác nghĩa). Từ sai nhìn phải giống như một thuật ngữ học thuật có thật. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
 } else if (targetLang === 'English' && dataMode === 'sentence') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi ngữ pháp cơ bản: CHỈ LÀ sai danh từ số ít/số nhiều (s/es) hoặc sai mạo từ cơ bản (a/an/the).";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi ngữ pháp trung cấp: CHỈ LÀ sai giới từ (in/on/at) hoặc sai từ loại (VD: dùng Danh từ thay vì Tính từ, 'careful' vs 'carefully').";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(normalizedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi ngữ pháp cơ bản: CHỈ LÀ sai danh từ số ít/số nhiều (s/es) hoặc sai mạo từ cơ bản (a/an/the).";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(normalizedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi ngữ pháp trung cấp: CHỈ LÀ sai giới từ (in/on/at) hoặc sai từ loại (VD: dùng Danh từ thay vì Tính từ, 'careful' vs 'carefully').";
 else rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi học thuật nâng cao: CHỈ LÀ sai cấu trúc câu bị động, lỗi rút gọn mệnh đề quan hệ, hoặc lỗi liên từ logic (VD: dùng 'although' thay vì 'because'). Câu này nhìn phải có vẻ hoàn toàn đúng đối với người mới học.";
 } else if (targetLang === 'Chinese' && dataMode === 'vocab') {
-if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (1-2 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Thay thế ĐÚNG MỘT chữ Hán bằng một chữ Đồng âm (同音字) hoặc Hình cận tự (形近字) rất cơ bản. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
-else if (['zh_level_3', 'zh_level_4'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (2-3 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Thay thế một chữ Hán bằng chữ Đồng âm (同音字) hoặc sử dụng một Cận nghĩa từ (近义词) sai ngữ cảnh. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
-else if (['zh_level_5', 'zh_level_6'].includes(mappedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (2-4 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Tập trung vào ngôn ngữ văn viết (书面语) hoặc sự nhầm lẫn之间 các Cận nghĩa từ (近义词辨析). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+if (['zh_level_1', 'zh_level_2'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (1-2 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Thay thế ĐÚNG MỘT chữ Hán bằng một chữ Đồng âm (同音字) hoặc Hình cận tự (形近字) rất cơ bản. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+else if (['zh_level_3', 'zh_level_4'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (2-3 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Thay thế một chữ Hán bằng chữ Đồng âm (同音字) hoặc sử dụng một Cận nghĩa từ (近义词) sai ngữ cảnh. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
+else if (['zh_level_5', 'zh_level_6'].includes(normalizedKey)) rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn (2-4 chữ Hán) liên quan đến CHỦ ĐỀ TẬP TRUNG. Tập trung vào ngôn ngữ văn viết (书面语) hoặc sự nhầm lẫn之间 các Cận nghĩa từ (近义词辨析). KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
 else rule = "Các đáp án bẫy PHẢI LÀ từ vựng đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Tập trung vào Thành ngữ 4 chữ (成语) hoặc thuật ngữ học thuật. Thay thế một chữ để tạo ra lỗi từ vựng tinh vi. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
 } else if (targetLang === 'Chinese' && dataMode === 'sentence') {
-if (['zh_level_1', 'zh_level_2'].includes(mappedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi cơ bản: CHỈ LÀ dùng sai lượng từ (量词) hoặc đại từ cơ bản.";
-else if (['zh_level_3', 'zh_level_4'].includes(mappedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi cấu trúc: CHỈ LÀ thiếu trợ từ kết cấu (的/得/地) hoặc sai trật tự từ chỉ thời gian/nơi chốn.";
-else if (['zh_level_5', 'zh_level_6'].includes(mappedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi ngữ pháp: CHỈ LÀ sai bổ ngữ phức tạp (kết quả/trạng thái) hoặc dùng sai Cận nghĩa từ (近义词) trong ngữ cảnh.";
+if (['zh_level_1', 'zh_level_2'].includes(normalizedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi cơ bản: CHỈ LÀ dùng sai lượng từ (量词) hoặc đại từ cơ bản.";
+else if (['zh_level_3', 'zh_level_4'].includes(normalizedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi cấu trúc: CHỈ LÀ thiếu trợ từ kết cấu (的/得/地) hoặc sai trật tự từ chỉ thời gian/nơi chốn.";
+else if (['zh_level_5', 'zh_level_6'].includes(normalizedKey)) rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi ngữ pháp: CHỈ LÀ sai bổ ngữ phức tạp (kết quả/trạng thái) hoặc dùng sai Cận nghĩa từ (近义词) trong ngữ cảnh.";
 else rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn chỉnh xoay quanh CHỦ ĐỀ TẬP TRUNG. Tạo ĐÚNG MỘT lỗi logic hoặc ngữ nghĩa bậc cao: CHỈ LÀ dùng sai Thành ngữ (成语) trong ngữ cảnh hoặc tạo ra nghịch lý logic tinh vi.";
 } else if (targetLang === 'Vietnamese' && dataMode === 'vocab') {
 rule = "Các đáp án bẫy PHẢI LÀ từ đơn liên quan đến CHỦ ĐỀ TẬP TRUNG. Thay thế một từ hoặc một âm tiết bằng một từ đồng nghĩa/gần nghĩa sai lệch. KHÔNG sử dụng lỗi chính tả. KHÔNG ĐƯỢC viết câu hoàn chỉnh.";
@@ -1759,23 +1813,24 @@ rule = antiLengthRule + "Các đáp án bẫy PHẢI LÀ những câu hoàn ch�
 return rule;
 },
 getMicroTierOptionsRule: function(targetLang, dataMode, mappedKey, topic) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, targetLang);
 let optionsRule = "";
 const antiFragmentRule = "QUY TẮC ĐỊNH DẠNG TỐI QUAN TRỌNG: BẠN PHẢI TRẢ VỀ CÁC CÂU VĂN HOÀN CHỈNH. KHÔNG ĐƯỢC trả về các cụm từ ngắn, mảnh vụn hoặc từ đơn lẻ. Các đáp án nhiễu (distractors) PHẢI CÓ độ dài và cấu trúc tổng thể GIỐNG HỆT như câu gốc. ";
 if (targetLang === 'English' && dataMode === 'vocab') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) optionsRule = "3 đáp án nhiễu PHẢI LÀ các từ hoàn toàn khác biệt (về nghĩa và cách viết) để người mới học dễ dàng phân biệt.";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) optionsRule = "3 đáp án nhiễu PHẢI CÙNG loại từ và có chút liên quan đến chủ đề của từ gốc nhằm tạo ra sự nhầm lẫn nhẹ.";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(normalizedKey)) optionsRule = "3 đáp án nhiễu PHẢI LÀ các từ hoàn toàn khác biệt (về nghĩa và cách viết) để người mới học dễ dàng phân biệt.";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(normalizedKey)) optionsRule = "3 đáp án nhiễu PHẢI CÙNG loại từ và có chút liên quan đến chủ đề của từ gốc nhằm tạo ra sự nhầm lẫn nhẹ.";
 else optionsRule = "3 đáp án nhiễu PHẢI LÀ các từ False Friends (từ nhìn giống nhưng khác nghĩa), các từ có cùng tiền tố/hậu tố, hoặc các từ đồng nghĩa rất tinh vi nhưng không phù hợp ngữ cảnh. Chúng phải trông cực kỳ hợp lý đối với người học học thuật.";
 } else if (targetLang === 'English' && dataMode === 'sentence') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CHỨA các lỗi ngữ pháp rõ ràng (VD: hoàn toàn sai thì động từ, thiếu chủ ngữ).";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CHỨA các lỗi trung cấp khó nhận biết (VD: sai một chút giới từ, nhầm lẫn giữa so sánh hơn và so sánh nhất).";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(normalizedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CHỨA các lỗi ngữ pháp rõ ràng (VD: hoàn toàn sai thì động từ, thiếu chủ ngữ).";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(normalizedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CHỨA các lỗi trung cấp khó nhận biết (VD: sai một chút giới từ, nhầm lẫn giữa so sánh hơn và so sánh nhất).";
 else optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI TRÔNG hoàn hảo về mặt ngữ pháp nhưng chứa các khiếm khuyết ngữ nghĩa bậc cao (VD: sai đại từ quan hệ mang sắc thái tinh vi, sai cụm từ đi kèm (collocation) trang trọng, hoặc lỗi cú pháp đảo ngữ).";
 } else if (targetLang === 'Chinese' && dataMode === 'vocab') {
-if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) optionsRule = "3 đáp án nhiễu PHẢI LÀ các chữ Hán có hình dáng hoàn toàn khác biệt hoặc là từ trái nghĩa cơ bản. Tránh dùng các từ đồng âm phức tạp.";
-else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) optionsRule = "3 đáp án nhiễu PHẢI LÀ Cận nghĩa từ (近义词) hoặc các chữ Hán có cùng bộ thủ (同部首字) để gây ra sự nhầm lẫn về thị giác/ngữ nghĩa.";
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) optionsRule = "3 đáp án nhiễu PHẢI LÀ các chữ Hán có hình dáng hoàn toàn khác biệt hoặc là từ trái nghĩa cơ bản. Tránh dùng các từ đồng âm phức tạp.";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(normalizedKey)) optionsRule = "3 đáp án nhiễu PHẢI LÀ Cận nghĩa từ (近义词) hoặc các chữ Hán có cùng bộ thủ (同部首字) để gây ra sự nhầm lẫn về thị giác/ngữ nghĩa.";
 else optionsRule = "3 đáp án nhiễu PHẢI LÀ các từ vựng văn viết cực kỳ trang trọng (书面语) hoặc Thành ngữ (成语) rất giống nhau chỉ khác 1 chữ.";
 } else if (targetLang === 'Chinese' && dataMode === 'sentence') {
-if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CÓ các lỗi sai trật tự từ rõ rệt hoặc dùng sai lượng từ hoàn toàn.";
-else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CÓ các lỗi ngữ pháp tinh vi (VD: sai trợ từ động thái 了/着/过, hoặc cấu trúc chữ 'Ba'/'Bei' hơi sai lệch).";
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CÓ các lỗi sai trật tự từ rõ rệt hoặc dùng sai lượng từ hoàn toàn.";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(normalizedKey)) optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI CÓ các lỗi ngữ pháp tinh vi (VD: sai trợ từ động thái 了/着/过, hoặc cấu trúc chữ 'Ba'/'Bei' hơi sai lệch).";
 else optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI LÀ những câu hoàn hảo về mặt cấu trúc nhưng sai về mặt ngữ nghĩa (VD: dùng Thành ngữ sai trong ngữ cảnh).";
 } else if (targetLang === 'Vietnamese' && dataMode === 'vocab') {
 optionsRule = "3 đáp án nhiễu PHẢI LÀ các từ Tiếng Việt có vẻ hợp lý liên quan đến chủ đề, nhưng mang ý nghĩa hoàn toàn khác. KHÔNG sử dụng lỗi chính tả.";
@@ -1785,21 +1840,22 @@ optionsRule = antiFragmentRule + "3 đáp án nhiễu PHẢI LÀ những câu Ti
 return optionsRule;
 },
 getMicroTierNoiseRule: function(targetLang, dataMode, mappedKey, topic) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, targetLang);
 let noiseRule = "";
 if (targetLang === 'English') {
 if (dataMode === 'vocab') {
 noiseRule = "Tạo chính xác từ 2 đến 4 chữ cái thường (a-z) làm bẫy chính tả. Tập trung vào các nguyên âm hoặc phụ âm dễ nhầm lẫn. KHÔNG ĐƯỢC tạo từ hoàn chỉnh.";
 } else {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) noiseRule = "Tạo các từ bẫy (noise) là các mạo từ cơ bản (a, an, the) hoặc giới từ đơn giản (in, on) xung đột với ngữ cảnh của câu gốc.";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) noiseRule = "Tạo các từ bẫy (noise) là các dạng sai của động từ chính (VD: nếu câu có 'playing', hãy tạo 'played') hoặc các liên từ đơn giản gây hiểu lầm (but, so).";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(normalizedKey)) noiseRule = "Tạo các từ bẫy (noise) là các mạo từ cơ bản (a, an, the) hoặc giới từ đơn giản (in, on) xung đột với ngữ cảnh của câu gốc.";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(normalizedKey)) noiseRule = "Tạo các từ bẫy (noise) là các dạng sai của động từ chính (VD: nếu câu có 'playing', hãy tạo 'played') hoặc các liên từ đơn giản gây hiểu lầm (but, so).";
 else noiseRule = "Tạo các từ bẫy (noise) là các phó từ nâng cao gây hiểu lầm (nevertheless, thereby) hoặc đại từ quan hệ dễ nhầm lẫn (which vs where). CHÚNG KHÔNG ĐƯỢC PHÉP khớp đúng ngữ pháp ở bất kỳ vị trí nào trong câu.";
 }
 } else if (targetLang === 'Chinese') {
 if (dataMode === 'vocab') {
 noiseRule = "Tạo chính xác từ 1 đến 2 chữ Hán (汉字) đơn lẻ có hình dáng tương tự (形近字) hoặc cùng âm đọc (同音字) với các chữ trong từ mục tiêu. KHÔNG ĐƯỢC tạo từ có nhiều chữ Hán.";
 } else {
-if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) noiseRule = "Tạo các chữ Hán bẫy (noise) là các trợ từ kết cấu cơ bản (的, 得, 地) hoặc lượng từ phổ biến (个, 本) không thuộc về câu.";
-else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) noiseRule = "Tạo các chữ Hán bẫy (noise) là các trợ từ động thái (了, 着, 过) hoặc giới từ dễ nhầm lẫn (把, 被, 对) để làm lạc hướng cấu trúc câu.";
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) noiseRule = "Tạo các chữ Hán bẫy (noise) là các trợ từ kết cấu cơ bản (的, 得, 地) hoặc lượng từ phổ biến (个, 本) không thuộc về câu.";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(normalizedKey)) noiseRule = "Tạo các chữ Hán bẫy (noise) là các trợ từ động thái (了, 着, 过) hoặc giới từ dễ nhầm lẫn (把, 被, 对) để làm lạc hướng cấu trúc câu.";
 else noiseRule = "Tạo các chữ Hán bẫy (noise) là các liên từ trang trọng (尽管, 既然) hoặc hư từ văn ngôn (之, 乎, 者, 也) làm phá vỡ cú pháp nâng cao.";
 }
 } else if (targetLang === 'Vietnamese') {
@@ -1812,14 +1868,15 @@ noiseRule = "Tạo các từ bẫy (noise) là các hư từ Tiếng Việt thô
 return noiseRule;
 },
 getMicroTierClozeRule: function(targetLang, dataMode, mappedKey, topic) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, targetLang);
 let clozeRule = "";
 if (targetLang === 'English') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) clozeRule = "Chọn một Danh từ Chủ ngữ cơ bản hoặc một Động từ Hành động đơn giản để thay thế bằng '[__________]'. Đó phải là một từ dễ đoán.";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) clozeRule = "Chọn một Giới từ quan trọng (in/on/at), một Tính từ miêu tả, hoặc một Trợ động từ để thay thế bằng '[__________]'. Nó phải kiểm tra được ngữ pháp/từ vựng trung cấp.";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(normalizedKey)) clozeRule = "Chọn một Danh từ Chủ ngữ cơ bản hoặc một Động từ Hành động đơn giản để thay thế bằng '[__________]'. Đó phải là một từ dễ đoán.";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(normalizedKey)) clozeRule = "Chọn một Giới từ quan trọng (in/on/at), một Tính từ miêu tả, hoặc một Trợ động từ để thay thế bằng '[__________]'. Nó phải kiểm tra được ngữ pháp/từ vựng trung cấp.";
 else clozeRule = "Chọn một Liên từ phức tạp, một phần của Cụm từ cố định (Collocation) nâng cao, hoặc một Cụm động từ (Phrasal Verb) khó để thay thế bằng '[__________]'. Nó phải thử thách được kỹ năng đọc hiểu học thuật.";
 } else if (targetLang === 'Chinese') {
-if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) clozeRule = "Chọn một Danh từ chính hoặc một Động từ Hành động đơn giản để thay thế bằng '[__________]'.";
-else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) clozeRule = "Chọn một Lượng từ cụ thể (量词) hoặc một Bổ ngữ Kết quả/Xu hướng (结果/趋向补语) để thay thế bằng '[__________]'.";
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) clozeRule = "Chọn một Danh từ chính hoặc một Động từ Hành động đơn giản để thay thế bằng '[__________]'.";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(normalizedKey)) clozeRule = "Chọn một Lượng từ cụ thể (量词) hoặc một Bổ ngữ Kết quả/Xu hướng (结果/趋向补语) để thay thế bằng '[__________]'.";
 else clozeRule = "Chọn một chữ Hán quan trọng nằm bên trong một Thành ngữ (成语), một liên từ trang trọng, hoặc một động từ trừu tượng để thay thế bằng '[__________]'.";
 } else if (targetLang === 'Vietnamese') {
 clozeRule = "Chọn một Danh từ Chủ ngữ quan trọng, một Động từ Hành động chính, hoặc một Tính từ miêu tả để thay thế bằng '[__________]'.";
@@ -1827,27 +1884,28 @@ clozeRule = "Chọn một Danh từ Chủ ngữ quan trọng, một Động từ
 return clozeRule;
 },
 getMicroTierOddRule: function(targetLang, dataMode, mappedKey, topic) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, targetLang);
 let oddRule = "";
 if (dataMode === 'sentence') {
 if (targetLang === 'English') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một thì ngữ pháp cơ bản (VD: Hiện tại Đơn) hoặc chung chủ đề ngữ nghĩa, và 1 câu PHẢI dùng thì khác hoặc mang nghĩa trái ngược.";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một cấu trúc ngữ pháp trung cấp cụ thể (VD: Câu điều kiện loại 1, hoặc câu bị động), và 1 câu PHẢI KHÁC BIỆT.";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(normalizedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một thì ngữ pháp cơ bản (VD: Hiện tại Đơn) hoặc chung chủ đề ngữ nghĩa, và 1 câu PHẢI dùng thì khác hoặc mang nghĩa trái ngược.";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(normalizedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một cấu trúc ngữ pháp trung cấp cụ thể (VD: Câu điều kiện loại 1, hoặc câu bị động), và 1 câu PHẢI KHÁC BIỆT.";
 else oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một sắc thái học thuật tinh vi, các từ nối liên kết, hoặc cấu trúc đảo ngữ nâng cao, và 1 câu PHẢI KHÁC BIỆT.";
 } else if (targetLang === 'Chinese') {
-if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một mẫu câu cơ bản (VD: Câu chữ 'Shi') hoặc chung chủ đề, và 1 câu PHẢI KHÁC BIỆT.";
-else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI dùng chung một trợ từ cụ thể (như chữ 'Ba' 把 hoặc 'Bei' 被) hoặc chung cấu trúc bổ ngữ, và 1 câu PHẢI KHÁC BIỆT.";
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một mẫu câu cơ bản (VD: Câu chữ 'Shi') hoặc chung chủ đề, và 1 câu PHẢI KHÁC BIỆT.";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(normalizedKey)) oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI dùng chung một trợ từ cụ thể (như chữ 'Ba' 把 hoặc 'Bei' 被) hoặc chung cấu trúc bổ ngữ, và 1 câu PHẢI KHÁC BIỆT.";
 else oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung một biện pháp tu từ trang trọng hoặc cách diễn đạt văn ngôn, và 1 câu PHẢI KHÁC BIỆT.";
 } else {
 oddRule = "Cung cấp 4 câu hoàn chỉnh. 3 câu PHẢI chung cấu trúc ngữ pháp hoặc chủ đề ngữ nghĩa, và 1 câu PHẢI LÀ câu khác loại.";
 }
 } else {
 if (targetLang === 'English') {
-if (['en_level_1', 'en_level_2', 'en_level_3'].includes(mappedKey)) oddRule = "Phân loại dựa trên Ngữ nghĩa đơn giản (VD: 3 loại trái cây vs 1 con vật, hoặc 3 màu sắc vs 1 phương tiện).";
-else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(mappedKey)) oddRule = "Phân loại dựa trên Từ loại (VD: 3 danh từ vs 1 động từ) hoặc Đuôi từ (VD: 3 từ đuôi '-tion' vs 1 từ đuôi '-ment').";
+if (['en_level_1', 'en_level_2', 'en_level_3'].includes(normalizedKey)) oddRule = "Phân loại dựa trên Ngữ nghĩa đơn giản (VD: 3 loại trái cây vs 1 con vật, hoặc 3 màu sắc vs 1 phương tiện).";
+else if (['en_level_4', 'en_level_5', 'en_level_6'].includes(normalizedKey)) oddRule = "Phân loại dựa trên Từ loại (VD: 3 danh từ vs 1 động từ) hoặc Đuôi từ (VD: 3 từ đuôi '-tion' vs 1 từ đuôi '-ment').";
 else oddRule = "Phân loại dựa trên Sắc thái nghĩa tinh vi (VD: 3 từ học thuật mang nghĩa tích cực vs 1 từ tiêu cực), hoặc các trường ngữ nghĩa trừu tượng.";
 } else if (targetLang === 'Chinese') {
-if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) oddRule = "Phân loại dựa trên Ngữ nghĩa đơn giản (VD: 3 món ăn vs 1 món đồ quần áo).";
-else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) oddRule = "Phân loại dựa trên Bộ thủ chữ Hán (VD: 3 chữ có bộ Thủy 氵 vs 1 chữ có bộ Hỏa 火) hoặc Từ loại rõ ràng.";
+if (['zh_level_1', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) oddRule = "Phân loại dựa trên Ngữ nghĩa đơn giản (VD: 3 món ăn vs 1 món đồ quần áo).";
+else if (['zh_level_4', 'zh_level_5', 'zh_level_6'].includes(normalizedKey)) oddRule = "Phân loại dựa trên Bộ thủ chữ Hán (VD: 3 chữ có bộ Thủy 氵 vs 1 chữ có bộ Hỏa 火) hoặc Từ loại rõ ràng.";
 else oddRule = "Phân loại dựa trên Cấu trúc Thành ngữ (Mẫu Chengyu), hoặc sắc thái cảm xúc (褒义词 - từ bao nghĩa vs 贬义词 - từ biếm nghĩa).";
 } else if (targetLang === 'Vietnamese') {
 oddRule = "Phân loại dựa trên Ngữ nghĩa rõ ràng hoặc Từ loại cơ bản (VD: 3 danh từ vs 1 động từ) trong Tiếng Việt.";
@@ -1857,38 +1915,41 @@ const fewShot = "\n[CRITICAL FEW-SHOT EXAMPLES]\nĐể tránh ảo giác logic, 
 return oddRule + fewShot;
 },
 getMicroTierVocabTypeRule: function(mappedKey) {
-if (['en_level_1', 'en_level_2', 'zh_level_1', 'zh_level_2'].includes(mappedKey)) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, 'English'); // Default logic, safe enough for general checks
+if (['en_level_1', 'en_level_2', 'zh_level_1', 'zh_level_2'].includes(normalizedKey)) {
 return "QUY TẮC CẤP ĐỘ QUAN TRỌNG (Level 1-2): (Các) mục từ vựng PHẢI LÀ TỪ ĐƠN CƠ BẢN (VD: 'apple', 'run', 'happy'). KHÔNG ĐƯỢC sử dụng cụm từ hoặc từ ghép.";
-} else if (['en_level_3', 'en_level_4', 'zh_level_3', 'zh_level_4'].includes(mappedKey)) {
+} else if (['en_level_3', 'en_level_4', 'zh_level_3', 'zh_level_4'].includes(normalizedKey)) {
 return "QUY TẮC CẤP ĐỘ QUAN TRỌNG (Level 3-4): (Các) mục từ vựng PHẢI LÀ TỪ GHÉP hoặc CỤM TỪ CƠ BẢN NGẮN GỌN gồm chính xác 2 từ (VD: 'ice cream', 'wake up', '看书').";
-} else if (['en_level_5', 'en_level_6', 'zh_level_5', 'zh_level_6'].includes(mappedKey)) {
+} else if (['en_level_5', 'en_level_6', 'zh_level_5', 'zh_level_6'].includes(normalizedKey)) {
 return "QUY TẮC CẤP ĐỘ QUAN TRỌNG (Level 5-6): (Các) mục từ vựng PHẢI LÀ CỤM ĐỘNG TỪ hoặc CỤM TỪ CỐ ĐỊNH PHỔ BIẾN (2-3 từ, VD: 'give up', 'make a decision', '取得进步').";
-} else if (['en_level_7', 'en_level_8', 'zh_level_7', 'zh_level_8'].includes(mappedKey)) {
+} else if (['en_level_7', 'en_level_8', 'zh_level_7', 'zh_level_8'].includes(normalizedKey)) {
 return "QUY TẮC CẤP ĐỘ QUAN TRỌNG (Level 7-8): (Các) mục từ vựng PHẢI LÀ THUẬT NGỮ HỌC THUẬT, CỤM TỪ TRANG TRỌNG, hoặc CỤM ĐỘNG TỪ NÂNG CAO (VD: 'mitigate the impact', 'take into consideration').";
-} else if (['en_level_9', 'zh_level_9'].includes(mappedKey)) {
+} else if (['en_level_9', 'zh_level_9'].includes(normalizedKey)) {
 return "QUY TẮC CẤP ĐỘ QUAN TRỌNG (Level 9): (Các) mục từ vựng PHẢI LÀ THÀNH NGỮ, CÁCH DIỄN ĐẠT VĂN CHƯƠNG, hoặc CÁC CỤM TỪ TINH VI (tối đa 4 từ, VD: 'a blessing in disguise', '莫名其妙').";
 }
 return "QUY TẮC CẤP ĐỘ QUAN TRỌNG: Mục từ vựng phải phù hợp với cấp độ. Nó có thể là một từ đơn hoặc cụm từ ngắn (tối đa 4 từ).";
 },
 getMicroTierListeningRule: function(mappedKey) {
-if (['en_level_1', 'zh_level_1', 'level_1_kiddie'].includes(mappedKey)) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, 'English');
+if (['en_level_1', 'zh_level_1', 'level_1_kiddie'].includes(normalizedKey)) {
 return "QUY TẮC KỊCH BẢN QUAN TRỌNG: Trường 'audioScript' PHẢI CỰC KỲ ĐƠN GIẢN. Chính xác 1 hoặc 2 câu ngắn đơn giản. KHÔNG ĐƯỢC dùng câu ghép. KHÔNG ĐƯỢC dùng tính từ phức tạp (VD: dùng 'The dog is black', KHÔNG dùng 'the quick brown dog'). CHỈ sử dụng từ vựng A1 cơ bản (màu sắc, số đếm, động vật cơ bản).";
-} else if (['en_level_2', 'en_level_3', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) {
+} else if (['en_level_2', 'en_level_3', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) {
 return "QUY TẮC KỊCH BẢN QUAN TRỌNG: Trường 'audioScript' PHẢI LÀ CHÍNH XÁC 2 đến 3 câu đơn giản. Sử dụng động từ hành động cơ bản và tính từ đơn giản. KHÔNG dùng ngữ pháp phức tạp.";
-} else if (['en_level_4', 'en_level_5', 'zh_level_4', 'zh_level_5'].includes(mappedKey)) {
+} else if (['en_level_4', 'en_level_5', 'zh_level_4', 'zh_level_5'].includes(normalizedKey)) {
 return "QUY TẮC KỊCH BẢN QUAN TRỌNG: Trường 'audioScript' PHẢI LÀ CHÍNH XÁC 3 đến 4 câu. Có thể là hội thoại ngắn hoặc độc thoại. Sử dụng thì quá khứ đơn hoặc giới từ cơ bản.";
-} else if (['en_level_6', 'en_level_7', 'zh_level_6', 'zh_level_7'].includes(mappedKey)) {
+} else if (['en_level_6', 'en_level_7', 'zh_level_6', 'zh_level_7'].includes(normalizedKey)) {
 return "QUY TẮC KỊCH BẢN QUAN TRỌNG: Trường 'audioScript' là một đoạn văn gắn kết hoặc hội thoại ngắn. Bao gồm một số thông tin gây nhiễu phụ để kiểm tra khả năng nghe hiểu.";
 } else {
 return "QUY TẮC KỊCH BẢN QUAN TRỌNG: Trường 'audioScript' là một đoạn độc thoại học thuật nâng cao hoặc bản tin (khoảng 50-80 từ). Sử dụng cấu trúc câu phức và từ vựng cấp độ cao.";
 }
 },
 getMicroTierReadingRule: function(mappedKey) {
-if (['en_level_1', 'zh_level_1', 'level_1_kiddie'].includes(mappedKey)) {
+const normalizedKey = window.IoeDataEngine._getHighestLevelKey(mappedKey, 'English');
+if (['en_level_1', 'zh_level_1', 'level_1_kiddie'].includes(normalizedKey)) {
 return "QUY TẮC BÀI ĐỌC QUAN TRỌNG (LEVEL 1): Trường 'passage' PHẢI CỰC KỲ NGẮN, chính xác 3 đến 4 câu đơn giản (tối đa 20-30 từ). CHỈ dùng các danh từ cơ bản 1 âm tiết. TUYỆT ĐỐI KHÔNG dùng từ phức tạp. Tập trung vào đồ vật đơn giản. KHÔNG dùng câu ghép. TỐI QUAN TRỌNG: BẠN PHẢI TẠO ĐÚNG 5 CÂU HỎI. Để tạo 5 câu hỏi từ đoạn văn ngắn, hãy hỏi các câu cực kỳ đơn giản về màu sắc, số lượng, Đúng/Sai, hoặc danh tính.";
-} else if (['en_level_2', 'en_level_3', 'zh_level_2', 'zh_level_3'].includes(mappedKey)) {
+} else if (['en_level_2', 'en_level_3', 'zh_level_2', 'zh_level_3'].includes(normalizedKey)) {
 return "QUY TẮC BÀI ĐỌC QUAN TRỌNG (LEVEL 2-3): Trường 'passage' PHẢI NGẮN, chính xác 5 đến 7 câu (40-70 từ). Dùng ngôn ngữ miêu tả đơn giản. Tập trung vào thói quen hàng ngày. TỐI QUAN TRỌNG: BẠN PHẢI TẠO ĐÚNG 5 CÂU HỎI. Kết hợp giữa Trắc nghiệm đơn giản và Đúng/Sai/Không có thông tin (TFNG) để đủ 5 câu.";
-} else if (['en_level_4', 'en_level_5', 'zh_level_4', 'zh_level_5'].includes(mappedKey)) {
+} else if (['en_level_4', 'en_level_5', 'zh_level_4', 'zh_level_5'].includes(normalizedKey)) {
 return "QUY TẮC BÀI ĐỌC QUAN TRỌNG (LEVEL 4-5): Trường 'passage' nên là một văn bản độ dài trung bình (80-120 từ). Giới thiệu các câu ghép cơ bản. TỐI QUAN TRỌNG: BẠN PHẢI TẠO ĐÚNG 5 CÂU HỎI.";
 } else {
 return "QUY TẮC BÀI ĐỌC QUAN TRỌNG (LEVEL 6+): Trường 'passage' nên là văn bản học thuật hoặc chi tiết (150-300 từ). Sử dụng từ vựng nâng cao và văn phong học thuật. TỐI QUAN TRỌNG: BẠN PHẢI TẠO ĐÚNG 5 CÂU HỎI.";
@@ -1900,18 +1961,27 @@ return "QUY TẮC BÀI ĐỌC QUAN TRỌNG (LEVEL 6+): Trường 'passage' nên 
 // ==================================================================================
 window.IoeDataEngine._buildSystemPromptForFactory = function(forgeType, subType, level, lang, topic, dataMode) {
 const targetLang = lang === 'zh' ? 'Tiếng Trung' : (lang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh');
-const cefrLevel = window.ExamProfiles && window.ExamProfiles.getCefrLevel ? window.ExamProfiles.getCefrLevel(level) : "Intermediate";
+// level in exams can be a single string or an array from multi-select.
+// _getHighestLevelKey will extract the representative string for CEFR mapping.
+const representativeLevel = window.IoeDataEngine._getHighestLevelKey(level, targetLang);
+const cefrLevel = window.ExamProfiles && window.ExamProfiles.getCefrLevel ? window.ExamProfiles.getCefrLevel(representativeLevel) : "Intermediate";
 // Lấy luật Sư phạm động từ Ma trận
 const pedagogyRules = window.IoeDataEngine.getPedagogyMatrixRule ? window.IoeDataEngine.getPedagogyMatrixRule(level, lang) : {
 example: "Tự nhiên, chuẩn ngữ pháp, có ngữ cảnh thực tế rõ ràng. Tránh sinh câu cụt lủn, vô hồn.",
 definition: "Bản dịch Tiếng Việt trực tiếp, chuẩn xác. TUYỆT ĐỐI KHÔNG giải nghĩa kiểu từ điển bách khoa."
 };
 let prompt = `Bạn là một gia sư ${targetLang} chuyên nghiệp và tận tâm, đang tạo nội dung cho một ứng dụng giáo dục.\n`;
-prompt += `CẤP ĐỘ MỤC TIÊU: ${level} (Tiêu chuẩn tương đương: ${cefrLevel}).\n`;
-const levelContext = window.IoeDataEngine?.GRADE_CONTEXTS?.[level] || "";
-if (levelContext) prompt += `NGỮ CẢNH (CONTEXT): ${levelContext}\n`;
+prompt += `CẤP ĐỘ MỤC TIÊU: ${Array.isArray(level) ? level.join(', ') : level} (Tiêu chuẩn tương đương: ${cefrLevel}).\n`;
+// Extract contexts for all selected levels
+if (level) {
+const levelArr = Array.isArray(level) ? level : [level];
+const contexts = levelArr.map(lvl => window.IoeDataEngine?.GRADE_CONTEXTS?.[lvl]).filter(Boolean);
+if (contexts.length > 0) {
+prompt += `NGỮ CẢNH (CONTEXT): ${contexts.join(' | ')}\n`;
+}
+}
 if (lang === 'zh') {
-prompt += `QUY TẮC TỪ VỰNG: Vui lòng sử dụng từ vựng phù hợp với tiêu chuẩn ${level}. Đối với cấp độ cơ bản (HSK 1-3), chỉ dùng các từ giao tiếp hàng ngày cơ bản. Với cấp độ cao hơn, dùng từ vựng nâng cao phù hợp nhưng không quá hiếm gặp hoặc tối nghĩa.\n`;
+prompt += `QUY TẮC TỪ VỰNG: Vui lòng sử dụng từ vựng phù hợp với tiêu chuẩn ${Array.isArray(level) ? level.join(', ') : level}. Đối với cấp độ cơ bản, chỉ dùng các từ giao tiếp hàng ngày cơ bản. Với cấp độ cao hơn, dùng từ vựng nâng cao phù hợp nhưng không quá hiếm gặp hoặc tối nghĩa.\n`;
 } else {
 prompt += `QUY TẮC TỪ VỰNG: Vui lòng sử dụng từ vựng bám sát tiêu chuẩn ${cefrLevel}. Đảm bảo độ khó hoàn toàn phù hợp với học viên mục tiêu.\n`;
 }
@@ -1919,9 +1989,9 @@ if (dataMode === 'sentence') {
 prompt += `QUY TẮC ĐỊNH DẠNG: Trường 'displaySentence' và tất cả các đáp án (options) đều phải là các câu văn hoàn chỉnh, nghe tự nhiên. KHÔNG trả về các mảnh vụn ngắn.\n`;
 } else {
 if (lang === 'zh') {
-prompt += `QUY TẮC ĐỊNH DẠNG: Đối với HSK Sơ cấp (1-3), hãy giữ cho các đáp án (options) tương đối ngắn gọn và dễ đọc.\n`;
+prompt += `QUY TẮC ĐỊNH DẠNG: Đối với HSK Sơ cấp, hãy giữ cho các đáp án (options) tương đối ngắn gọn và dễ đọc.\n`;
 } else {
-prompt += `QUY TẮC ĐỊNH DẠNG: Đối với cấp độ Sơ cấp (Pre-A1 đến A2+), hãy giữ cho các đáp án (options) tương đối đơn giản, dễ đọc.\n`;
+prompt += `QUY TẮC ĐỊNH DẠNG: Đối với cấp độ Sơ cấp, hãy giữ cho các đáp án (options) tương đối đơn giản, dễ đọc.\n`;
 }
 }
 prompt += `GẮN NHÃN CẤP ĐỘ: Vui lòng khai báo đúng cấp độ CEFR/HSK vào trường 'cefr_level'. Khai báo sai cấp độ là một lỗi nghiêm trọng.\n`;
