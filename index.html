@@ -5699,29 +5699,17 @@ addQuestions(types.IOE_MULTIPLE_CHOICE, 10, 1, 'General Practice');
 return blueprint;
 }
 };
-// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.12
-// Last Updated: 2026-06-14 13:20
+// Block 2.9: TẦNG 2: ĐỘNG CƠ DỮ LIỆU SƯ PHẠM (IoeDataEngine) - Version 2.13
+// Last Updated: 2026-08-26 10:20
 // Nhiệm vụ: Số hóa Khung năng lực ngôn ngữ (HSK/CEFR) thành các quy tắc (Rules) định hướng AI sinh lỗi, đục lỗ và tạo bẫy.
+// Cập nhật V2.13: [HOTFIX ARCHITECTURE] Áp dụng Object.assign để hợp nhất an toàn với Block 2.2 (chống ghi đè - Object Overwrite Fallacy). Dọn dẹp hoàn toàn GRADE_CONTEXTS trùng lặp.
 // Cập nhật V2.12: [LEVEL WEIGHT FILTER] Cấy ma trận trọng số phân cấp (Weight Matrix) vào Động cơ Dữ liệu. Tích hợp `_getLevelWeight` và `_getGrammarTopicWeight` để tự động lọc bỏ các bẫy ngữ pháp vượt cấp khi UI hiển thị hoặc AI chọn ngẫu nhiên.
 // Cập nhật V2.11: [POLYMORPHIC DATA RESTRUCTURE] Đại phẫu toàn bộ MICRO_PROMPTS sang dạng {label, prompt}. Bổ sung Getter API `getGrammarTopics`.
 // ==================================================================================
-window.IoeDataEngine = {
-// 1. NGỮ CẢNH TRÌNH ĐỘ (Định hướng Từ vựng và Cấu trúc chung)
-GRADE_CONTEXTS: {
-zh_level_1: 'HSK 1 (150 words). ĐỊNH HƯỚNG: 1) Ưu tiên phó từ mức độ trước tính từ vị ngữ (VD: 我很忙, hạn chế dùng 我是忙). 2) Xếp thời gian và địa điểm trước động từ chính (VD: 我今天在家看书). 3) Khuyến khích phân biệt rõ phủ định 不 và 没.',
-zh_level_2: 'HSK 2 (300 words). ĐỊNH HƯỚNG: 1) Trong câu so sánh 比, ưu tiên dùng 一点儿/得多, hạn chế dùng phó từ mức độ như 很/非常. 2) Vận dụng khéo léo Bổ ngữ trạng thái (得) và Trợ từ động thái (着/过). 3) Tạo sự khác biệt giữa điểm xuất phát 从 và khoảng cách 离.',
-zh_level_3: 'HSK 3 (600 words). Bám sát từ vựng và ngữ pháp HSK3 theo Giáo trình Hán ngữ Quyển 3 để mang lại trải nghiệm tự nhiên nhất.',
-zh_level_4: 'HSK 4 (1200 words). ĐỊNH HƯỚNG: 1) Câu bị động với 让/叫 nên đi kèm chủ thể tác động. 2) Cấu trúc nhấn mạnh 是...的 và dạng phủ định 不是...的. 3) Thể hiện sự phong phú của trật tự chủ ngữ với các cặp liên từ (VD: 不仅...而且, 即使...也).',
-en_level_1: 'Kiddie (Pre-A1 / Lớp 1-2). ƯU TIÊN: Từ vựng trực quan (Màu sắc, đồ vật, con vật, gia đình). Cấu trúc rất ngắn và đơn giản (This is, I have, It is). KHÔNG dùng thì Quá khứ hay từ vựng trừu tượng.',
-en_level_2: 'Junior (A1 / Lớp 3-4). ƯU TIÊN: Chủ đề sinh hoạt hàng ngày, trường học. Ngữ pháp: Hiện tại đơn (To be, số ít/số nhiều), Hiện tại tiếp diễn (V-ing). KHÔNG dùng câu phức.',
-en_level_3: 'Junior+ (A1+ / Lớp 5). ƯU TIÊN: Quá khứ đơn cơ bản (Was/Were, Regular verbs), Tương lai gần (Be going to), Từ nối cơ bản (And, But, Because).',
-en_level_4: 'Discovery (A2 / Lớp 6-7). ƯU TIÊN: Quá khứ đơn (Bất quy tắc), So sánh hơn/nhất, Danh từ đếm được/không đếm được (Much/Many), Giới từ thời gian/nơi chốn (In/On/At).',
-en_level_5: 'Discovery+ (B1 / Lớp 8-9). ƯU TIÊN: Hiện tại hoàn thành (Since/For), Câu tường thuật (Lùi thì), Câu bị động cơ bản, Cụm động từ & Cụm từ cố định (Phrasal verbs & Collocations).',
-en_level_6: 'Pre-IELTS (IELTS 4.0). ƯU TIÊN: Cấu trúc câu phức (Although, Even though), Câu điều kiện loại 1 & 2, Động từ khuyết thiếu (Modal verbs of deduction).',
-en_level_7: 'Breakthrough (IELTS 5.0). ƯU TIÊN: Mệnh đề quan hệ rút gọn, Quá khứ hoàn thành, Từ vựng học thuật cơ bản.',
-en_level_8: 'Academic (IELTS 6.5). ƯU TIÊN: Câu đảo ngữ (Inversion), Cấu trúc giả định, Từ vựng IELTS chuyên sâu (Môi trường, Khoa học, Xã hội).',
-en_level_9: 'Expert (IELTS 7.5+). ƯU TIÊN: Thành ngữ (Idioms), Sắc thái từ vựng cực kỳ tinh vi, Cấu trúc câu ghép phức tạp đa tầng.'
-},
+// Khởi tạo an toàn: Nếu object đã tồn tại (từ Block 2.2), giữ nguyên. Nếu chưa, tạo mới.
+window.IoeDataEngine = window.IoeDataEngine || {};
+// Hợp nhất dữ liệu của Block 2.9 vào IoeDataEngine hiện tại
+Object.assign(window.IoeDataEngine, {
 // 2. KHO ĐẠN VI LỆNH (MICRO-PROMPTS REPOSITORY)
 MICRO_PROMPTS: {
 // ====================================================
@@ -6383,7 +6371,7 @@ if (key.startsWith('eng_a2')) return 'Tiếng Anh A2 (KET)';
 if (key.startsWith('eng_')) return 'Tiếng Anh (Chung)';
 return 'Chuyên đề Khác';
 }
-};
+});
 // Block3.1: TẦNG 3: GIAO DIỆN DÙNG CHUNG (Shared UI Components) - Version 2.01 (Multi-Select Bulletproof)
 // Last Updated: 2026-07-05 21:30
 // Nhiệm vụ: Cung cấp các Component nền tảng (UI Library) độc lập.
